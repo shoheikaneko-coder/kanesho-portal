@@ -1,6 +1,12 @@
+import { db } from './firebase.js';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, setDoc, getDoc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { showConfirm, showAlert } from './ui_utils.js';
+
 let currentView = 'list'; // 'list' or 'form'
 let editingStoreData = null;
-
+let cachedStores = [];
+let currentPage = 1;
+const pageSize = 30;
 export const storesPageHtml = `
     <div id="stores-page-container" class="animate-fade-in">
         <!-- Content swapped here -->
@@ -34,6 +40,16 @@ function renderListView(container) {
         </div>
 
         <div class="glass-panel" style="padding: 0; overflow: hidden; border: 1px solid var(--border);">
+            <div style="padding: 1.2rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+                <div class="input-group" style="margin-bottom: 0; width: 350px;">
+                    <i class="fas fa-search" style="top: 0.8rem;"></i>
+                    <input type="text" id="store-search" placeholder="店舗名やIDで検索..." style="padding-top: 0.6rem; padding-bottom: 0.6rem; border-radius: 20px;">
+                </div>
+                <div id="stores-count" style="color: var(--text-secondary); font-size: 0.85rem; font-weight: 600;">
+                    読込中...
+                </div>
+            </div>
+
             <table style="width: 100%; border-collapse: collapse; text-align: left;">
                 <thead>
                     <tr style="background: #f8fafc; border-bottom: 2px solid var(--border); color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">
@@ -47,13 +63,16 @@ function renderListView(container) {
                     </tr>
                 </thead>
                 <tbody id="store-table-body">
-                    <tr><td colspan="7" style="text-align: center; padding: 3rem; color: var(--text-secondary);">読込中...</td></tr>
                 </tbody>
             </table>
+            
+            <div id="store-pagination" style="display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin: 1.5rem 0; clear: both;">
+            </div>
         </div>
     `;
 
-    const btnAdd = document.getElementById('btn-add-store');
+    const containerEl = document.getElementById('stores-page-container');
+    const btnAdd = containerEl.querySelector('#btn-add-store');
     if (btnAdd) {
         btnAdd.onclick = () => {
             editingStoreData = null;
@@ -62,7 +81,15 @@ function renderListView(container) {
         };
     }
 
-    fetchStores();
+    const searchInput = containerEl.querySelector('#store-search');
+    if (searchInput) {
+        searchInput.oninput = () => {
+            currentPage = 1;
+            renderTable(searchInput.value);
+        };
+    }
+
+    renderTable();
 }
 
 function renderFormView(container) {
@@ -144,7 +171,42 @@ function renderFormView(container) {
 }
 
 export async function initStoresPage() {
-    renderView();
+    const container = document.getElementById('stores-page-container');
+    if (container) {
+        container.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 5rem 0; color: var(--text-secondary);">
+                <i class="fas fa-spinner fa-spin" style="font-size: 3rem; margin-bottom: 1rem; color: var(--primary);"></i>
+                <p>店舗データを読み込んでいます...</p>
+            </div>
+        `;
+    }
+
+    try {
+        await fetchStoresData();
+        currentView = 'list';
+        currentPage = 1;
+        renderView();
+    } catch (error) {
+        console.error("Failed to load stores data:", error);
+        if (container) {
+            container.innerHTML = `
+                <div style="padding: 3rem; color: var(--danger); text-align: center; max-width: 600px; margin: 0 auto; background: #fef2f2; border-radius: 12px; margin-top: 2rem;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                    <h3 style="margin-top: 0;">データの読み込みに失敗しました</h3>
+                    <p style="font-weight: 600; font-size: 1.1rem;">Firebase APIまたはネットワークでエラーが発生しています。</p>
+                    <p style="font-family: monospace; font-size: 0.9rem; background: rgba(0,0,0,0.05); padding: 1rem; border-radius: 8px; text-align: left; overflow-x: auto;">
+                        ${error.message || error.toString()}
+                    </p>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 1.5rem;">※ 詳細なログはブラウザのコンソール(F12)をご確認ください。</p>
+                </div>
+            `;
+        }
+    }
+}
+
+async function fetchStoresData() {
+    const snapshot = await getDocs(query(collection(db, "m_stores"), orderBy("store_id")));
+    cachedStores = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
 function setupFormLogic() {
@@ -188,16 +250,48 @@ function setupFormLogic() {
     };
 }
 
-async function fetchStores() {
+function renderTable(filter = "") {
     const tbody = document.getElementById('store-table-body');
+    const countLabel = document.getElementById('stores-count');
     if (!tbody) return;
+
     try {
-        const snapshot = await getDocs(query(collection(db, "m_stores"), orderBy("store_id")));
+        const filtered = cachedStores.filter(s => {
+            const f = filter.toLowerCase();
+            return (s.store_name || '').toLowerCase().includes(f) || 
+                   (s.store_id || '').toLowerCase().includes(f);
+        });
+
+        const totalItems = filtered.length;
+        let totalPages = Math.ceil(totalItems / pageSize);
+        if (totalPages === 0) totalPages = 1;
+
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        const startIndex = (currentPage - 1) * pageSize;
+        const itemsToShow = filtered.slice(startIndex, startIndex + pageSize);
+
+        if (countLabel) {
+            if (totalItems === 0) {
+                countLabel.textContent = '表示中: 0 件';
+            } else {
+                countLabel.textContent = `表示中: ${startIndex + 1}-${Math.min(startIndex + pageSize, totalItems)} / ${totalItems} 件`;
+            }
+        }
+
         tbody.innerHTML = '';
-        snapshot.forEach(d => {
-            const s = d.data();
+        renderPagination(totalPages, filter);
+
+        if (itemsToShow.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 4rem; color: var(--text-secondary);">該当する店舗が見つかりません</td></tr>';
+            return;
+        }
+
+        itemsToShow.forEach(s => {
             const tr = document.createElement('tr');
             tr.style.borderBottom = '1px solid var(--border)';
+            tr.style.transition = 'background 0.2s';
             tr.innerHTML = `
                 <td style="padding: 1.2rem; font-weight: 600; font-family: monospace;">${s.store_id}</td>
                 <td style="padding: 1.2rem; font-weight: 700;">${s.store_name}</td>
@@ -223,22 +317,83 @@ async function fetchStores() {
                 e.preventDefault(); 
                 e.stopPropagation(); 
                 showConfirm('店舗の削除', `店舗ID: ${s.store_id} を完全に削除しますか？`, () => {
-                    deleteStore(s.store_id);
+                    deleteStore(s.store_id, filter);
                 });
             };
             
             tbody.appendChild(tr);
         });
-    } catch (e) { console.error(e); }
+    } catch (e) {
+        console.error('Error rendering stores:', e);
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 2rem; color: var(--danger);"><i class="fas fa-exclamation-triangle"></i> エラーが発生しました</td></tr>';
+    }
+}
+
+function renderPagination(totalPages, filter) {
+    const container = document.getElementById('store-pagination');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    if (totalPages <= 1) return;
+
+    const btnPrev = document.createElement('button');
+    btnPrev.className = 'btn';
+    btnPrev.style.padding = '0.4rem 0.8rem';
+    btnPrev.style.background = 'var(--surface-darker)';
+    btnPrev.disabled = currentPage === 1;
+    btnPrev.innerHTML = '<i class="fas fa-chevron-left"></i>';
+    btnPrev.onclick = () => {
+        currentPage--;
+        renderTable(filter);
+        document.querySelector('.page-content').scrollTop = 0;
+    };
+    container.appendChild(btnPrev);
+
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, currentPage + 2);
+
+    for (let i = startPage; i <= endPage; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'btn';
+        btn.style.padding = '0.4rem 0.8rem';
+        btn.style.minWidth = '36px';
+        if (i === currentPage) {
+            btn.classList.add('btn-primary');
+        } else {
+            btn.style.background = 'white';
+            btn.style.border = '1px solid var(--border)';
+            btn.onclick = () => {
+                currentPage = i;
+                renderTable(filter);
+                document.querySelector('.page-content').scrollTop = 0;
+            };
+        }
+        btn.textContent = i;
+        container.appendChild(btn);
+    }
+
+    const btnNext = document.createElement('button');
+    btnNext.className = 'btn';
+    btnNext.style.padding = '0.4rem 0.8rem';
+    btnNext.style.background = 'var(--surface-darker)';
+    btnNext.disabled = currentPage === totalPages;
+    btnNext.innerHTML = '<i class="fas fa-chevron-right"></i>';
+    btnNext.onclick = () => {
+        currentPage++;
+        renderTable(filter);
+        document.querySelector('.page-content').scrollTop = 0;
+    };
+    container.appendChild(btnNext);
 }
 
 // openStoreModal is replaced by renderView('form')
 
-async function deleteStore(id) {
+async function deleteStore(id, filter) {
     try {
         await deleteDoc(doc(db, "m_stores", id));
         showAlert('成功', '店舗を削除しました。');
-        initStoresPage();
+        await fetchStoresData();
+        renderTable(filter);
     } catch (e) {
         console.error(e);
         showAlert('エラー', '削除に失敗しました。');

@@ -5,13 +5,13 @@ import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/f
 import { dashboardPageHtml, initDashboardPage } from './dashboard.js';
 import { attendancePageHtml, initAttendancePage } from './attendance.js';
 import { salesPageHtml, initSalesPage } from './sales.js';
-import { storesPageHtml, initStoresPage } from './stores.js';
-import { usersPageHtml, initUsersPage } from './users.js';
-import { inventoryPageHtml, initInventoryPage } from './inventory.js?v=11';
+import { storesPageHtml, initStoresPage } from './stores.js?v=12';
+import { usersPageHtml, initUsersPage } from './users.js?v=12';
+import { inventoryPageHtml, initInventoryPage } from './inventory.js?v=12';
 import { procurementPageHtml, initProcurementPage } from './procurement.js';
-import { productsPageHtml, initProductsPage } from './products.js?v=10';
-import { suppliersPageHtml, initSuppliersPage } from './suppliers.js?v=10';
-import { storeItemsPageHtml, initStoreItemsPage } from './store_items.js?v=10';
+import { productsPageHtml, initProductsPage } from './products.js?v=12';
+import { suppliersPageHtml, initSuppliersPage } from './suppliers.js?v=12';
+import { storeItemsPageHtml, initStoreItemsPage } from './store_items.js?v=12';
 import { recipesViewerPageHtml, initRecipesViewerPage } from './recipes.js';
 import { attendanceCheckPageHtml, initAttendanceCheckPage } from './attendance_check.js';
 import { csvExportPageHtml, initCsvExportPage } from './csv_export.js';
@@ -19,7 +19,7 @@ import { salesCorrectionPageHtml, initSalesCorrectionPage } from './sales_correc
 import { rolePermissionsPageHtml, initRolePermissionsPage } from './role_permissions.js';
 import { menuOrderPageHtml, initMenuOrderPage } from './menu_order.js';
 import { csvImportPageHtml, initCsvImportPage } from './csv_import.js';
-import { productAnalysisPageHtml, initProductAnalysisPage } from './product_analysis.js?v=10';
+import { productAnalysisPageHtml, initProductAnalysisPage } from './product_analysis.js?v=12';
 import { getDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 console.log("AntiGravity Portal: app.js loaded successfully.");

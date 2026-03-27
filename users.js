@@ -1,6 +1,12 @@
+import { db } from './firebase.js';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { showConfirm, showAlert } from './ui_utils.js';
+
 let currentView = 'list';
 let editingUserData = null;
 let cachedUsers = [];
+let currentPage = 1;
+const pageSize = 30;
 
 export const usersPageHtml = `
     <div id="users-page-container" class="animate-fade-in">
@@ -68,28 +74,29 @@ function renderListView(container) {
                     <tbody id="users-table-body"></tbody>
                 </table>
             </div>
+            <div id="user-pagination" style="display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin: 1.5rem 0; clear: both;">
+            </div>
         </div>
     `;
 
-    document.getElementById('btn-add-user').onclick = () => {
-        editingUserData = null;
-        currentView = 'form';
-        renderView();
-    };
+    const btnAdd = document.getElementById('btn-add-user');
+    if (btnAdd) {
+        btnAdd.onclick = () => {
+            editingUserData = null;
+            currentView = 'form';
+            renderView();
+        };
+    }
 
     const searchInput = document.getElementById('user-search');
     if (searchInput) {
         searchInput.oninput = (e) => {
-            const val = e.target.value.toLowerCase();
-            const rows = document.querySelectorAll('#users-table-body tr');
-            rows.forEach(row => {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(val) ? '' : 'none';
-            });
+            currentPage = 1;
+            renderTable(e.target.value);
         };
     }
 
-    fetchAndRenderUsers();
+    renderTable();
 }
 
 function renderFormView(container) {
@@ -281,7 +288,52 @@ function setupFormLogic() {
 }
 
 export async function initUsersPage() {
-    renderView();
+    const container = document.getElementById('users-page-container');
+    if (container) {
+        container.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 5rem 0; color: var(--text-secondary);">
+                <i class="fas fa-spinner fa-spin" style="font-size: 3rem; margin-bottom: 1rem; color: var(--primary);"></i>
+                <p>ユーザーデータを読み込んでいます...</p>
+            </div>
+            <style>
+                .badge.parttimer { background: rgba(100, 116, 139, 0.1); color: #64748b; }
+                .badge.tablet { background: rgba(14, 165, 233, 0.1); color: #0ea5e9; }
+                .badge.staff { background: rgba(37, 99, 235, 0.1); color: #2563eb; }
+                .badge.manager { background: rgba(245, 158, 11, 0.1); color: #d97706; }
+                .badge.admin { background: rgba(220, 38, 38, 0.1); color: #dc2626; }
+            </style>
+        `;
+    }
+
+    try {
+        await fetchUsersData();
+        currentView = 'list';
+        currentPage = 1;
+        renderView();
+    } catch (error) {
+        console.error("Failed to load users data:", error);
+        if (container) {
+            container.innerHTML = `
+                <div style="padding: 3rem; color: var(--danger); text-align: center; max-width: 600px; margin: 0 auto; background: #fef2f2; border-radius: 12px; margin-top: 2rem;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                    <h3 style="margin-top: 0;">データの読み込みに失敗しました</h3>
+                    <p style="font-weight: 600; font-size: 1.1rem;">Firebase APIまたはネットワークでエラーが発生しています。</p>
+                    <p style="font-family: monospace; font-size: 0.9rem; background: rgba(0,0,0,0.05); padding: 1rem; border-radius: 8px; text-align: left; overflow-x: auto;">
+                        ${error.message || error.toString()}
+                    </p>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 1.5rem;">※ 詳細なログはブラウザのコンソール(F12)をご確認ください。</p>
+                </div>
+            `;
+        }
+    }
+}
+
+async function fetchUsersData() {
+    const querySnapshot = await getDocs(collection(db, "m_users"));
+    cachedUsers = [];
+    querySnapshot.forEach((doc) => {
+        cachedUsers.push({ id: doc.id, ...doc.data() });
+    });
 }
 
 async function fetchStoreOptions() {
@@ -300,22 +352,45 @@ async function fetchStoreOptions() {
     } catch(e) { console.error(e); }
 }
 
-async function fetchAndRenderUsers() {
+function renderTable(filter = "") {
     const tbody = document.getElementById('users-table-body');
     const countLabel = document.getElementById('users-count');
     if (!tbody) return;
 
     try {
-        const querySnapshot = await getDocs(collection(db, "m_users"));
-        cachedUsers = [];
-        querySnapshot.forEach((doc) => {
-            cachedUsers.push({ id: doc.id, ...doc.data() });
+        const filtered = cachedUsers.filter(u => {
+            const f = filter.toLowerCase();
+            return (u.Name || '').toLowerCase().includes(f) || 
+                   (u.EmployeeCode || '').toLowerCase().includes(f);
         });
 
-        countLabel.textContent = `全 ${cachedUsers.length} 件`;
+        const totalItems = filtered.length;
+        let totalPages = Math.ceil(totalItems / pageSize);
+        if (totalPages === 0) totalPages = 1;
+
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        const startIndex = (currentPage - 1) * pageSize;
+        const itemsToShow = filtered.slice(startIndex, startIndex + pageSize);
+
+        if (countLabel) {
+            if (totalItems === 0) {
+                countLabel.textContent = '表示中: 0 件';
+            } else {
+                countLabel.textContent = `表示中: ${startIndex + 1}-${Math.min(startIndex + pageSize, totalItems)} / ${totalItems} 件`;
+            }
+        }
 
         tbody.innerHTML = '';
-        cachedUsers.forEach(item => {
+        renderPagination(totalPages, filter);
+
+        if (itemsToShow.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 4rem; color: var(--text-secondary);">該当するユーザーが見つかりません</td></tr>';
+            return;
+        }
+
+        itemsToShow.forEach(item => {
             const roleNameMap = {
                 'Admin': '管理者', 'Manager': '店長', 'Staff': '一般社員', 'PartTimer': 'アルバイト', 'Tablet': '店舗タブレット'
             };
@@ -323,6 +398,7 @@ async function fetchAndRenderUsers() {
 
             const tr = document.createElement('tr');
             tr.style.borderBottom = '1px solid var(--border)';
+            tr.style.transition = 'background 0.2s';
             tr.innerHTML = `
                 <td style="padding: 1rem; font-family: monospace;">${item['EmployeeCode'] || '-'}</td>
                 <td style="padding: 1rem; font-weight: 600;">${item['Name'] || '-'}</td>
@@ -331,8 +407,8 @@ async function fetchAndRenderUsers() {
                 <td style="padding: 1rem; font-family: monospace; color: var(--text-secondary);">${item['ClockInPassword'] || '-'}</td>
                 <td style="padding: 1rem; font-family: monospace; color: var(--text-secondary);">${item['LoginPassword'] ? '********' : '-'}</td>
                 <td style="padding: 1rem; text-align: right;">
-                    <button class="btn btn-edit-user" style="padding: 0.5rem; background: transparent; color: var(--text-secondary);"><i class="fas fa-edit"></i></button>
-                    <button class="btn btn-delete-user" style="padding: 0.5rem; background: transparent; color: var(--danger);"><i class="fas fa-trash-alt"></i></button>
+                    <button class="btn btn-edit-user" style="padding: 0.5rem; background: transparent; color: var(--text-secondary);" title="編集"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-delete-user" style="padding: 0.5rem; background: transparent; color: var(--danger);" title="削除"><i class="fas fa-trash-alt"></i></button>
                 </td>
             `;
 
@@ -345,13 +421,71 @@ async function fetchAndRenderUsers() {
             tr.querySelector('.btn-delete-user').onclick = async () => {
                 showConfirm('ユーザー削除', `${item['Name']} 様を削除しますか？`, async () => {
                     await deleteDoc(doc(db, "m_users", item.id));
-                    fetchAndRenderUsers();
+                    await fetchUsersData();
+                    renderTable(filter);
                 });
             };
             tbody.appendChild(tr);
         });
     } catch (e) {
-        console.error(e);
-        tbody.innerHTML = '<tr><td colspan="7">読み込みエラー</td></tr>';
+        console.error('Error rendering users:', e);
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 2rem; color: var(--danger);"><i class="fas fa-exclamation-triangle"></i> エラーが発生しました</td></tr>';
     }
+}
+
+function renderPagination(totalPages, filter) {
+    const container = document.getElementById('user-pagination');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    if (totalPages <= 1) return;
+
+    const btnPrev = document.createElement('button');
+    btnPrev.className = 'btn';
+    btnPrev.style.padding = '0.4rem 0.8rem';
+    btnPrev.style.background = 'var(--surface-darker)';
+    btnPrev.disabled = currentPage === 1;
+    btnPrev.innerHTML = '<i class="fas fa-chevron-left"></i>';
+    btnPrev.onclick = () => {
+        currentPage--;
+        renderTable(filter);
+        document.querySelector('.page-content').scrollTop = 0;
+    };
+    container.appendChild(btnPrev);
+
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, currentPage + 2);
+
+    for (let i = startPage; i <= endPage; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'btn';
+        btn.style.padding = '0.4rem 0.8rem';
+        btn.style.minWidth = '36px';
+        if (i === currentPage) {
+            btn.classList.add('btn-primary');
+        } else {
+            btn.style.background = 'white';
+            btn.style.border = '1px solid var(--border)';
+            btn.onclick = () => {
+                currentPage = i;
+                renderTable(filter);
+                document.querySelector('.page-content').scrollTop = 0;
+            };
+        }
+        btn.textContent = i;
+        container.appendChild(btn);
+    }
+
+    const btnNext = document.createElement('button');
+    btnNext.className = 'btn';
+    btnNext.style.padding = '0.4rem 0.8rem';
+    btnNext.style.background = 'var(--surface-darker)';
+    btnNext.disabled = currentPage === totalPages;
+    btnNext.innerHTML = '<i class="fas fa-chevron-right"></i>';
+    btnNext.onclick = () => {
+        currentPage++;
+        renderTable(filter);
+        document.querySelector('.page-content').scrollTop = 0;
+    };
+    container.appendChild(btnNext);
 }
