@@ -31,6 +31,130 @@ function renderView() {
     }
 }
 
+function renderFormView(container) {
+    const isEdit = !!editingItemData;
+    container.innerHTML = `
+        <div class="animate-fade-in" style="background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); overflow: hidden;">
+            <div style="padding: 1.5rem 2rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+                <h3 style="margin: 0; font-size: 1.25rem; color: #1e293b; display: flex; align-items: center; gap: 0.8rem;">
+                    <i class="fas ${isEdit ? 'fa-edit' : 'fa-plus-circle'}" style="color: var(--primary);"></i>
+                    ${isEdit ? 'アイテムの編集' : '新規アイテムの登録'}
+                </h3>
+                <button id="btn-form-back" class="btn" style="background: white; border: 1px solid var(--border); color: var(--text-secondary);">
+                    <i class="fas fa-arrow-left"></i> 戻る
+                </button>
+            </div>
+            
+            <div style="padding: 2.5rem; max-width: 1000px; margin: 0 auto;">
+                <form id="item-form" style="display: flex; flex-direction: column; gap: 2.5rem;">
+                    <!-- 基本情報 -->
+                    <section>
+                        <h4 style="margin-top: 0; margin-bottom: 1.5rem; color: var(--primary); font-size: 1rem; display: flex; align-items: center; gap: 0.5rem; border-left: 4px solid var(--primary); padding-left: 0.8rem;">
+                            基本スペック
+                        </h4>
+                        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 1.5rem;">
+                            <div class="input-group">
+                                <label style="font-weight: 700; color: #475569;">品目名 / 食材名</label>
+                                <input type="text" id="item-name" required placeholder="例: 極上タン塩 / 徳用醤油 1.8L" 
+                                       style="font-size: 1.1rem; padding: 0.8rem;" value="${isEdit ? editingItemData.name : ''}">
+                            </div>
+                            <div class="input-group">
+                                <label style="font-weight: 700; color: #475569;">カテゴリー</label>
+                                <input type="text" id="item-category" placeholder="例: 牛肉 / 調味料" 
+                                       style="font-size: 1rem; padding: 0.8rem;" value="${isEdit ? (editingItemData.category || '') : ''}">
+                            </div>
+                            <div class="input-group">
+                                <label style="font-weight: 700; color: #475569;">単位</label>
+                                <input type="text" id="item-unit" placeholder="例: g / 本 / 枚" 
+                                       style="font-size: 1rem; padding: 0.8rem;" value="${isEdit ? (editingItemData.unit || '') : ''}">
+                            </div>
+                        </div>
+                    </section>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem;">
+                        <!-- 販売・原価セクション -->
+                        <section id="section-menu" style="background: #f1f5f9; padding: 1.5rem; border-radius: 12px;">
+                            <h4 id="section-menu-title" style="margin-top: 0; margin-bottom: 1.2rem; color: #2563EB; font-size: 1rem; font-weight: 800;">
+                                販売・レシピ設定
+                            </h4>
+                            <div id="menu-price-container" style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+                                <div class="input-group" style="flex: 1;">
+                                    <label style="font-size: 0.85rem; font-weight: 700;">販売価格(税込)</label>
+                                    <input type="number" id="menu-sales-price" placeholder="0" style="font-weight: 700; font-family: monospace;">
+                                </div>
+                                <div class="input-group" style="flex: 1;">
+                                    <label style="font-size: 0.85rem; font-weight: 700;">Dinii ID</label>
+                                    <input type="text" id="menu-dinii-id" placeholder="連携コード" style="font-family: monospace;">
+                                </div>
+                            </div>
+                            <div id="section-recipe">
+                                <label style="font-size: 0.85rem; font-weight: 700; margin-bottom: 0.5rem; display: block;">レシピ構成 (食材の積み上げ)</label>
+                                <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                                    <select id="recipe-add-select" style="flex: 1; padding: 0.5rem;"></select>
+                                    <button type="button" id="btn-recipe-add" class="btn" style="background: #2563EB; color: white;"><i class="fas fa-plus"></i></button>
+                                </div>
+                                <div id="recipe-items-container" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 250px; overflow-y: auto;">
+                                    <!-- Recipe rows dynamic -->
+                                </div>
+                                <div id="recipe-total-cost" style="margin-top: 1rem; text-align: right; font-weight: 800; color: var(--primary); font-size: 1rem;">
+                                    原価: ¥0
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- 仕入・歩留セクション -->
+                        <section id="section-ingredient" style="background: #ecfdf5; padding: 1.5rem; border-radius: 12px;">
+                            <h4 style="margin-top: 0; margin-bottom: 1.2rem; color: #059669; font-size: 1rem; font-weight: 800;">
+                                仕入・原価情報
+                            </h4>
+                            <div class="input-group">
+                                <label style="font-size: 0.85rem; font-weight: 700;">デフォルト仕入先</label>
+                                <select id="ing-vendor-id" style="width: 100%;"></select>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                                <div class="input-group">
+                                    <label style="font-size: 0.85rem; font-weight: 700;">仕入単価(税込)</label>
+                                    <input type="number" id="ing-purchase-price" placeholder="0" style="font-weight: 700; font-family: monospace;">
+                                </div>
+                                <div class="input-group">
+                                    <label style="font-size: 0.85rem; font-weight: 700;">内容量 (入力単位)</label>
+                                    <input type="number" id="item-content-amount" placeholder="0" step="any" style="font-weight: 700; font-family: monospace;" value="${isEdit ? (editingItemData.content_amount || 0) : 0}">
+                                </div>
+                            </div>
+                            <div class="input-group" style="margin-top: 1rem;">
+                                <label style="font-size: 0.85rem; font-weight: 700;">歩留 (0.0〜1.0)</label>
+                                <input type="number" id="ing-yield-rate" placeholder="1.0" step="0.01" style="font-weight: 700; font-family: monospace;">
+                                <p style="font-size: 0.7rem; color: #059669; margin-top: 0.3rem;">※可食部100%なら 1.0、半分なら 0.5 を入力</p>
+                            </div>
+                        </section>
+                    </div>
+
+                    <div class="input-group">
+                        <label style="font-weight: 700; color: #475569;">備考 / 内部メモ</label>
+                        <textarea id="item-notes" rows="3" placeholder="仕入れ時の注意点やレシピの補足など" style="padding: 0.8rem;">${isEdit ? (editingItemData.notes || '') : ''}</textarea>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; padding-top: 2rem; border-top: 1px solid var(--border);">
+                        <button type="button" id="btn-form-cancel" class="btn" style="flex: 1; background: #f1f5f9; color: var(--text-secondary); font-weight: 700; padding: 1rem;">キャンセル</button>
+                        <button type="submit" class="btn btn-primary" style="flex: 2; padding: 1.2rem; font-weight: 800; font-size: 1.1rem; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);">
+                            <i class="fas fa-save" style="margin-right: 0.5rem;"></i>
+                            アイテム情報を保存する
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('btn-form-back').onclick = document.getElementById('btn-form-cancel').onclick = () => {
+        currentView = 'list';
+        renderView();
+    };
+
+    toggleFormSections();
+    setupFormLogic();
+}
+
 function renderListView(container) {
     container.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
