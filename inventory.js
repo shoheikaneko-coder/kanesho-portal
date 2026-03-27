@@ -21,7 +21,10 @@ export const inventoryPageHtml = `
                         <option value="">店舗を選択...</option>
                     </select>
                     <button id="btn-inv-settings" class="btn" style="display: none; padding: 0.6rem 1rem; background: var(--surface-darker); color: var(--text-secondary); border: 1px solid var(--border); font-size: 0.85rem; font-weight: 600;" title="店舗別品目設定">
-                        <i class="fas fa-cog"></i> 在庫品目の設定
+                        <i class="fas fa-cog"></i> 在庫設定
+                    </button>
+                    <button id="btn-inv-back-from-settings" class="btn" style="display: none; padding: 0.6rem 1rem; background: white; color: var(--text-primary); border: 1px solid var(--border); font-size: 0.85rem; font-weight: 600;">
+                        <i class="fas fa-arrow-left"></i> 戻る
                     </button>
                 </div>
             </div>
@@ -284,24 +287,45 @@ function render() {
         return;
     }
 
-    tabs.style.display = 'flex';
-    tabs.querySelectorAll('.tab-item').forEach(tab => {
-        tab.onclick = () => {
-            currentTab = tab.dataset.tab;
-            tabs.querySelectorAll('.tab-item').forEach(t => t.classList.toggle('active', t === tab));
-            selectedTiming = null;
+    const btnSettings = document.getElementById('btn-inv-settings');
+    const btnBack = document.getElementById('btn-inv-back-from-settings');
+    const titleText = document.querySelector('#inv-title').lastChild;
+
+    if (currentTab === 'settings') {
+        tabs.style.display = 'none';
+        btnSettings.style.display = 'none';
+        btnBack.style.display = 'flex';
+        titleText.textContent = ' 在庫設定';
+        renderSettingsView(main);
+        
+        btnBack.onclick = () => {
+            currentTab = 'tiles';
             render();
         };
-    });
-
-    if (currentTab === 'tiles') {
-        if (selectedTiming) {
-            renderChecklist(main);
-        } else {
-            renderTimingTiles(main);
-        }
     } else {
-        renderFullList(main);
+        tabs.style.display = 'flex';
+        btnSettings.style.display = (currentUser?.Role === 'Admin' || currentUser?.Role === '管理者' || currentUser?.Role === 'Manager' || currentUser?.Role === '店長') ? 'flex' : 'none';
+        btnBack.style.display = 'none';
+        titleText.textContent = ' 在庫管理';
+
+        tabs.querySelectorAll('.tab-item').forEach(tab => {
+            tab.onclick = () => {
+                currentTab = tab.dataset.tab;
+                tabs.querySelectorAll('.tab-item').forEach(t => t.classList.toggle('active', t === tab));
+                selectedTiming = null;
+                render();
+            };
+        });
+
+        if (currentTab === 'tiles') {
+            if (selectedTiming) {
+                renderChecklist(main);
+            } else {
+                renderTimingTiles(main);
+            }
+        } else {
+            renderFullList(main);
+        }
     }
 }
 
@@ -615,59 +639,6 @@ export async function initInventoryPage(user) {
     await loadInitialData();
     render();
 
-    // 在庫設定モーダルを body に直接注入（二重生成防止）
-    if (!document.getElementById('inv-settings-modal')) {
-        const modalHtml = `
-            <div id="inv-settings-modal" class="modal-overlay" style="display: none; position: fixed !important; inset: 0 !important; z-index: 10000 !important; align-items: center; justify-content: center;">
-                <div class="glass-panel animate-scale-in" style="width: 95%; max-width: 800px; max-height: 85vh !important; padding: 0; display: flex; flex-direction: column; margin: auto; background: white; border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
-                    <!-- Unified Header Section -->
-                    <div style="padding: 1.5rem 1.5rem 0.5rem 1.5rem; display: flex; justify-content: space-between; align-items: center;">
-                        <h3 style="margin: 0; font-size: 1.1rem; color: var(--text-primary);"><i class="fas fa-warehouse" style="color: var(--primary);"></i> <span id="inv-settings-store-name">店舗</span> 品目設定</h3>
-                        <button id="btn-close-inv-settings" class="btn" style="background:none; border:none; color: var(--text-secondary); cursor: pointer;"><i class="fas fa-times"></i></button>
-                    </div>
-
-                    <!-- Search & Tabs inside the same panel -->
-                    <div style="padding: 1rem 1.5rem; display: flex; flex-direction: column; gap: 0.8rem;">
-                        <div class="tabs-container" style="margin: 0; background: #f1f5f9; padding: 0.2rem; border-radius: 8px;">
-                            <div class="tab-item active" data-tab="menus" style="flex: 1; text-align: center; font-size:0.8rem; padding: 0.4rem;"><i class="fas fa-utensils"></i> 販売メニュー</div>
-                            <div class="tab-item" data-tab="sub_recipes" style="flex: 1; text-align: center; font-size:0.8rem; padding: 0.4rem;"><i class="fas fa-mortar-pestle"></i> 自家製原材料</div>
-                            <div class="tab-item" data-tab="ingredients" style="flex: 1; text-align: center; font-size:0.8rem; padding: 0.4rem;"><i class="fas fa-leaf"></i> 食材・仕入品</div>
-                        </div>
-                        
-                        <div class="input-group" style="margin: 0;">
-                            <i class="fas fa-search" style="left: 0.8rem;"></i>
-                            <input type="text" id="inv-settings-search" placeholder="品目名で検索..." style="padding-left: 2.2rem; height: 36px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 0.85rem;">
-                        </div>
-
-                        <!-- Filters -->
-                        <div id="inv-settings-filters" style="display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.7rem;">
-                            <div style="display: flex; align-items: center; gap: 0.4rem; overflow-x: auto; padding-bottom: 2px;" id="inv-settings-category-chips">
-                                <span style="color: var(--text-secondary); white-space: nowrap;">カテゴリー:</span>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 0.4rem; overflow-x: auto; padding-bottom: 2px;" id="inv-settings-supplier-chips">
-                                <span style="color: var(--text-secondary); white-space: nowrap;">仕入先:</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- List Section starts here - only this part scrolls -->
-                    <div id="inv-settings-list" style="flex: 1; overflow-y: auto; border-top: 1px solid var(--border); margin-top: 0.5rem; background: white;">
-                        <!-- Rows injected here -->
-                    </div>
-
-                    <!-- Unified Footer Section -->
-                    <div style="padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #fff; border-radius: 0 0 16px 16px;">
-                        <div style="font-size: 0.75rem; color: var(--text-secondary);">
-                            ※チェックした品目がこの店舗の管理対象になります
-                        </div>
-                        <button id="btn-save-inv-settings" class="btn btn-primary" style="height: 40px; min-width: 120px; font-size: 0.9rem;"><i class="fas fa-save"></i> 設定を保存</button>
-                    </div>
-                </div>
-            </div>
-        `;
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-    }
-
     // 権限チェック (Manager以上のみ⚙️を表示)
     const canManage = user?.Role === 'Admin' || user?.Role === '管理者' || user?.Role === 'Manager' || user?.Role === '店長';
     const btnSettings = document.getElementById('btn-inv-settings');
@@ -675,26 +646,85 @@ export async function initInventoryPage(user) {
         btnSettings.style.display = canManage ? 'flex' : 'none';
         btnSettings.onclick = openInvSettings;
     }
+}
 
-    // Modal listeners
-    const modal = document.getElementById('inv-settings-modal');
-    if (modal) {
-        document.getElementById('btn-close-inv-settings').onclick = () => modal.style.setProperty('display', 'none', 'important');
-        document.getElementById('btn-save-inv-settings').onclick = saveInvSettings;
+function openInvSettings() {
+    currentTab = 'settings';
+    render();
+}
 
-        const modalTabs = modal.querySelectorAll('.tab-item');
-        modalTabs.forEach(tab => {
-            tab.onclick = () => {
-                modalTabs.forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                settingsCurrentTab = tab.dataset.tab;
-                renderSettingsItems();
-            };
-        });
+/**
+ * フル画面の在庫設定ビューを生成
+ */
+function renderSettingsView(container) {
+    if (!selectedStore) return;
 
-        const sInput = document.getElementById('inv-settings-search');
-        sInput.oninput = (e) => renderSettingsItems(settingsCurrentTab, e.target.value);
-    }
+    container.innerHTML = `
+        <div class="glass-panel animate-fade-in" style="width: 100%; border: 1px solid var(--border); background: white; padding: 0; display: flex; flex-direction: column;">
+            <!-- Settings Header Area -->
+            <div style="padding: 1.5rem; background: #f8fafc; border-bottom: 1px solid var(--border);">
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div class="tabs-container" style="margin: 0; background: #e2e8f0; padding: 0.2rem; border-radius: 8px;">
+                        <div class="tab-item ${settingsCurrentTab === 'menus' ? 'active' : ''}" data-tab="menus" style="flex: 1; text-align: center; font-size:0.85rem; padding: 0.5rem;"><i class="fas fa-utensils"></i> 販売メニュー</div>
+                        <div class="tab-item ${settingsCurrentTab === 'sub_recipes' ? 'active' : ''}" data-tab="sub_recipes" style="flex: 1; text-align: center; font-size:0.85rem; padding: 0.5rem;"><i class="fas fa-mortar-pestle"></i> 自家製原材料</div>
+                        <div class="tab-item ${settingsCurrentTab === 'ingredients' ? 'active' : ''}" data-tab="ingredients" style="flex: 1; text-align: center; font-size:0.85rem; padding: 0.5rem;"><i class="fas fa-leaf"></i> 食材・仕入品</div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <div class="input-group" style="margin: 0; flex: 1;">
+                            <i class="fas fa-search" style="left: 0.8rem;"></i>
+                            <input type="text" id="inv-settings-search" placeholder="品目名で検索..." style="padding-left: 2.2rem; height: 40px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.9rem;">
+                        </div>
+                        <button id="btn-save-inv-settings" class="btn btn-primary" style="height: 40px; min-width: 150px; font-weight: 700;">
+                            <i class="fas fa-save"></i> 設定を保存
+                        </button>
+                    </div>
+
+                    <!-- Filters -->
+                    <div id="inv-settings-filters" style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.75rem;">
+                        <div style="display: flex; align-items: center; gap: 0.6rem; overflow-x: auto; padding-bottom: 2px;" id="inv-settings-category-chips">
+                            <span style="color: var(--text-secondary); white-space: nowrap; font-weight: 600;">カテゴリー:</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.6rem; overflow-x: auto; padding-bottom: 2px;" id="inv-settings-supplier-chips">
+                            <span style="color: var(--text-secondary); white-space: nowrap; font-weight: 600;">仕入先:</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- List Area -->
+            <div id="inv-settings-list" style="max-height: 60vh; overflow-y: auto; background: white;">
+                <!-- Rows injected by renderSettingsItems -->
+            </div>
+
+            <!-- Footer helper -->
+            <div style="padding: 1rem 1.5rem; border-top: 1px solid var(--border); background: #f8fafc; font-size: 0.8rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-info-circle"></i>
+                チェックした品目が「${selectedStore.name}」の在庫管理対象としてダッシュボードに表示されます
+            </div>
+        </div>
+    `;
+
+    // Initialize Settings Tabs
+    container.querySelectorAll('.tab-item').forEach(tab => {
+        tab.onclick = () => {
+            settingsCurrentTab = tab.dataset.tab;
+            settingsSelectedCategory = null;
+            settingsSelectedSupplier = null;
+            renderSettingsView(container);
+        };
+    });
+
+    // Search input
+    const searchInput = document.getElementById('inv-settings-search');
+    searchInput.oninput = () => renderSettingsItems();
+
+    // Save button
+    document.getElementById('btn-save-inv-settings').onclick = saveInvSettings;
+
+    // Initial render items and filters
+    renderSettingsFilters();
+    renderSettingsItems();
 }
 
 async function loadStoreInventory(internalCode) {
@@ -714,30 +744,7 @@ async function loadStoreInventory(internalCode) {
     }
 }
 
-// --- 店舗別品目設定モーダル用ロジック ---
 
-function openInvSettings() {
-    if (!selectedStore) {
-        showAlert('注意', '先に店舗を選択してください');
-        return;
-    }
-    const modal = document.getElementById('inv-settings-modal');
-    if (!modal) return;
-
-    // 二重オーバーレイ防止: 他の modal-overlay があれば一律非表示
-    document.querySelectorAll('.modal-overlay').forEach(m => {
-        if (m.id !== 'inv-settings-modal') m.style.setProperty('display', 'none', 'important');
-    });
-
-    document.getElementById('inv-settings-store-name').textContent = selectedStore.name;
-    document.getElementById('inv-settings-search').value = '';
-    settingsCurrentTab = 'menus';
-    settingsSelectedCategory = null;
-    settingsSelectedSupplier = null;
-
-    modal.style.setProperty('display', 'flex', 'important');
-    renderSettingsItems();
-}
 
 function renderSettingsItems(tab = settingsCurrentTab, filterText = '') {
     const container = document.getElementById('inv-settings-list');

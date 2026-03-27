@@ -7,7 +7,7 @@ import { attendancePageHtml, initAttendancePage } from './attendance.js';
 import { salesPageHtml, initSalesPage } from './sales.js';
 import { storesPageHtml, initStoresPage } from './stores.js';
 import { usersPageHtml, initUsersPage } from './users.js';
-import { inventoryPageHtml, initInventoryPage } from './inventory.js';
+import { inventoryPageHtml, initInventoryPage } from './inventory.js?v=11';
 import { procurementPageHtml, initProcurementPage } from './procurement.js';
 import { productsPageHtml, initProductsPage } from './products.js?v=10';
 import { suppliersPageHtml, initSuppliersPage } from './suppliers.js?v=10';
