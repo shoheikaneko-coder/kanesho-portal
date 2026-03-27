@@ -221,7 +221,10 @@ function renderListView(container) {
 }
 
 function setupListViewListeners() {
-    const tabs = document.querySelectorAll('.tab-item');
+    const container = document.getElementById('products-page-container');
+    if (!container) return;
+
+    const tabs = container.querySelectorAll('.tab-item');
     tabs.forEach(tab => {
         tab.onclick = () => {
             currentTab = tab.dataset.tab;
@@ -230,7 +233,7 @@ function setupListViewListeners() {
         };
     });
 
-    const btnAdd = document.getElementById('btn-add-item');
+    const btnAdd = container.querySelector('#btn-add-item');
     if (btnAdd) {
         btnAdd.onclick = () => {
             editingItemData = null;
@@ -239,12 +242,12 @@ function setupListViewListeners() {
         };
     }
 
-    const btnSync = document.getElementById('btn-sync-legacy');
+    const btnSync = container.querySelector('#btn-sync-legacy');
     if (btnSync) {
         btnSync.onclick = handleSyncLegacy;
     }
 
-    const searchInput = document.getElementById('master-search');
+    const searchInput = container.querySelector('#master-search');
     if (searchInput) {
         searchInput.oninput = () => {
             currentPage = 1;
@@ -255,18 +258,30 @@ function setupListViewListeners() {
 
 export async function initProductsPage(user) {
     currentUser = user;
-    currentView = 'list';
-    renderView(); // Show initial UI with loading state
+    const container = document.getElementById('products-page-container');
     
-    const countLabel = document.getElementById('master-count');
-    if (countLabel) countLabel.innerHTML = '<i class="fas fa-spinner fa-spin"></i> データを取得中...';
+    // 1. ローディング表示
+    if (container) {
+        container.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 5rem 0; color: var(--text-secondary);">
+                <i class="fas fa-spinner fa-spin" style="font-size: 3rem; margin-bottom: 1rem; color: var(--primary);"></i>
+                <p>商品データを読み込んでいます...</p>
+            </div>
+        `;
+    }
     
     try {
+        // 2. データの取得
         await reloadData();
-        renderTable(); // Render data after fetching
+        
+        // 3. 描画
+        currentView = 'list';
+        renderView(); 
     } catch (error) {
         console.error("Failed to load product data:", error);
-        if (countLabel) countLabel.textContent = 'データの読み込みに失敗しました';
+        if (container) {
+            container.innerHTML = '<div style="padding: 2rem; color: var(--danger); text-align: center;">データの読み込みに失敗しました。</div>';
+        }
     }
 }
 
@@ -439,16 +454,21 @@ function renderTable(filter = "") {
     });
 
     const totalItems = filteredItems.length;
-    const totalPages = Math.ceil(totalItems / pageSize);
+    let totalPages = Math.ceil(totalItems / pageSize);
+    if (totalPages === 0) totalPages = 1;
     
     // Ensure currentPage is within bounds
-    if (currentPage > totalPages && totalPages > 0) currentPage = totalPages;
+    if (currentPage > totalPages) currentPage = totalPages;
     if (currentPage < 1) currentPage = 1;
 
     const startIndex = (currentPage - 1) * pageSize;
     const itemsToShow = filteredItems.slice(startIndex, startIndex + pageSize);
 
-    countLabel.textContent = `表示中: ${startIndex + 1}-${Math.min(startIndex + pageSize, totalItems)} / ${totalItems} 件`;
+    if (totalItems === 0) {
+        countLabel.textContent = `表示中: 0 件`;
+    } else {
+        countLabel.textContent = `表示中: ${startIndex + 1}-${Math.min(startIndex + pageSize, totalItems)} / ${totalItems} 件`;
+    }
     tbody.innerHTML = '';
 
     renderPagination(totalPages, filter);
