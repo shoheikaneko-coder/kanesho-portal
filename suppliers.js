@@ -1,6 +1,13 @@
+import { db } from './firebase.js';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { showConfirm, showAlert } from './ui_utils.js';
+
 let currentView = 'list';
 let editingSupplierData = null;
 let cachedSuppliers = [];
+let cachedStores = [];
+let currentPage = 1;
+const pageSize = 30;
 
 export const suppliersPageHtml = `
     <div id="suppliers-page-container" class="animate-fade-in">
@@ -63,18 +70,34 @@ function renderListView(container) {
         </div>
     `;
 
-    document.getElementById('btn-add-supplier').onclick = () => {
-        editingSupplierData = null;
-        currentView = 'form';
-        renderView();
-    };
-
-    const searchInput = document.getElementById('supplier-search');
-    if (searchInput) {
-        searchInput.oninput = () => fetchAndRenderSuppliers(searchInput.value);
+    const containerEl = document.getElementById('suppliers-page-container');
+    
+    // Pagination container
+    if (!containerEl.querySelector('#supplier-pagination')) {
+        const pagContainer = document.createElement('div');
+        pagContainer.id = 'supplier-pagination';
+        pagContainer.style.cssText = 'display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin: 1.5rem 0; clear: both;';
+        containerEl.querySelector('.glass-panel').appendChild(pagContainer);
     }
 
-    fetchAndRenderSuppliers();
+    const btnAdd = containerEl.querySelector('#btn-add-supplier');
+    if (btnAdd) {
+        btnAdd.onclick = () => {
+            editingSupplierData = null;
+            currentView = 'form';
+            renderView();
+        };
+    }
+
+    const searchInput = containerEl.querySelector('#supplier-search');
+    if (searchInput) {
+        searchInput.oninput = () => {
+            currentPage = 1;
+            renderTable(searchInput.value);
+        };
+    }
+
+    renderTable();
 }
 
 function renderFormView(container) {
@@ -163,7 +186,43 @@ function renderFormView(container) {
 }
 
 export async function initSuppliersPage() {
-    renderView();
+    const container = document.getElementById('suppliers-page-container');
+    if (container) {
+        container.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 5rem 0; color: var(--text-secondary);">
+                <i class="fas fa-spinner fa-spin" style="font-size: 3rem; margin-bottom: 1rem; color: var(--primary);"></i>
+                <p>業者データを読み込んでいます...</p>
+            </div>
+        `;
+    }
+
+    try {
+        await reloadStores();
+        await fetchSuppliersData();
+        currentView = 'list';
+        currentPage = 1;
+        renderView();
+    } catch (error) {
+        console.error("Failed to load suppliers data:", error);
+        if (container) {
+            container.innerHTML = `
+                <div style="padding: 3rem; color: var(--danger); text-align: center; max-width: 600px; margin: 0 auto; background: #fef2f2; border-radius: 12px; margin-top: 2rem;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                    <h3 style="margin-top: 0;">データの読み込みに失敗しました</h3>
+                    <p style="font-weight: 600; font-size: 1.1rem;">Firebase APIまたはネットワークでエラーが発生しています。</p>
+                    <p style="font-family: monospace; font-size: 0.9rem; background: rgba(0,0,0,0.05); padding: 1rem; border-radius: 8px; text-align: left; overflow-x: auto;">
+                        ${error.message || error.toString()}
+                    </p>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 1.5rem;">※ 詳細なログはブラウザのコンソール(F12)をご確認ください。</p>
+                </div>
+            `;
+        }
+    }
+}
+
+async function fetchSuppliersData() {
+    const snap = await getDocs(collection(db, "m_suppliers"));
+    cachedSuppliers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
 function setupFormLogic() {
@@ -207,7 +266,6 @@ function setupFormLogic() {
     };
 }
 
-let cachedStores = [];
 // Re-cached for full-screen mode
 async function reloadStores() {
     const container = document.getElementById('responsible-stores-container');
@@ -223,18 +281,12 @@ async function reloadStores() {
     } catch(e) { console.error(e); }
 }
 
-async function fetchAndRenderSuppliers(filter = "") {
+function renderTable(filter = "") {
     const tbody = document.getElementById('suppliers-table-body');
     const countLabel = document.getElementById('suppliers-count');
     if (!tbody) return;
 
     try {
-        let querySnapshot = await getDocs(collection(db, "m_suppliers"));
-        cachedSuppliers = [];
-        querySnapshot.forEach((doc) => {
-            cachedSuppliers.push({ id: doc.id, ...doc.data() });
-        });
-
         const filtered = cachedSuppliers.filter(s => {
             const f = filter.toLowerCase();
             return (s.vendor_name || '').toLowerCase().includes(f) || 
@@ -242,15 +294,33 @@ async function fetchAndRenderSuppliers(filter = "") {
                    (s.vendor_id || '').toLowerCase().includes(f);
         });
 
-        countLabel.textContent = `表示中: ${filtered.length} / ${cachedSuppliers.length} 件`;
+        const totalItems = filtered.length;
+        let totalPages = Math.ceil(totalItems / pageSize);
+        if (totalPages === 0) totalPages = 1;
 
-        if (filtered.length === 0) {
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        const startIndex = (currentPage - 1) * pageSize;
+        const itemsToShow = filtered.slice(startIndex, startIndex + pageSize);
+
+        if (countLabel) {
+            if (totalItems === 0) {
+                countLabel.textContent = '表示中: 0 件';
+            } else {
+                countLabel.textContent = `表示中: ${startIndex + 1}-${Math.min(startIndex + pageSize, totalItems)} / ${totalItems} 件`;
+            }
+        }
+
+        tbody.innerHTML = '';
+        renderPagination(totalPages, filter);
+
+        if (itemsToShow.length === 0) {
             tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 4rem; color: var(--text-secondary);">該当する業者が見つかりません</td></tr>';
             return;
         }
 
-        tbody.innerHTML = '';
-        filtered.forEach(item => {
+        itemsToShow.forEach(item => {
             const vendorId = item.vendor_id || '-';
             const vendorName = item.vendor_name || '-';
             const phone = item.phone || '-';
@@ -261,6 +331,7 @@ async function fetchAndRenderSuppliers(filter = "") {
 
             const tr = document.createElement('tr');
             tr.style.borderBottom = '1px solid var(--border)';
+            tr.style.transition = 'background 0.2s';
             tr.innerHTML = `
                 <td style="padding: 1rem; font-family: monospace; color: var(--text-secondary);">${vendorId}</td>
                 <td style="padding: 1rem; font-weight: 600;">${vendorName}</td>
@@ -290,7 +361,8 @@ async function fetchAndRenderSuppliers(filter = "") {
                         btn.disabled = true;
                         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
                         await deleteDoc(doc(db, "m_suppliers", item.id));
-                        await fetchAndRenderSuppliers();
+                        await fetchSuppliersData();
+                        renderTable(filter);
                         showAlert('成功', '削除しました。');
                     } catch (error) {
                         console.error(error);
@@ -303,7 +375,64 @@ async function fetchAndRenderSuppliers(filter = "") {
             tbody.appendChild(tr);
         });
     } catch (error) {
-        console.error('Error fetching vendors:', error);
+        console.error('Error rendering vendors list:', error);
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 2rem; color: var(--danger);"><i class="fas fa-exclamation-triangle"></i> エラーが発生しました</td></tr>';
     }
+}
+
+function renderPagination(totalPages, filter) {
+    const container = document.getElementById('supplier-pagination');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    if (totalPages <= 1) return;
+
+    const btnPrev = document.createElement('button');
+    btnPrev.className = 'btn';
+    btnPrev.style.padding = '0.4rem 0.8rem';
+    btnPrev.style.background = 'var(--surface-darker)';
+    btnPrev.disabled = currentPage === 1;
+    btnPrev.innerHTML = '<i class="fas fa-chevron-left"></i>';
+    btnPrev.onclick = () => {
+        currentPage--;
+        renderTable(filter);
+        document.querySelector('.page-content').scrollTop = 0;
+    };
+    container.appendChild(btnPrev);
+
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, currentPage + 2);
+
+    for (let i = startPage; i <= endPage; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'btn';
+        btn.style.padding = '0.4rem 0.8rem';
+        btn.style.minWidth = '36px';
+        if (i === currentPage) {
+            btn.classList.add('btn-primary');
+        } else {
+            btn.style.background = 'white';
+            btn.style.border = '1px solid var(--border)';
+            btn.onclick = () => {
+                currentPage = i;
+                renderTable(filter);
+                document.querySelector('.page-content').scrollTop = 0;
+            };
+        }
+        btn.textContent = i;
+        container.appendChild(btn);
+    }
+
+    const btnNext = document.createElement('button');
+    btnNext.className = 'btn';
+    btnNext.style.padding = '0.4rem 0.8rem';
+    btnNext.style.background = 'var(--surface-darker)';
+    btnNext.disabled = currentPage === totalPages;
+    btnNext.innerHTML = '<i class="fas fa-chevron-right"></i>';
+    btnNext.onclick = () => {
+        currentPage++;
+        renderTable(filter);
+        document.querySelector('.page-content').scrollTop = 0;
+    };
+    container.appendChild(btnNext);
 }
