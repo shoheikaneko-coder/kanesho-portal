@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>かね将ポータル - プロトタイプ</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS for Excel/CSV processing -->
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+    <!-- App Container -->
+    <div id="app-container">
+        <!-- Background Orbs -->
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        
+        <!-- Login Screen -->
+        <div id="login-screen" class="login-card glass-panel animate-fade-in">
+            <div class="logo-container">
+                <i class="fas fa-store logo-icon"></i>
+                <h2>かね将ポータル</h2>
+                <p>業務管理システム（開発版）</p>
+            </div>
+            
+            <form id="login-form">
+                <div class="input-group">
+                    <label for="email">メールアドレス</label>
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" id="email" placeholder="example@kaneshow.jp" required>
+                </div>
+                
+                <div class="input-group">
+                    <label for="password">パスワード</label>
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="password" placeholder="••••••••" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+                    <i class="fas fa-sign-in-alt"></i> ログイン
+                </button>
+                <div style="margin-top: 1.5rem; text-align: center;">
+                    <button type="button" id="btn-contact-admin" style="background: none; border: none; color: var(--primary); font-size: 0.85rem; cursor: pointer; text-decoration: underline;">
+                        <i class="fas fa-user-shield"></i> パスワードを忘れた方はこちら
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Dashboard Layout (Hidden by default) -->
+    <div id="dashboard-layout" class="dashboard-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-store" style="color: var(--primary); font-size: 1.5rem;"></i>
+                <h3>かね将ポータル</h3>
+            </div>
+            
+            <div class="user-profile">
+                <div class="avatar" id="display-user-avatar">?</div>
+                <div>
+                    <div id="display-user-name" style="font-weight: 600; font-size: 0.9rem;">読み込み中...</div>
+                    <div id="display-user-role" style="font-size: 0.8rem; color: var(--text-secondary);">権限</div>
+                </div>
+            </div>
+
+            <div class="sidebar-menu">
+                <div class="menu-category">メインメニュー</div>
+                <a href="#" class="menu-item active" data-target="home">
+                    <i class="fas fa-home"></i> ホーム
+                </a>
+                <a href="#" class="menu-item" data-target="dashboard">
+                    <i class="fas fa-chart-line"></i> ダッシュボード
+                </a>
+                
+                <div class="menu-category">業務メニュー</div>
+                <a href="#" class="menu-item" data-target="attendance">
+                    <i class="fas fa-clock"></i> 勤怠入力
+                </a>
+                <a href="#" class="menu-item" data-target="attendance_check">
+                    <i class="fas fa-clipboard-check"></i> 勤怠状況確認
+                </a>
+                <a href="#" class="menu-item" data-target="inventory">
+                    <i class="fas fa-warehouse"></i> 在庫管理
+                </a>
+                <a href="#" class="menu-item" data-target="procurement">
+                    <i class="fas fa-shopping-cart"></i> 仕入れ
+                </a>
+                <a href="#" class="menu-item" data-target="sales">
+                    <i class="fas fa-calculator"></i> 営業実績報告
+                </a>
+                <a href="#" class="menu-item" data-target="recipe_viewer">
+                    <i class="fas fa-book-open"></i> レシピ閲覧
+                </a>
+                
+                <div class="menu-category">マスタ管理</div>
+                <div class="menu-item" data-target="users">
+                    <i class="fas fa-users-cog"></i> ユーザー登録/変更
+                </div>
+                <a href="#" class="menu-item" data-target="stores">
+                    <i class="fas fa-store-alt"></i> 店舗マスタ
+                </a>
+                <a href="#" class="menu-item" data-target="products">
+                    <i class="fas fa-utensils"></i> 商品・レシピマスタ
+                </a>
+                <a href="#" class="menu-item" data-target="suppliers">
+                    <i class="fas fa-truck"></i> 業者マスタ
+                </a>
+                <a href="#" class="menu-item" data-target="store_items">
+                    <i class="fas fa-boxes-stacked"></i> 店舗別在庫設定
+                </a>
+                <div class="menu-item" data-target="role_permissions">
+                    <i class="fas fa-user-shield"></i> 権限振り分け
+                </div>
+                <div class="menu-item" data-target="sales_correction">
+                    <i class="fas fa-edit"></i> 営業実績修正
+                </div>
+                <div class="menu-item" data-target="csv_export">
+                    <i class="fas fa-file-csv"></i> CSV出力
+                </div>
+            </div>
+            
+            <div style="padding: 1.5rem;">
+                <button id="logout-btn" class="btn" style="width: 100%; color: var(--text-secondary); background: transparent; border: 1px solid rgba(255,255,255,0.1);">
+                    <i class="fas fa-sign-out-alt"></i> ログアウト
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header class="top-header">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <button id="mobile-menu-btn" class="btn" style="background: transparent; color: var(--text-primary); padding: 0.5rem; display: none;">
+                        <i class="fas fa-bars" style="font-size: 1.2rem;"></i>
+                    </button>
+                    <h2 id="page-title" style="margin: 0;">ホーム</h2>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <button id="btn-notifications" class="btn" style="background: transparent; color: var(--text-secondary);">
+                        <i class="fas fa-bell"></i>
+                    </button>
+                </div>
+            </header>
+
+            <div class="page-content" id="page-content">
+                <!-- Content injected by JS -->
+            </div>
+        </main>
+    </div>
+
+    <!-- 管理者連絡モーダル -->
+    <div id="admin-contact-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:9999; align-items:center; justify-content:center; padding:1rem;">
+        <div style="background:#fff; border-radius:16px; width:100%; max-width:420px; padding:2rem; position:relative; max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+            <button id="close-admin-modal" style="position:absolute; right:1.2rem; top:1.2rem; background:none; border:none; font-size:1.3rem; cursor:pointer; color:#94a3b8;"><i class="fas fa-times"></i></button>
+            <h3 style="margin:0 0 0.3rem; font-size:1.1rem; color:#1e293b;"><i class="fas fa-user-shield" style="color:#e53e3e;"></i> 管理者一覧</h3>
+            <p style="font-size:0.8rem; color:#64748b; margin:0 0 1.2rem;">以下の管理者にパスワード再設定を依頼してください。</p>
+            <div id="admin-list-container" style="border:1px solid #e2e8f0; border-radius:10px; overflow:hidden; margin-bottom:1.5rem;">
+                <div style="padding:1rem; text-align:center; color:#94a3b8; font-size:0.9rem;"><i class="fas fa-spinner fa-spin"></i> 読み込み中...</div>
+            </div>
+            <hr style="border:none; border-top:1px solid #e2e8f0; margin:0 0 1.2rem;">
+            <p style="font-size:0.8rem; color:#475569; font-weight:600; margin:0 0 0.8rem;">あなたの情報を入力してください</p>
+            <div style="display:flex; flex-direction:column; gap:0.8rem; margin-bottom:1.2rem;">
+                <div>
+                    <label style="font-size:0.78rem; color:#64748b; display:block; margin-bottom:0.3rem;">店舗名</label>
+                    <select id="contact-store" style="width:100%; padding:0.65rem 0.9rem; border:1px solid #cbd5e1; border-radius:8px; font-size:0.95rem; background:#f8fafc;">
+                        <option value="">店舗を選択...</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:0.78rem; color:#64748b; display:block; margin-bottom:0.3rem;">お名前</label>
+                    <input type="text" id="contact-name" placeholder="例：田中 太郎" style="width:100%; padding:0.65rem 0.9rem; border:1px solid #cbd5e1; border-radius:8px; font-size:0.95rem; background:#f8fafc; box-sizing:border-box;">
+                </div>
+            </div>
+            <button id="btn-line-contact" style="width:100%; padding:0.9rem; background:#06C755; color:#fff; border:none; border-radius:10px; font-size:0.95rem; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:0.5rem;">
+                <i class="fas fa-comment"></i> LINEでパスワード再設定を依頼する
+            </button>
+            <p style="font-size:0.72rem; color:#94a3b8; text-align:center; margin:0.6rem 0 0;">ボタンを押すとLINEが起動し、定型文が自動入力されます</p>
+        </div>
+    </div>
+
+    <script type="module" src="app.js?v=9"></script>
+</body>
+</html>

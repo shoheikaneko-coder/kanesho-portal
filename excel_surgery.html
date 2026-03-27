@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel マスタ再構築ツール | かね将ポータル</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <style>
+        body { background: #0f172a; font-family: 'Inter', sans-serif; display: flex; justify-content: center; min-height: 100vh; margin: 0; padding: 2rem 1rem; box-sizing: border-box; }
+        .container { width: 100%; max-width: 800px; }
+        .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 2rem; margin-bottom: 1.5rem; }
+        h1 { color: #f87171; font-size: 1.8rem; margin: 0 0 0.5rem; }
+        .subtitle { color: #94a3b8; font-size: 0.95rem; margin-bottom: 2rem; }
+        .warning-box { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: 10px; padding: 1.2rem; margin-bottom: 1.5rem; color: #fca5a5; font-size: 0.9rem; line-height: 1.6; }
+        #log { background: #030712; border: 1px solid #1e293b; border-radius: 10px; padding: 1.2rem; font-family: monospace; font-size: 0.82rem; height: 350px; overflow-y: auto; margin-top: 1.5rem; line-height: 1.6; color: #cbd5e1; }
+        .log-ok { color: #4ade80; }
+        .log-info { color: #60a5fa; }
+        .log-warn { color: #fbbf24; }
+        .log-err { color: #f87171; }
+        .log-head { color: #c084fc; font-weight: bold; border-bottom: 1px solid #334155; margin: 0.5rem 0; padding-bottom: 0.2rem; }
+        .btn-run { width: 100%; padding: 1.2rem; font-size: 1.1rem; font-weight: 700; background: linear-gradient(135deg,#ef4444,#b91c1c); color: white; border: none; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.8rem; transition: transform 0.1s; }
+        .btn-run:active { transform: scale(0.98); }
+        .btn-run:disabled { opacity: 0.5; cursor: not-allowed; }
+        .setting-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; color: #e2e8f0; }
+        input[type="checkbox"] { width: 1.2rem; height: 1.2rem; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1><i class="fas fa-file-medical"></i> Excel マスタ再構築 (外科手術)</h1>
+    <p class="subtitle">Excelファイルを「正解」として Firestore のアイテムマスタと在庫情報を修復します</p>
+
+    <div class="warning-box">
+        <i class="fas fa-exclamation-triangle"></i> <strong>最重要注意</strong><br>
+        1. <strong>m_items</strong> を一度クレンジングし、Excelのデータで再生成します。<br>
+        2. <strong>Inventory</strong> シートから各店舗の在庫設定を復元・紐付け直しします。<br>
+        3. 他の機能（勤怠・売上・給与等）には一切干渉しません。
+    </div>
+
+    <div class="card">
+        <div class="setting-row">
+            <input type="file" id="excel-file" accept=".xlsx" style="display: none;">
+            <button class="btn-run" style="background: #334155; font-size: 1rem; padding: 0.8rem;" onclick="document.getElementById('excel-file').click()">
+                <i class="fas fa-file-excel"></i> Excelファイルを選択
+            </button>
+            <span id="file-name" style="font-size: 0.85rem; color: #94a3b8;">ファイルが選択されていません</span>
+        </div>
+
+        <div class="setting-row">
+            <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
+                <input type="checkbox" id="limit-chk" checked>
+                <span><strong>5件のみテスト実行</strong> (まずは動作確認)</span>
+            </label>
+        </div>
+
+        <button id="run-btn" class="btn-run" disabled>
+            <i class="fas fa-vial"></i> 手術を開始する
+        </button>
+
+        <hr style="border: none; border-top: 1px solid var(--border); margin: 2rem 0;">
+        
+        <div style="background: rgba(239, 68, 68, 0.05); padding: 1.5rem; border-radius: 12px; border: 1px solid rgba(239, 68, 68, 0.2);">
+            <h3 style="color: #f87171; font-size: 1rem; margin-bottom: 0.5rem;"><i class="fas fa-broom"></i> データベースの掃除 (クレンジング)</h3>
+            <p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 1rem;">
+                名前が英数字の羅列になっている不要なデータを一括削除し、マスタの状態を正規化します。<br>
+                ※Excelファイルの選択は不要です。Firestore上のデータを直接処理します。
+            </p>
+            <button id="clean-btn" class="btn-run" style="background: #ef4444; font-size: 1rem; padding: 0.8rem;">
+                <i class="fas fa-trash-alt"></i> データベースを掃除する
+            </button>
+        </div>
+
+        <div id="log">ログがここに表示されます...</div>
+    </div>
+
+    <!-- カスタム確認モーダル (手術用) -->
+    <div id="confirm-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center; padding: 1rem; backdrop-filter: blur(4px);">
+        <div class="card" style="max-width: 400px; text-align: center; background: #1e293b; border-color: #ef4444;">
+            <i class="fas fa-exclamation-circle" style="font-size: 3rem; color: #ef4444; margin-bottom: 1rem; display: block;"></i>
+            <h3 style="color: white; margin-bottom: 1rem;">最終確認</h3>
+            <p style="color: #cbd5e1; font-size: 0.9rem; margin-bottom: 2rem; line-height: 1.6;">
+                マスタの完全再構築を開始しますか？<br>
+                <span style="color: #f87171;">※ m_items の既存データが上書きされます。</span>
+            </p>
+            <div style="display: flex; gap: 1rem;">
+                <button id="modal-cancel" class="btn-run" style="background: #334155; font-size: 0.95rem; padding: 0.8rem;">キャンセル</button>
+                <button id="modal-ok" class="btn-run" style="background: #ef4444; font-size: 0.95rem; padding: 0.8rem;">実行する</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- クレンジング確認モーダル -->
+    <div id="cleanup-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center; padding: 1rem; backdrop-filter: blur(4px);">
+        <div class="card" style="max-width: 400px; text-align: center; background: #1e293b; border-color: #ef4444;">
+            <i class="fas fa-broom" style="font-size: 3rem; color: #ef4444; margin-bottom: 1rem; display: block;"></i>
+            <h3 style="color: white; margin-bottom: 1rem;">DBクレンジングの実行</h3>
+            <p style="color: #cbd5e1; font-size: 0.9rem; margin-bottom: 2rem; line-height: 1.6;">
+                以前の失敗データ（名前がIDの羅列になっているもの）を削除し、マスタ構造を正規化します。<br>
+                <span style="color: #f87171;">※この操作は取り消せません。</span>
+            </p>
+            <div style="display: flex; gap: 1rem;">
+                <button id="cleanup-cancel" class="btn-run" style="background: #334155; font-size: 0.95rem; padding: 0.8rem;">キャンセル</button>
+                <button id="cleanup-ok" class="btn-run" style="background: #ef4444; font-size: 0.95rem; padding: 0.8rem;">実行する</button>
+            </div>
+        </div>
+    </div>
+
+    <div style="text-align: center;">
+        <a href="index.html" style="color: #64748b; text-decoration: none; font-size: 0.85rem;">
+            <i class="fas fa-arrow-left"></i> ポータルへ戻る
+        </a>
+    </div>
+</div>
+
+<script type="module" src="excel_surgery.js"></script>
+</body>
+</html>

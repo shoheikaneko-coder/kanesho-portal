@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>ZERO DEPENDENCY Auth Test</title>
+</head>
+<body style="padding: 2rem; font-family: sans-serif;">
+    <h1>ZERO DEPENDENCY Auth Test</h1>
+    <p>このページは他のどのファイルも読み込んでいません。</p>
+    <button id="btn" style="padding: 1rem; font-size: 1.2rem;">ボタンを押してください</button>
+    <div id="out" style="margin-top: 1rem; color: blue; font-weight: bold;"></div>
+
+    <script>
+        document.getElementById('btn').onclick = () => {
+            console.log("Button clicked!");
+            document.getElementById('out').innerText = "JavaScript is working! (JSは正常に動いています)";
+            alert("JSは正常に動いています。");
+        };
+    </script>
+</body>
+</html>

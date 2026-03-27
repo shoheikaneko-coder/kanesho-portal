@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head><meta charset="UTF-8"><title>データ構造調査</title></head>
+<body>
+    <h1>データ構造調査ツール</h1>
+    <button id="check-btn" style="padding:10px 20px;">構造をチェックする</button>
+    <pre id="log" style="background:#eee; padding:15px; margin-top:20px;"></pre>
+    <script type="module">
+        import { db } from './firebase.js';
+        import { collection, getDocs, limit, query } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        
+        document.getElementById('check-btn').onclick = async () => {
+            const log = document.getElementById('log');
+            log.textContent = "読み込み中...\n";
+            try {
+                const q = query(collection(db, "t_performance"), limit(3));
+                const snap = await getDocs(q);
+                if (snap.empty) {
+                    log.textContent += "t_performance は空です。";
+                    return;
+                }
+                snap.forEach(doc => {
+                    log.textContent += `\n[DocID: ${doc.id}]\n`;
+                    log.textContent += JSON.stringify(doc.data(), null, 2) + "\n";
+                });
+            } catch (err) {
+                log.textContent += "エラー: " + err.message;
+            }
+        };
+    </script>
+</body>
+</html>

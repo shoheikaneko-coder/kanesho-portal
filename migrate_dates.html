@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>データ移行ツール | かね将ポータル</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { background: #f4f7f6; font-family: 'Inter', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .container { width: 100%; max-width: 600px; padding: 2rem; }
+        #status-area { background: #1e1e1e; color: #d4d4d4; padding: 1.5rem; border-radius: 8px; font-family: monospace; font-size: 0.9rem; height: 300px; overflow-y: auto; margin-top: 1.5rem; display: none; line-height: 1.5; border: 1px solid #333; }
+        .header { text-align: center; margin-bottom: 2rem; }
+        .header h1 { color: var(--primary); font-size: 1.8rem; margin-bottom: 0.5rem; }
+        .header p { color: var(--text-secondary); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-database"></i> データ移行ツール</h1>
+            <p>t_performance の日付形式を YYYY-MM-DD に統一します</p>
+        </div>
+ 
+        <div class="glass-panel" style="padding: 2rem; text-align: center;">
+            <p style="margin-bottom: 1.5rem; text-align: left; font-size: 0.95rem;">
+                <strong>実行内容:</strong><br>
+                1. <code>t_performance</code> コレクションの全データを読み込み<br>
+                2. シリアル値（45540等）やスラッシュ区切りの日付を変換<br>
+                3. Firestore上の各ドキュメントを更新
+            </p>
+            <button id="start-btn" class="btn btn-primary" style="padding: 1rem 2rem; font-size: 1.1rem; width: 100%;">
+                <i class="fas fa-play"></i> 変換を開始する
+            </button>
+        </div>
+
+        <div id="status-area">
+            <div id="status-log"></div>
+        </div>
+        
+        <div style="margin-top: 2rem; text-align: center;">
+            <a href="index.html" style="color: var(--text-secondary); text-decoration: none; font-size: 0.9rem;">
+                <i class="fas fa-arrow-left"></i> ポータルへ戻る
+            </a>
+        </div>
+    </div>
+
+    <script type="module" src="migrate_dates.js"></script>
+</body>
+</html>

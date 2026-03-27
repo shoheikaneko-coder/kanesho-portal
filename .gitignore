@@ -1,0 +1,5 @@
+.DS_Store
+.firebase/
+.gemini/
+node_modules/
+# Keep the Excel and PDF for now as they are project source docs
