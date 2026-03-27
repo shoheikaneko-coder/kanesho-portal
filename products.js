@@ -255,8 +255,19 @@ function setupListViewListeners() {
 
 export async function initProductsPage(user) {
     currentUser = user;
-    await reloadData();
-    renderView();
+    currentView = 'list';
+    renderView(); // Show initial UI with loading state
+    
+    const countLabel = document.getElementById('master-count');
+    if (countLabel) countLabel.innerHTML = '<i class="fas fa-spinner fa-spin"></i> データを取得中...';
+    
+    try {
+        await reloadData();
+        renderTable(); // Render data after fetching
+    } catch (error) {
+        console.error("Failed to load product data:", error);
+        if (countLabel) countLabel.textContent = 'データの読み込みに失敗しました';
+    }
 }
 
 function setupFormLogic() {
@@ -443,7 +454,7 @@ function renderTable(filter = "") {
     renderPagination(totalPages, filter);
 
     if (itemsToShow.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 4rem; color: var(--text-secondary);">該当するデータがありません</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 4rem; color: var(--text-secondary);">該当するデータがありません</td></tr>';
         return;
     }
 
