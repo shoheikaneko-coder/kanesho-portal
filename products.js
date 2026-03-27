@@ -166,9 +166,6 @@ function renderListView(container) {
                 <p style="font-size: 0.85rem; color: var(--text-secondary);">販売メニュー、自家製食材、仕入品を一括管理します</p>
             </div>
             <div style="display: flex; gap: 0.8rem;">
-                <button class="btn" id="btn-sync-legacy" style="background: rgba(0,0,0,0.05); color: var(--text-secondary); font-size: 0.8rem;">
-                    <i class="fas fa-sync-alt"></i> 旧マスタを同期
-                </button>
                 <button class="btn btn-primary" id="btn-add-item" style="padding: 0.8rem 1.5rem; font-weight: 700;">
                     <i class="fas fa-plus"></i> 新規登録
                 </button>
@@ -242,11 +239,6 @@ function setupListViewListeners() {
         };
     }
 
-    const btnSync = container.querySelector('#btn-sync-legacy');
-    if (btnSync) {
-        btnSync.onclick = handleSyncLegacy;
-    }
-
     const searchInput = container.querySelector('#master-search');
     if (searchInput) {
         searchInput.oninput = () => {
@@ -276,11 +268,22 @@ export async function initProductsPage(user) {
         
         // 3. 描画
         currentView = 'list';
+        currentPage = 1; // 必ずデータ取得後に初期化
         renderView(); 
     } catch (error) {
         console.error("Failed to load product data:", error);
         if (container) {
-            container.innerHTML = '<div style="padding: 2rem; color: var(--danger); text-align: center;">データの読み込みに失敗しました。</div>';
+            container.innerHTML = `
+                <div style="padding: 3rem; color: var(--danger); text-align: center; max-width: 600px; margin: 0 auto; background: #fef2f2; border-radius: 12px; margin-top: 2rem;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                    <h3 style="margin-top: 0;">データの読み込みに失敗しました</h3>
+                    <p style="font-weight: 600; font-size: 1.1rem;">Firebase APIまたはネットワークでエラーが発生しています。</p>
+                    <p style="font-family: monospace; font-size: 0.9rem; background: rgba(0,0,0,0.05); padding: 1rem; border-radius: 8px; text-align: left; overflow-x: auto;">
+                        ${error.message || error.toString()}
+                    </p>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 1.5rem;">※ 詳細なログはブラウザのコンソール(F12)をご確認ください。</p>
+                </div>
+            `;
         }
     }
 }
