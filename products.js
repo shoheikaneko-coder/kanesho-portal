@@ -4,6 +4,7 @@ import { showConfirm, showAlert } from './ui_utils.js';
 import { getEffectivePrice } from './cost_engine.js?v=9';
 
 let currentTab = 'menus'; // 'menus', 'sub_recipes', or 'ingredients'
+let currentView = 'list'; // 'list' or 'form'
 let currentPage = 1;
 const pageSize = 30;
 let cachedItems = [];
@@ -11,33 +12,53 @@ let cachedIngredients = [];
 let cachedMenus = [];
 let cachedVendors = [];
 let currentUser = null;
+let editingItemData = null;
 
 export const productsPageHtml = `
-    <div class="animate-fade-in">
+    <div id="products-page-container" class="animate-fade-in">
+        <!-- Content will be swapped here -->
+    </div>
+`;
+
+function renderView() {
+    const container = document.getElementById('products-page-container');
+    if (!container) return;
+
+    if (currentView === 'form') {
+        renderFormView(container);
+    } else {
+        renderListView(container);
+    }
+}
+
+function renderListView(container) {
+    container.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
             <div>
-                <h3 style="margin-bottom: 0.2rem;">マスタ管理</h3>
-                <p style="font-size: 0.85rem; color: var(--text-secondary);">販売メニューと仕入れ食材を管理します</p>
+                <h2 style="margin-bottom: 0.2rem; display: flex; align-items: center; gap: 0.8rem;">
+                    <i class="fas fa-boxes" style="color: var(--primary);"></i>
+                    マスタ管理
+                </h2>
+                <p style="font-size: 0.85rem; color: var(--text-secondary);">販売メニュー、自家製食材、仕入品を一括管理します</p>
             </div>
             <div style="display: flex; gap: 0.8rem;">
                 <button class="btn" id="btn-sync-legacy" style="background: rgba(0,0,0,0.05); color: var(--text-secondary); font-size: 0.8rem;">
                     <i class="fas fa-sync-alt"></i> 旧マスタを同期
                 </button>
-                <button class="btn btn-primary" id="btn-add-item">
+                <button class="btn btn-primary" id="btn-add-item" style="padding: 0.8rem 1.5rem; font-weight: 700;">
                     <i class="fas fa-plus"></i> 新規登録
                 </button>
             </div>
         </div>
 
-        <!-- 統合管理タブ -->
-        <div class="tabs-container">
-            <div class="tab-item active" data-tab="menus" id="tab-menus">
+        <div class="tabs-container" style="margin-bottom: 2rem;">
+            <div class="tab-item ${currentTab === 'menus' ? 'active' : ''}" data-tab="menus">
                 <i class="fas fa-utensils"></i> 販売メニュー
             </div>
-            <div class="tab-item" data-tab="sub_recipes" id="tab-sub_recipes">
+            <div class="tab-item ${currentTab === 'sub_recipes' ? 'active' : ''}" data-tab="sub_recipes">
                 <i class="fas fa-mortar-pestle"></i> 自家製原材料
             </div>
-            <div class="tab-item" data-tab="ingredients" id="tab-ingredients">
+            <div class="tab-item ${currentTab === 'ingredients' ? 'active' : ''}" data-tab="ingredients">
                 <i class="fas fa-leaf"></i> 食材・仕入品
             </div>
         </div>
@@ -49,14 +70,14 @@ export const productsPageHtml = `
                     <input type="text" id="master-search" placeholder="名称やカテゴリで検索..." style="padding-top: 0.6rem; padding-bottom: 0.6rem;">
                 </div>
                 <div id="master-count" style="color: var(--text-secondary); font-size: 0.9rem; font-weight: 500;">
-                    読み込み中...
+                    表示中: ...
                 </div>
             </div>
 
             <div style="overflow-x: auto;">
                 <table style="width: 100%; min-width: 800px; border-collapse: collapse; text-align: left;">
                     <thead>
-                        <tr id="table-header-row" style="border-bottom: 1px solid var(--border); color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                        <tr id="table-header-row" style="border-bottom: 2px solid var(--border); color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">
                             <!-- Dynamic Headers -->
                         </tr>
                     </thead>
@@ -65,314 +86,161 @@ export const productsPageHtml = `
                 </table>
             </div>
             
-            <!-- Pagination Controls -->
             <div id="master-pagination" style="display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border);">
             </div>
         </div>
-        
-        <!-- アイテム登録・編集モーダル -->
-        <div id="item-modal" class="modal-overlay" style="display: none; position: fixed !important; inset: 0 !important; background: rgba(0,0,0,0.5) !important; z-index: 10000 !important; align-items: center; justify-content: center;">
-            <div class="glass-panel animate-scale-in" style="width: 100%; max-width: 600px; padding: 0;">
-                <div id="item-modal-header" style="padding: 1.5rem 2rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; border-radius: 16px 16px 0 0;">
-                    <h3 id="item-modal-title" style="margin: 0; font-size: 1.25rem; color: #1e293b;">アイテム登録</h3>
-                    <button id="close-item-modal" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-secondary);"><i class="fas fa-times"></i></button>
-                </div>
-                
-                <div style="padding: 2rem;">
-                
-                <form id="item-form">
-                    <input type="hidden" id="item-doc-id">
-                    
-                    <div style="background: rgba(0,0,0,0.02); padding: 1.2rem; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 1.5rem;">
-                        <h4 style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem; text-transform: uppercase;">基本情報</h4>
-                        <div class="input-group">
-                            <label>アイテム名称</label>
-                            <input type="text" id="item-name" placeholder="例: 豚バラ串, キャベツ" required>
-                        </div>
-                        <div style="display: flex; gap: 1rem;">
-                            <div class="input-group" style="flex: 1.5;">
-                                <label>カテゴリ</label>
-                                <input type="text" id="item-category" list="category-list" placeholder="例: 肉類, 野菜, ドリンク">
-                                <datalist id="category-list"></datalist>
-                            </div>
-                            <div class="input-group" style="flex: 1;">
-                                <label>基本単位</label>
-                                <input type="text" id="item-unit" placeholder="例: kg, g, 個" required>
-                            </div>
-                        </div>
-                        <div style="display: flex; gap: 1rem;">
-                            <div class="input-group" style="flex: 1;">
-                                <label>内容量 (1単位あたり)</label>
-                                <input type="number" id="item-content-amount" placeholder="例: 1000, 500" step="any">
-                            </div>
-                            <div class="input-group" style="flex: 2;">
-                                <label>備考</label>
-                                <input type="text" id="item-notes" placeholder="メモなど">
-                            </div>
-                        </div>
-                    </div>
+    `;
 
-                    <!-- 販売メニュー専用フィールド -->
-                    <div id="section-menu" style="background: rgba(59, 130, 246, 0.03); padding: 1.2rem; border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.1); margin-bottom: 1.5rem; display: none;">
-                        <h4 id="section-menu-title" style="font-size: 0.85rem; color: #2563EB; margin-bottom: 1rem; text-transform: uppercase;">販売・レシピ設定</h4>
-                        <div id="menu-price-container" style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
-                            <div class="input-group" style="flex: 1; margin-bottom: 0;">
-                                <label>販売価格 (税抜)</label>
-                                <input type="number" id="menu-sales-price" placeholder="0">
-                            </div>
-                            <div class="input-group" style="flex: 1; margin-bottom: 0;">
-                                <label>Dinii ID</label>
-                                <input type="text" id="menu-dinii-id" placeholder="連携ID">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 共通レシピ編集セクション（メニューまたは自家製食材） -->
-                    <div id="section-recipe" style="display: none; background: rgba(0,0,0,0.02); padding: 1.2rem; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 1.5rem;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
-                            <h5 style="font-size: 0.9rem; color: var(--text-primary); margin: 0;">レシピ / 構成材料</h5>
-                            <div id="recipe-total-cost" style="font-size: 0.85rem; font-weight: 700; color: var(--primary);">原価: ¥0</div>
-                        </div>
-                        
-                        <div id="recipe-items-container" style="display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1rem;">
-                            <!-- Recipe rows injected here -->
-                        </div>
-
-                        <div style="display: flex; gap: 0.5rem;">
-                            <select id="recipe-add-select" style="flex: 1; padding: 0.6rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.9rem;">
-                                <option value="">食材を追加...</option>
-                            </select>
-                            <button type="button" id="btn-recipe-add" class="btn" style="padding: 0.6rem; background: var(--surface-darker); color: var(--text-primary); border: 1px solid var(--border);">
-                                <i class="fas fa-plus"></i>
-                            </button>
-                        </div>
-                        <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">※自家製（半成品）の場合はレシピを登録してください。仕入品の場合は空欄でOKです。</p>
-                    </div>
-
-                    <!-- 食材専用フィールド -->
-                    <div id="section-ingredient" style="display: none; background: rgba(5, 150, 105, 0.03); padding: 1.2rem; border-radius: 12px; border: 1px solid rgba(5, 150, 105, 0.1); margin-bottom: 1.5rem;">
-                        <h4 style="font-size: 0.85rem; color: #059669; margin-bottom: 1rem; text-transform: uppercase;">仕入・原価設定</h4>
-                        <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-                            <div class="input-group" style="flex: 1; margin-bottom: 0;">
-                                <label>仕入れ単価 (税抜)</label>
-                                <input type="number" id="ing-purchase-price" placeholder="0">
-                            </div>
-                            <div class="input-group" style="flex: 1; margin-bottom: 0;">
-                                <label>歩留率 (0.0〜1.0)</label>
-                                <input type="number" id="ing-yield-rate" step="0.01" value="1.00">
-                            </div>
-                        </div>
-                        <div class="input-group">
-                            <label>仕入先業者</label>
-                            <select id="ing-vendor-id" style="width: 100%; padding: 0.8rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.95rem;">
-                                <option value="">業者を選択...</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary" style="width: 100%; padding: 1rem; margin-top: 0.5rem;"><i class="fas fa-save"></i> 保存する</button>
-                </form>
-            </div>
-        </div>
-    </div>
-`;
-
-export async function initProductsPage(user) {
-    currentUser = user;
-    
-    // 権限チェック (Manager以上)
-    const canEdit = user?.Role === 'Admin' || user?.Role === '管理者' || user?.Role === 'Manager' || user?.Role === '店長';
-    if (!canEdit) {
-        document.getElementById('page-content').innerHTML = `
-            <div style="text-align:center; padding: 5rem; color: var(--text-secondary);">
-                <i class="fas fa-lock" style="font-size: 3rem; margin-bottom: 1.5rem; opacity: 0.3;"></i>
-                <p>マスタ編集権限がありません。</p>
-            </div>
-        `;
-        return;
-    }
-
-    await reloadData();
+    // Re-attach listeners for list view
+    setupListViewListeners();
     renderTable();
+}
 
+function setupListViewListeners() {
     const tabs = document.querySelectorAll('.tab-item');
     tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            tabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
+        tab.onclick = () => {
             currentTab = tab.dataset.tab;
-            renderTable();
-        });
+            currentPage = 1;
+            renderView();
+        };
     });
+
+    const btnAdd = document.getElementById('btn-add-item');
+    if (btnAdd) {
+        btnAdd.onclick = () => {
+            editingItemData = null;
+            currentView = 'form';
+            renderView();
+        };
+    }
 
     const btnSync = document.getElementById('btn-sync-legacy');
     if (btnSync) {
-        btnSync.onclick = () => {
-            showConfirm('データ同期', '旧 m_products のデータを新スキーマにコピーしますか？\n(既に移行済みのデータは上書きされません)', async () => {
-                btnSync.disabled = true;
-                btnSync.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 同期中...';
-                try {
-                    const legacySnap = await getDocs(collection(db, "m_products"));
-                    let count = 0;
-                    for (const d of legacySnap.docs) {
-                        const data = d.data();
-                        const itemId = d.id;
-                        const name = data['商品名'] || data['ProductName'] || '名称未設定';
-                        // items
-                        await setDoc(doc(db, "m_items", itemId), {
-                            name: name,
-                            category: data['大分類'] || data['CategoryL'] || '未分類',
-                            unit: '個', // デフォルト
-                            updated_at: new Date().toISOString()
-                        }, { merge: true });
-                        // menus (提供価格がある場合はメニューとみなす)
-                        const price = data['提供価格'] || data['Price'] || 0;
-                        if (price > 0) {
-                            await setDoc(doc(db, "m_menus", itemId), {
-                                item_id: itemId,
-                                sales_price: Number(price),
-                                dinii_id: "",
-                                updated_at: new Date().toISOString()
-                            }, { merge: true });
-                        } else {
-                            // それ以外は食材とみなす
-                            await setDoc(doc(db, "m_ingredients", itemId), {
-                                item_id: itemId,
-                                purchase_price: 0,
-                                yield_rate: 1.0,
-                                updated_at: new Date().toISOString()
-                            }, { merge: true });
-                        }
-                        count++;
-                    }
-                    showAlert('同期完了', `${count} 件のデータを同期しました。`);
-                    await reloadData();
-                    renderTable();
-                } catch(e) { 
-                    console.error(e);
-                    showAlert('エラー', '同期に失敗しました。');
-                } finally {
-                    btnSync.disabled = false;
-                    btnSync.innerHTML = '<i class="fas fa-sync-alt"></i> 旧マスタを同期';
-                }
-            });
-        };
+        btnSync.onclick = handleSyncLegacy;
     }
 
-    const btnAdd = document.getElementById('btn-add-item');
-    const modal = document.getElementById('item-modal');
-    const btnClose = document.getElementById('close-item-modal');
-    const form = document.getElementById('item-form');
-    
-    if(btnAdd && modal) {
-        btnAdd.onclick = () => {
-            form.reset();
-            document.getElementById('item-doc-id').value = '';
-            
-            let title = '新規登録';
-            if (currentTab === 'menus') title = '販売メニューの登録';
-            else if (currentTab === 'sub_recipes') title = '自家製原材料の登録';
-            else title = '食材・仕入品の登録';
-            
-            document.getElementById('item-modal-title').textContent = title;
-            
-            // UIリセット
-            toggleModalSections();
-            
-            currentRecipe = [];
-            setupRecipeEditor();
-            renderRecipeRows();
-            
-            modal.style.display = 'flex';
-        };
-        btnClose.onclick = () => modal.style.display = 'none';
-        const backdrop = document.getElementById('modal-backdrop');
-        if (backdrop) backdrop.onclick = () => modal.style.display = 'none';
-    }
-
-    if(form) {
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btnSubmit = form.querySelector('button[type="submit"]');
-            btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
-            btnSubmit.disabled = true;
-
-            const docId = document.getElementById('item-doc-id').value;
-            const itemId = docId || `item_${Date.now()}`;
-
-            const baseItem = {
-                name: document.getElementById('item-name').value,
-                category: document.getElementById('item-category').value,
-                unit: document.getElementById('item-unit').value,
-                content_amount: Number(document.getElementById('item-content-amount').value) || 0,
-                notes: document.getElementById('item-notes').value || "",
-                updated_at: new Date().toISOString()
-            };
-
-            try {
-                // 1. m_items への保存
-                await setDoc(doc(db, "m_items", itemId), baseItem, { merge: true });
-
-                // 2. 詳細への保存
-                if (currentTab === 'menus') {
-                    const menuData = {
-                        item_id: itemId,
-                        sales_price: Number(document.getElementById('menu-sales-price').value) || 0,
-                        dinii_id: document.getElementById('menu-dinii-id').value || "",
-                        recipe: currentRecipe,
-                        is_sub_recipe: false,
-                        updated_at: new Date().toISOString()
-                    };
-                    await setDoc(doc(db, "m_menus", itemId), menuData, { merge: true });
-                } else if (currentTab === 'sub_recipes') {
-                    const subRecipeData = {
-                        item_id: itemId,
-                        sales_price: 0,
-                        recipe: currentRecipe,
-                        is_sub_recipe: true,
-                        updated_at: new Date().toISOString()
-                    };
-                    await setDoc(doc(db, "m_menus", itemId), subRecipeData, { merge: true });
-                } else {
-                    const ingData = {
-                        item_id: itemId,
-                        purchase_price: Number(document.getElementById('ing-purchase-price').value) || 0,
-                        yield_rate: Number(document.getElementById('ing-yield-rate').value) || 1.0,
-                        vendor_id: document.getElementById('ing-vendor-id').value || "",
-                        updated_at: new Date().toISOString()
-                    };
-                    await setDoc(doc(db, "m_ingredients", itemId), ingData, { merge: true });
-                }
-
-                modal.style.display = 'none';
-                await reloadData();
-                renderTable();
-            } catch (err) {
-                console.error(err);
-            showAlert('保存に失敗しました。', e.message);
-            } finally {
-                btnSubmit.innerHTML = '<i class="fas fa-save"></i> 保存する';
-                btnSubmit.disabled = false;
-            }
-        });
-    }
-
-    // 検索フィルタ
     const searchInput = document.getElementById('master-search');
     if (searchInput) {
-        searchInput.addEventListener('input', () => {
-            currentPage = 1; // Reset to page 1 on search
+        searchInput.oninput = () => {
+            currentPage = 1;
             renderTable(searchInput.value);
-        });
+        };
+    }
+}
+
+export async function initProductsPage(user) {
+    currentUser = user;
+    await reloadData();
+    renderView();
+}
+
+function setupFormLogic() {
+    setupRecipeEditor();
+    const form = document.getElementById('item-form');
+    if (!form) return;
+
+    // Set initial values if editing
+    if (editingItemData) {
+        const item = editingItemData;
+        const menuRecord = cachedMenus.find(m => m.item_id === item.id);
+        currentRecipe = menuRecord?.recipe || [];
+        renderRecipeRows();
+
+        if (currentTab === 'menus' || currentTab === 'sub_recipes' || (menuRecord && menuRecord.is_sub_recipe !== true)) {
+            if (document.getElementById('menu-sales-price')) {
+                document.getElementById('menu-sales-price').value = menuRecord?.sales_price || 0;
+            }
+            if (document.getElementById('menu-dinii-id')) {
+                document.getElementById('menu-dinii-id').value = menuRecord?.dinii_id || '';
+            }
+        } 
+        
+        if (currentTab === 'ingredients') {
+            const ing = cachedIngredients.find(i => i.item_id === item.id);
+            if (document.getElementById('ing-purchase-price')) document.getElementById('ing-purchase-price').value = ing?.purchase_price || 0;
+            if (document.getElementById('ing-yield-rate')) document.getElementById('ing-yield-rate').value = ing?.yield_rate || 1.0;
+            
+            const vendorSelect = document.getElementById('ing-vendor-id');
+            if (vendorSelect) {
+                vendorSelect.innerHTML = '<option value="">業者を選択...</option>';
+                cachedVendors.forEach(v => {
+                    const opt = document.createElement('option');
+                    opt.value = v.vendor_id || v.id;
+                    opt.textContent = v.vendor_name;
+                    if (ing?.vendor_id === opt.value) opt.selected = true;
+                    vendorSelect.appendChild(opt);
+                });
+            }
+        }
+    } else {
+        currentRecipe = [];
+        renderRecipeRows();
+        if (currentTab === 'ingredients') {
+            const vendorSelect = document.getElementById('ing-vendor-id');
+            if (vendorSelect) {
+                vendorSelect.innerHTML = '<option value="">業者を選択...</option>';
+                cachedVendors.forEach(v => {
+                    const opt = document.createElement('option');
+                    opt.value = v.vendor_id || v.id;
+                    opt.textContent = v.vendor_name;
+                    vendorSelect.appendChild(opt);
+                });
+            }
+        }
     }
 
-    // タブ切り替え時もページリセット
-    document.querySelectorAll('.tab-item').forEach(tab => {
-        tab.addEventListener('click', () => {
-            currentPage = 1;
-            // renderTable will be called by the existing tab logic
-        });
-    });
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        const btnSubmit = form.querySelector('button[type="submit"]');
+        btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
+        btnSubmit.disabled = true;
+
+        const itemId = editingItemData ? editingItemData.id : `item_${Date.now()}`;
+
+        const baseItem = {
+            name: document.getElementById('item-name').value,
+            category: document.getElementById('item-category').value,
+            unit: document.getElementById('item-unit').value,
+            content_amount: Number(document.getElementById('item-content-amount').value) || 0,
+            notes: document.getElementById('item-notes').value || "",
+            updated_at: new Date().toISOString()
+        };
+
+        try {
+            await setDoc(doc(db, "m_items", itemId), baseItem, { merge: true });
+
+            if (currentTab === 'menus') {
+                await setDoc(doc(db, "m_menus", itemId), {
+                    item_id: itemId, sales_price: Number(document.getElementById('menu-sales-price').value) || 0,
+                    dinii_id: document.getElementById('menu-dinii-id').value || "", recipe: currentRecipe,
+                    is_sub_recipe: false, updated_at: new Date().toISOString()
+                }, { merge: true });
+            } else if (currentTab === 'sub_recipes') {
+                await setDoc(doc(db, "m_menus", itemId), {
+                    item_id: itemId, sales_price: 0, recipe: currentRecipe,
+                    is_sub_recipe: true, updated_at: new Date().toISOString()
+                }, { merge: true });
+            } else {
+                await setDoc(doc(db, "m_ingredients", itemId), {
+                    item_id: itemId, purchase_price: Number(document.getElementById('ing-purchase-price').value) || 0,
+                    yield_rate: Number(document.getElementById('ing-yield-rate').value) || 1.0,
+                    vendor_id: document.getElementById('ing-vendor-id').value || "", updated_at: new Date().toISOString()
+                }, { merge: true });
+            }
+
+            currentView = 'list';
+            await reloadData();
+            renderView();
+            showAlert('成功', '保存しました。');
+        } catch (err) {
+            console.error(err);
+            showAlert('保存に失敗しました。', err.message);
+        } finally {
+            btnSubmit.innerHTML = '<i class="fas fa-save"></i> 保存する';
+            btnSubmit.disabled = false;
+        }
+    };
 }
 
 async function reloadData() {
@@ -546,49 +414,9 @@ function renderTable(filter = "") {
         tr.querySelector('.btn-edit').onclick = (e) => {
             e.preventDefault();
             e.stopPropagation();
-            const docId = item.id;
-            document.getElementById('item-doc-id').value = docId;
-            document.getElementById('item-name').value = item.name;
-            document.getElementById('item-category').value = item.category || '';
-            document.getElementById('item-unit').value = item.unit || '';
-            document.getElementById('item-content-amount').value = item.content_amount || 0;
-            document.getElementById('item-notes').value = item.notes || '';
-            
-            // 状態（タブ）に合わせてフィールド表示/非表示をまず初期化
-            toggleModalSections();
-
-            const menuRecord = cachedMenus.find(m => m.item_id === docId);
-            currentRecipe = menuRecord?.recipe || [];
-            setupRecipeEditor();
-            renderRecipeRows();
-
-            if (currentTab === 'menus' || currentTab === 'sub_recipes' || (menuRecord && menuRecord.is_sub_recipe !== true)) {
-                if (document.getElementById('menu-sales-price')) {
-                    document.getElementById('menu-sales-price').value = menuRecord?.sales_price || 0;
-                }
-                if (document.getElementById('menu-dinii-id')) {
-                    document.getElementById('menu-dinii-id').value = menuRecord?.dinii_id || '';
-                }
-            } 
-            
-            if (currentTab === 'ingredients') {
-                const ing = cachedIngredients.find(i => i.item_id === docId);
-                document.getElementById('ing-purchase-price').value = ing?.purchase_price || 0;
-                document.getElementById('ing-yield-rate').value = ing?.yield_rate || 1.0;
-                
-                const vendorSelect = document.getElementById('ing-vendor-id');
-                vendorSelect.innerHTML = '<option value="">業者を選択...</option>';
-                cachedVendors.forEach(v => {
-                    const opt = document.createElement('option');
-                    opt.value = v.vendor_id || v.id;
-                    opt.textContent = v.vendor_name;
-                    if (ing?.vendor_id === opt.value) opt.selected = true;
-                    vendorSelect.appendChild(opt);
-                });
-            }
-
-            document.getElementById('item-modal-title').textContent = 'アイテムの編集';
-            document.getElementById('item-modal').style.display = 'flex';
+            editingItemData = item;
+            currentView = 'form';
+            renderView();
         };
 
         tr.querySelector('.btn-delete').onclick = (e) => {
@@ -697,39 +525,24 @@ function renderPagination(totalPages, filter) {
     container.appendChild(btnNext);
 }
 
-function toggleModalSections() {
+function toggleFormSections() {
     const sMenu = document.getElementById('section-menu');
     const sRecipe = document.getElementById('section-recipe');
     const sIng = document.getElementById('section-ingredient');
-    const header = document.getElementById('item-modal-header');
-    const title = document.getElementById('item-modal-title');
     
     if (currentTab === 'menus') {
-        header.style.background = '#fff';
-        title.style.color = '#1e293b';
         sMenu.style.display = 'block';
         sRecipe.style.display = 'block';
         sIng.style.display = 'none';
-        
-        // メニュー用表示
         document.getElementById('menu-price-container').style.display = 'flex';
     } else if (currentTab === 'sub_recipes') {
-        header.style.background = '#ecfdf5'; // Light green
-        header.style.borderBottom = '1px solid #10b981';
-        title.style.color = '#065f46';
-        title.textContent = '自家製原材料・レシピ設定';
-        sMenu.style.display = 'block'; // レシピ部分はこっちにある
+        sMenu.style.display = 'block';
         sRecipe.style.display = 'block';
         sIng.style.display = 'none';
-        
-        // 価格とDinii IDは隠す
         document.getElementById('menu-price-container').style.display = 'none';
         document.getElementById('section-menu-title').textContent = '基本設定';
         document.getElementById('section-menu-title').style.color = '#059669';
     } else {
-        header.style.background = '#fff';
-        header.style.borderBottom = '1px solid var(--border)';
-        title.style.color = '#1e293b';
         sMenu.style.display = 'none';
         sRecipe.style.display = 'none';
         sIng.style.display = 'block';

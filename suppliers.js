@@ -1,36 +1,59 @@
-import { db } from './firebase.js';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, setDoc, query, orderBy, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-import { showConfirm, showAlert } from './ui_utils.js';
+let currentView = 'list';
+let editingSupplierData = null;
+let cachedSuppliers = [];
 
 export const suppliersPageHtml = `
-    <div class="animate-fade-in">
+    <div id="suppliers-page-container" class="animate-fade-in">
+        <!-- Content swapped here -->
+    </div>
+`;
+
+function renderView() {
+    const container = document.getElementById('suppliers-page-container');
+    if (!container) return;
+
+    if (currentView === 'form') {
+        renderFormView(container);
+    } else {
+        renderListView(container);
+    }
+}
+
+function renderListView(container) {
+    container.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-            <h3 style="color: var(--text-secondary);">業者マスタ管理</h3>
-            <button class="btn btn-primary" id="btn-add-supplier">
+            <div>
+                <h2 style="margin: 0; display: flex; align-items: center; gap: 0.8rem;">
+                    <i class="fas fa-truck" style="color: var(--primary);"></i>
+                    業者マスタ管理
+                </h2>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.4rem;">仕入先の基本情報と担当店舗を管理します</p>
+            </div>
+            <button class="btn btn-primary" id="btn-add-supplier" style="padding: 0.8rem 1.5rem; font-weight: 700;">
                 <i class="fas fa-plus"></i> 新規業者を登録
             </button>
         </div>
         
-        <div class="glass-panel" style="padding: 1.5rem;">
-            <div style="display: flex; justify: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <div class="input-group" style="margin-bottom: 0; width: 300px; max-width: 100%;">
+        <div class="glass-panel" style="padding: 0; overflow: hidden; border: 1px solid var(--border);">
+            <div style="padding: 1.2rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+                <div class="input-group" style="margin-bottom: 0; width: 350px;">
                     <i class="fas fa-search" style="top: 0.8rem;"></i>
-                    <input type="text" placeholder="企業名や担当者で検索..." style="padding-top: 0.6rem; padding-bottom: 0.6rem;">
+                    <input type="text" id="supplier-search" placeholder="企業名や担当者で検索..." style="padding-top: 0.6rem; padding-bottom: 0.6rem; border-radius: 20px;">
                 </div>
-                <div id="suppliers-count" style="color: var(--text-secondary); font-size: 0.9rem; font-weight: 500;">
-                    読み込み中...
+                <div id="suppliers-count" style="color: var(--text-secondary); font-size: 0.85rem; font-weight: 600;">
+                    読込中...
                 </div>
             </div>
 
             <div style="overflow-x: auto;">
-                <table style="width: 100%; min-width: 800px; border-collapse: collapse; text-align: left;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left;">
                     <thead>
-                        <tr style="border-bottom: 1px solid var(--border); color: var(--text-secondary); font-size: 0.9rem;">
+                        <tr style="background: white; border-bottom: 2px solid var(--border); color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase;">
                             <th style="padding: 1rem; font-weight: 600;">業者ID</th>
                             <th style="padding: 1rem; font-weight: 600;">企業名</th>
                             <th style="padding: 1rem; font-weight: 600;">担当店舗</th>
-                            <th style="padding: 1rem; font-weight: 600;">電話・連絡先</th>
-                            <th style="padding: 1rem; text-align: right; font-weight: 600;">アクション</th>
+                            <th style="padding: 1rem; font-weight: 600;">連絡先</th>
+                            <th style="padding: 1rem; text-align: right; font-weight: 600;">操作</th>
                         </tr>
                     </thead>
                     <tbody id="suppliers-table-body">
@@ -38,110 +61,154 @@ export const suppliersPageHtml = `
                 </table>
             </div>
         </div>
-        
-        <div id="supplier-modal" class="modal-overlay" style="display: none; position: fixed !important; inset: 0 !important; background: rgba(0,0,0,0.5) !important; z-index: 10000 !important; align-items: center; justify-content: center;">
-            <div class="glass-panel animate-scale-in" style="width: 100%; max-width: 500px; padding: 2rem;">
-                <button id="close-supplier-modal" style="position: absolute; right: 1.5rem; top: 1.5rem; background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-secondary);"><i class="fas fa-times"></i></button>
-                <h3 id="supplier-modal-title" style="margin-bottom: 1.5rem;">新規業者の登録</h3>
-                <form id="supplier-form">
-                    <input type="hidden" id="supplier-doc-id">
-                    <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 1rem;">
+    `;
+
+    document.getElementById('btn-add-supplier').onclick = () => {
+        editingSupplierData = null;
+        currentView = 'form';
+        renderView();
+    };
+
+    const searchInput = document.getElementById('supplier-search');
+    if (searchInput) {
+        searchInput.oninput = () => fetchAndRenderSuppliers(searchInput.value);
+    }
+
+    fetchAndRenderSuppliers();
+}
+
+function renderFormView(container) {
+    const isEdit = !!editingSupplierData;
+    container.innerHTML = `
+        <div class="glass-panel animate-fade-in" style="max-width: 700px; margin: 0 auto; padding: 0; overflow: hidden;">
+            <div style="padding: 1.5rem 2rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+                <h3 style="margin: 0; font-size: 1.25rem; color: #1e293b; display: flex; align-items: center; gap: 0.8rem;">
+                    <i class="fas ${isEdit ? 'fa-edit' : 'fa-plus-circle'}" style="color: var(--primary);"></i>
+                    ${isEdit ? '業者情報の編集' : '新規業者の登録'}
+                </h3>
+                <button id="btn-form-back" class="btn" style="background: white; border: 1px solid var(--border); color: var(--text-secondary);">
+                    <i class="fas fa-times"></i> キャンセル
+                </button>
+            </div>
+            
+            <div style="padding: 2.5rem;">
+                <form id="supplier-form" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                    <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 1.5rem;">
                         <div class="input-group">
-                            <label>業者ID</label>
-                            <input type="text" id="vendor-id" required placeholder="例: SUP-001">
+                            <label style="font-weight: 700; color: #475569;">業者ID</label>
+                            <input type="text" id="vendor-id" required placeholder="例: SUP-001" style="font-family: monospace;">
                         </div>
                         <div class="input-group">
-                            <label>企業名</label>
-                            <input type="text" id="vendor-name" required>
+                            <label style="font-weight: 700; color: #475569;">企業名</label>
+                            <input type="text" id="vendor-name" required placeholder="例: ○○食品株式会社">
                         </div>
                     </div>
-                    <div class="input-group">
-                        <label>担当者名</label>
-                        <input type="text" id="vendor-contact">
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                        <div class="input-group">
+                            <label style="font-weight: 700; color: #475569;">担当者名</label>
+                            <input type="text" id="vendor-contact" placeholder="例: 田中 太郎">
+                        </div>
+                        <div class="input-group">
+                            <label style="font-weight: 700; color: #475569;">電話番号・連絡先</label>
+                            <input type="text" id="vendor-phone" placeholder="03-xxxx-xxxx">
+                        </div>
                     </div>
+
                     <div class="input-group">
-                        <label>電話番号・連絡先</label>
-                        <input type="text" id="vendor-phone">
-                    </div>
-                    <div class="input-group">
-                        <label>担当店舗</label>
-                        <div id="responsible-stores-container" style="display: flex; flex-wrap: wrap; gap: 0.5rem; background: rgba(0,0,0,0.02); padding: 0.8rem; border-radius: 8px; border: 1px solid var(--border);">
+                        <label style="font-weight: 700; color: #475569;">担当店舗 (複数選択可)</label>
+                        <div id="responsible-stores-container" style="display: flex; flex-wrap: wrap; gap: 0.8rem; background: #f8fafc; padding: 1.2rem; border-radius: 12px; border: 1px solid var(--border);">
                             <!-- Stores injected here -->
                         </div>
                     </div>
+
                     <div class="input-group">
-                        <label>備考 (発注内容など)</label>
-                        <textarea id="vendor-remarks" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; min-height: 80px;"></textarea>
+                        <label style="font-weight: 700; color: #475569;">備考 (発注ルール、締日など)</label>
+                        <textarea id="vendor-remarks" style="width: 100%; padding: 1rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; min-height: 100px;" placeholder="特記事項があれば入力してください"></textarea>
                     </div>
-                    <button type="submit" class="btn btn-primary" style="width: 100%; padding: 1rem; margin-top: 1rem;"><i class="fas fa-save"></i> 保存する</button>
+
+                    <div style="display: flex; gap: 1rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
+                        <button type="button" id="btn-form-cancel" class="btn" style="flex: 1; background: #f1f5f9; color: var(--text-secondary); font-weight: 700;">キャンセル</button>
+                        <button type="submit" class="btn btn-primary" style="flex: 2; padding: 1rem; font-weight: 800; font-size: 1.1rem;">
+                            <i class="fas fa-save" style="margin-right: 0.5rem;"></i>
+                            業者情報を保存
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
-    </div>
-`;
+    `;
+
+    document.getElementById('btn-form-back').onclick = document.getElementById('btn-form-cancel').onclick = () => {
+        currentView = 'list';
+        renderView();
+    };
+
+    reloadStores().then(() => {
+        if (isEdit) {
+            document.getElementById('vendor-id').value = editingSupplierData.vendor_id || '';
+            document.getElementById('vendor-name').value = editingSupplierData.vendor_name || '';
+            document.getElementById('vendor-contact').value = editingSupplierData.contact_person || '';
+            document.getElementById('vendor-phone').value = editingSupplierData.phone || '';
+            document.getElementById('vendor-remarks').value = editingSupplierData.remarks || '';
+            
+            const selected = editingSupplierData.responsible_stores || [];
+            document.querySelectorAll('#responsible-stores-container input').forEach(cb => {
+                cb.checked = selected.includes(cb.value);
+            });
+        }
+    });
+
+    setupFormLogic();
+}
 
 export async function initSuppliersPage() {
-    await reloadStores(); // 店舗リスト取得
-    await fetchAndRenderSuppliers();
-    
-    const btnAdd = document.getElementById('btn-add-supplier');
-    const modal = document.getElementById('supplier-modal');
-    const btnClose = document.getElementById('close-supplier-modal');
+    renderView();
+}
+
+function setupFormLogic() {
     const form = document.getElementById('supplier-form');
-    
-    if(btnAdd && modal) {
-        btnAdd.addEventListener('click', () => {
-            if(form) form.reset();
-            document.querySelectorAll('#responsible-stores-container input').forEach(cb => cb.checked = false);
-            document.getElementById('supplier-doc-id').value = '';
-            document.getElementById('supplier-modal-title').textContent = '新規業者の登録';
-            modal.style.display = 'flex';
-        });
-        btnClose.addEventListener('click', () => modal.style.display = 'none');
-        modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
-    }
+    if (!form) return;
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        const btnSubmit = form.querySelector('button[type="submit"]');
+        btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
+        btnSubmit.disabled = true;
 
-    if(form) {
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btnSubmit = form.querySelector('button[type="submit"]');
-            btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
-            btnSubmit.disabled = true;
+        const docId = editingSupplierData ? editingSupplierData.id : null;
+        const selectedStores = Array.from(document.querySelectorAll('#responsible-stores-container input:checked')).map(cb => cb.value);
 
-            const docId = document.getElementById('supplier-doc-id').value;
-            const selectedStores = Array.from(document.querySelectorAll('#responsible-stores-container input:checked')).map(cb => cb.value);
+        const vendorData = {
+            vendor_id: document.getElementById('vendor-id').value,
+            vendor_name: document.getElementById('vendor-name').value,
+            contact_person: document.getElementById('vendor-contact').value,
+            phone: document.getElementById('vendor-phone').value,
+            responsible_stores: selectedStores,
+            remarks: document.getElementById('vendor-remarks').value,
+            updated_at: new Date().toISOString()
+        };
 
-            const vendorData = {
-                vendor_id: document.getElementById('vendor-id').value,
-                vendor_name: document.getElementById('vendor-name').value,
-                contact_person: document.getElementById('vendor-contact').value,
-                phone: document.getElementById('vendor-phone').value,
-                responsible_stores: selectedStores,
-                remarks: document.getElementById('vendor-remarks').value,
-                updated_at: new Date().toISOString()
-            };
-
-            try {
-                if (docId) { 
-                    await updateDoc(doc(db, "m_suppliers", docId), vendorData); 
-                } else { 
-                    await addDoc(collection(db, "m_suppliers"), vendorData); 
-                }
-                modal.style.display = 'none';
-                await fetchAndRenderSuppliers(); 
-                showAlert('成功', '業者情報を保存しました。');
-            } catch (err) {
-                console.error(err);
-                showAlert('エラー', '保存に失敗しました。');
-            } finally {
-                btnSubmit.innerHTML = '<i class="fas fa-save"></i> 保存する';
-                btnSubmit.disabled = false;
+        try {
+            if (docId) { 
+                await updateDoc(doc(db, "m_suppliers", docId), vendorData); 
+            } else { 
+                await addDoc(collection(db, "m_suppliers"), vendorData); 
             }
-        });
-    }
+            currentView = 'list';
+            renderView();
+            showAlert('成功', '業者情報を保存しました。');
+        } catch (err) {
+            console.error(err);
+            showAlert('エラー', '保存に失敗しました。');
+        } finally {
+            btnSubmit.innerHTML = '<i class="fas fa-save"></i> 保存する';
+            btnSubmit.disabled = false;
+        }
+    };
 }
 
 let cachedStores = [];
+// Re-cached for full-screen mode
 async function reloadStores() {
     const container = document.getElementById('responsible-stores-container');
     if (!container) return;
@@ -149,34 +216,41 @@ async function reloadStores() {
         const snap = await getDocs(collection(db, "m_stores"));
         cachedStores = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         container.innerHTML = cachedStores.map(s => `
-            <label style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.8rem; cursor: pointer; background: white; padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid var(--border);">
-                <input type="checkbox" value="${s.store_id || s.id}"> ${s.store_name || s.Name}
+            <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; cursor: pointer; background: white; padding: 0.3rem 0.6rem; border-radius: 6px; border: 1px solid var(--border); transition: all 0.2s;">
+                <input type="checkbox" value="${s.store_id || s.id}" style="width: 16px; height: 16px;"> ${s.store_name || s.Name}
             </label>
         `).join('');
     } catch(e) { console.error(e); }
 }
 
-async function fetchAndRenderSuppliers() {
+async function fetchAndRenderSuppliers(filter = "") {
     const tbody = document.getElementById('suppliers-table-body');
     const countLabel = document.getElementById('suppliers-count');
     if (!tbody) return;
 
     try {
         let querySnapshot = await getDocs(collection(db, "m_suppliers"));
-        let dataList = [];
+        cachedSuppliers = [];
         querySnapshot.forEach((doc) => {
-            dataList.push({ id: doc.id, ...doc.data() });
+            cachedSuppliers.push({ id: doc.id, ...doc.data() });
         });
 
-        countLabel.textContent = `全 ${dataList.length} 件`;
+        const filtered = cachedSuppliers.filter(s => {
+            const f = filter.toLowerCase();
+            return (s.vendor_name || '').toLowerCase().includes(f) || 
+                   (s.contact_person || '').toLowerCase().includes(f) ||
+                   (s.vendor_id || '').toLowerCase().includes(f);
+        });
 
-        if (dataList.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 2rem; color: var(--text-secondary);">データがありません</td></tr>';
+        countLabel.textContent = `表示中: ${filtered.length} / ${cachedSuppliers.length} 件`;
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 4rem; color: var(--text-secondary);">該当する業者が見つかりません</td></tr>';
             return;
         }
 
         tbody.innerHTML = '';
-        dataList.forEach(item => {
+        filtered.forEach(item => {
             const vendorId = item.vendor_id || '-';
             const vendorName = item.vendor_name || '-';
             const phone = item.phone || '-';
@@ -201,21 +275,9 @@ async function fetchAndRenderSuppliers() {
             tr.querySelector('.btn-edit-supplier').onclick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                document.getElementById('supplier-doc-id').value = item.id;
-                document.getElementById('vendor-id').value = item.vendor_id || '';
-                document.getElementById('vendor-name').value = item.vendor_name || '';
-                document.getElementById('vendor-contact').value = item.contact_person || '';
-                document.getElementById('vendor-phone').value = item.phone || '';
-                document.getElementById('vendor-remarks').value = item.remarks || '';
-                
-                // チェックボックス復元
-                const selected = item.responsible_stores || [];
-                document.querySelectorAll('#responsible-stores-container input').forEach(cb => {
-                    cb.checked = selected.includes(cb.value);
-                });
-
-                document.getElementById('supplier-modal-title').textContent = '業者の編集';
-                document.getElementById('supplier-modal').style.display = 'flex';
+                editingSupplierData = item;
+                currentView = 'form';
+                renderView();
             };
 
             tr.querySelector('.btn-delete-supplier').onclick = (e) => {
