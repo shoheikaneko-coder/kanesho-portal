@@ -103,19 +103,53 @@ function renderListView(container) {
 function renderFormView(container) {
     const isEdit = !!editingSupplierData;
 
+    function createDropdownHtml(idPrefix, title, options, selectedValues, allowAdd = false) {
+        const isChecked = (val) => selectedValues.includes(val);
+        const optionsHtml = options.map(opt => `
+            <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; padding: 0.6rem 0.8rem; background: ${isChecked(opt.value) ? '#eff6ff' : 'white'}; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; font-weight: 600; color: #475569; transition: background 0.2s;">
+                <input type="checkbox" value="${opt.value}" data-label="${opt.label}" style="width: 16px; height: 16px;" ${isChecked(opt.value) ? 'checked' : ''}>
+                ${opt.label}
+            </label>
+        `).join('');
+
+        return `
+            <div class="input-group compact-input">
+                <label style="font-weight: 700; color: #475569; font-size: 0.8rem;">${title}</label>
+                <div id="${idPrefix}-dropdown-wrapper" class="custom-multi-select" style="position: relative; width: 100%;">
+                    <div id="${idPrefix}-dropdown-header" style="flex: 1; padding: 0.6rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.95rem; background: white; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                        <span id="${idPrefix}-dropdown-text" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%; color: #94a3b8">（読込中）</span>
+                        <span class="fas fa-chevron-down" style="color: #94a3b8; font-size: 0.8rem; flex-shrink: 0;"></span>
+                    </div>
+                    <div id="${idPrefix}-dropdown-menu" style="display: none; position: absolute; top: 100%; left: 0; width: 100%; margin-top: 0.2rem; background: white; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); z-index: 1000; max-height: 250px; overflow-y: auto; flex-direction: column;">
+                        <div id="${idPrefix}-container" class="dropdown-options-container" style="display: flex; flex-direction: column;">
+                            ${optionsHtml}
+                        </div>
+                        ${allowAdd ? `
+                        <div style="padding: 0.6rem 0.8rem; background: #f8fafc; border-top: 1px solid var(--border); position: sticky; bottom: 0;">
+                            <button type="button" id="btn-add-${idPrefix}" class="btn" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px dashed var(--primary); background: transparent; color: var(--primary); font-size: 0.85rem; font-weight: 700;">
+                                <span class="fas fa-plus"></span> 新規追加
+                            </button>
+                        </div>` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     const defaultCategories = ["魚", "肉", "ドリンク", "スーパー", "備品", "野菜", "調味料"];
     const savedCategories = isEdit && editingSupplierData.categories ? editingSupplierData.categories : [];
     const allCategories = [...new Set([...defaultCategories, ...savedCategories])];
-    
-    const categoriesHtml = allCategories.map(cat => {
-        const isChecked = savedCategories.includes(cat);
-        return `
-            <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; padding: 0.6rem 0.8rem; background: white; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; font-weight: 600; color: #475569; transition: background 0.2s;">
-                <input type="checkbox" class="category-checkbox" value="${cat}" style="width: 16px; height: 16px;" ${isChecked ? 'checked' : ''}>
-                ${cat}
-            </label>
-        `;
-    }).join('');
+    const categoriesOptions = allCategories.map(c => ({ value: c, label: c }));
+
+    const deliveryOptions = [
+        { value: 'delivery', label: '配達' },
+        { value: 'market_pickup', label: '市場受取' },
+        { value: 'store_buy', label: '店舗買付' }
+    ];
+    const savedDeliveries = editingSupplierData?.delivery_methods || [];
+
+    const storesOptions = cachedStores.map(s => ({ value: s.store_id || s.id, label: s.store_name || s.Name }));
+    const savedStores = editingSupplierData?.responsible_stores || [];
 
     container.innerHTML = `
         <div class="glass-panel animate-fade-in" style="max-width: 700px; margin: 0 auto; padding: 0; overflow: hidden;">
@@ -167,25 +201,7 @@ function renderFormView(container) {
                                 取引・発注設定
                             </h4>
 
-                            <div class="input-group compact-input">
-                                <label style="font-weight: 700; color: #475569; font-size: 0.8rem;">取り扱いカテゴリー (複数選択可)</label>
-                                <div id="category-dropdown-wrapper" style="position: relative; width: 100%;">
-                                    <div id="category-dropdown-header" style="flex: 1; padding: 0.6rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.95rem; background: white; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
-                                        <span id="category-dropdown-text">${savedCategories.length > 0 ? savedCategories.length + ' カテゴリーを選択中' : '（選択してください）'}</span>
-                                        <span class="fas fa-chevron-down" style="color: #94a3b8; font-size: 0.8rem;"></span>
-                                    </div>
-                                    <div id="category-dropdown-menu" style="display: none; position: absolute; top: 100%; left: 0; width: 100%; margin-top: 0.2rem; background: white; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); z-index: 1000; max-height: 250px; overflow-y: auto; flex-direction: column;">
-                                        <div id="vendor-categories-container" style="display: flex; flex-direction: column;">
-                                            ${categoriesHtml}
-                                        </div>
-                                        <div style="padding: 0.6rem 0.8rem; background: #f8fafc; border-top: 1px solid var(--border); position: sticky; bottom: 0;">
-                                            <button type="button" id="btn-add-category" class="btn" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px dashed var(--primary); background: transparent; color: var(--primary); font-size: 0.85rem; font-weight: 700;">
-                                                <span class="fas fa-plus"></span> 新規追加
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            ${createDropdownHtml('cat', '取り扱いカテゴリー (複数選択可)', categoriesOptions, savedCategories, true)}
                             
                             <div class="input-group compact-input">
                                 <label style="font-weight: 700; color: #475569; font-size: 0.8rem;">発注方法</label>
@@ -199,27 +215,8 @@ function renderFormView(container) {
                                 </select>
                             </div>
 
-                            <div class="input-group compact-input">
-                                <label style="font-weight: 700; color: #475569; font-size: 0.8rem;">納品方法 (複数選択可)</label>
-                                <div id="delivery-methods-container" style="display: flex; flex-wrap: wrap; gap: 0.8rem; background: white; padding: 1rem; border-radius: 8px; border: 1px solid var(--border);">
-                                    <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; font-size: 0.9rem;">
-                                        <input type="checkbox" value="delivery" name="delivery_method"> 配達
-                                    </label>
-                                    <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; font-size: 0.9rem;">
-                                        <input type="checkbox" value="market_pickup" name="delivery_method"> 市場受取
-                                    </label>
-                                    <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; font-size: 0.9rem;">
-                                        <input type="checkbox" value="store_buy" name="delivery_method"> 店舗買付
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div class="input-group compact-input" style="margin-bottom: 0;">
-                                <label style="font-weight: 700; color: #475569; font-size: 0.8rem;">担当店舗 (複数選択可)</label>
-                                <div id="responsible-stores-container" style="display: flex; flex-wrap: wrap; gap: 0.8rem; background: white; padding: 1rem; border-radius: 8px; border: 1px solid var(--border); max-height: 150px; overflow-y: auto;">
-                                    <!-- Stores injected here -->
-                                </div>
-                            </div>
+                            ${createDropdownHtml('del', '納品方法 (複数選択可)', deliveryOptions, savedDeliveries, false)}
+                            ${createDropdownHtml('store', '担当店舗 (複数選択可)', storesOptions, savedStores, false)}
                         </section>
 
                         <!-- ボタン類 -->
@@ -241,74 +238,81 @@ function renderFormView(container) {
         renderView();
     };
 
-    reloadStores().then(() => {
-        if (isEdit) {
-            document.getElementById('vendor-id').value = editingSupplierData.vendor_id || '';
-            document.getElementById('vendor-name').value = editingSupplierData.vendor_name || '';
-            document.getElementById('vendor-contact').value = editingSupplierData.contact_person || '';
-            document.getElementById('vendor-phone').value = editingSupplierData.phone || '';
-            document.getElementById('vendor-remarks').value = editingSupplierData.remarks || '';
-            document.getElementById('vendor-order-method').value = editingSupplierData.order_method || '';
-            
-            const selectedStores = editingSupplierData.responsible_stores || [];
-            document.querySelectorAll('#responsible-stores-container input').forEach(cb => {
-                cb.checked = selectedStores.includes(cb.value);
-            });
+    if (isEdit) {
+        document.getElementById('vendor-id').value = editingSupplierData.vendor_id || '';
+        document.getElementById('vendor-name').value = editingSupplierData.vendor_name || '';
+        document.getElementById('vendor-contact').value = editingSupplierData.contact_person || '';
+        document.getElementById('vendor-phone').value = editingSupplierData.phone || '';
+        document.getElementById('vendor-remarks').value = editingSupplierData.remarks || '';
+        document.getElementById('vendor-order-method').value = editingSupplierData.order_method || '';
+    }
 
-            const selectedDeliveries = editingSupplierData.delivery_methods || [];
-            document.querySelectorAll('#delivery-methods-container input').forEach(cb => {
-                cb.checked = selectedDeliveries.includes(cb.value);
-            });
+    function setupDropdowns() {
+        function updateDropdownText(wrapper) {
+            const textSpan = wrapper.querySelector('[id$="-dropdown-text"]');
+            const checkedBoxes = Array.from(wrapper.querySelectorAll('input[type="checkbox"]:checked'));
+            if (checkedBoxes.length === 0) {
+                textSpan.textContent = '（選択してください）';
+                textSpan.style.color = '#94a3b8';
+            } else if (checkedBoxes.length <= 2) {
+                textSpan.textContent = checkedBoxes.map(cb => cb.dataset.label).join(', ');
+                textSpan.style.color = '#0f172a';
+            } else {
+                textSpan.textContent = checkedBoxes.length + '項目を選択中';
+                textSpan.style.color = '#0f172a';
+            }
         }
-    });
 
-    const dropdownHeader = document.getElementById('category-dropdown-header');
-    const dropdownMenu = document.getElementById('category-dropdown-menu');
-    const dropdownText = document.getElementById('category-dropdown-text');
-    const catContainer = document.getElementById('vendor-categories-container');
+        document.querySelectorAll('.custom-multi-select').forEach(wrapper => {
+            const header = wrapper.querySelector('[id$="-dropdown-header"]');
+            const menu = wrapper.querySelector('[id$="-dropdown-menu"]');
+            const container = wrapper.querySelector('.dropdown-options-container');
 
-    if (dropdownHeader && dropdownMenu && catContainer) {
-        // Toggle dropdown open/close
-        dropdownHeader.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const isOpen = dropdownMenu.style.display === 'flex';
-            dropdownMenu.style.display = isOpen ? 'none' : 'flex';
-            dropdownHeader.querySelector('span.fas').className = isOpen ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
+            updateDropdownText(wrapper);
+
+            header.addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.querySelectorAll('.custom-multi-select [id$="-dropdown-menu"]').forEach(m => {
+                    if (m !== menu) {
+                        m.style.display = 'none';
+                        m.previousElementSibling.querySelector('span.fas').className = 'fas fa-chevron-down';
+                    }
+                });
+
+                const isOpen = menu.style.display === 'flex';
+                menu.style.display = isOpen ? 'none' : 'flex';
+                header.querySelector('span.fas').className = isOpen ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
+            });
+
+            container.addEventListener('change', (e) => {
+                if (e.target.type === 'checkbox') {
+                    const label = e.target.closest('label');
+                    label.style.background = e.target.checked ? '#eff6ff' : 'white';
+                    updateDropdownText(wrapper);
+                }
+            });
         });
 
-        // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {
-            if (!document.getElementById('category-dropdown-wrapper').contains(e.target)) {
-                dropdownMenu.style.display = 'none';
-                dropdownHeader.querySelector('span.fas').className = 'fas fa-chevron-down';
+            if (!e.target.closest('.custom-multi-select')) {
+                document.querySelectorAll('.custom-multi-select [id$="-dropdown-menu"]').forEach(m => {
+                    m.style.display = 'none';
+                    m.previousElementSibling.querySelector('span.fas').className = 'fas fa-chevron-down';
+                });
             }
         });
 
-        // Selection update logic
-        catContainer.addEventListener('change', (e) => {
-            if (e.target.type === 'checkbox') {
-                const label = e.target.closest('label');
-                label.style.background = e.target.checked ? '#eff6ff' : 'white';
-                
-                const checkedCount = catContainer.querySelectorAll('input[type="checkbox"]:checked').length;
-                dropdownText.textContent = checkedCount > 0 ? checkedCount + ' カテゴリーを選択中' : '（選択してください）';
-            }
-        });
-
-        // Checkbox initial state styling
-        catContainer.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
-            cb.closest('label').style.background = '#eff6ff';
-        });
-
-        // Add new category directly to inner checkbox array
-        const btnAddCat = document.getElementById('btn-add-category');
+        const btnAddCat = document.getElementById('btn-add-cat');
         if (btnAddCat) {
             btnAddCat.addEventListener('click', (e) => {
-                e.stopPropagation(); // Keep menu open
+                e.stopPropagation();
                 const newCat = prompt('新しいカテゴリー名を最大10文字程度で入力してください:');
                 if (!newCat) return;
                 const trimmedCat = newCat.trim();
                 if (!trimmedCat) return;
+                
+                const catContainer = document.getElementById('cat-container');
+                const wrapper = catContainer.closest('.custom-multi-select');
                 
                 const existing = Array.from(catContainer.querySelectorAll('input[type="checkbox"]')).map(cb => cb.value);
                 if (existing.includes(trimmedCat)) {
@@ -318,18 +322,17 @@ function renderFormView(container) {
 
                 const label = document.createElement('label');
                 label.style.cssText = 'display: flex; align-items: center; gap: 0.6rem; cursor: pointer; padding: 0.6rem 0.8rem; background: #eff6ff; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; font-weight: 600; color: #475569; transition: background 0.2s;';
-                label.innerHTML = `<input type="checkbox" class="category-checkbox" value="${trimmedCat}" style="width: 16px; height: 16px;" checked> ${trimmedCat}`;
+                label.innerHTML = `<input type="checkbox" value="${trimmedCat}" data-label="${trimmedCat}" style="width: 16px; height: 16px;" checked> ${trimmedCat}`;
                 catContainer.appendChild(label);
                 
-                const checkedCount = catContainer.querySelectorAll('input[type="checkbox"]:checked').length;
-                dropdownText.textContent = checkedCount > 0 ? checkedCount + ' カテゴリーを選択中' : '（選択してください）';
-                
-                // scroll to bottom to show newly appended item
-                dropdownMenu.scrollTop = dropdownMenu.scrollHeight;
+                updateDropdownText(wrapper);
+                const menu = document.getElementById('cat-dropdown-menu');
+                menu.scrollTop = menu.scrollHeight;
             });
         }
     }
 
+    setupDropdowns();
     setupFormLogic();
 }
 
@@ -385,9 +388,9 @@ function setupFormLogic() {
         const docId = editingSupplierData ? editingSupplierData.id : null;
         
         // Use optional chaining / safe selections for resilience
-        const selectedCategories = Array.from(document.querySelectorAll('#vendor-categories-container input[type="checkbox"]:checked')).map(cb => cb.value);
-        const selectedStores = Array.from(document.querySelectorAll('#responsible-stores-container input:checked')).map(cb => cb.value);
-        const selectedDeliveries = Array.from(document.querySelectorAll('#delivery-methods-container input:checked')).map(cb => cb.value);
+        const selectedCategories = Array.from(document.querySelectorAll('#cat-container input:checked')).map(cb => cb.value);
+        const selectedStores = Array.from(document.querySelectorAll('#store-container input:checked')).map(cb => cb.value);
+        const selectedDeliveries = Array.from(document.querySelectorAll('#del-container input:checked')).map(cb => cb.value);
 
         const vendorData = {
             vendor_id: document.getElementById('vendor-id').value,
@@ -428,15 +431,6 @@ async function reloadStores() {
             const snap = await getDocs(collection(db, "m_stores"));
             cachedStores = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         }
-
-        const container = document.getElementById('responsible-stores-container');
-        if (!container) return;
-        
-        container.innerHTML = cachedStores.map(s => `
-            <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; cursor: pointer; background: white; padding: 0.3rem 0.6rem; border-radius: 6px; border: 1px solid var(--border); transition: all 0.2s;">
-                <input type="checkbox" value="${s.store_id || s.id}" style="width: 16px; height: 16px;"> ${s.store_name || s.Name}
-            </label>
-        `).join('');
     } catch(e) { console.error(e); }
 }
 
