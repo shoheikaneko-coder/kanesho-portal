@@ -621,9 +621,20 @@ p { color: var(--text-secondary); line-height: 1.5; }
     gap: 2.5rem;
 }
 
+/* Compact Desktop 2-Column Layout */
+.compact-desktop .desktop-2col-layout {
+    display: grid;
+    grid-template-columns: 1fr 1.05fr; /* Right side slightly wider for settings */
+    gap: 2rem;
+    align-items: stretch;
+}
+
 @media (max-width: 1024px) {
-    .product-form-grid {
-        grid-template-columns: 1fr;
+    .product-form-grid,
+    .compact-desktop .desktop-2col-layout {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
     }
 }
 
