@@ -641,6 +641,16 @@ p { color: var(--text-secondary); line-height: 1.5; }
         flex-direction: column !important;
         gap: 1.5rem !important;
     }
+    .product-edit-split .form-col-left,
+    .product-edit-split .form-col-right {
+        width: 100% !important;
+    }
+    .pro-compact-form section {
+        padding: 0.8rem !important;
+    }
+    .form-wrapper {
+        padding: 0.8rem !important;
+    }
 }
 
 /* Pro Compact Form (Desktop only tweaks for single-screen view) */
