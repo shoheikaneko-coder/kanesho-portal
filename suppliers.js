@@ -57,6 +57,7 @@ function renderListView(container) {
                     <thead>
                         <tr style="background: white; border-bottom: 2px solid var(--border); color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase;">
                             <th style="padding: 1rem; font-weight: 600;">企業名</th>
+                            <th style="padding: 1rem; font-weight: 600;">カテゴリ</th>
                             <th style="padding: 1rem; font-weight: 600;">担当店舗</th>
                             <th style="padding: 1rem; font-weight: 600;">連絡先</th>
                             <th style="padding: 1rem; text-align: right; font-weight: 600;">操作</th>
@@ -215,12 +216,22 @@ function renderFormView(container) {
                         </section>
 
                         <!-- ボタン類 -->
-                        <div class="mobile-fixed-bottom desktop-actions" style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: auto;">
-                            <button type="button" id="btn-form-cancel" class="btn" style="flex: 1; max-width: 140px; background: #f8fafc; color: #64748b; font-weight: 700; padding: 1rem; border: 1px solid #e2e8f0; font-size: 0.95rem;"><i class="fas fa-times" style="margin-right: 0.4rem;"></i> キャンセル</button>
-                            <button type="submit" class="btn btn-primary" style="flex: 2; background: linear-gradient(135deg, #059669, #10b981); color: white; font-weight: 800; padding: 1rem; font-size: 1rem; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);">
-                                <i class="fas fa-save" style="margin-right: 0.4rem;"></i>
-                                業者情報を保存
-                            </button>
+                        <div class="mobile-fixed-bottom desktop-actions" style="display: flex; gap: 1rem; align-items: center; margin-top: auto; width: 100%;">
+                            ${isEdit ? `
+                            <button type="button" id="btn-form-delete" class="btn" style="background: transparent; color: #ef4444; border: 1px solid #fee2e2; font-weight: 600; padding: 0.8rem 1.2rem; font-size: 0.9rem; transition: all 0.2s;">
+                                <i class="fas fa-trash-alt" style="margin-right: 0.4rem;"></i>
+                                この業者を削除
+                            </button>` : '<div></div>'}
+                            
+                            <div style="margin-left: auto; display: flex; gap: 1rem;">
+                                <button type="button" id="btn-form-cancel" class="btn" style="min-width: 120px; background: #f8fafc; color: #64748b; font-weight: 700; padding: 1rem; border: 1px solid #e2e8f0; font-size: 0.95rem;">
+                                    <i class="fas fa-times" style="margin-right: 0.4rem;"></i> キャンセル
+                                </button>
+                                <button type="submit" class="btn btn-primary" style="min-width: 180px; background: linear-gradient(135deg, #059669, #10b981); color: white; font-weight: 800; padding: 1rem; font-size: 1rem; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);">
+                                    <i class="fas fa-save" style="margin-right: 0.4rem;"></i>
+                                    業者情報を保存
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </form>
@@ -239,6 +250,29 @@ function renderFormView(container) {
         document.getElementById('vendor-phone').value = editingSupplierData.phone || '';
         document.getElementById('vendor-remarks').value = editingSupplierData.remarks || '';
         document.getElementById('vendor-order-method').value = editingSupplierData.order_method || '';
+
+        const btnDel = document.getElementById('btn-form-delete');
+        if (btnDel) {
+            btnDel.onclick = () => {
+                const currentVendorName = editingSupplierData.vendor_name || '';
+                showConfirm('業者の削除', `業者「${currentVendorName}」を削除してもよろしいですか？\nこの業者を削除すると、紐付いている商品マスタの仕入先設定も解除されます。本当によろしいですか？`, async () => {
+                    try {
+                        btnDel.disabled = true;
+                        btnDel.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 削除中...';
+                        await deleteDoc(doc(db, "m_suppliers", editingSupplierData.id));
+                        await fetchSuppliersData();
+                        currentView = 'list';
+                        renderView();
+                        showAlert('成功', '削除しました。');
+                    } catch (error) {
+                        console.error(error);
+                        showAlert('エラー', '削除に失敗しました。');
+                        btnDel.disabled = false;
+                        btnDel.innerHTML = '<i class="fas fa-trash-alt"></i> この業者を削除';
+                    }
+                });
+            };
+        }
     }
 
     function setupDropdowns() {
@@ -463,7 +497,7 @@ function renderTable(filter = "") {
         renderPagination(totalPages, filter);
 
         if (itemsToShow.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 4rem; color: var(--text-secondary);">該当する業者が見つかりません</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 4rem; color: var(--text-secondary);">該当する業者が見つかりません</td></tr>';
             return;
         }
 
@@ -471,6 +505,9 @@ function renderTable(filter = "") {
             const vendorId = item.vendor_id || '-';
             const vendorName = item.vendor_name || '-';
             const phone = item.phone || '-';
+            const categoriesHtml = (item.categories || []).map(c => `
+                <span style="display: inline-block; padding: 0.2rem 0.5rem; background: #f1f5f9; color: #475569; border-radius: 4px; font-size: 0.75rem; font-weight: 600; margin-right: 0.3rem; margin-bottom: 0.2rem;">${c}</span>
+            `).join('');
             const stores = (item.responsible_stores || []).map(sid => {
                 const s = cachedStores.find(cs => (cs.store_id || cs.id) === sid);
                 return s ? (s.store_name || s.Name) : sid;
@@ -481,11 +518,11 @@ function renderTable(filter = "") {
             tr.style.transition = 'background 0.2s';
             tr.innerHTML = `
                 <td style="padding: 1rem; font-weight: 600;">${vendorName}</td>
+                <td style="padding: 1rem;">${categoriesHtml || '<span style="color:#cbd5e1">-</span>'}</td>
                 <td style="padding: 1rem; color: var(--text-secondary); font-size: 0.85rem;">${stores || '未設定'}</td>
                 <td style="padding: 1rem; color: var(--text-secondary); font-size: 0.9rem;">${phone}</td>
                 <td style="padding: 1rem; text-align: right;">
                     <button class="btn btn-edit-supplier" style="padding: 0.4rem; background: transparent; color: var(--text-secondary);" title="編集"><i class="fas fa-edit"></i></button>
-                    <button class="btn btn-delete-supplier" style="padding: 0.4rem; background: transparent; color: var(--danger);" title="削除"><i class="fas fa-trash-alt"></i></button>
                 </td>
             `;
 
@@ -496,33 +533,11 @@ function renderTable(filter = "") {
                 currentView = 'form';
                 renderView();
             };
-
-            tr.querySelector('.btn-delete-supplier').onclick = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const btn = e.currentTarget;
-                const currentVendorName = item.vendor_name || '';
-                showConfirm('業者の削除', `業者「${currentVendorName}」を削除してもよろしいですか？`, async () => {
-                    try {
-                        btn.disabled = true;
-                        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                        await deleteDoc(doc(db, "m_suppliers", item.id));
-                        await fetchSuppliersData();
-                        renderTable(filter);
-                        showAlert('成功', '削除しました。');
-                    } catch (error) {
-                        console.error(error);
-                        showAlert('エラー', '削除に失敗しました。');
-                        btn.disabled = false;
-                        btn.innerHTML = '<i class="fas fa-trash-alt"></i>';
-                    }
-                });
-            };
             tbody.appendChild(tr);
         });
     } catch (error) {
         console.error('Error rendering vendors list:', error);
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 2rem; color: var(--danger);"><i class="fas fa-exclamation-triangle"></i> エラーが発生しました</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 2rem; color: var(--danger);"><i class="fas fa-exclamation-triangle"></i> エラーが発生しました</td></tr>';
     }
 }
 
