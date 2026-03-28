@@ -805,48 +805,6 @@ function renderTable(filter = "") {
             renderView();
         };
 
-        tr.querySelector('.btn-delete').onclick = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const isAdmin = currentUser?.Role === 'Admin' || currentUser?.Role === '管理者';
-
-            if (isAdmin) {
-                showConfirm('アイテムの削除', `「${item.name}」を完全に削除しますか？\n(関連するすべてのデータが削除されます)`, async () => {
-                    try {
-                        await Promise.all([
-                            deleteDoc(doc(db, "m_items", item.id)),
-                            deleteDoc(doc(db, "m_ingredients", item.id)),
-                            deleteDoc(doc(db, "m_menus", item.id))
-                        ]);
-                        await reloadData();
-                        renderTable();
-                        showAlert('成功', '削除しました。');
-                    } catch(err) {
-                        showAlert('エラー', '削除に失敗しました。');
-                    }
-                });
-            } else {
-                showConfirm('削除申請', `「${item.name}」の削除を管理者に申請しますか？`, async () => {
-                    try {
-                        await addDoc(collection(db, "notifications"), {
-                            type: 'deletion_request',
-                            page: 'products',
-                            target_id: item.id,
-                            target_name: item.name,
-                            requester_id: currentUser?.id || 'unknown',
-                            requester_name: currentUser?.Name || '不明',
-                            status: 'pending',
-                            created_at: new Date().toISOString()
-                        });
-                        showAlert('申請完了', '削除申請を送信しました。管理者の承認をお待ちください。');
-                    } catch(err) {
-                        console.error(err);
-                        showAlert('エラー', '申請に失敗しました。');
-                    }
-                });
-            }
-        };
-
         tbody.appendChild(tr);
     });
 }
