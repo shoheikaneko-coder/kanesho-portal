@@ -88,7 +88,7 @@ function renderFormView(container) {
                                 <textarea id="item-notes" placeholder="仕入れ時の注意点、小分けのルール、レシピの提供手順など" style="flex: 1; height: 0; min-height: 120px; resize: none; width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem;">${isEdit ? (editingItemData.notes || '') : ''}</textarea>
                             </div>
                         </section>
-                    </div>
+                    </div>  <!-- form-col-left closed -->
 
                     <!-- 右カラム: 金額設定・ボタン -->
                     <div class="form-col-right" style="flex: 1; display: flex; flex-direction: column; gap: 1.5rem;">
@@ -187,10 +187,9 @@ function renderFormView(container) {
                                     <span style="font-size: 0.9rem; font-weight: 700; color: #166534;">¥</span>
                                     <input type="text" id="ing-net-unit-price" readonly value="0.00" 
                                            style="border: none; background: transparent; font-size: 1.6rem; font-weight: 900; color: #166534; font-family: monospace; padding: 0; width: 100%; outline: none;" tabIndex="-1">
-                                </div>
                             </div>
                         </section>
-
+                    </div> <!-- form-col-right closed -->
                 </form>
 
                 <!-- ボタンエリア (フッター) -->
