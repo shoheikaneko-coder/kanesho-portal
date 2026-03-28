@@ -195,9 +195,10 @@ function renderFormView(container) {
 
                 <!-- ボタンエリア (フッター) -->
                 <div class="mobile-fixed-bottom desktop-actions" style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; width: 100%; padding: 0.5rem 0;">
+                    ${isEdit ? `
                     <div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start;">
                         <span style="font-size: 0.75rem; color: #94a3b8; margin-left: 0.2rem;">
-                            ${isEdit ? (editingItemData.updated_at ? `最終更新: ${new Date(editingItemData.updated_at).toLocaleDateString('ja-JP')}` : '最終更新: -') : '新規アイテム登録'}
+                            ${editingItemData.updated_at ? `最終更新: ${new Date(editingItemData.updated_at).toLocaleDateString('ja-JP')}` : '最終更新: -'}
                         </span>
                         <button type="button" id="btn-form-delete" class="btn" style="height: 48px; min-width: 160px; background: white; color: #ef4444; border: 1px solid #fee2e2; font-weight: 600; font-size: 0.9rem; transition: all 0.2s; white-space: nowrap;">
                             <i class="fas fa-trash-alt" style="margin-right: 0.4rem;"></i>
