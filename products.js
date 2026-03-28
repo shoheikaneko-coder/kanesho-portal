@@ -134,9 +134,9 @@ function renderFormView(container) {
                             </div>
                             <div class="input-group compact-input" style="margin-bottom: 1rem;">
                                 <label style="font-size: 0.8rem; font-weight: 700;">デフォルト仕入先</label>
-                                <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                    <select id="ing-vendor-id" style="width: calc(50% - 0.5rem); flex: none; padding: 0.6rem; border-radius: 8px; border: 1px solid var(--border); font-size:0.9rem;"></select>
-                                    <a href="?page=suppliers" target="_blank" style="color: #475569; font-size: 1.2rem; cursor: pointer; text-decoration: none;" title="業者マスタを開く">
+                                <div style="display: flex; gap: 0.5rem; align-items: center; width: 100%;">
+                                    <select id="ing-vendor-id" style="width: calc(100% - 40px); flex: none; padding: 0.6rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.9rem;"></select>
+                                    <a href="index.html?page=suppliers" target="_blank" style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; color: #64748b; font-size: 1.2rem; text-decoration: none;" title="別タブで業者マスタを開く">
                                         <i class="fas fa-cog"></i>
                                     </a>
                                 </div>
