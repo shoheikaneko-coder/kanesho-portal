@@ -109,12 +109,9 @@ function renderFormView(container) {
     
     const categoriesHtml = allCategories.map(cat => {
         const isChecked = savedCategories.includes(cat);
-        const bg = isChecked ? '#2563EB' : 'white';
-        const color = isChecked ? 'white' : '#64748b';
-        const border = isChecked ? '#2563EB' : '#e2e8f0';
         return `
-            <label class="category-pill" style="display: inline-block; padding: 0.4rem 0.8rem; border-radius: 20px; border: 1px solid ${border}; background: ${bg}; color: ${color}; font-size: 0.85rem; cursor: pointer; font-weight: 600; transition: all 0.2s; user-select: none;">
-                <input type="checkbox" value="${cat}" style="display: none;" ${isChecked ? 'checked' : ''}>
+            <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; padding: 0.6rem 0.8rem; background: white; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; font-weight: 600; color: #475569; transition: background 0.2s;">
+                <input type="checkbox" class="category-checkbox" value="${cat}" style="width: 16px; height: 16px;" ${isChecked ? 'checked' : ''}>
                 ${cat}
             </label>
         `;
@@ -172,11 +169,21 @@ function renderFormView(container) {
 
                             <div class="input-group compact-input">
                                 <label style="font-weight: 700; color: #475569; font-size: 0.8rem;">取り扱いカテゴリー (複数選択可)</label>
-                                <div id="vendor-categories-container" style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
-                                    ${categoriesHtml}
-                                    <button type="button" id="btn-add-category" class="btn" style="padding: 0.4rem 0.8rem; border-radius: 20px; border: 1px dashed var(--primary); background: transparent; color: var(--primary); font-size: 0.85rem; font-weight: 700;">
-                                        <i class="fas fa-plus"></i> 追加
-                                    </button>
+                                <div id="category-dropdown-wrapper" style="position: relative; width: 100%;">
+                                    <div id="category-dropdown-header" style="flex: 1; padding: 0.6rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.95rem; background: white; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                                        <span id="category-dropdown-text">${savedCategories.length > 0 ? savedCategories.length + ' カテゴリーを選択中' : '（選択してください）'}</span>
+                                        <span class="fas fa-chevron-down" style="color: #94a3b8; font-size: 0.8rem;"></span>
+                                    </div>
+                                    <div id="category-dropdown-menu" style="display: none; position: absolute; top: 100%; left: 0; width: 100%; margin-top: 0.2rem; background: white; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); z-index: 1000; max-height: 250px; overflow-y: auto; flex-direction: column;">
+                                        <div id="vendor-categories-container" style="display: flex; flex-direction: column;">
+                                            ${categoriesHtml}
+                                        </div>
+                                        <div style="padding: 0.6rem 0.8rem; background: #f8fafc; border-top: 1px solid var(--border); position: sticky; bottom: 0;">
+                                            <button type="button" id="btn-add-category" class="btn" style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px dashed var(--primary); background: transparent; color: var(--primary); font-size: 0.85rem; font-weight: 700;">
+                                                <span class="fas fa-plus"></span> 新規追加
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -255,26 +262,49 @@ function renderFormView(container) {
         }
     });
 
+    const dropdownHeader = document.getElementById('category-dropdown-header');
+    const dropdownMenu = document.getElementById('category-dropdown-menu');
+    const dropdownText = document.getElementById('category-dropdown-text');
     const catContainer = document.getElementById('vendor-categories-container');
-    if (catContainer) {
-        catContainer.addEventListener('change', (e) => {
-            if (e.target.type === 'checkbox') {
-                const label = e.target.closest('label');
-                if (e.target.checked) {
-                    label.style.background = '#2563EB';
-                    label.style.color = 'white';
-                    label.style.borderColor = '#2563EB';
-                } else {
-                    label.style.background = 'white';
-                    label.style.color = '#64748b';
-                    label.style.borderColor = '#e2e8f0';
-                }
+
+    if (dropdownHeader && dropdownMenu && catContainer) {
+        // Toggle dropdown open/close
+        dropdownHeader.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = dropdownMenu.style.display === 'flex';
+            dropdownMenu.style.display = isOpen ? 'none' : 'flex';
+            dropdownHeader.querySelector('span.fas').className = isOpen ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!document.getElementById('category-dropdown-wrapper').contains(e.target)) {
+                dropdownMenu.style.display = 'none';
+                dropdownHeader.querySelector('span.fas').className = 'fas fa-chevron-down';
             }
         });
 
+        // Selection update logic
+        catContainer.addEventListener('change', (e) => {
+            if (e.target.type === 'checkbox') {
+                const label = e.target.closest('label');
+                label.style.background = e.target.checked ? '#eff6ff' : 'white';
+                
+                const checkedCount = catContainer.querySelectorAll('input[type="checkbox"]:checked').length;
+                dropdownText.textContent = checkedCount > 0 ? checkedCount + ' カテゴリーを選択中' : '（選択してください）';
+            }
+        });
+
+        // Checkbox initial state styling
+        catContainer.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+            cb.closest('label').style.background = '#eff6ff';
+        });
+
+        // Add new category directly to inner checkbox array
         const btnAddCat = document.getElementById('btn-add-category');
         if (btnAddCat) {
-            btnAddCat.addEventListener('click', () => {
+            btnAddCat.addEventListener('click', (e) => {
+                e.stopPropagation(); // Keep menu open
                 const newCat = prompt('新しいカテゴリー名を最大10文字程度で入力してください:');
                 if (!newCat) return;
                 const trimmedCat = newCat.trim();
@@ -287,10 +317,15 @@ function renderFormView(container) {
                 }
 
                 const label = document.createElement('label');
-                label.className = 'category-pill';
-                label.style.cssText = 'display: inline-block; padding: 0.4rem 0.8rem; border-radius: 20px; border: 1px solid #2563EB; background: #2563EB; color: white; font-size: 0.85rem; cursor: pointer; font-weight: 600; transition: all 0.2s; user-select: none;';
-                label.innerHTML = `<input type="checkbox" value="${trimmedCat}" style="display: none;" checked> ${trimmedCat}`;
-                catContainer.insertBefore(label, btnAddCat);
+                label.style.cssText = 'display: flex; align-items: center; gap: 0.6rem; cursor: pointer; padding: 0.6rem 0.8rem; background: #eff6ff; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; font-weight: 600; color: #475569; transition: background 0.2s;';
+                label.innerHTML = `<input type="checkbox" class="category-checkbox" value="${trimmedCat}" style="width: 16px; height: 16px;" checked> ${trimmedCat}`;
+                catContainer.appendChild(label);
+                
+                const checkedCount = catContainer.querySelectorAll('input[type="checkbox"]:checked').length;
+                dropdownText.textContent = checkedCount > 0 ? checkedCount + ' カテゴリーを選択中' : '（選択してください）';
+                
+                // scroll to bottom to show newly appended item
+                dropdownMenu.scrollTop = dropdownMenu.scrollHeight;
             });
         }
     }
