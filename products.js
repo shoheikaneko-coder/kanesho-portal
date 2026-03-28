@@ -570,10 +570,18 @@ function setupFormLogic() {
                     is_sub_recipe: true, updated_at: new Date().toISOString()
                 }, { merge: true });
             } else {
+                const purchasePrice = Number(document.getElementById('ing-purchase-price').value) || 0;
+                const contentAmount = Number(document.getElementById('item-content-amount').value) || 0;
+                const yieldRate = Number(document.getElementById('ing-yield-rate').value) || 1.0;
+                const netUnitPrice = (contentAmount > 0 && yieldRate > 0) ? (purchasePrice / (contentAmount * yieldRate)) : 0;
+
                 await setDoc(doc(db, "m_ingredients", itemId), {
-                    item_id: itemId, purchase_price: Number(document.getElementById('ing-purchase-price').value) || 0,
-                    yield_rate: Number(document.getElementById('ing-yield-rate').value) || 1.0,
-                    vendor_id: document.getElementById('ing-vendor-id').value || "", updated_at: new Date().toISOString()
+                    item_id: itemId, 
+                    purchase_price: purchasePrice,
+                    yield_rate: yieldRate,
+                    net_unit_price: netUnitPrice,
+                    vendor_id: document.getElementById('ing-vendor-id').value || "", 
+                    updated_at: new Date().toISOString()
                 }, { merge: true });
             }
 
