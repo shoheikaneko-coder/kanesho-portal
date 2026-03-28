@@ -86,7 +86,7 @@ function renderFormView(container) {
     
                         <div class="input-group compact-input" style="margin-bottom: 0;">
                             <label style="font-weight: 700; color: #475569; font-size: 0.8rem;">備考 / 内部メモ</label>
-                            <textarea id="item-notes" rows="2" placeholder="仕入れ時の注意点、小分けのルール、レシピの提供手順など" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem;">${isEdit ? (editingItemData.notes || '') : ''}</textarea>
+                            <textarea id="item-notes" rows="1" placeholder="仕入れ時の注意点、小分けのルール、レシピの提供手順など" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem;">${isEdit ? (editingItemData.notes || '') : ''}</textarea>
                         </div>
                     </div>
 
@@ -134,8 +134,8 @@ function renderFormView(container) {
                             </div>
                             <div class="input-group compact-input" style="margin-bottom: 1rem;">
                                 <label style="font-size: 0.8rem; font-weight: 700;">デフォルト仕入先</label>
-                                <div style="display: flex; gap: 0.4rem; align-items: center;">
-                                    <select id="ing-vendor-id" style="flex: 1; padding: 0.6rem; border-radius: 8px; border: 1px solid var(--border); font-size:0.9rem;"></select>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <select id="ing-vendor-id" style="width: 60%; padding: 0.6rem; border-radius: 8px; border: 1px solid var(--border); font-size:0.9rem;"></select>
                                     <a href="?page=suppliers" target="_blank" class="btn" style="background: #e2e8f0; color: #475569; padding: 0.6rem 0.8rem; border-radius: 8px;" title="業者マスタを開く">
                                         <i class="fas fa-cog"></i>
                                     </a>
@@ -146,14 +146,14 @@ function renderFormView(container) {
                                     <label style="font-size: 0.8rem; font-weight: 700;">仕入単価(税込)</label>
                                     <div class="input-with-addon-wrapper">
                                         <input type="number" id="ing-purchase-price" placeholder="例: 5000" style="padding:0.6rem; font-weight: 700; font-family: monospace;">
-                                        <span class="input-addon" id="addon-purchase-price" style="padding:0 0.8rem; font-size:0.8rem;">円</span>
+                                        <span class="input-addon" style="padding:0 0.8rem; font-size:0.8rem;">円</span>
                                     </div>
                                 </div>
                                 <div class="input-group compact-input" style="margin-bottom: 0;">
                                     <label style="font-size: 0.8rem; font-weight: 700;">内容量 (入力単位)</label>
                                     <div class="input-with-addon-wrapper">
                                         <input type="number" id="item-content-amount" placeholder="例: 1000" step="any" style="padding:0.6rem; font-weight: 700; font-family: monospace;" value="${isEdit ? (editingItemData.content_amount || 0) : 0}">
-                                        <span class="input-addon" id="addon-content-amount" style="padding:0 0.8rem; font-size:0.8rem;">g(ml)</span>
+                                        <span class="input-addon" id="addon-content-amount" style="padding:0 0.8rem; font-size:0.8rem;"></span>
                                     </div>
                                 </div>
                             </div>
@@ -172,9 +172,9 @@ function renderFormView(container) {
                                         <i class="fas fa-calculator"></i> 歩留計算アシスタント
                                     </label>
                                     <div style="display: flex; gap: 0.4rem; align-items: center;">
-                                        <input type="number" id="calc-pre" placeholder="加工前" style="flex:1; width:60px; padding:0.3rem; font-size:0.8rem; font-family: monospace;" min="0">
+                                        <input type="number" id="calc-pre" placeholder="加工前（左）" style="flex:1; width:70px; padding:0.3rem; font-size:0.8rem; font-family: monospace;" min="0">
                                         <span style="font-size: 0.7rem; font-weight: bold;">→</span>
-                                        <input type="number" id="calc-post" placeholder="加工後" style="flex:1; width:60px; padding:0.3rem; font-size:0.8rem; font-family: monospace;" min="0">
+                                        <input type="number" id="calc-post" placeholder="加工後（右）" style="flex:1; width:70px; padding:0.3rem; font-size:0.8rem; font-family: monospace;" min="0">
                                         <button type="button" id="btn-calc-yield" class="btn" style="background: #10b981; color: white; padding: 0.3rem 0.6rem; font-size: 0.75rem; border-radius: 4px;">反映</button>
                                     </div>
                                 </div>
@@ -203,11 +203,9 @@ function renderFormView(container) {
     // 単位ラベルのリアルタイム連動
     const unitInput = document.getElementById('item-unit');
     const updateUnitLabels = () => {
-        const addOnStr = unitInput.value.trim() ? '/' + unitInput.value.trim() : '';
-        const addonP = document.getElementById('addon-purchase-price');
+        const addOnStr = unitInput.value.trim();
         const addonC = document.getElementById('addon-content-amount');
-        if (addonP) addonP.textContent = '円' + addOnStr;
-        if (addonC) addonC.textContent = 'g(ml)' + addOnStr;
+        if (addonC) addonC.textContent = addOnStr;
     };
     if (unitInput) {
         unitInput.addEventListener('input', updateUnitLabels);
