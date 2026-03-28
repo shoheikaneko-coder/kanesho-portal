@@ -50,7 +50,7 @@ function renderFormView(container) {
                     
                     <!-- 左カラム: 基本情報・備考 -->
                     <div class="form-col-left" style="display: flex; flex-direction: column; gap: 1.5rem;">
-                        <section style="flex: none; background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border);">
+                        <section style="flex: 1; display: flex; flex-direction: column; background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border);">
                             <h4 style="margin-top: 0; margin-bottom: 1.2rem; color: var(--primary); font-size: 1rem; display: flex; align-items: center; gap: 0.5rem; border-left: 4px solid var(--primary); padding-left: 0.8rem;">
                                 基本スペック
                             </h4>
@@ -67,7 +67,7 @@ function renderFormView(container) {
                                 </div>
                             </div>
     
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                                 <div class="input-group compact-input" style="margin-bottom: 0;">
                                     <label style="font-weight: 700; color: #475569; font-size: 0.8rem;">カテゴリー</label>
                                     <input type="text" id="item-category" placeholder="例: 牛肉 / 調味料" 
@@ -82,12 +82,12 @@ function renderFormView(container) {
                                     </datalist>
                                 </div>
                             </div>
+
+                            <div class="input-group compact-input" style="flex: 1; display: flex; flex-direction: column; margin-bottom: 0;">
+                                <label style="font-weight: 700; color: #475569; font-size: 0.8rem; margin-bottom: 0.4rem;">備考 / 内部メモ</label>
+                                <textarea id="item-notes" placeholder="仕入れ時の注意点、小分けのルール、レシピの提供手順など" style="flex: 1; resize: none; width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem;">${isEdit ? (editingItemData.notes || '') : ''}</textarea>
+                            </div>
                         </section>
-    
-                        <div class="input-group compact-input" style="flex: 1; display: flex; flex-direction: column; margin-bottom: 0;">
-                            <label style="font-weight: 700; color: #475569; font-size: 0.8rem; margin-bottom: 0.4rem;">備考 / 内部メモ</label>
-                            <textarea id="item-notes" placeholder="仕入れ時の注意点、小分けのルール、レシピの提供手順など" style="flex: 1; resize: none; width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem;">${isEdit ? (editingItemData.notes || '') : ''}</textarea>
-                        </div>
                     </div>
 
                     <!-- 右カラム: 金額設定・ボタン -->
@@ -158,8 +158,8 @@ function renderFormView(container) {
                                 </div>
                             </div>
                             
-                            <!-- 歩留計算アシスタントと手動入力枠 -->
-                            <div style="display: flex; gap: 1rem; align-items: flex-end; margin-top: 1rem;">
+                             <!-- 歩留計算アシスタントと手動入力枠 -->
+                            <div style="display: flex; gap: 1rem; align-items: flex-end; margin-top: 1rem; margin-bottom: 1.2rem;">
                                 <div class="input-group compact-input" style="flex: 1; margin-bottom: 0;">
                                     <label style="font-size: 0.8rem; font-weight: 700;">歩留 (0.01〜1.0)</label>
                                     <div class="input-with-addon-wrapper">
@@ -169,7 +169,7 @@ function renderFormView(container) {
                                 </div>
                                 <div style="flex: 2; display: flex; flex-direction: column; gap: 0.2rem; background: rgba(255,255,255,0.7); padding: 0.4rem; border-radius: 8px; border: 1px dashed #10b981;">
                                     <label style="font-size: 0.7rem; font-weight: 700; color: #059669; margin-bottom: 0;">
-                                        <i class="fas fa-calculator"></i> 歩留計算アシスタント
+                                        <i class="fas fa-calculator"></i> 歩留計算アシスタント（量を測って入力し反映をタップ）
                                     </label>
                                     <div style="display: flex; gap: 0.4rem; align-items: center;">
                                         <input type="number" id="calc-pre" placeholder="加工前（左）" style="flex:1; width:70px; padding:0.3rem; font-size:0.8rem; font-family: monospace;" min="0">
@@ -179,18 +179,38 @@ function renderFormView(container) {
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- 正味単価の自動計算表示 (ReadOnly) -->
+                            <div class="input-group compact-input" style="margin-bottom: 0; background: #f0fdf4; padding: 1rem; border-radius: 8px; border: 1px solid #bbf7d0;">
+                                <label style="font-size: 0.8rem; font-weight: 800; color: #166534; margin-bottom: 0.4rem; display: block;">正味単価（円/単位） <span style="font-weight: normal; font-size: 0.7rem; color: #15803d; margin-left: 0.4rem;">※自動計算</span></label>
+                                <div style="display: flex; align-items: baseline; gap: 0.4rem;">
+                                    <span style="font-size: 0.9rem; font-weight: 700; color: #166534;">¥</span>
+                                    <input type="text" id="ing-net-unit-price" readonly value="0.00" 
+                                           style="border: none; background: transparent; font-size: 1.6rem; font-weight: 900; color: #166534; font-family: monospace; padding: 0; width: 100%; outline: none;" tabIndex="-1">
+                                </div>
+                            </div>
                         </section>
 
-                        <div class="mobile-fixed-bottom desktop-actions" style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: auto; padding-top: 1rem;">
-                            <button type="button" id="btn-form-cancel" class="btn" style="flex: 1; max-width: 140px; background: #f8fafc; color: #64748b; font-weight: 700; padding: 1rem; border: 1px solid #e2e8f0; font-size: 0.95rem;"><i class="fas fa-times" style="margin-right: 0.4rem;"></i> キャンセル</button>
-                            <button type="submit" class="btn btn-primary" style="flex: 2; background: linear-gradient(135deg, #059669, #10b981); color: white; font-weight: 800; padding: 1rem; font-size: 1rem; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);">
-                                <i class="fas fa-save" style="margin-right: 0.4rem;"></i>
-                                アイテム情報保存
-                            </button>
-                        </div>
-                    </div>
-
                 </form>
+
+                <!-- ボタンエリア (フッター) -->
+                <div class="mobile-fixed-bottom desktop-actions" style="display: flex; gap: 1rem; align-items: center; margin-top: 2rem; width: 100%; padding: 0 0.5rem;">
+                    ${isEdit ? `
+                    <button type="button" id="btn-form-delete" class="btn" style="height: 48px; min-width: 140px; background: transparent; color: #ef4444; border: 1px solid #fee2e2; font-weight: 600; font-size: 0.9rem; transition: all 0.2s;">
+                        <i class="fas fa-trash-alt" style="margin-right: 0.4rem;"></i>
+                        このアイテムを削除
+                    </button>` : '<div></div>'}
+                    
+                    <div style="margin-left: auto; display: flex; gap: 1rem;">
+                        <button type="button" id="btn-form-cancel" class="btn" style="height: 48px; min-width: 120px; background: #f8fafc; color: #64748b; font-weight: 700; border: 1px solid #e2e8f0; font-size: 0.95rem;">
+                            <i class="fas fa-times" style="margin-right: 0.4rem;"></i> キャンセル
+                        </button>
+                        <button type="button" id="btn-form-submit-proxy" class="btn btn-primary" style="height: 48px; min-width: 180px; background: linear-gradient(135deg, #059669, #10b981); color: white; font-weight: 800; font-size: 1rem; border: none; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);">
+                            <i class="fas fa-save" style="margin-right: 0.4rem;"></i>
+                            アイテム情報を保存
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     `;
@@ -199,6 +219,62 @@ function renderFormView(container) {
         currentView = 'list';
         renderView();
     };
+
+    // Proxy submit button handler
+    const btnSubmitProxy = document.getElementById('btn-form-submit-proxy');
+    if (btnSubmitProxy) {
+        btnSubmitProxy.onclick = () => {
+            const form = document.getElementById('item-form');
+            if (form) form.requestSubmit();
+        };
+    }
+
+    // Role-based Delete logic
+    const btnDelete = document.getElementById('btn-form-delete');
+    if (btnDelete && editingItemData) {
+        btnDelete.onclick = (e) => {
+            e.preventDefault();
+            const item = editingItemData;
+            const isAdmin = currentUser?.Role === 'Admin' || currentUser?.Role === '管理者';
+
+            if (isAdmin) {
+                showConfirm('アイテムの削除', `「${item.name}」を完全に削除しますか？\n(関連するすべてのデータが削除されます)`, async () => {
+                    try {
+                        await Promise.all([
+                            deleteDoc(doc(db, "m_items", item.id)),
+                            deleteDoc(doc(db, "m_ingredients", item.id)),
+                            deleteDoc(doc(db, "m_menus", item.id))
+                        ]);
+                        await reloadData();
+                        currentView = 'list';
+                        renderView();
+                        showAlert('成功', '削除しました。');
+                    } catch(err) {
+                        showAlert('エラー', '削除に失敗しました。');
+                    }
+                });
+            } else {
+                showConfirm('削除申請', `「${item.name}」の削除を管理者に申請しますか？`, async () => {
+                    try {
+                        await addDoc(collection(db, "notifications"), {
+                            type: 'deletion_request',
+                            page: 'products',
+                            target_id: item.id,
+                            target_name: item.name,
+                            requester_id: currentUser?.id || 'unknown',
+                            requester_name: currentUser?.Name || '不明',
+                            status: 'pending',
+                            created_at: new Date().toISOString()
+                        });
+                        showAlert('申請完了', '削除申請を送信しました。管理者の承認をお待ちください。');
+                    } catch(err) {
+                        console.error(err);
+                        showAlert('エラー', '申請に失敗しました。');
+                    }
+                });
+            }
+        };
+    }
 
     // 単位ラベルのリアルタイム連動
     const unitInput = document.getElementById('item-unit');
@@ -217,6 +293,29 @@ function renderFormView(container) {
         updateUnitLabels(); // 初期表示時にも実行
     }
 
+    // 正味単価の自動計算ロジック
+    const updateNetUnitPrice = () => {
+        const purchasePrice = parseFloat(document.getElementById('ing-purchase-price')?.value) || 0;
+        const contentAmount = parseFloat(document.getElementById('item-content-amount')?.value) || 0;
+        const yieldRate = parseFloat(document.getElementById('ing-yield-rate')?.value) || 0;
+        const netInput = document.getElementById('ing-net-unit-price');
+        
+        if (netInput) {
+            if (contentAmount > 0 && yieldRate > 0) {
+                const netPrice = purchasePrice / (contentAmount * yieldRate);
+                netInput.value = netPrice.toFixed(2);
+            } else {
+                netInput.value = "0.00";
+            }
+        }
+    };
+
+    const calculationInputs = ['ing-purchase-price', 'item-content-amount', 'ing-yield-rate'];
+    calculationInputs.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', updateNetUnitPrice);
+    });
+
     // 歩留計算アシスタントロジック
     const btnCalcYield = document.getElementById('btn-calc-yield');
     if (btnCalcYield) {
@@ -229,6 +328,7 @@ function renderFormView(container) {
                 const yieldInput = document.getElementById('ing-yield-rate');
                 if (yieldInput) {
                     yieldInput.value = rate;
+                    updateNetUnitPrice(); // 正味単価も再計算
                     // ピカッと光らせて変更を視覚的に通知
                     yieldInput.style.backgroundColor = '#ecfdf5';
                     yieldInput.style.transition = 'background-color 0.4s';
@@ -239,6 +339,9 @@ function renderFormView(container) {
             }
         });
     }
+
+    // 初期計算の実行
+    setTimeout(updateNetUnitPrice, 100);
 
     toggleFormSections();
     setupFormLogic();
@@ -434,9 +537,11 @@ function setupFormLogic() {
 
     form.onsubmit = async (e) => {
         e.preventDefault();
-        const btnSubmit = form.querySelector('button[type="submit"]');
-        btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
-        btnSubmit.disabled = true;
+        const btnSubmit = document.getElementById('btn-form-submit-proxy');
+        if (btnSubmit) {
+            btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
+            btnSubmit.disabled = true;
+        }
 
         const itemId = editingItemData ? editingItemData.id : `item_${Date.now()}`;
 
@@ -480,8 +585,11 @@ function setupFormLogic() {
             console.error(err);
             showAlert('保存に失敗しました。', err.message);
         } finally {
-            btnSubmit.innerHTML = '<i class="fas fa-save"></i> 保存する';
-            btnSubmit.disabled = false;
+            const btnSubmit = document.getElementById('btn-form-submit-proxy');
+            if (btnSubmit) {
+                btnSubmit.innerHTML = '<i class="fas fa-save" style="margin-right: 0.4rem;"></i> アイテム情報を保存';
+                btnSubmit.disabled = false;
+            }
         }
     };
 }
@@ -627,7 +735,7 @@ function renderTable(filter = "") {
                 <td style="padding: 1rem; color:var(--text-secondary); font-size:0.8rem; font-family: monospace;">${menu?.dinii_id || ''}</td>
                 <td style="padding: 1rem; text-align: right;">
                     <button class="btn btn-edit" style="padding: 0.5rem; background: transparent; color: var(--text-secondary);" title="編集"><i class="fas fa-edit"></i></button>
-                    <button class="btn btn-delete" style="padding: 0.5rem; background: transparent; color: var(--danger);" title="削除"><i class="fas fa-trash-alt"></i></button>
+                    <!-- 行削除ボタンは廃止（編集画面内へ集約） -->
                 </td>
             `;
 
@@ -666,7 +774,7 @@ function renderTable(filter = "") {
                 <td style="padding: 1rem; font-weight: 600; color: #059669;">${Math.round(yieldRate * 100)}%</td>
                 <td style="padding: 1rem; text-align: right;">
                     <button class="btn btn-edit" style="padding: 0.5rem; background: transparent; color: var(--text-secondary);" title="編集"><i class="fas fa-edit"></i></button>
-                    <button class="btn btn-delete" style="padding: 0.5rem; background: transparent; color: var(--danger);" title="削除"><i class="fas fa-trash-alt"></i></button>
+                    <!-- 行削除ボタンは廃止（編集画面内へ集約） -->
                 </td>
             `;
 
