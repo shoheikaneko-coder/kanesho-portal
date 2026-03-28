@@ -634,7 +634,7 @@ p { color: var(--text-secondary); line-height: 1.5; }
     width: 50%;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
     .product-form-grid,
     .product-edit-split {
         display: flex !important;
