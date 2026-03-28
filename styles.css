@@ -638,6 +638,48 @@ p { color: var(--text-secondary); line-height: 1.5; }
     }
 }
 
+/* Pro Compact Form (Desktop only tweaks for single-screen view) */
+@media (min-width: 1024px) {
+    .pro-compact-form {
+        gap: 1.2rem; 
+    }
+    .pro-compact-form .form-col-left,
+    .pro-compact-form .form-col-right {
+        gap: 1.2rem !important;
+    }
+    .pro-compact-form section {
+        padding: 1.2rem !important;
+    }
+    .pro-compact-form .input-group {
+        margin-bottom: 0.6rem !important;
+    }
+    .pro-compact-form label {
+        margin-bottom: 0.2rem !important;
+        font-size: 0.8rem !important;
+    }
+    .pro-compact-form input,
+    .pro-compact-form select,
+    .pro-compact-form textarea {
+        padding: 0.5rem 0.6rem !important;
+        font-size: 0.9rem !important;
+    }
+    .pro-compact-form #item-name {
+        font-size: 1.1rem !important;
+        padding: 0.6rem !important;
+    }
+    .pro-compact-form h4 {
+        margin-bottom: 0.8rem !important;
+        font-size: 0.95rem !important;
+    }
+    .pro-compact-form #recipe-items-container {
+        max-height: 120px !important;
+    }
+    .pro-compact-form .desktop-actions {
+        margin-top: auto !important;
+        padding-top: 0.5rem !important;
+    }
+}
+
 /* Input with Addon */
 .input-with-addon-wrapper {
     display: flex;

@@ -45,8 +45,8 @@ function renderFormView(container) {
                 </button>
             </div>
             
-            <div class="form-wrapper form-with-fixed-bottom compact-desktop" style="padding: 1.5rem; max-width: 1200px; margin: 0 auto; width: 100%;">
-                <form id="item-form" class="desktop-2col-layout" style="display: flex; flex-direction: column; gap: 1.5rem;">
+            <div class="form-wrapper form-with-fixed-bottom compact-desktop" style="padding: 1rem; max-width: 1200px; margin: 0 auto; width: 100%;">
+                <form id="item-form" class="desktop-2col-layout pro-compact-form">
                     
                     <!-- 左カラム: 基本情報・備考 -->
                     <div class="form-col-left" style="display: flex; flex-direction: column; gap: 1.5rem;">
@@ -157,7 +157,7 @@ function renderFormView(container) {
                             </div>
                         </section>
 
-                        <div class="mobile-fixed-bottom" style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: auto; padding-top: 1rem;">
+                        <div class="mobile-fixed-bottom desktop-actions" style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: auto; padding-top: 1rem;">
                             <button type="button" id="btn-form-cancel" class="btn" style="flex: 1; max-width: 140px; background: #f8fafc; color: #64748b; font-weight: 700; padding: 1rem; border: 1px solid #e2e8f0; font-size: 0.95rem;"><i class="fas fa-times" style="margin-right: 0.4rem;"></i> キャンセル</button>
                             <button type="submit" class="btn btn-primary" style="flex: 2; background: linear-gradient(135deg, #059669, #10b981); color: white; font-weight: 800; padding: 1rem; font-size: 1rem; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);">
                                 <i class="fas fa-save" style="margin-right: 0.4rem;"></i>
