@@ -137,7 +137,7 @@ function renderFormView(container) {
                                 <div style="display: flex; gap: 0.5rem; align-items: center; width: 100%;">
                                     <select id="ing-vendor-id" style="width: calc(100% - 40px); flex: none; padding: 0.6rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.9rem;"></select>
                                     <a href="index.html?page=suppliers" target="_blank" style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; color: #64748b; font-size: 1.2rem; text-decoration: none;" title="別タブで業者マスタを開く">
-                                        <i class="fas fa-cog"></i>
+                                        <span class="fas fa-cog" style="position: static !important; display: block;"></span>
                                     </a>
                                 </div>
                             </div>

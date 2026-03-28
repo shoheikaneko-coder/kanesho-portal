@@ -5,13 +5,13 @@ import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/f
 import { dashboardPageHtml, initDashboardPage } from './dashboard.js';
 import { attendancePageHtml, initAttendancePage } from './attendance.js';
 import { salesPageHtml, initSalesPage } from './sales.js';
-import { storesPageHtml, initStoresPage } from './stores.js?v=17';
-import { usersPageHtml, initUsersPage } from './users.js?v=17';
-import { inventoryPageHtml, initInventoryPage } from './inventory.js?v=17';
+import { storesPageHtml, initStoresPage } from './stores.js?v=18';
+import { usersPageHtml, initUsersPage } from './users.js?v=18';
+import { inventoryPageHtml, initInventoryPage } from './inventory.js?v=18';
 import { procurementPageHtml, initProcurementPage } from './procurement.js';
-import { productsPageHtml, initProductsPage } from './products.js?v=17';
-import { suppliersPageHtml, initSuppliersPage } from './suppliers.js?v=17';
-import { storeItemsPageHtml, initStoreItemsPage } from './store_items.js?v=17';
+import { productsPageHtml, initProductsPage } from './products.js?v=18';
+import { suppliersPageHtml, initSuppliersPage } from './suppliers.js?v=18';
+import { storeItemsPageHtml, initStoreItemsPage } from './store_items.js?v=18';
 import { recipesViewerPageHtml, initRecipesViewerPage } from './recipes.js';
 import { attendanceCheckPageHtml, initAttendanceCheckPage } from './attendance_check.js';
 import { csvExportPageHtml, initCsvExportPage } from './csv_export.js';
@@ -19,7 +19,7 @@ import { salesCorrectionPageHtml, initSalesCorrectionPage } from './sales_correc
 import { rolePermissionsPageHtml, initRolePermissionsPage } from './role_permissions.js';
 import { menuOrderPageHtml, initMenuOrderPage } from './menu_order.js';
 import { csvImportPageHtml, initCsvImportPage } from './csv_import.js';
-import { productAnalysisPageHtml, initProductAnalysisPage } from './product_analysis.js?v=17';
+import { productAnalysisPageHtml, initProductAnalysisPage } from './product_analysis.js?v=18';
 import { getDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 console.log("AntiGravity Portal: app.js loaded successfully.");
@@ -84,7 +84,12 @@ async function loginSuccess(user) {
     if (avatarEl) avatarEl.textContent = (user.Name || 'U').substring(0, 1).toUpperCase();
 
     // 初期表示ページの分岐
-    if (user.Role === 'Admin' || user.Role === '管理者') {
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetPage = urlParams.get('page');
+
+    if (targetPage) {
+        showPage(targetPage);
+    } else if (user.Role === 'Admin' || user.Role === '管理者') {
         showPage('dashboard');
     } else if (user.Role === 'Tablet' || user.Role === '店舗タブレット' || user.Role === 'Staff' || user.Role === '一般社員') {
         showPage('inventory');
