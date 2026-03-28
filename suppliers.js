@@ -56,7 +56,6 @@ function renderListView(container) {
                 <table style="width: 100%; border-collapse: collapse; text-align: left;">
                     <thead>
                         <tr style="background: white; border-bottom: 2px solid var(--border); color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase;">
-                            <th style="padding: 1rem; font-weight: 600;">業者ID</th>
                             <th style="padding: 1rem; font-weight: 600;">企業名</th>
                             <th style="padding: 1rem; font-weight: 600;">担当店舗</th>
                             <th style="padding: 1rem; font-weight: 600;">連絡先</th>
@@ -172,10 +171,6 @@ function renderFormView(container) {
                                 基本情報
                             </h4>
                             <div class="input-group compact-input">
-                                <label style="font-weight: 700; color: #475569; font-size: 0.8rem;">業者ID <span style="color:red">*</span></label>
-                                <input type="text" id="vendor-id" required placeholder="例: SUP-001" style="font-family: monospace; padding: 0.6rem;">
-                            </div>
-                            <div class="input-group compact-input">
                                 <label style="font-weight: 700; color: #475569; font-size: 0.8rem;">企業名 <span style="color:red">*</span></label>
                                 <input type="text" id="vendor-name" required placeholder="例: ○○食品株式会社" style="padding: 0.6rem;">
                             </div>
@@ -239,7 +234,6 @@ function renderFormView(container) {
     };
 
     if (isEdit) {
-        document.getElementById('vendor-id').value = editingSupplierData.vendor_id || '';
         document.getElementById('vendor-name').value = editingSupplierData.vendor_name || '';
         document.getElementById('vendor-contact').value = editingSupplierData.contact_person || '';
         document.getElementById('vendor-phone').value = editingSupplierData.phone || '';
@@ -393,7 +387,7 @@ function setupFormLogic() {
         const selectedDeliveries = Array.from(document.querySelectorAll('#del-container input:checked')).map(cb => cb.value);
 
         const vendorData = {
-            vendor_id: document.getElementById('vendor-id').value,
+            vendor_id: editingSupplierData ? (editingSupplierData.vendor_id || '') : '',
             vendor_name: document.getElementById('vendor-name').value,
             contact_person: document.getElementById('vendor-contact').value,
             phone: document.getElementById('vendor-phone').value,
@@ -469,7 +463,7 @@ function renderTable(filter = "") {
         renderPagination(totalPages, filter);
 
         if (itemsToShow.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 4rem; color: var(--text-secondary);">該当する業者が見つかりません</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 4rem; color: var(--text-secondary);">該当する業者が見つかりません</td></tr>';
             return;
         }
 
@@ -486,7 +480,6 @@ function renderTable(filter = "") {
             tr.style.borderBottom = '1px solid var(--border)';
             tr.style.transition = 'background 0.2s';
             tr.innerHTML = `
-                <td style="padding: 1rem; font-family: monospace; color: var(--text-secondary);">${vendorId}</td>
                 <td style="padding: 1rem; font-weight: 600;">${vendorName}</td>
                 <td style="padding: 1rem; color: var(--text-secondary); font-size: 0.85rem;">${stores || '未設定'}</td>
                 <td style="padding: 1rem; color: var(--text-secondary); font-size: 0.9rem;">${phone}</td>
@@ -529,7 +522,7 @@ function renderTable(filter = "") {
         });
     } catch (error) {
         console.error('Error rendering vendors list:', error);
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 2rem; color: var(--danger);"><i class="fas fa-exclamation-triangle"></i> エラーが発生しました</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 2rem; color: var(--danger);"><i class="fas fa-exclamation-triangle"></i> エラーが発生しました</td></tr>';
     }
 }
 
