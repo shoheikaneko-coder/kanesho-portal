@@ -102,6 +102,24 @@ function renderListView(container) {
 
 function renderFormView(container) {
     const isEdit = !!editingSupplierData;
+
+    const defaultCategories = ["魚", "肉", "ドリンク", "スーパー", "備品", "野菜", "調味料"];
+    const savedCategories = isEdit && editingSupplierData.categories ? editingSupplierData.categories : [];
+    const allCategories = [...new Set([...defaultCategories, ...savedCategories])];
+    
+    const categoriesHtml = allCategories.map(cat => {
+        const isChecked = savedCategories.includes(cat);
+        const bg = isChecked ? '#2563EB' : 'white';
+        const color = isChecked ? 'white' : '#64748b';
+        const border = isChecked ? '#2563EB' : '#e2e8f0';
+        return `
+            <label class="category-pill" style="display: inline-block; padding: 0.4rem 0.8rem; border-radius: 20px; border: 1px solid ${border}; background: ${bg}; color: ${color}; font-size: 0.85rem; cursor: pointer; font-weight: 600; transition: all 0.2s; user-select: none;">
+                <input type="checkbox" value="${cat}" style="display: none;" ${isChecked ? 'checked' : ''}>
+                ${cat}
+            </label>
+        `;
+    }).join('');
+
     container.innerHTML = `
         <div class="glass-panel animate-fade-in" style="max-width: 700px; margin: 0 auto; padding: 0; overflow: hidden;">
             <div style="padding: 1.5rem 2rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
@@ -151,6 +169,16 @@ function renderFormView(container) {
                             <h4 style="margin-top: 0; margin-bottom: 1.2rem; color: #2563EB; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem; border-left: 4px solid #2563EB; padding-left: 0.8rem;">
                                 取引・発注設定
                             </h4>
+
+                            <div class="input-group compact-input">
+                                <label style="font-weight: 700; color: #475569; font-size: 0.8rem;">取り扱いカテゴリー (複数選択可)</label>
+                                <div id="vendor-categories-container" style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
+                                    ${categoriesHtml}
+                                    <button type="button" id="btn-add-category" class="btn" style="padding: 0.4rem 0.8rem; border-radius: 20px; border: 1px dashed var(--primary); background: transparent; color: var(--primary); font-size: 0.85rem; font-weight: 700;">
+                                        <i class="fas fa-plus"></i> 追加
+                                    </button>
+                                </div>
+                            </div>
                             
                             <div class="input-group compact-input">
                                 <label style="font-weight: 700; color: #475569; font-size: 0.8rem;">発注方法</label>
@@ -227,6 +255,46 @@ function renderFormView(container) {
         }
     });
 
+    const catContainer = document.getElementById('vendor-categories-container');
+    if (catContainer) {
+        catContainer.addEventListener('change', (e) => {
+            if (e.target.type === 'checkbox') {
+                const label = e.target.closest('label');
+                if (e.target.checked) {
+                    label.style.background = '#2563EB';
+                    label.style.color = 'white';
+                    label.style.borderColor = '#2563EB';
+                } else {
+                    label.style.background = 'white';
+                    label.style.color = '#64748b';
+                    label.style.borderColor = '#e2e8f0';
+                }
+            }
+        });
+
+        const btnAddCat = document.getElementById('btn-add-category');
+        if (btnAddCat) {
+            btnAddCat.addEventListener('click', () => {
+                const newCat = prompt('新しいカテゴリー名を最大10文字程度で入力してください:');
+                if (!newCat) return;
+                const trimmedCat = newCat.trim();
+                if (!trimmedCat) return;
+                
+                const existing = Array.from(catContainer.querySelectorAll('input[type="checkbox"]')).map(cb => cb.value);
+                if (existing.includes(trimmedCat)) {
+                    alert('指定されたカテゴリーはすでに存在しています。');
+                    return;
+                }
+
+                const label = document.createElement('label');
+                label.className = 'category-pill';
+                label.style.cssText = 'display: inline-block; padding: 0.4rem 0.8rem; border-radius: 20px; border: 1px solid #2563EB; background: #2563EB; color: white; font-size: 0.85rem; cursor: pointer; font-weight: 600; transition: all 0.2s; user-select: none;';
+                label.innerHTML = `<input type="checkbox" value="${trimmedCat}" style="display: none;" checked> ${trimmedCat}`;
+                catContainer.insertBefore(label, btnAddCat);
+            });
+        }
+    }
+
     setupFormLogic();
 }
 
@@ -280,6 +348,9 @@ function setupFormLogic() {
         btnSubmit.disabled = true;
 
         const docId = editingSupplierData ? editingSupplierData.id : null;
+        
+        // Use optional chaining / safe selections for resilience
+        const selectedCategories = Array.from(document.querySelectorAll('#vendor-categories-container input[type="checkbox"]:checked')).map(cb => cb.value);
         const selectedStores = Array.from(document.querySelectorAll('#responsible-stores-container input:checked')).map(cb => cb.value);
         const selectedDeliveries = Array.from(document.querySelectorAll('#delivery-methods-container input:checked')).map(cb => cb.value);
 
@@ -288,6 +359,7 @@ function setupFormLogic() {
             vendor_name: document.getElementById('vendor-name').value,
             contact_person: document.getElementById('vendor-contact').value,
             phone: document.getElementById('vendor-phone').value,
+            categories: selectedCategories,
             responsible_stores: selectedStores,
             remarks: document.getElementById('vendor-remarks').value,
             order_method: document.getElementById('vendor-order-method').value,
