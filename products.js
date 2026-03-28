@@ -85,7 +85,7 @@ function renderFormView(container) {
 
                             <div class="input-group compact-input" style="flex: 1; display: flex; flex-direction: column; margin-bottom: 0;">
                                 <label style="font-weight: 700; color: #475569; font-size: 0.8rem; margin-bottom: 0.4rem;">備考 / 内部メモ</label>
-                                <textarea id="item-notes" placeholder="仕入れ時の注意点、小分けのルール、レシピの提供手順など" style="flex: 1; resize: none; width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem;">${isEdit ? (editingItemData.notes || '') : ''}</textarea>
+                                <textarea id="item-notes" placeholder="仕入れ時の注意点、小分けのルール、レシピの提供手順など" style="flex: 1; height: 0; min-height: 120px; resize: none; width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem;">${isEdit ? (editingItemData.notes || '') : ''}</textarea>
                             </div>
                         </section>
                     </div>
@@ -93,7 +93,7 @@ function renderFormView(container) {
                     <!-- 右カラム: 金額設定・ボタン -->
                     <div class="form-col-right" style="flex: 1; display: flex; flex-direction: column; gap: 1.5rem;">
                         <!-- 販売・原価セクション -->
-                        <section id="section-menu" style="background: #f1f5f9; padding: 1.2rem; border-radius: 12px;">
+                        <section id="section-menu" style="display: flex; flex-direction: column; background: #f1f5f9; padding: 1.2rem; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
                             <h4 id="section-menu-title" style="margin-top: 0; margin-bottom: 1rem; color: #2563EB; font-size: 0.95rem; font-weight: 800;">
                                 販売・レシピ設定
                             </h4>
@@ -126,7 +126,7 @@ function renderFormView(container) {
                         </section>
 
                         <!-- 仕入・歩留セクション -->
-                        <section id="section-ingredient" style="flex: 1; display: flex; flex-direction: column; background: #ecfdf5; padding: 1.2rem; border-radius: 12px; border: 1px solid #bbf7d0;">
+                        <section id="section-ingredient" style="flex: 1; display: flex; flex-direction: column; background: #ecfdf5; padding: 1.2rem; border-radius: 12px; border: 1px solid #bbf7d0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                                 <h4 style="margin: 0; color: #059669; font-size: 0.95rem; font-weight: 800;">
                                     仕入・原価情報
@@ -875,13 +875,13 @@ function toggleFormSections() {
     const sIng = document.getElementById('section-ingredient');
     
     if (currentTab === 'menus') {
-        sMenu.style.display = 'block';
-        sRecipe.style.display = 'block';
+        sMenu.style.display = 'flex';
+        sRecipe.style.display = 'flex';
         sIng.style.display = 'none';
         document.getElementById('menu-price-container').style.display = 'flex';
     } else if (currentTab === 'sub_recipes') {
-        sMenu.style.display = 'block';
-        sRecipe.style.display = 'block';
+        sMenu.style.display = 'flex';
+        sRecipe.style.display = 'flex';
         sIng.style.display = 'none';
         document.getElementById('menu-price-container').style.display = 'none';
         document.getElementById('section-menu-title').textContent = '基本設定';
@@ -889,7 +889,7 @@ function toggleFormSections() {
     } else {
         sMenu.style.display = 'none';
         sRecipe.style.display = 'none';
-        sIng.style.display = 'block';
+        sIng.style.display = 'flex';
         document.getElementById('section-menu-title').textContent = '販売・レシピ設定';
         document.getElementById('section-menu-title').style.color = '#2563EB';
     }
