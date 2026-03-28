@@ -13,6 +13,7 @@ let cachedMenus = [];
 let cachedVendors = [];
 let currentUser = null;
 let editingItemData = null;
+let currentSearchQuery = ''; // 検索条件の永続化用
 
 export const productsPageHtml = `
     <div id="products-page-container" class="animate-fade-in">
@@ -379,7 +380,7 @@ function renderListView(container) {
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                 <div class="input-group" style="margin-bottom: 0; width: 320px; max-width: 100%;">
                     <i class="fas fa-search" style="top: 0.8rem;"></i>
-                    <input type="text" id="master-search" placeholder="名称やカテゴリで検索..." style="padding-top: 0.6rem; padding-bottom: 0.6rem;">
+                    <input type="text" id="master-search" placeholder="名称やカテゴリで検索..." style="padding-top: 0.6rem; padding-bottom: 0.6rem;" value="${currentSearchQuery}">
                 </div>
                 <div id="master-count" style="color: var(--text-secondary); font-size: 0.9rem; font-weight: 500;">
                     表示中: ...
@@ -405,7 +406,7 @@ function renderListView(container) {
 
     // Re-attach listeners for list view
     setupListViewListeners();
-    renderTable();
+    renderTable(currentSearchQuery);
 }
 
 function setupListViewListeners() {
@@ -433,8 +434,9 @@ function setupListViewListeners() {
     const searchInput = container.querySelector('#master-search');
     if (searchInput) {
         searchInput.oninput = () => {
+            currentSearchQuery = searchInput.value;
             currentPage = 1;
-            renderTable(searchInput.value);
+            renderTable(currentSearchQuery);
         };
     }
 }
