@@ -167,7 +167,7 @@ function renderFormView(container) {
                 <form id="supplier-form" class="product-edit-split pro-compact-form">
                     <!-- 左カラム: 基本情報 -->
                     <div class="form-col-left" style="display: flex; flex-direction: column; gap: 1.5rem;">
-                        <section style="background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border);">
+                        <section style="flex: 1; display: flex; flex-direction: column; background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border);">
                             <h4 style="margin-top: 0; margin-bottom: 1.2rem; color: var(--primary); font-size: 1rem; display: flex; align-items: center; gap: 0.5rem; border-left: 4px solid var(--primary); padding-left: 0.8rem;">
                                 基本情報
                             </h4>
@@ -192,7 +192,7 @@ function renderFormView(container) {
 
                     <!-- 右カラム: 取引設定 -->
                     <div class="form-col-right" style="display: flex; flex-direction: column; gap: 1.5rem;">
-                        <section style="background: #f1f5f9; padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border);">
+                        <section style="flex: 1; display: flex; flex-direction: column; background: #f1f5f9; padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border);">
                             <h4 style="margin-top: 0; margin-bottom: 1.2rem; color: #2563EB; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem; border-left: 4px solid #2563EB; padding-left: 0.8rem;">
                                 取引・発注設定
                             </h4>
@@ -214,27 +214,27 @@ function renderFormView(container) {
                             ${createDropdownHtml('del', '納品方法 (複数選択可)', deliveryOptions, savedDeliveries, false)}
                             ${createDropdownHtml('store', '担当店舗 (複数選択可)', storesOptions, savedStores, false)}
                         </section>
-
-                        <!-- ボタン類 -->
-                        <div class="mobile-fixed-bottom desktop-actions" style="display: flex; gap: 1rem; align-items: center; margin-top: auto; width: 100%;">
-                            ${isEdit ? `
-                            <button type="button" id="btn-form-delete" class="btn" style="background: transparent; color: #ef4444; border: 1px solid #fee2e2; font-weight: 600; padding: 0.8rem 1.2rem; font-size: 0.9rem; transition: all 0.2s;">
-                                <i class="fas fa-trash-alt" style="margin-right: 0.4rem;"></i>
-                                この業者を削除
-                            </button>` : '<div></div>'}
-                            
-                            <div style="margin-left: auto; display: flex; gap: 1rem;">
-                                <button type="button" id="btn-form-cancel" class="btn" style="min-width: 120px; background: #f8fafc; color: #64748b; font-weight: 700; padding: 1rem; border: 1px solid #e2e8f0; font-size: 0.95rem;">
-                                    <i class="fas fa-times" style="margin-right: 0.4rem;"></i> キャンセル
-                                </button>
-                                <button type="submit" class="btn btn-primary" style="min-width: 180px; background: linear-gradient(135deg, #059669, #10b981); color: white; font-weight: 800; padding: 1rem; font-size: 1rem; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);">
-                                    <i class="fas fa-save" style="margin-right: 0.4rem;"></i>
-                                    業者情報を保存
-                                </button>
-                            </div>
-                        </div>
                     </div>
                 </form>
+
+                <!-- ボタンエリア (フッター) -->
+                <div class="mobile-fixed-bottom desktop-actions" style="display: flex; gap: 1rem; align-items: center; margin-top: 2rem; width: 100%; padding: 0 0.5rem;">
+                    ${isEdit ? `
+                    <button type="button" id="btn-form-delete" class="btn" style="height: 48px; min-width: 140px; background: transparent; color: #ef4444; border: 1px solid #fee2e2; font-weight: 600; font-size: 0.9rem; transition: all 0.2s;">
+                        <i class="fas fa-trash-alt" style="margin-right: 0.4rem;"></i>
+                        この業者を削除
+                    </button>` : '<div></div>'}
+                    
+                    <div style="margin-left: auto; display: flex; gap: 1rem;">
+                        <button type="button" id="btn-form-cancel" class="btn" style="height: 48px; min-width: 120px; background: #f8fafc; color: #64748b; font-weight: 700; border: 1px solid #e2e8f0; font-size: 0.95rem;">
+                            <i class="fas fa-times" style="margin-right: 0.4rem;"></i> キャンセル
+                        </button>
+                        <button type="button" id="btn-form-submit-proxy" class="btn btn-primary" style="height: 48px; min-width: 180px; background: linear-gradient(135deg, #059669, #10b981); color: white; font-weight: 800; font-size: 1rem; border: none; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);">
+                            <i class="fas fa-save" style="margin-right: 0.4rem;"></i>
+                            業者情報を保存
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     `;
@@ -243,6 +243,15 @@ function renderFormView(container) {
         currentView = 'list';
         renderView();
     };
+
+    // Proxy submit button handler
+    const btnSubmitProxy = document.getElementById('btn-form-submit-proxy');
+    if (btnSubmitProxy) {
+        btnSubmitProxy.onclick = () => {
+            const form = document.getElementById('supplier-form');
+            if (form) form.requestSubmit();
+        };
+    }
 
     if (isEdit) {
         document.getElementById('vendor-name').value = editingSupplierData.vendor_name || '';
@@ -409,9 +418,11 @@ function setupFormLogic() {
     if (!form) return;
     form.onsubmit = async (e) => {
         e.preventDefault();
-        const btnSubmit = form.querySelector('button[type="submit"]');
-        btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
-        btnSubmit.disabled = true;
+        const btnSubmit = document.getElementById('btn-form-submit-proxy');
+        if (btnSubmit) {
+            btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
+            btnSubmit.disabled = true;
+        }
 
         const docId = editingSupplierData ? editingSupplierData.id : null;
         
@@ -446,8 +457,11 @@ function setupFormLogic() {
             console.error(err);
             showAlert('エラー', '保存に失敗しました。');
         } finally {
-            btnSubmit.innerHTML = '<i class="fas fa-save"></i> 保存する';
-            btnSubmit.disabled = false;
+            const btnSubmit = document.getElementById('btn-form-submit-proxy');
+            if (btnSubmit) {
+                btnSubmit.innerHTML = '<i class="fas fa-save" style="margin-right: 0.4rem;"></i> 業者情報を保存';
+                btnSubmit.disabled = false;
+            }
         }
     };
 }
