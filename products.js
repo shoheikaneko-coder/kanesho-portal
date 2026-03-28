@@ -49,7 +49,7 @@ function renderFormView(container) {
                 <form id="item-form" class="product-edit-split pro-compact-form">
                     
                     <!-- 左カラム: 基本情報・備考 -->
-                    <div class="form-col-left" style="display: flex; flex-direction: column; gap: 1.5rem; height: 100%;">
+                    <div class="form-col-left" style="display: flex; flex-direction: column; gap: 1.5rem;">
                         <section style="flex: none; background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border);">
                             <h4 style="margin-top: 0; margin-bottom: 1.2rem; color: var(--primary); font-size: 1rem; display: flex; align-items: center; gap: 0.5rem; border-left: 4px solid var(--primary); padding-left: 0.8rem;">
                                 基本スペック

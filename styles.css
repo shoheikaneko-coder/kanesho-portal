@@ -625,7 +625,7 @@ p { color: var(--text-secondary); line-height: 1.5; }
 .product-edit-split {
     display: flex;
     gap: 2rem;
-    align-items: flex-start;
+    align-items: stretch;
 }
 
 .product-edit-split .form-col-left,
@@ -640,6 +640,9 @@ p { color: var(--text-secondary); line-height: 1.5; }
         display: flex !important;
         flex-direction: column !important;
         gap: 1.5rem !important;
+    }
+    .product-edit-split {
+        padding-bottom: 120px !important;
     }
     .product-edit-split .form-col-left,
     .product-edit-split .form-col-right {
