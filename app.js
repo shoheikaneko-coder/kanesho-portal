@@ -9,7 +9,7 @@ import { storesPageHtml, initStoresPage } from './stores.js?v=26';
 import { usersPageHtml, initUsersPage } from './users.js?v=26';
 import { inventoryPageHtml, initInventoryPage } from './inventory.js?v=26';
 import { procurementPageHtml, initProcurementPage } from './procurement.js';
-import { productsPageHtml, initProductsPage } from './products.js?v=32';
+import { productsPageHtml, initProductsPage } from './products.js?v=33';
 import { suppliersPageHtml, initSuppliersPage } from './suppliers.js?v=29';
 import { storeItemsPageHtml, initStoreItemsPage } from './store_items.js?v=26';
 import { recipesViewerPageHtml, initRecipesViewerPage } from './recipes.js';

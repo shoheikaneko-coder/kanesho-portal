@@ -49,8 +49,8 @@ function renderFormView(container) {
                 <form id="item-form" class="product-edit-split pro-compact-form">
                     
                     <!-- 左カラム: 基本情報・備考 -->
-                    <div class="form-col-left" style="display: flex; flex-direction: column; gap: 1.5rem;">
-                        <section style="flex: 1; display: flex; flex-direction: column; background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border);">
+                    <div class="form-col-left" style="flex: 1; display: flex; flex-direction: column; gap: 1.5rem;">
+                        <section style="flex: 1; display: flex; flex-direction: column; background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
                             <h4 style="margin-top: 0; margin-bottom: 1.2rem; color: var(--primary); font-size: 1rem; display: flex; align-items: center; gap: 0.5rem; border-left: 4px solid var(--primary); padding-left: 0.8rem;">
                                 基本スペック
                             </h4>
@@ -91,7 +91,7 @@ function renderFormView(container) {
                     </div>
 
                     <!-- 右カラム: 金額設定・ボタン -->
-                    <div class="form-col-right" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                    <div class="form-col-right" style="flex: 1; display: flex; flex-direction: column; gap: 1.5rem;">
                         <!-- 販売・原価セクション -->
                         <section id="section-menu" style="background: #f1f5f9; padding: 1.2rem; border-radius: 12px;">
                             <h4 id="section-menu-title" style="margin-top: 0; margin-bottom: 1rem; color: #2563EB; font-size: 0.95rem; font-weight: 800;">
@@ -126,7 +126,7 @@ function renderFormView(container) {
                         </section>
 
                         <!-- 仕入・歩留セクション -->
-                        <section id="section-ingredient" style="background: #ecfdf5; padding: 1.2rem; border-radius: 12px;">
+                        <section id="section-ingredient" style="flex: 1; display: flex; flex-direction: column; background: #ecfdf5; padding: 1.2rem; border-radius: 12px; border: 1px solid #bbf7d0;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                                 <h4 style="margin: 0; color: #059669; font-size: 0.95rem; font-weight: 800;">
                                     仕入・原価情報
@@ -194,18 +194,18 @@ function renderFormView(container) {
                 </form>
 
                 <!-- ボタンエリア (フッター) -->
-                <div class="mobile-fixed-bottom desktop-actions" style="display: flex; gap: 1rem; align-items: center; margin-top: 2rem; width: 100%; padding: 0 0.5rem;">
+                <div class="mobile-fixed-bottom desktop-actions" style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; width: 100%; padding: 0.5rem 0;">
                     ${isEdit ? `
-                    <button type="button" id="btn-form-delete" class="btn" style="height: 48px; min-width: 140px; background: transparent; color: #ef4444; border: 1px solid #fee2e2; font-weight: 600; font-size: 0.9rem; transition: all 0.2s;">
+                    <button type="button" id="btn-form-delete" class="btn" style="height: 48px; min-width: 160px; background: white; color: #ef4444; border: 1px solid #fee2e2; font-weight: 600; font-size: 0.9rem; transition: all 0.2s; white-space: nowrap;">
                         <i class="fas fa-trash-alt" style="margin-right: 0.4rem;"></i>
                         このアイテムを削除
                     </button>` : '<div></div>'}
                     
-                    <div style="margin-left: auto; display: flex; gap: 1rem;">
-                        <button type="button" id="btn-form-cancel" class="btn" style="height: 48px; min-width: 120px; background: #f8fafc; color: #64748b; font-weight: 700; border: 1px solid #e2e8f0; font-size: 0.95rem;">
+                    <div style="display: flex; gap: 1rem;">
+                        <button type="button" id="btn-form-cancel" class="btn" style="height: 48px; min-width: 120px; background: #f8fafc; color: #64748b; font-weight: 700; border: 1px solid #e2e8f0; font-size: 0.95rem; white-space: nowrap;">
                             <i class="fas fa-times" style="margin-right: 0.4rem;"></i> キャンセル
                         </button>
-                        <button type="button" id="btn-form-submit-proxy" class="btn btn-primary" style="height: 48px; min-width: 180px; background: linear-gradient(135deg, #059669, #10b981); color: white; font-weight: 800; font-size: 1rem; border: none; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);">
+                        <button type="button" id="btn-form-submit-proxy" class="btn btn-primary" style="height: 48px; min-width: 180px; background: linear-gradient(135deg, #059669, #10b981); color: white; font-weight: 800; font-size: 1rem; border: none; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); white-space: nowrap;">
                             <i class="fas fa-save" style="margin-right: 0.4rem;"></i>
                             アイテム情報を保存
                         </button>
