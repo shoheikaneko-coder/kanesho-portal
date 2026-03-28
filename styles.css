@@ -647,6 +647,9 @@ p { color: var(--text-secondary); line-height: 1.5; }
     .product-edit-split .form-col-left,
     .product-edit-split .form-col-right {
         width: 100% !important;
+        flex: none !important;      /* 縦並び時の高さ強制均等化を無効化 */
+        height: auto !important;    /* 中身の量に合わせて自然に下へ伸長 */
+        min-height: min-content;    /* 最小限の高さ確保 */
     }
     .pro-compact-form section {
         padding: 0.8rem !important;
