@@ -45,8 +45,8 @@ function renderFormView(container) {
                 </button>
             </div>
             
-            <div class="form-wrapper form-with-fixed-bottom compact-desktop" style="padding: 1rem; max-width: 1200px; margin: 0 auto; width: 100%;">
-                <form id="item-form" class="desktop-2col-layout pro-compact-form">
+            <div class="form-wrapper form-with-fixed-bottom product-edit-container" style="padding: 1rem; max-width: 1200px; margin: 0 auto; width: 100%;">
+                <form id="item-form" class="product-edit-split pro-compact-form">
                     
                     <!-- 左カラム: 基本情報・備考 -->
                     <div class="form-col-left" style="display: flex; flex-direction: column; gap: 1.5rem;">
