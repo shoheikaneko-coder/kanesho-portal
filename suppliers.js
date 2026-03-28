@@ -316,11 +316,15 @@ function setupFormLogic() {
 
 // Re-cached for full-screen mode
 async function reloadStores() {
-    const container = document.getElementById('responsible-stores-container');
-    if (!container) return;
     try {
-        const snap = await getDocs(collection(db, "m_stores"));
-        cachedStores = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (cachedStores.length === 0) {
+            const snap = await getDocs(collection(db, "m_stores"));
+            cachedStores = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        }
+
+        const container = document.getElementById('responsible-stores-container');
+        if (!container) return;
+        
         container.innerHTML = cachedStores.map(s => `
             <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; cursor: pointer; background: white; padding: 0.3rem 0.6rem; border-radius: 6px; border: 1px solid var(--border); transition: all 0.2s;">
                 <input type="checkbox" value="${s.store_id || s.id}" style="width: 16px; height: 16px;"> ${s.store_name || s.Name}
