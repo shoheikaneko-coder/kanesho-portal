@@ -195,11 +195,20 @@ function renderFormView(container) {
 
                 <!-- ボタンエリア (フッター) -->
                 <div class="mobile-fixed-bottom desktop-actions" style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; width: 100%; padding: 0.5rem 0;">
-                    ${isEdit ? `
-                    <button type="button" id="btn-form-delete" class="btn" style="height: 48px; min-width: 160px; background: white; color: #ef4444; border: 1px solid #fee2e2; font-weight: 600; font-size: 0.9rem; transition: all 0.2s; white-space: nowrap;">
-                        <i class="fas fa-trash-alt" style="margin-right: 0.4rem;"></i>
-                        このアイテムを削除
-                    </button>` : '<div></div>'}
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start;">
+                        <span style="font-size: 0.75rem; color: #94a3b8; margin-left: 0.2rem;">
+                            ${isEdit ? (editingItemData.updated_at ? `最終更新: ${new Date(editingItemData.updated_at).toLocaleDateString('ja-JP')}` : '最終更新: -') : '新規アイテム登録'}
+                        </span>
+                        <button type="button" id="btn-form-delete" class="btn" style="height: 48px; min-width: 160px; background: white; color: #ef4444; border: 1px solid #fee2e2; font-weight: 600; font-size: 0.9rem; transition: all 0.2s; white-space: nowrap;">
+                            <i class="fas fa-trash-alt" style="margin-right: 0.4rem;"></i>
+                            このアイテムを削除
+                        </button>
+                    </div>` : `
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start;">
+                        <span style="font-size: 0.75rem; color: #94a3b8; margin-left: 0.2rem;">新規アイテム登録</span>
+                        <div style="height: 48px;"></div> <!-- スペース維持用 -->
+                    </div>
+                    `}
                     
                     <div style="display: flex; gap: 1rem;">
                         <button type="button" id="btn-form-cancel" class="btn" style="height: 48px; min-width: 120px; background: #f8fafc; color: #64748b; font-weight: 700; border: 1px solid #e2e8f0; font-size: 0.95rem; white-space: nowrap;">
@@ -553,6 +562,7 @@ function setupFormLogic() {
             unit: document.getElementById('item-unit').value,
             content_amount: Number(document.getElementById('item-content-amount').value) || 0,
             notes: document.getElementById('item-notes').value || "",
+            created_at: editingItemData?.created_at || new Date().toISOString(),
             updated_at: new Date().toISOString()
         };
 
