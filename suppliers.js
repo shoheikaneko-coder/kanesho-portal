@@ -115,47 +115,86 @@ function renderFormView(container) {
             </div>
             
             <div style="padding: 2.5rem;">
-                <form id="supplier-form" style="display: flex; flex-direction: column; gap: 1.5rem;">
-                    <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 1.5rem;">
-                        <div class="input-group">
-                            <label style="font-weight: 700; color: #475569;">業者ID</label>
-                            <input type="text" id="vendor-id" required placeholder="例: SUP-001" style="font-family: monospace;">
-                        </div>
-                        <div class="input-group">
-                            <label style="font-weight: 700; color: #475569;">企業名</label>
-                            <input type="text" id="vendor-name" required placeholder="例: ○○食品株式会社">
-                        </div>
-                    </div>
-                    
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-                        <div class="input-group">
-                            <label style="font-weight: 700; color: #475569;">担当者名</label>
-                            <input type="text" id="vendor-contact" placeholder="例: 田中 太郎">
-                        </div>
-                        <div class="input-group">
-                            <label style="font-weight: 700; color: #475569;">電話番号・連絡先</label>
-                            <input type="text" id="vendor-phone" placeholder="03-xxxx-xxxx">
-                        </div>
-                    </div>
-
-                    <div class="input-group">
-                        <label style="font-weight: 700; color: #475569;">担当店舗 (複数選択可)</label>
-                        <div id="responsible-stores-container" style="display: flex; flex-wrap: wrap; gap: 0.8rem; background: #f8fafc; padding: 1.2rem; border-radius: 12px; border: 1px solid var(--border);">
-                            <!-- Stores injected here -->
-                        </div>
-                    </div>
-
-                    <div class="input-group">
-                        <label style="font-weight: 700; color: #475569;">備考 (発注ルール、締日など)</label>
-                        <textarea id="vendor-remarks" style="width: 100%; padding: 1rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; min-height: 100px;" placeholder="特記事項があれば入力してください"></textarea>
+                <form id="supplier-form" class="product-edit-split pro-compact-form">
+                    <!-- 左カラム: 基本情報 -->
+                    <div class="form-col-left" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                        <section style="background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border);">
+                            <h4 style="margin-top: 0; margin-bottom: 1.2rem; color: var(--primary); font-size: 1rem; display: flex; align-items: center; gap: 0.5rem; border-left: 4px solid var(--primary); padding-left: 0.8rem;">
+                                基本情報
+                            </h4>
+                            <div class="input-group compact-input">
+                                <label style="font-weight: 700; color: #475569; font-size: 0.8rem;">業者ID <span style="color:red">*</span></label>
+                                <input type="text" id="vendor-id" required placeholder="例: SUP-001" style="font-family: monospace; padding: 0.6rem;">
+                            </div>
+                            <div class="input-group compact-input">
+                                <label style="font-weight: 700; color: #475569; font-size: 0.8rem;">企業名 <span style="color:red">*</span></label>
+                                <input type="text" id="vendor-name" required placeholder="例: ○○食品株式会社" style="padding: 0.6rem;">
+                            </div>
+                            <div class="input-group compact-input">
+                                <label style="font-weight: 700; color: #475569; font-size: 0.8rem;">担当者名</label>
+                                <input type="text" id="vendor-contact" placeholder="例: 田中 太郎" style="padding: 0.6rem;">
+                            </div>
+                            <div class="input-group compact-input">
+                                <label style="font-weight: 700; color: #475569; font-size: 0.8rem;">電話番号・連絡先</label>
+                                <input type="text" id="vendor-phone" placeholder="03-xxxx-xxxx" style="padding: 0.6rem;">
+                            </div>
+                            <div class="input-group compact-input" style="flex: 1; display: flex; flex-direction: column; margin-bottom: 0;">
+                                <label style="font-weight: 700; color: #475569; font-size: 0.8rem;">備考 (発注ルール、締日など)</label>
+                                <textarea id="vendor-remarks" style="flex: 1; resize: none; width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; min-height: 80px;" placeholder="特記事項があれば入力してください"></textarea>
+                            </div>
+                        </section>
                     </div>
 
-                    <div style="display: flex; gap: 1rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
-                        <button type="button" id="btn-form-cancel" class="btn" style="flex: 1; background: #f1f5f9; color: var(--text-secondary); font-weight: 700;">キャンセル</button>
-                        <button type="submit" class="btn btn-primary" style="flex: 2; padding: 1rem; font-weight: 800; font-size: 1.1rem;">
-                            <i class="fas fa-save" style="margin-right: 0.5rem;"></i>
-                            業者情報を保存
-                        </button>
+                    <!-- 右カラム: 取引設定 -->
+                    <div class="form-col-right" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                        <section style="background: #f1f5f9; padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border);">
+                            <h4 style="margin-top: 0; margin-bottom: 1.2rem; color: #2563EB; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem; border-left: 4px solid #2563EB; padding-left: 0.8rem;">
+                                取引・発注設定
+                            </h4>
+                            
+                            <div class="input-group compact-input">
+                                <label style="font-weight: 700; color: #475569; font-size: 0.8rem;">発注方法</label>
+                                <select id="vendor-order-method" style="width: 100%; padding: 0.6rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.95rem; background: white;">
+                                    <option value="">（選択してください）</option>
+                                    <option value="line">LINE</option>
+                                    <option value="phone">電話</option>
+                                    <option value="fax">FAX</option>
+                                    <option value="web">Web発注</option>
+                                    <option value="store_buy">店舗買付</option>
+                                </select>
+                            </div>
+
+                            <div class="input-group compact-input">
+                                <label style="font-weight: 700; color: #475569; font-size: 0.8rem;">納品方法 (複数選択可)</label>
+                                <div id="delivery-methods-container" style="display: flex; flex-wrap: wrap; gap: 0.8rem; background: white; padding: 1rem; border-radius: 8px; border: 1px solid var(--border);">
+                                    <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; font-size: 0.9rem;">
+                                        <input type="checkbox" value="delivery" name="delivery_method"> 配達
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; font-size: 0.9rem;">
+                                        <input type="checkbox" value="market_pickup" name="delivery_method"> 市場受取
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; font-size: 0.9rem;">
+                                        <input type="checkbox" value="store_buy" name="delivery_method"> 店舗買付
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="input-group compact-input" style="margin-bottom: 0;">
+                                <label style="font-weight: 700; color: #475569; font-size: 0.8rem;">担当店舗 (複数選択可)</label>
+                                <div id="responsible-stores-container" style="display: flex; flex-wrap: wrap; gap: 0.8rem; background: white; padding: 1rem; border-radius: 8px; border: 1px solid var(--border); max-height: 150px; overflow-y: auto;">
+                                    <!-- Stores injected here -->
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- ボタン類 -->
+                        <div class="mobile-fixed-bottom desktop-actions" style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: auto;">
+                            <button type="button" id="btn-form-cancel" class="btn" style="flex: 1; max-width: 140px; background: #f8fafc; color: #64748b; font-weight: 700; padding: 1rem; border: 1px solid #e2e8f0; font-size: 0.95rem;"><i class="fas fa-times" style="margin-right: 0.4rem;"></i> キャンセル</button>
+                            <button type="submit" class="btn btn-primary" style="flex: 2; background: linear-gradient(135deg, #059669, #10b981); color: white; font-weight: 800; padding: 1rem; font-size: 1rem; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);">
+                                <i class="fas fa-save" style="margin-right: 0.4rem;"></i>
+                                業者情報を保存
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -174,10 +213,16 @@ function renderFormView(container) {
             document.getElementById('vendor-contact').value = editingSupplierData.contact_person || '';
             document.getElementById('vendor-phone').value = editingSupplierData.phone || '';
             document.getElementById('vendor-remarks').value = editingSupplierData.remarks || '';
+            document.getElementById('vendor-order-method').value = editingSupplierData.order_method || '';
             
-            const selected = editingSupplierData.responsible_stores || [];
+            const selectedStores = editingSupplierData.responsible_stores || [];
             document.querySelectorAll('#responsible-stores-container input').forEach(cb => {
-                cb.checked = selected.includes(cb.value);
+                cb.checked = selectedStores.includes(cb.value);
+            });
+
+            const selectedDeliveries = editingSupplierData.delivery_methods || [];
+            document.querySelectorAll('#delivery-methods-container input').forEach(cb => {
+                cb.checked = selectedDeliveries.includes(cb.value);
             });
         }
     });
@@ -236,6 +281,7 @@ function setupFormLogic() {
 
         const docId = editingSupplierData ? editingSupplierData.id : null;
         const selectedStores = Array.from(document.querySelectorAll('#responsible-stores-container input:checked')).map(cb => cb.value);
+        const selectedDeliveries = Array.from(document.querySelectorAll('#delivery-methods-container input:checked')).map(cb => cb.value);
 
         const vendorData = {
             vendor_id: document.getElementById('vendor-id').value,
@@ -244,6 +290,8 @@ function setupFormLogic() {
             phone: document.getElementById('vendor-phone').value,
             responsible_stores: selectedStores,
             remarks: document.getElementById('vendor-remarks').value,
+            order_method: document.getElementById('vendor-order-method').value,
+            delivery_methods: selectedDeliveries,
             updated_at: new Date().toISOString()
         };
 
