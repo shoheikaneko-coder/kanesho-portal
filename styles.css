@@ -623,10 +623,15 @@ p { color: var(--text-secondary); line-height: 1.5; }
 
 /* Product Edit Split Layout (Specifically strictly isolated) */
 .product-edit-split {
-    display: grid;
-    grid-template-columns: 1fr 1.05fr;
+    display: flex;
     gap: 2rem;
-    align-items: stretch;
+    align-items: flex-start;
+}
+
+.product-edit-split .form-col-left,
+.product-edit-split .form-col-right {
+    flex: 1;
+    width: 50%;
 }
 
 @media (max-width: 1024px) {
