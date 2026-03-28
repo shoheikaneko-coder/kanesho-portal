@@ -450,6 +450,7 @@ function setupFormLogic() {
             } else { 
                 await addDoc(collection(db, "m_suppliers"), vendorData); 
             }
+            await fetchSuppliersData();
             currentView = 'list';
             renderView();
             showAlert('成功', '業者情報を保存しました。');
