@@ -49,8 +49,8 @@ function renderFormView(container) {
                 <form id="item-form" class="product-edit-split pro-compact-form">
                     
                     <!-- 左カラム: 基本情報・備考 -->
-                    <div class="form-col-left" style="display: flex; flex-direction: column; gap: 1.5rem;">
-                        <section style="background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border);">
+                    <div class="form-col-left" style="display: flex; flex-direction: column; gap: 1.5rem; height: 100%;">
+                        <section style="flex: none; background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border);">
                             <h4 style="margin-top: 0; margin-bottom: 1.2rem; color: var(--primary); font-size: 1rem; display: flex; align-items: center; gap: 0.5rem; border-left: 4px solid var(--primary); padding-left: 0.8rem;">
                                 基本スペック
                             </h4>
@@ -84,9 +84,9 @@ function renderFormView(container) {
                             </div>
                         </section>
     
-                        <div class="input-group compact-input" style="margin-bottom: 0;">
-                            <label style="font-weight: 700; color: #475569; font-size: 0.8rem;">備考 / 内部メモ</label>
-                            <textarea id="item-notes" rows="1" placeholder="仕入れ時の注意点、小分けのルール、レシピの提供手順など" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem;">${isEdit ? (editingItemData.notes || '') : ''}</textarea>
+                        <div class="input-group compact-input" style="flex: 1; display: flex; flex-direction: column; margin-bottom: 0;">
+                            <label style="font-weight: 700; color: #475569; font-size: 0.8rem; margin-bottom: 0.4rem;">備考 / 内部メモ</label>
+                            <textarea id="item-notes" placeholder="仕入れ時の注意点、小分けのルール、レシピの提供手順など" style="flex: 1; resize: none; width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem;">${isEdit ? (editingItemData.notes || '') : ''}</textarea>
                         </div>
                     </div>
 
@@ -135,8 +135,8 @@ function renderFormView(container) {
                             <div class="input-group compact-input" style="margin-bottom: 1rem;">
                                 <label style="font-size: 0.8rem; font-weight: 700;">デフォルト仕入先</label>
                                 <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                    <select id="ing-vendor-id" style="width: 60%; padding: 0.6rem; border-radius: 8px; border: 1px solid var(--border); font-size:0.9rem;"></select>
-                                    <a href="?page=suppliers" target="_blank" class="btn" style="background: #e2e8f0; color: #475569; padding: 0.6rem 0.8rem; border-radius: 8px;" title="業者マスタを開く">
+                                    <select id="ing-vendor-id" style="width: calc(50% - 0.5rem); flex: none; padding: 0.6rem; border-radius: 8px; border: 1px solid var(--border); font-size:0.9rem;"></select>
+                                    <a href="?page=suppliers" target="_blank" style="color: #475569; font-size: 1.2rem; cursor: pointer; text-decoration: none;" title="業者マスタを開く">
                                         <i class="fas fa-cog"></i>
                                     </a>
                                 </div>
@@ -205,7 +205,12 @@ function renderFormView(container) {
     const updateUnitLabels = () => {
         const addOnStr = unitInput.value.trim();
         const addonC = document.getElementById('addon-content-amount');
-        if (addonC) addonC.textContent = addOnStr;
+        if (addonC) {
+            addonC.textContent = ''; // 確実に空にする
+            if (addOnStr) {
+                addonC.textContent = addOnStr; // 入力された文字だけを純粋に反映
+            }
+        }
     };
     if (unitInput) {
         unitInput.addEventListener('input', updateUnitLabels);
