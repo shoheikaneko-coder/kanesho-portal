@@ -45,21 +45,21 @@ function renderSubRecipeForm(container) {
     const menuData = isEdit ? cachedMenus.find(m => m.item_id === editingItemData.id) : null;
     
     container.innerHTML = `
-        <div class="animate-fade-in" style="background: white; border-radius: 12px; box-shadow: 0 4px 30px rgba(0,0,0,0.1); overflow: hidden;">
-            <!-- Header -->
-            <div style="padding: 1rem 2rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
-                <h3 style="margin: 0; font-size: 1.1rem; color: #1e293b; display: flex; align-items: center; gap: 0.8rem;">
-                    <i class="fas fa-mortar-pestle" style="color: #059669;"></i>
-                    自家製原材料マスタ - ${isEdit ? '高度編集' : '新規開発'}
-                </h3>
-                <button id="btn-form-back" class="btn" style="background: white; border: 1px solid var(--border); color: var(--text-secondary); padding: 0.5rem 1rem;">
-                    <i class="fas fa-arrow-left"></i> 戻る
-                </button>
-            </div>
+        <div class="animate-fade-in recipe-form-v39-container" style="background: white; border-radius: 12px; box-shadow: 0 4px 30px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column; height: 100%;">
+            <!-- Header (Sticky) -->
+            <div class="recipe-header-sticky" style="position: sticky; top: 0; z-index: 100; background: #f8fafc; border-bottom: 1px solid var(--border);">
+                <div style="padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin: 0; font-size: 1.1rem; color: #1e293b; display: flex; align-items: center; gap: 0.8rem;">
+                        <i class="fas fa-mortar-pestle" style="color: #059669;"></i>
+                        自家製原材料マスタ - ${isEdit ? '高度編集' : '新規開発'}
+                    </h3>
+                    <button id="btn-form-back" class="btn" style="background: white; border: 1px solid var(--border); color: var(--text-secondary); padding: 0.5rem 1rem;">
+                        <i class="fas fa-arrow-left"></i> 戻る
+                    </button>
+                </div>
 
-            <form id="item-form" class="recipe-form-v39">
-                <!-- Upper Section: Spec -->
-                <div class="recipe-section recipe-header-grid">
+                <!-- Upper Section: Spec (Sticky inside header) -->
+                <div class="recipe-section recipe-header-grid" style="border-top: 1px solid var(--border);">
                     <div class="input-group compact-input" style="margin-bottom:0;">
                         <label>ふりがな</label>
                         <input type="text" id="item-furigana" value="${isEdit ? (editingItemData.furigana || '') : ''}" placeholder="ひらがな">
@@ -82,41 +82,36 @@ function renderSubRecipeForm(container) {
                     </div>
                 </div>
 
-                <!-- Middle Section: Cost Summary (Deep Green) -->
+                <!-- Middle Section: Cost Summary (Sticky inside header) -->
                 <div class="recipe-middle-summary deep-green">
                     <div class="summary-item">
-                        <span class="summary-label">レシピ総原価</span>
+                        <span class="summary-label">レシピ構成 総原価</span>
                         <span class="summary-value" id="display-total-cost">¥ 0</span>
                     </div>
-                    <div class="summary-item">
-                        <span class="summary-label">今回の出来高</span>
-                        <div class="summary-input-wrapper">
-                            <input type="number" id="recipe-yield-amount" class="summary-input" value="${menuData?.yield_amount || 0}" step="any">
-                            <span class="summary-unit-label" style="font-size:1.5rem; font-weight:700; color:#a7f3d0;">${isEdit ? (editingItemData.unit || '') : ''}</span>
-                        </div>
-                    </div>
                     <div class="summary-item" style="text-align: right;">
-                        <span class="summary-label">算出 正味単価 (¥/${isEdit ? (editingItemData.unit || '単位') : '単位'})</span>
-                        <span class="summary-value" id="display-net-unit-price" style="color: #4ade80;">¥ 0.00</span>
+                        <span class="summary-label">算出 正味単価 (¥ / <span class="display-unit-label">${isEdit ? (editingItemData.unit || '単位') : '単位'}</span>)</span>
+                        <span class="summary-value" id="display-net-unit-price" style="color: #4ade80; font-size: 2.2rem;">¥ 0.00</span>
                     </div>
                 </div>
+            </div>
 
-                <!-- Lower Section: Main Content -->
-                <div class="recipe-bottom-grid">
+            <form id="item-form" style="flex: 1; overflow: hidden; display: flex; flex-direction: column;">
+                <!-- Lower Section: Main Content (Scrollable) -->
+                <div class="recipe-bottom-grid" style="flex: 1; overflow: hidden;">
                     <!-- Left: Instructions (40%) -->
-                    <div class="recipe-section recipe-instructions-area">
+                    <div class="recipe-section recipe-instructions-area" style="overflow-y: auto;">
                         <h4 style="font-size: 0.9rem; color: #64748b; margin-bottom: 0.8rem;"><i class="fas fa-list-ol"></i> 作り方・工程</h4>
-                        <textarea id="recipe-instructions" style="width:100%; height:calc(100% - 2rem); border:none; resize:none; outline:none; font-size:0.95rem; line-height:1.6; color:#334155;" placeholder="1. 材料を計量する&#10;2. 鍋に入れて中火で加熱する...">${menuData?.instructions || ''}</textarea>
+                        <textarea id="recipe-instructions" style="width:100%; height:300px; border:1px solid #e2e8f0; border-radius:8px; padding:1rem; resize:none; outline:none; font-size:0.95rem; line-height:1.6; color:#334155;" placeholder="1. 材料を計量する&#10;2. 鍋に入れて中火で加熱する...">${menuData?.instructions || ''}</textarea>
                     </div>
 
                     <!-- Right: Recipe Table (60%) -->
-                    <div class="recipe-section recipe-table-area">
+                    <div class="recipe-section recipe-table-area" style="overflow-y: auto;">
                         <h4 style="font-size: 0.9rem; color: #64748b; margin-bottom: 0.8rem;"><i class="fas fa-utensils"></i> レシピ構成</h4>
                         
                         <!-- Incremental Search -->
                         <div class="incremental-search-container">
                             <div class="input-with-addon-wrapper" style="margin-bottom: 1rem;">
-                                <input type="text" id="recipe-search-input" placeholder="食材名・ふりがなで検索 (スペース区切りでAND検索)..." style="border-radius: 8px 0 0 8px; height:44px;">
+                                <input type="text" id="recipe-search-input" placeholder="食材名・ふりがなで検索 (選んでEnterで追加)..." style="border-radius: 8px 0 0 8px; height:44px;">
                                 <span class="input-addon" style="background:#059669; color:white; border-color:#059669; width:50px;">
                                     <i class="fas fa-search"></i>
                                 </span>
@@ -124,15 +119,30 @@ function renderSubRecipeForm(container) {
                             <div id="search-results-list" class="incremental-search-results"></div>
                         </div>
 
-                        <div id="recipe-items-container" style="flex:1; overflow-y:auto; border-top:1px solid #f1f5f9; padding-top:1rem;">
+                        <div id="recipe-items-container" style="padding-bottom: 2rem;">
                             <!-- Recipe rows dynamic -->
                         </div>
                     </div>
                 </div>
 
-                <!-- Actions -->
-                <div class="mobile-fixed-bottom desktop-actions" style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 2.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0;">
-                    ${renderFormActions(isEdit)}
+                <!-- Actions (Fixed Bottom) -->
+                <div class="recipe-footer-actions" style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 1rem 2.5rem;">
+                    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 2rem;">
+                        <!-- Yield Amount moved here -->
+                        <div class="yield-input-container" style="display: flex; align-items: center; gap: 1rem; background: white; padding: 0.5rem 1.5rem; border-radius: 8px; border: 2px solid #059669;">
+                            <label style="font-size: 0.85rem; font-weight: 800; color: #065f46;">今回出来高 :</label>
+                            <input type="number" id="recipe-yield-amount" style="width: 100px; font-size: 1.2rem; font-weight: 900; border: none; text-align: right; outline: none;" value="${menuData?.yield_amount || 0}" step="any">
+                            <span class="display-unit-label" style="font-weight: 700; color: #059669;">${isEdit ? (editingItemData.unit || '') : ''}</span>
+                        </div>
+                        
+                        <div id="save-guard-message" style="color: var(--danger); font-size: 0.85rem; font-weight: 700; display: none;">
+                            <i class="fas fa-exclamation-triangle"></i> 出来高を入力してください
+                        </div>
+
+                        <div class="mobile-fixed-bottom desktop-actions" style="padding: 0; background: transparent; border: none; box-shadow: none; position: static;">
+                            ${renderFormActions(isEdit)}
+                        </div>
+                    </div>
                 </div>
             </form>
         </div>
@@ -524,54 +534,96 @@ function setupIncrementalSearch() {
     const results = document.getElementById('search-results-list');
     if (!input || !results) return;
 
+    let selectedIndex = -1;
+
+    let latestFiltered = [];
+
+    const renderResults = () => {
+        results.innerHTML = latestFiltered.map((item, idx) => `
+            <div class="search-result-item ${idx === selectedIndex ? 'selected' : ''}" data-id="${item.id}">
+                <div class="name-box">
+                    <span class="name">${item.name}</span>
+                    <span class="furigana">${item.furigana || ''}</span>
+                </div>
+                <span class="unit">${item.unit}</span>
+            </div>
+        `).join('');
+
+        const items = results.querySelectorAll('.search-result-item');
+        items.forEach((el, idx) => {
+            el.onclick = () => selectItem(latestFiltered[idx]);
+        });
+        
+        results.style.display = latestFiltered.length > 0 ? 'block' : 'none';
+        
+        // 選択された要素をスクロール
+        if (selectedIndex >= 0 && items[selectedIndex]) {
+            items[selectedIndex].scrollIntoView({ block: 'nearest' });
+        }
+    };
+
+    const selectItem = (item) => {
+        if (!currentRecipe.some(r => r.ingredient_id === item.id)) {
+            currentRecipe.push({ ingredient_id: item.id, quantity: 0 });
+            renderRecipeRows();
+        }
+        input.value = '';
+        latestFiltered = [];
+        renderResults();
+        selectedIndex = -1;
+        
+        setTimeout(() => {
+            const inputs = document.querySelectorAll('#recipe-items-container input');
+            if (inputs.length > 0) inputs[inputs.length - 1].focus();
+        }, 50);
+    };
+
     input.oninput = () => {
         const query = input.value.trim().toLowerCase();
-        if (!query) { results.innerHTML = ''; return; }
+        if (!query) { 
+            latestFiltered = [];
+            renderResults();
+            return; 
+        }
 
-        const filtered = cachedItems.filter(item => {
-            // ingredients タブにあるもの、または sub_recipes にあるもの (自分以外) を対象にしたいが
-            // シンプルに cachedIngredients に含まれる item_id を持つものを検索
+        latestFiltered = cachedItems.filter(item => {
             const isIng = cachedIngredients.some(ig => ig.item_id === item.id);
             if (!isIng) return false;
-            
             const name = (item.name || '').toLowerCase();
             const furigana = (item.furigana || '').toLowerCase();
             return name.includes(query) || furigana.includes(query);
         }).slice(0, 10);
 
-        results.innerHTML = filtered.map(item => `
-            <div class="search-result-item" data-id="${item.id}">
-                <span class="name">${item.name}</span>
-                <span class="furigana">${item.furigana || ''}</span>
-                <span class="unit">(${item.unit})</span>
-            </div>
-        `).join('');
-
-        results.querySelectorAll('.search-result-item').forEach(el => {
-            el.onclick = () => {
-                const itemId = el.dataset.id;
-                if (!currentRecipe.some(r => r.ingredient_id === itemId)) {
-                    currentRecipe.push({ ingredient_id: itemId, quantity: 0 });
-                    renderRecipeRows();
-                }
-                input.value = '';
-                results.innerHTML = '';
-                // renderRecipeRows の後に「新しい行のinput」にフォーカスしたい
-                setTimeout(() => {
-                    const inputs = document.querySelectorAll('#recipe-items-container input');
-                    if (inputs.length > 0) inputs[inputs.length - 1].focus();
-                }, 50);
-            };
-        });
+        selectedIndex = -1;
+        renderResults();
     };
     
-    // Enterキーで一番上を選択
     input.onkeydown = (e) => {
-        if (e.key === 'Enter') {
-            const first = results.querySelector('.search-result-item');
-            if (first) first.click();
+        if (latestFiltered.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            selectedIndex = Math.min(selectedIndex + 1, latestFiltered.length - 1);
+            renderResults();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            selectedIndex = Math.max(selectedIndex - 1, 0);
+            renderResults();
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (selectedIndex >= 0 && latestFiltered[selectedIndex]) {
+                selectItem(latestFiltered[selectedIndex]);
+            } else if (latestFiltered.length > 0) {
+                selectItem(latestFiltered[0]);
+            }
+        } else if (e.key === 'Escape') {
+            latestFiltered = [];
+            renderResults();
         }
     };
+
+    // フォーカスが外れたら閉じる（少し遅延させてクリックイベントが間に合うようにする）
+    input.onblur = () => setTimeout(() => { results.style.display = 'none'; }, 200);
 }
 
 function renderListView(container) {
@@ -1254,13 +1306,31 @@ function calculateRecipeCost() {
 
     if (currentTab === 'sub_recipes') {
         // 自家製タブ用の表示
-        const yieldAmount = parseFloat(document.getElementById('recipe-yield-amount')?.value) || 0;
+        const yieldAmountInput = document.getElementById('recipe-yield-amount');
+        const yieldAmount = parseFloat(yieldAmountInput?.value) || 0;
         const netValue = yieldAmount > 0 ? (total / yieldAmount) : 0;
         
         const totalEl = document.getElementById('display-total-cost');
         const netEl = document.getElementById('display-net-unit-price');
         if (totalEl) totalEl.textContent = `¥ ${Math.round(total).toLocaleString()}`;
         if (netEl) netEl.textContent = `¥ ${netValue.toLocaleString('ja-JP', {minimumFractionDigits:2})}`;
+
+        // 保存ガードロジック
+        const btnSubmitProxy = document.getElementById('btn-form-submit-proxy');
+        const guardMsg = document.getElementById('save-guard-message');
+        if (btnSubmitProxy) {
+            if (yieldAmount <= 0) {
+                btnSubmitProxy.disabled = true;
+                btnSubmitProxy.style.opacity = '0.5';
+                btnSubmitProxy.style.cursor = 'not-allowed';
+                if (guardMsg) guardMsg.style.display = 'block';
+            } else {
+                btnSubmitProxy.disabled = false;
+                btnSubmitProxy.style.opacity = '1';
+                btnSubmitProxy.style.cursor = 'pointer';
+                if (guardMsg) guardMsg.style.display = 'none';
+            }
+        }
     } else {
         // メインタブ（メニュー）用の表示
         const salesPriceInput = document.getElementById('menu-sales-price');

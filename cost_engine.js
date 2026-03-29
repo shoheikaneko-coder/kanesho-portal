@@ -21,25 +21,32 @@ export function getEffectivePrice(itemId, cache, visiting = new Set()) {
     }
     visiting.add(itemId);
 
-    // 1. 食材マスタ(m_ingredients)の価格を確認
-    const ing = cache.ingredients.find(i => i.item_id === itemId);
-    if (ing && ing.purchase_price > 0) {
-        visiting.delete(itemId);
-        // 正味単価 = 仕入れ値 / 歩留
-        return (ing.purchase_price || 0) / Math.max(0.01, ing.yield_rate || 1.0);
-    }
-
-    // 2. メニューマスタ(m_menus)のレシピから算出（仕込み品/半成品のケース）
+    // 1. 自家製(sub_recipe)の場合：最新のレシピ構成から再帰計算を行う（最優先）
     const menu = cache.menus.find(m => m.item_id === itemId);
-    if (menu && menu.recipe && menu.recipe.length > 0) {
+    if (menu && menu.is_sub_recipe && menu.recipe && menu.recipe.length > 0) {
         let totalCost = 0;
         menu.recipe.forEach(ri => {
             const rowPrice = getEffectivePrice(ri.ingredient_id, cache, visiting);
             totalCost += rowPrice * (ri.quantity || 0);
         });
         visiting.delete(itemId);
-        // メニューの原価（1食/1バットあたり等）
-        return totalCost;
+        // 出来高(yield_amount)で割った1単位あたりのコストを返す
+        const yieldAmt = Number(menu.yield_amount) || 1;
+        return yieldAmt > 0 ? (totalCost / yieldAmt) : 0;
+    }
+
+    // 2. 自家製でない場合：m_ingredients の正味単価(net_unit_price)を優先参照
+    const ing = cache.ingredients.find(i => i.item_id === itemId);
+    if (ing) {
+        if (Number(ing.net_unit_price) > 0) {
+            visiting.delete(itemId);
+            return Number(ing.net_unit_price);
+        }
+        // 3. Fallback: 仕入単価 / 歩留 で算出
+        if (Number(ing.purchase_price) > 0) {
+            visiting.delete(itemId);
+            return Number(ing.purchase_price) / Math.max(0.01, Number(ing.yield_rate) || 1.0);
+        }
     }
 
     visiting.delete(itemId);

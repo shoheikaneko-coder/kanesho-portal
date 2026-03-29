@@ -921,16 +921,13 @@ p { color: var(--text-secondary); line-height: 1.5; }
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
 }
 
-/* Sub-Recipe v39 3-Tier Layout */
-.recipe-form-v39 {
-    display: flex;
-    flex-direction: column;
-    height: calc(100vh - 120px);
+/* Sub-Recipe v42 3-Tier Layout & Refinements */
+.recipe-form-v39-container {
     background: #fdfdfd;
 }
 
-.recipe-section {
-    padding: 1.5rem 2rem;
+.recipe-header-sticky {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 .recipe-header-grid {
@@ -938,7 +935,7 @@ p { color: var(--text-secondary); line-height: 1.5; }
     grid-template-columns: 1fr 2fr 1.2fr 0.8fr 1.5fr;
     gap: 1.2rem;
     background: white;
-    border-bottom: 1px solid #edf2f7;
+    padding: 1.2rem 2rem;
 }
 
 .recipe-middle-summary {
@@ -947,84 +944,66 @@ p { color: var(--text-secondary); line-height: 1.5; }
     align-items: center;
     padding: 1.2rem 3rem;
     color: white;
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.recipe-middle-summary.deep-green {
-    background: #065f46; /* 深い緑 */
+    background: #065f46;
 }
 
 .summary-item {
     display: flex;
     flex-direction: column;
-    gap: 0.2rem;
 }
 
 .summary-label {
     font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    opacity: 0.9;
     font-weight: 700;
+    opacity: 0.9;
+    letter-spacing: 0.05em;
 }
 
 .summary-value {
     font-size: 1.8rem;
     font-weight: 900;
-    font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
+    font-family: 'JetBrains Mono', monospace;
 }
 
-.summary-input-wrapper {
+.yield-input-container input:focus {
+    color: #059669;
+}
+
+/* Incremental Search Refinements */
+.search-result-item {
     display: flex;
-    align-items: baseline;
-    gap: 0.5rem;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem 1.2rem;
+    border-bottom: 1px solid #f1f5f9;
+    cursor: pointer;
 }
 
-.summary-input {
-    background: transparent;
-    border: none;
-    border-bottom: 2px solid #34d399;
-    color: white;
-    font-size: 2rem;
-    font-weight: 900;
-    width: 140px;
-    outline: none;
-    padding: 0;
-    font-family: inherit;
+.search-result-item.selected {
+    background: #ecfdf5;
+    border-left: 4px solid #059669;
 }
 
-.summary-unit-label {
-    font-size: 1.2rem;
-    font-weight: 700;
-    opacity: 0.8;
-}
-
-.recipe-bottom-grid {
-    display: grid;
-    grid-template-columns: 4fr 6fr;
-    flex: 1;
-    overflow: hidden;
-}
-
-.recipe-instructions-area {
-    border-right: 1px solid #edf2f7;
-    background: #fff;
-}
-
-.recipe-table-area {
+.search-result-item .name-box {
     display: flex;
     flex-direction: column;
-    background: #f8fafc;
 }
 
-/* Incremental Search Results within Recipe */
-.incremental-search-results .search-result-item {
-    display: grid;
-    grid-template-columns: 1fr auto auto;
-    gap: 1rem;
-    padding: 0.8rem 1.2rem;
+.search-result-item .name {
+    font-weight: 700;
+    color: #1e293b;
 }
 
-.incremental-search-results .name { font-weight: 700; color: #1e293b; }
-.incremental-search-results .furigana { font-size: 0.75rem; color: #64748b; }
-.incremental-search-results .unit { font-size: 0.8rem; font-weight: 600; color: #059669; }
+.search-result-item .furigana {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.search-result-item .unit {
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: #059669;
+    background: #f0fdf4;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+}
