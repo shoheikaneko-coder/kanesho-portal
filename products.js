@@ -83,14 +83,16 @@ function renderSubRecipeForm(container) {
                 </div>
 
                 <!-- Middle Section: Cost Summary (Sticky inside header) -->
-                <div class="recipe-middle-summary deep-green">
+                <div class="recipe-middle-summary">
                     <div class="summary-item">
                         <span class="summary-label">レシピ構成 総原価</span>
                         <span class="summary-value" id="display-total-cost">¥ 0</span>
                     </div>
                     <div class="summary-item" style="text-align: right;">
-                        <span class="summary-label">算出 正味単価 (¥ / <span class="display-unit-label">${isEdit ? (editingItemData.unit || '単位') : '単位'}</span>)</span>
-                        <span class="summary-value" id="display-net-unit-price" style="color: #4ade80; font-size: 2.2rem;">¥ 0.00</span>
+                        <span class="summary-label">算出 正味単価</span>
+                        <div id="display-net-unit-price" class="summary-value cyan-blue">
+                            ¥ 0.00<span class="summary-unit-small">/ ${isEdit ? (editingItemData.unit || '単位') : '単位'}</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -98,10 +100,22 @@ function renderSubRecipeForm(container) {
             <form id="item-form" style="flex: 1; overflow: hidden; display: flex; flex-direction: column;">
                 <!-- Lower Section: Main Content (Scrollable) -->
                 <div class="recipe-bottom-grid" style="flex: 1; overflow: hidden;">
-                    <!-- Left: Instructions (40%) -->
-                    <div class="recipe-section recipe-instructions-area" style="overflow-y: auto;">
+                    <!-- Left: Instructions & Yield Ritual (40%) -->
+                    <div class="recipe-section recipe-instructions-area" style="overflow-y: auto; background: #fff; border-right: 1px solid #edf2f7;">
                         <h4 style="font-size: 0.9rem; color: #64748b; margin-bottom: 0.8rem;"><i class="fas fa-list-ol"></i> 作り方・工程</h4>
-                        <textarea id="recipe-instructions" style="width:100%; height:300px; border:1px solid #e2e8f0; border-radius:8px; padding:1rem; resize:none; outline:none; font-size:0.95rem; line-height:1.6; color:#334155;" placeholder="1. 材料を計量する&#10;2. 鍋に入れて中火で加熱する...">${menuData?.instructions || ''}</textarea>
+                        <textarea id="recipe-instructions" style="width:100%; height:250px; border:1px solid #e2e8f0; border-radius:8px; padding:1rem; resize:none; outline:none; font-size:0.95rem; line-height:1.6; color:#334155;" placeholder="1. 材料を計量する&#10;2. 鍋に入れて中火で加熱する...">${menuData?.instructions || ''}</textarea>
+
+                        <!-- Yield Ritual Area (Left Side) -->
+                        <div class="yield-ritual-container">
+                            <h4 style="font-size: 0.85rem; color: #1e293b; margin-bottom: 0.8rem; font-weight: 800;">
+                                <i class="fas fa-flask"></i> 今回の出来高（仕上がり量）
+                            </h4>
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <input type="number" id="recipe-yield-amount" class="yield-input-field yield-input-error" value="${menuData?.yield_amount || 0}" step="any">
+                                <span style="font-size: 1.2rem; font-weight: 800; color: #334155;">${isEdit ? (editingItemData.unit || '') : ''}</span>
+                            </div>
+                            <p style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;">※ 出来高が 0 の場合は保存できません</p>
+                        </div>
                     </div>
 
                     <!-- Right: Recipe Table (60%) -->
@@ -128,13 +142,6 @@ function renderSubRecipeForm(container) {
                 <!-- Actions (Fixed Bottom) -->
                 <div class="recipe-footer-actions" style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 1rem 2.5rem;">
                     <div style="display: flex; justify-content: flex-end; align-items: center; gap: 2rem;">
-                        <!-- Yield Amount moved here -->
-                        <div class="yield-input-container" style="display: flex; align-items: center; gap: 1rem; background: white; padding: 0.5rem 1.5rem; border-radius: 8px; border: 2px solid #059669;">
-                            <label style="font-size: 0.85rem; font-weight: 800; color: #065f46;">今回出来高 :</label>
-                            <input type="number" id="recipe-yield-amount" style="width: 100px; font-size: 1.2rem; font-weight: 900; border: none; text-align: right; outline: none;" value="${menuData?.yield_amount || 0}" step="any">
-                            <span class="display-unit-label" style="font-weight: 700; color: #059669;">${isEdit ? (editingItemData.unit || '') : ''}</span>
-                        </div>
-                        
                         <div id="save-guard-message" style="color: var(--danger); font-size: 0.85rem; font-weight: 700; display: none;">
                             <i class="fas fa-exclamation-triangle"></i> 出来高を入力してください
                         </div>
@@ -611,11 +618,11 @@ function setupIncrementalSearch() {
             renderResults();
         } else if (e.key === 'Enter') {
             e.preventDefault();
+            // 明示的に選択（selectedIndex >= 0）されている場合のみ追加
             if (selectedIndex >= 0 && latestFiltered[selectedIndex]) {
                 selectItem(latestFiltered[selectedIndex]);
-            } else if (latestFiltered.length > 0) {
-                selectItem(latestFiltered[0]);
             }
+            // selectedIndex === -1 の場合は何もしない（Enter追加を禁止）
         } else if (e.key === 'Escape') {
             latestFiltered = [];
             renderResults();
@@ -1313,7 +1320,23 @@ function calculateRecipeCost() {
         const totalEl = document.getElementById('display-total-cost');
         const netEl = document.getElementById('display-net-unit-price');
         if (totalEl) totalEl.textContent = `¥ ${Math.round(total).toLocaleString()}`;
-        if (netEl) netEl.textContent = `¥ ${netValue.toLocaleString('ja-JP', {minimumFractionDigits:2})}`;
+        
+        // 単位ラベルの取得（複数箇所にある可能性を考慮）
+        const unit = editingItemData?.unit || "単位";
+        if (netEl) {
+            netEl.innerHTML = `¥ ${netValue.toLocaleString('ja-JP', {minimumFractionDigits:2})}<span class="summary-unit-small">/ ${unit}</span>`;
+        }
+
+        // 出来高入力欄のバリデーション表示
+        if (yieldAmountInput) {
+            if (yieldAmount <= 0) {
+                yieldAmountInput.classList.remove('yield-input-valid');
+                yieldAmountInput.classList.add('yield-input-error');
+            } else {
+                yieldAmountInput.classList.remove('yield-input-error');
+                yieldAmountInput.classList.add('yield-input-valid');
+            }
+        }
 
         // 保存ガードロジック
         const btnSubmitProxy = document.getElementById('btn-form-submit-proxy');

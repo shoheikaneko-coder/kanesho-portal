@@ -921,89 +921,71 @@ p { color: var(--text-secondary); line-height: 1.5; }
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
 }
 
-/* Sub-Recipe v42 3-Tier Layout & Refinements */
+/* Sub-Recipe v43 Slate & Cyan Theme */
 .recipe-form-v39-container {
     background: #fdfdfd;
 }
 
 .recipe-header-sticky {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-.recipe-header-grid {
-    display: grid;
-    grid-template-columns: 1fr 2fr 1.2fr 0.8fr 1.5fr;
-    gap: 1.2rem;
-    background: white;
-    padding: 1.2rem 2rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
 .recipe-middle-summary {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1.2rem 3rem;
+    padding: 1.5rem 3rem;
     color: white;
-    background: #065f46;
+    background: #1e293b; /* Slate Gray */
+    border-bottom: 2px solid #334155;
 }
 
-.summary-item {
-    display: flex;
-    flex-direction: column;
-}
-
-.summary-label {
-    font-size: 0.75rem;
-    font-weight: 700;
-    opacity: 0.9;
-    letter-spacing: 0.05em;
-}
-
-.summary-value {
-    font-size: 1.8rem;
-    font-weight: 900;
-    font-family: 'JetBrains Mono', monospace;
-}
-
-.yield-input-container input:focus {
-    color: #059669;
-}
-
-/* Incremental Search Refinements */
-.search-result-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.8rem 1.2rem;
-    border-bottom: 1px solid #f1f5f9;
-    cursor: pointer;
-}
-
-.search-result-item.selected {
-    background: #ecfdf5;
-    border-left: 4px solid #059669;
-}
-
-.search-result-item .name-box {
-    display: flex;
-    flex-direction: column;
-}
-
-.search-result-item .name {
-    font-weight: 700;
-    color: #1e293b;
-}
-
-.search-result-item .furigana {
-    font-size: 0.75rem;
-    color: #64748b;
-}
-
-.search-result-item .unit {
-    font-size: 0.8rem;
+.summary-value.cyan-blue {
+    color: #0ea5e9; /* Cyan Blue */
+    font-size: 2.2rem;
     font-weight: 800;
-    color: #059669;
+    text-shadow: 0 0 10px rgba(14, 165, 233, 0.2);
+}
+
+.summary-unit-small {
+    font-size: 1.1rem;
+    opacity: 0.6;
+    margin-left: 0.5rem;
+    font-weight: 500;
+}
+
+/* Yield Ritual Styling */
+.yield-ritual-container {
+    margin-top: 1.5rem;
+    padding: 1.2rem;
+    background: #f8fafc;
+    border-radius: 10px;
+}
+
+.yield-input-field {
+    width: 120px;
+    font-size: 1.5rem;
+    font-weight: 900;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: 3px solid transparent;
+    text-align: right;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.yield-input-error {
+    border-color: #ef4444; /* Red */
+    background: #fef2f2;
+}
+
+.yield-input-valid {
+    border-color: #10b981; /* Green */
     background: #f0fdf4;
-    padding: 0.2rem 0.6rem;
-    border-radius: 4px;
+}
+
+/* Incremental Search Selection */
+.search-result-item.selected {
+    background: #f0f9ff;
+    border-left: 4px solid #0ea5e9;
 }
