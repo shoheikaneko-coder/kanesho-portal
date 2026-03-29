@@ -33,30 +33,118 @@ function renderView() {
 }
 
 function renderFormView(container) {
-    const isEdit = !!editingItemData;
     if (currentTab === 'sub_recipes') {
         renderSubRecipeForm(container);
     } else {
-        renderStandardForm(container, isEdit);
+        renderStandardForm(container);
     }
-
-    const btnBack = document.getElementById('btn-form-back');
-    const btnCancel = document.getElementById('btn-form-cancel');
-    if (btnBack) btnBack.onclick = () => { currentView = 'list'; renderView(); };
-    if (btnCancel) btnCancel.onclick = () => { currentView = 'list'; renderView(); };
-
-    const btnSubmitProxy = document.getElementById('btn-form-submit-proxy');
-    if (btnSubmitProxy) {
-        btnSubmitProxy.onclick = () => {
-            const form = document.getElementById('item-form');
-            if (form) form.requestSubmit();
-        };
-    }
-
-    setupFormLogic();
 }
 
-function renderStandardForm(container, isEdit) {
+function renderSubRecipeForm(container) {
+    const isEdit = !!editingItemData;
+    const menuData = isEdit ? cachedMenus.find(m => m.item_id === editingItemData.id) : null;
+    
+    container.innerHTML = `
+        <div class="animate-fade-in" style="background: white; border-radius: 12px; box-shadow: 0 4px 30px rgba(0,0,0,0.1); overflow: hidden;">
+            <!-- Header -->
+            <div style="padding: 1rem 2rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+                <h3 style="margin: 0; font-size: 1.1rem; color: #1e293b; display: flex; align-items: center; gap: 0.8rem;">
+                    <i class="fas fa-mortar-pestle" style="color: #059669;"></i>
+                    自家製原材料マスタ - ${isEdit ? '高度編集' : '新規開発'}
+                </h3>
+                <button id="btn-form-back" class="btn" style="background: white; border: 1px solid var(--border); color: var(--text-secondary); padding: 0.5rem 1rem;">
+                    <i class="fas fa-arrow-left"></i> 戻る
+                </button>
+            </div>
+
+            <form id="item-form" class="recipe-form-v39">
+                <!-- Upper Section: Spec -->
+                <div class="recipe-section recipe-header-grid">
+                    <div class="input-group compact-input" style="margin-bottom:0;">
+                        <label>ふりがな</label>
+                        <input type="text" id="item-furigana" value="${isEdit ? (editingItemData.furigana || '') : ''}" placeholder="ひらがな">
+                    </div>
+                    <div class="input-group compact-input" style="margin-bottom:0;">
+                        <label>品目名 / 仕込み名称 <span style="color:var(--danger)">*</span></label>
+                        <input type="text" id="item-name" required value="${isEdit ? editingItemData.name : ''}" style="font-weight:800; font-size:1.1rem; border-color:#059669;">
+                    </div>
+                    <div class="input-group compact-input" style="margin-bottom:0;">
+                        <label>カテゴリー</label>
+                        <input type="text" id="item-category" value="${isEdit ? (editingItemData.category || '') : ''}" placeholder="例: スープ / タレ">
+                    </div>
+                    <div class="input-group compact-input" style="margin-bottom:0;">
+                        <label>管理単位 <span style="color:var(--danger)">*</span></label>
+                        <input type="text" id="item-unit" value="${isEdit ? (editingItemData.unit || '') : ''}" required placeholder="g / ml / 枚">
+                    </div>
+                    <div class="input-group compact-input" style="margin-bottom:0;">
+                        <label>レシピ開発者</label>
+                        <input type="text" id="recipe-developer" value="${menuData?.recipe_developer || ''}" placeholder="フルネームを入力してください">
+                    </div>
+                </div>
+
+                <!-- Middle Section: Cost Summary (Deep Green) -->
+                <div class="recipe-middle-summary deep-green">
+                    <div class="summary-item">
+                        <span class="summary-label">レシピ総原価</span>
+                        <span class="summary-value" id="display-total-cost">¥ 0</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">今回の出来高</span>
+                        <div class="summary-input-wrapper">
+                            <input type="number" id="recipe-yield-amount" class="summary-input" value="${menuData?.yield_amount || 0}" step="any">
+                            <span class="summary-unit-label" style="font-size:1.5rem; font-weight:700; color:#a7f3d0;">${isEdit ? (editingItemData.unit || '') : ''}</span>
+                        </div>
+                    </div>
+                    <div class="summary-item" style="text-align: right;">
+                        <span class="summary-label">算出 正味単価 (¥/${isEdit ? (editingItemData.unit || '単位') : '単位'})</span>
+                        <span class="summary-value" id="display-net-unit-price" style="color: #4ade80;">¥ 0.00</span>
+                    </div>
+                </div>
+
+                <!-- Lower Section: Main Content -->
+                <div class="recipe-bottom-grid">
+                    <!-- Left: Instructions (40%) -->
+                    <div class="recipe-section recipe-instructions-area">
+                        <h4 style="font-size: 0.9rem; color: #64748b; margin-bottom: 0.8rem;"><i class="fas fa-list-ol"></i> 作り方・工程</h4>
+                        <textarea id="recipe-instructions" style="width:100%; height:calc(100% - 2rem); border:none; resize:none; outline:none; font-size:0.95rem; line-height:1.6; color:#334155;" placeholder="1. 材料を計量する&#10;2. 鍋に入れて中火で加熱する...">${menuData?.instructions || ''}</textarea>
+                    </div>
+
+                    <!-- Right: Recipe Table (60%) -->
+                    <div class="recipe-section recipe-table-area">
+                        <h4 style="font-size: 0.9rem; color: #64748b; margin-bottom: 0.8rem;"><i class="fas fa-utensils"></i> レシピ構成</h4>
+                        
+                        <!-- Incremental Search -->
+                        <div class="incremental-search-container">
+                            <div class="input-with-addon-wrapper" style="margin-bottom: 1rem;">
+                                <input type="text" id="recipe-search-input" placeholder="食材名・ふりがなで検索 (スペース区切りでAND検索)..." style="border-radius: 8px 0 0 8px; height:44px;">
+                                <span class="input-addon" style="background:#059669; color:white; border-color:#059669; width:50px;">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                            </div>
+                            <div id="search-results-list" class="incremental-search-results"></div>
+                        </div>
+
+                        <div id="recipe-items-container" style="flex:1; overflow-y:auto; border-top:1px solid #f1f5f9; padding-top:1rem;">
+                            <!-- Recipe rows dynamic -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="mobile-fixed-bottom desktop-actions" style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 2.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0;">
+                    ${renderFormActions(isEdit)}
+                </div>
+            </form>
+        </div>
+    `;
+    
+    // イベント紐付け
+    setupIncrementalSearch();
+    attachGlobalFormEvents();
+}
+
+function renderStandardForm(container) {
+    const isEdit = !!editingItemData;
     container.innerHTML = `
         <div class="animate-fade-in" style="background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); overflow: hidden;">
             <div style="padding: 1.5rem 2rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
@@ -193,12 +281,12 @@ function renderStandardForm(container, isEdit) {
                                 </div>
                                 <div style="flex: 2; display: flex; flex-direction: column; gap: 0.2rem; background: rgba(255,255,255,0.7); padding: 0.4rem; border-radius: 8px; border: 1px dashed #10b981;">
                                     <label style="font-size: 0.7rem; font-weight: 700; color: #059669; margin-bottom: 0;">
-                                        <i class="fas fa-calculator"></i> 歩留計算アシスタント
+                                        <i class="fas fa-calculator"></i> 歩留計算アシスタント（量を測って入力し反映をタップ）
                                     </label>
                                     <div style="display: flex; gap: 0.4rem; align-items: center;">
-                                        <input type="number" id="calc-pre" placeholder="前" style="flex:1; width:70px; padding:0.3rem; font-size:0.8rem; font-family: monospace;" min="0">
+                                        <input type="number" id="calc-pre" placeholder="加工前（左）" style="flex:1; width:70px; padding:0.3rem; font-size:0.8rem; font-family: monospace;" min="0">
                                         <span style="font-size: 0.7rem; font-weight: bold;">→</span>
-                                        <input type="number" id="calc-post" placeholder="後" style="flex:1; width:70px; padding:0.3rem; font-size:0.8rem; font-family: monospace;" min="0">
+                                        <input type="number" id="calc-post" placeholder="加工後（右）" style="flex:1; width:70px; padding:0.3rem; font-size:0.8rem; font-family: monospace;" min="0">
                                         <button type="button" id="btn-calc-yield" class="btn" style="background: #10b981; color: white; padding: 0.3rem 0.6rem; font-size: 0.75rem; border-radius: 4px;">反映</button>
                                     </div>
                                 </div>
@@ -217,324 +305,66 @@ function renderStandardForm(container, isEdit) {
                     </div>
                 </form>
 
-                <!-- ボタンエリア -->
+                <!-- ボタンエリア (フッター) -->
                 <div class="mobile-fixed-bottom desktop-actions" style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; width: 100%; padding: 0.5rem 0;">
                     ${renderFormActions(isEdit)}
                 </div>
             </div>
         </div>
     `;
-}
 
-
-function renderSubRecipeForm(container) {
-    const isEdit = !!editingItemData;
-    const menuData = isEdit ? cachedMenus.find(m => m.item_id === editingItemData.id) : null;
-    
-    container.innerHTML = `
-        <div class="animate-fade-in" style="background: white; border-radius: 12px; box-shadow: 0 4px 30px rgba(0,0,0,0.1); overflow: hidden;">
-            <!-- Header -->
-            <div style="padding: 1rem 2rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
-                <h3 style="margin: 0; font-size: 1.1rem; color: #1e293b; display: flex; align-items: center; gap: 0.8rem;">
-                    <i class="fas fa-mortar-pestle" style="color: #059669;"></i>
-                    自家製原材料マスタ - ${isEdit ? '高度編集' : '新規開発'}
-                </h3>
-                <button id="btn-form-back" class="btn" style="background: white; border: 1px solid var(--border); color: var(--text-secondary); padding: 0.5rem 1rem;">
-                    <i class="fas fa-arrow-left"></i> 戻る
-                </button>
-            </div>
-
-            <form id="item-form" class="recipe-form-v39">
-                <!-- Upper Section: Spec -->
-                <div class="recipe-section recipe-header-grid">
-                    <div class="input-group compact-input" style="margin-bottom:0;">
-                        <label>ふりがな</label>
-                        <input type="text" id="item-furigana" value="${isEdit ? (editingItemData.furigana || '') : ''}" placeholder="ひらがな">
-                    </div>
-                    <div class="input-group compact-input" style="margin-bottom:0;">
-                        <label>品目名 / 仕込み名称 <span style="color:var(--danger)">*</span></label>
-                        <input type="text" id="item-name" required value="${isEdit ? editingItemData.name : ''}" style="font-weight:800; font-size:1.1rem; border-color:#059669;">
-                    </div>
-                    <div class="input-group compact-input" style="margin-bottom:0;">
-                        <label>カテゴリー</label>
-                        <input type="text" id="item-category" value="${isEdit ? (editingItemData.category || '') : ''}" placeholder="例: スープ / タレ">
-                    </div>
-                    <div class="input-group compact-input" style="margin-bottom:0;">
-                        <label>管理単位 <span style="color:var(--danger)">*</span></label>
-                        <input type="text" id="item-unit" value="${isEdit ? (editingItemData.unit || '') : ''}" required placeholder="g / ml / 枚">
-                    </div>
-                </div>
-
-                <!-- Middle Section: Cost Summary -->
-                <div class="recipe-middle-summary">
-                    <div class="summary-item">
-                        <span class="summary-label">レシピ総原価</span>
-                        <span class="summary-value" id="display-total-cost">¥ 0</span>
-                    </div>
-                    <div class="summary-item">
-                        <span class="summary-label">今回の出来高</span>
-                        <div class="summary-input-wrapper">
-                            <input type="number" id="recipe-yield-amount" class="summary-input" value="${menuData?.yield_amount || 0}" step="any">
-                            <span class="summary-unit-label" style="font-weight:700;">${isEdit ? (editingItemData.unit || '') : ''}</span>
-                        </div>
-                    </div>
-                    <div class="summary-item" style="text-align: right;">
-                        <span class="summary-label">算出 正味単価 (¥/単位)</span>
-                        <span class="summary-value" id="display-net-unit-price" style="color: #4ade80;">¥ 0.00</span>
-                    </div>
-                </div>
-
-                <!-- Lower Section: Main Content -->
-                <div class="recipe-bottom-grid">
-                    <!-- Left: Instructions -->
-                    <div class="recipe-section recipe-instructions-area">
-                        <h4 style="font-size: 0.9rem; color: #64748b; margin-bottom: 0.5rem;"><i class="fas fa-list-ol"></i> 作り方・工程</h4>
-                        <textarea id="recipe-instructions" placeholder="1. 材料を計量する&#10;2. 鍋に入れて中火で加熱する...">${menuData?.instructions || ''}</textarea>
-                    </div>
-
-                    <!-- Right: Recipe Table -->
-                    <div class="recipe-section recipe-table-area">
-                        <h4 style="font-size: 0.9rem; color: #64748b; margin-bottom: 0.5rem;"><i class="fas fa-utensils"></i> レシピ構成</h4>
-                        
-                        <!-- Incremental Search -->
-                        <div class="incremental-search-container">
-                            <div class="input-with-addon-wrapper" style="margin-bottom: 1rem;">
-                                <input type="text" id="recipe-search-input" placeholder="食材名で検索 (スペース区切りでAND検索)..." style="border-radius: 8px 0 0 8px;">
-                                <span class="input-addon" style="background:#059669; color:white; border-color:#059669;">
-                                    <i class="fas fa-search"></i>
-                                </span>
-                            </div>
-                            <div id="search-results-list" class="incremental-search-results"></div>
-                        </div>
-
-                        <div id="recipe-items-container" style="flex:1; overflow-y:auto; border-top:1px solid #f1f5f9; padding-top:1rem;">
-                            <!-- Recipe rows -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Actions -->
-                <div class="mobile-fixed-bottom desktop-actions" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 0;">
-                    ${renderFormActions(isEdit)}
-                </div>
-            </form>
-        </div>
-    `;
+    attachGlobalFormEvents();
 }
 
 function renderFormActions(isEdit) {
+    const isAdmin = currentUser?.Role === 'Admin' || currentUser?.Role === '管理者';
     return `
         ${isEdit ? `
-        <div style="display: flex; flex-direction: column; gap: 0.4rem;">
-            <span style="font-size: 0.7rem; color: #94a3b8;">
-                最終更新: ${editingItemData.updated_at ? new Date(editingItemData.updated_at).toLocaleDateString() : '-'}
+        <div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start;">
+            <span style="font-size: 0.75rem; color: #94a3b8; margin-left: 0.2rem;">
+                ${editingItemData.updated_at ? `最終更新: ${new Date(editingItemData.updated_at).toLocaleDateString('ja-JP')}` : '最終更新: -'}
             </span>
-            <button type="button" id="btn-form-delete" class="btn" style="height: 40px; background: white; color: #ef4444; border: 1px solid #fee2e2; font-size: 0.85rem;">
-                <i class="fas fa-trash-alt"></i> 削除
+            <button type="button" id="btn-form-delete" class="btn" style="height: 48px; min-width: 160px; background: white; color: #ef4444; border: 1px solid #fee2e2; font-weight: 600; font-size: 0.9rem; transition: all 0.2s; white-space: nowrap;">
+                <i class="fas fa-trash-alt" style="margin-right: 0.4rem;"></i>
+                このアイテムを削除
             </button>
-        </div>` : `<div></div>`}
+        </div>` : `
+        <div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start;">
+            <span style="font-size: 0.75rem; color: #94a3b8; margin-left: 0.2rem;">新規アイテム登録</span>
+            <div style="height: 48px;"></div>
+        </div>
+        `}
         
-        <div style="display: flex; gap: 0.8rem;">
-            <button type="button" id="btn-form-cancel" class="btn" style="height: 44px; min-width: 100px; background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; font-size: 0.9rem;">
-                キャンセル
+        <div style="display: flex; gap: 1rem;">
+            <button type="button" id="btn-form-cancel" class="btn" style="height: 48px; min-width: 120px; background: #f8fafc; color: #64748b; font-weight: 700; border: 1px solid #e2e8f0; font-size: 0.95rem; white-space: nowrap;">
+                <i class="fas fa-times" style="margin-right: 0.4rem;"></i> キャンセル
             </button>
-            <button type="button" id="btn-form-submit-proxy" class="btn btn-primary" style="height: 44px; min-width: 160px; background: linear-gradient(135deg, #059669, #10b981);">
-                <i class="fas fa-save"></i> 情報を保存
+            <button type="button" id="btn-form-submit-proxy" class="btn btn-primary" style="height: 48px; min-width: 180px; background: linear-gradient(135deg, #059669, #10b981); color: white; font-weight: 800; font-size: 1rem; border: none; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); white-space: nowrap;">
+                <i class="fas fa-save" style="margin-right: 0.4rem;"></i>
+                アイテム情報を保存
             </button>
         </div>
     `;
 }
 
-function setupIncrementalSearch() {
-    const input = document.getElementById('recipe-search-input');
-    const resultsList = document.getElementById('search-results-list');
-    if (!input || !resultsList) return;
-
-    let selectedIndex = -1;
-    let filteredItems = [];
-
-    const renderResults = () => {
-        const query = input.value.trim().toLowerCase();
-        if (!query) {
-            resultsList.style.display = 'none';
-            return;
-        }
-
-        const keywords = query.split(/\s+/);
-        filteredItems = cachedItems.filter(item => {
-            const name = (item.name || "").toLowerCase();
-            const cat = (item.category || "").toLowerCase();
-            const ing = cachedIngredients.find(i => i.item_id === item.id);
-            const vendor = cachedVendors.find(v => (v.vendor_id || v.id) === ing?.vendor_id);
-            const vendorName = (vendor?.vendor_name || "").toLowerCase();
-            
-            return keywords.every(kw => name.includes(kw) || cat.includes(kw) || vendorName.includes(kw));
-        }).slice(0, 15);
-
-        if (filteredItems.length === 0) {
-            resultsList.innerHTML = '<div style="padding:1rem; color:#94a3b8; font-size:0.85rem;">該当なし</div>';
-        } else {
-            resultsList.innerHTML = filteredItems.map((item, idx) => {
-                const ing = cachedIngredients.find(i => i.item_id === item.id);
-                const price = getEffectivePrice(item.id, { items: cachedItems, ingredients: cachedIngredients, menus: cachedMenus });
-                const vendor = cachedVendors.find(v => (v.vendor_id || v.id) === ing?.vendor_id);
-                return `
-                    <div class="search-result-item ${idx === selectedIndex ? 'selected' : ''}" data-id="${item.id}" data-index="${idx}">
-                        <div>
-                            <div class="search-result-name">${item.name}</div>
-                            <div class="search-result-meta">${vendor?.vendor_name || '業者不明'} | 単価参考: ¥${price.toFixed(2)}/${item.unit || ''}</div>
-                        </div>
-                        <div class="search-result-price">¥${price.toFixed(2)}</div>
-                    </div>
-                `;
-            }).join('');
-        }
-        resultsList.style.display = 'block';
-        selectedIndex = -1;
-    };
-
-    input.addEventListener('input', renderResults);
-    input.addEventListener('focus', renderResults);
-
-    input.addEventListener('keydown', (e) => {
-        const items = resultsList.querySelectorAll('.search-result-item');
-        if (e.key === 'ArrowDown') {
-            selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
-            updateSelection(items);
-            e.preventDefault();
-        } else if (e.key === 'ArrowUp') {
-            selectedIndex = Math.max(selectedIndex - 1, 0);
-            updateSelection(items);
-            e.preventDefault();
-        } else if (e.key === 'Enter') {
-            if (selectedIndex >= 0) {
-                addIngredientToRecipe(filteredItems[selectedIndex].id);
-                input.value = '';
-                resultsList.style.display = 'none';
-            }
-            e.preventDefault();
-        }
-    });
-
-    const updateSelection = (items) => {
-        items.forEach((it, idx) => {
-            it.classList.toggle('selected', idx === selectedIndex);
-            if (idx === selectedIndex) it.scrollIntoView({ block: 'nearest' });
-        });
-    };
-
-    resultsList.addEventListener('click', (e) => {
-        const item = e.target.closest('.search-result-item');
-        if (item) {
-            addIngredientToRecipe(item.dataset.id);
-            input.value = '';
-            resultsList.style.display = 'none';
-        }
-    });
-
-    document.addEventListener('click', (e) => {
-        if (!input.contains(e.target) && !resultsList.contains(e.target)) {
-            resultsList.style.display = 'none';
-        }
-    });
-}
-
-function addIngredientToRecipe(itemId) {
-    if (currentRecipe.some(r => r.ingredient_id === itemId)) {
-        showAlert('警告', '既にレシピに含まれています');
-        return;
-    }
-    currentRecipe.push({ ingredient_id: itemId, quantity: 0 });
-    renderRecipeRows();
+function attachGlobalFormEvents() {
+    const isEdit = !!editingItemData;
     
-    // Focus the quantity input of the newly added row
-    setTimeout(() => {
-        const rows = document.querySelectorAll('#recipe-items-container .recipe-row-input');
-        if (rows.length > 0) rows[rows.length - 1].focus();
-    }, 50);
-}
+    document.getElementById('btn-form-back').onclick = document.getElementById('btn-form-cancel').onclick = () => {
+        currentView = 'list';
+        renderView();
+    };
 
-function setupFormLogic() {
-    setupRecipeEditor();
-    const isSubRecipe = currentTab === 'sub_recipes';
-    const form = document.getElementById('item-form');
-    if (!form) return;
-
-    if (isSubRecipe) {
-        setupIncrementalSearch();
-        const yieldInput = document.getElementById('recipe-yield-amount');
-        if (yieldInput) yieldInput.addEventListener('input', calculateRecipeCost);
-        
-        const unitInput = document.getElementById('item-unit');
-        if (unitInput) {
-            unitInput.addEventListener('input', () => {
-                const labels = document.querySelectorAll('.summary-unit-label');
-                labels.forEach(l => l.textContent = unitInput.value);
-            });
-        }
+    // Proxy submit button handler
+    const btnSubmitProxy = document.getElementById('btn-form-submit-proxy');
+    if (btnSubmitProxy) {
+        btnSubmitProxy.onclick = () => {
+            const form = document.getElementById('item-form');
+            if (form) form.requestSubmit();
+        };
     }
 
-    // Set initial values if editing
-    if (editingItemData) {
-        const item = editingItemData;
-        const menuRecord = cachedMenus.find(m => m.item_id === item.id);
-        currentRecipe = menuRecord?.recipe || [];
-        renderRecipeRows();
-
-        if (currentTab === 'menus' || currentTab === 'sub_recipes' || (menuRecord && menuRecord.is_sub_recipe !== true)) {
-            if (document.getElementById('menu-sales-price')) {
-                document.getElementById('menu-sales-price').value = menuRecord?.sales_price || 0;
-            }
-            if (document.getElementById('menu-dinii-id')) {
-                document.getElementById('menu-dinii-id').value = menuRecord?.dinii_id || '';
-            }
-            if (isSubRecipe) {
-                if (document.getElementById('recipe-yield-amount')) {
-                    document.getElementById('recipe-yield-amount').value = menuRecord?.yield_amount || 0;
-                }
-                if (document.getElementById('recipe-instructions')) {
-                    document.getElementById('recipe-instructions').value = menuRecord?.instructions || '';
-                }
-            }
-        } 
-        
-        if (currentTab === 'ingredients') {
-            const ing = cachedIngredients.find(i => i.item_id === item.id);
-            const purchasePriceEl = document.getElementById('ing-purchase-price');
-            if (purchasePriceEl) purchasePriceEl.value = ing?.purchase_price || 0;
-            const yieldRateEl = document.getElementById('ing-yield-rate');
-            if (yieldRateEl) yieldRateEl.value = ing?.yield_rate || 1.0;
-            
-            const vendorSelect = document.getElementById('ing-vendor-id');
-            if (vendorSelect) {
-                vendorSelect.innerHTML = '<option value="">業者を選択...</option>';
-                cachedVendors.forEach(v => {
-                    const opt = document.createElement('option');
-                    opt.value = v.vendor_id || v.id;
-                    opt.textContent = v.vendor_name;
-                    if (ing?.vendor_id === opt.value) opt.selected = true;
-                    vendorSelect.appendChild(opt);
-                });
-            }
-        }
-    } else {
-        currentRecipe = [];
-        renderRecipeRows();
-        if (currentTab === 'ingredients') {
-            const vendorSelect = document.getElementById('ing-vendor-id');
-            if (vendorSelect) {
-                vendorSelect.innerHTML = '<option value="">業者を選択...</option>';
-                cachedVendors.forEach(v => {
-                    const opt = document.createElement('option');
-                    opt.value = v.vendor_id || v.id;
-                    opt.textContent = v.vendor_name;
-                    vendorSelect.appendChild(opt);
-                });
-            }
-        }
-    }
-
-    // Event Listeners (Common or Shared)
+    // Role-based Delete logic
     const btnDelete = document.getElementById('btn-form-delete');
     if (btnDelete && editingItemData) {
         btnDelete.onclick = (e) => {
@@ -562,125 +392,184 @@ function setupFormLogic() {
                 showConfirm('削除申請', `「${item.name}」の削除を管理者に申請しますか？`, async () => {
                     try {
                         await addDoc(collection(db, "notifications"), {
-                            type: 'deletion_request', page: 'products',
-                            target_id: item.id, target_name: item.name,
-                            requester_id: currentUser?.id, requester_name: currentUser?.Name,
-                            status: 'pending', created_at: new Date().toISOString()
+                            type: 'deletion_request',
+                            page: 'products',
+                            target_id: item.id,
+                            target_name: item.name,
+                            requester_id: currentUser?.id || 'unknown',
+                            requester_name: currentUser?.Name || '不明',
+                            status: 'pending',
+                            created_at: new Date().toISOString()
                         });
-                        showAlert('申請完了', '削除申請を送信しました。');
+                        showAlert('申請完了', '削除申請を送信しました。管理者の承認をお待ちください。');
                     } catch(err) {
+                        console.error(err);
                         showAlert('エラー', '申請に失敗しました。');
                     }
                 });
             }
         };
     }
+    
+    // --- Dynamic calculations and display logic ---
 
-    // Standard Form Unit/Cost Listeners
-    if (!isSubRecipe) {
-        const unitInputStd = document.getElementById('item-unit');
-        if (unitInputStd) {
-            unitInputStd.addEventListener('input', () => {
-                const addonC = document.getElementById('addon-content-amount');
-                if (addonC) addonC.textContent = unitInputStd.value.trim();
-            });
+// 単位ラベルのリアルタイム連動
+    const unitInput = document.getElementById('item-unit');
+    const updateUnitLabels = () => {
+        const addOnStr = unitInput.value.trim();
+        const addonC = document.getElementById('addon-content-amount');
+        if (addonC) {
+            addonC.textContent = ''; // 確実に空にする
+            if (addOnStr) {
+                addonC.textContent = addOnStr; // 入力された文字だけを純粋に反映
+            }
         }
-        
-        const updateNetPrice = () => {
-            const buy = parseFloat(document.getElementById('ing-purchase-price')?.value) || 0;
-            const amount = parseFloat(document.getElementById('item-content-amount')?.value) || 0;
-            const rate = parseFloat(document.getElementById('ing-yield-rate')?.value) || 0;
-            const netInput = document.getElementById('ing-net-unit-price');
-            if (netInput) netInput.value = (amount > 0 && rate > 0) ? (buy / (amount * rate)).toFixed(2) : "0.00";
-        };
-        ['ing-purchase-price', 'item-content-amount', 'ing-yield-rate'].forEach(idx => {
-            document.getElementById(idx)?.addEventListener('input', updateNetPrice);
-        });
-        setTimeout(updateNetPrice, 100);
+    };
+    if (unitInput) {
+        unitInput.addEventListener('input', updateUnitLabels);
+        updateUnitLabels(); // 初期表示時にも実行
     }
 
-    // Yield assistant
+    // 正味単価の自動計算ロジック
+    const updateNetUnitPrice = () => {
+        const purchasePrice = parseFloat(document.getElementById('ing-purchase-price')?.value) || 0;
+        const contentAmount = parseFloat(document.getElementById('item-content-amount')?.value) || 0;
+        const yieldRate = parseFloat(document.getElementById('ing-yield-rate')?.value) || 0;
+        const netInput = document.getElementById('ing-net-unit-price');
+        
+        if (netInput) {
+            if (contentAmount > 0 && yieldRate > 0) {
+                const netPrice = purchasePrice / (contentAmount * yieldRate);
+                netInput.value = netPrice.toFixed(2);
+            } else {
+                netInput.value = "0.00";
+            }
+        }
+    };
+
+    const calculationInputs = ['ing-purchase-price', 'item-content-amount', 'ing-yield-rate'];
+    calculationInputs.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', updateNetUnitPrice);
+    });
+
+    // 歩留計算アシスタントロジック
     const btnCalcYield = document.getElementById('btn-calc-yield');
     if (btnCalcYield) {
-        btnCalcYield.onclick = () => {
+        btnCalcYield.addEventListener('click', () => {
             const pre = parseFloat(document.getElementById('calc-pre').value);
             const post = parseFloat(document.getElementById('calc-post').value);
             if (pre > 0 && post >= 0) {
+                let rate = post / pre;
+                rate = Math.round(rate * 100) / 100; // 小数第2位まで保持
                 const yieldInput = document.getElementById('ing-yield-rate');
                 if (yieldInput) {
-                    yieldInput.value = (Math.round((post / pre) * 100) / 100);
-                    const e = new Event('input');
-                    yieldInput.dispatchEvent(e); // Trigger auto calc if standard form
+                    yieldInput.value = rate;
+                    updateNetUnitPrice(); // 正味単価も再計算
+                    // ピカッと光らせて変更を視覚的に通知
+                    yieldInput.style.backgroundColor = '#ecfdf5';
+                    yieldInput.style.transition = 'background-color 0.4s';
+                    setTimeout(() => yieldInput.style.backgroundColor = 'transparent', 500);
                 }
+            } else {
+                alert('加工前と加工後の適切な数値を入力してください（加工前は0より大きい数値）');
             }
-        };
+        });
     }
 
-    form.onsubmit = async (e) => {
-        e.preventDefault();
-        const btnSubmit = document.getElementById('btn-form-submit-proxy');
-        if (btnSubmit) { btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...'; btnSubmit.disabled = true; }
+    // 【自家製】出来高入力時の発火
+    document.getElementById('recipe-yield-amount')?.addEventListener('input', calculateRecipeCost);
+    
+    // 【自家製】インクリメンタルサーチの初期化
+    if (currentTab === 'sub_recipes') {
+        setupIncrementalSearch();
+    }
 
-        const itemId = editingItemData ? editingItemData.id : `item_${Date.now()}`;
-        const baseItem = {
-            furigana: document.getElementById('item-furigana').value || "",
-            name: document.getElementById('item-name').value,
-            category: document.getElementById('item-category').value,
-            unit: document.getElementById('item-unit').value,
-            content_amount: Number(document.getElementById('item-content-amount')?.value || 0),
-            notes: document.getElementById('item-notes').value || "",
-            created_at: editingItemData?.created_at || new Date().toISOString(),
-            updated_at: new Date().toISOString()
-        };
+    // 初期計算の実行
+    setTimeout(() => {
+        updateNetUnitPrice();
+        calculateRecipeCost();
+    }, 100);
 
-        try {
-            await setDoc(doc(db, "m_items", itemId), baseItem, { merge: true });
+    toggleFormSections();
+    setupFormLogic();
+}
 
-            if (currentTab === 'menus') {
-                await setDoc(doc(db, "m_menus", itemId), {
-                    item_id: itemId, sales_price: Number(document.getElementById('menu-sales-price').value) || 0,
-                    dinii_id: document.getElementById('menu-dinii-id').value || "", recipe: currentRecipe,
-                    is_sub_recipe: false, updated_at: new Date().toISOString()
-                }, { merge: true });
-            } else if (currentTab === 'sub_recipes') {
-                const yieldAmt = Number(document.getElementById('recipe-yield-amount').value) || 0;
-                const recipeInst = document.getElementById('recipe-instructions').value || "";
-                
-                const cache = { items: cachedItems, ingredients: cachedIngredients, menus: cachedMenus };
-                let totalC = 0;
-                currentRecipe.forEach(r => totalC += getEffectivePrice(r.ingredient_id, cache) * (r.quantity || 0));
-                
-                const netPrice = yieldAmt > 0 ? (totalC / yieldAmt) : 0;
-                await setDoc(doc(db, "m_menus", itemId), {
-                    item_id: itemId, sales_price: 0, recipe: currentRecipe,
-                    yield_amount: yieldAmt, instructions: recipeInst,
-                    is_sub_recipe: true, updated_at: new Date().toISOString()
-                }, { merge: true });
+function updateSubRecipeSummary() {
+    if (currentTab !== 'sub_recipes') return;
+    
+    let total = 0;
+    const rows = document.querySelectorAll('#recipe-items-container > div');
+    const cache = { items: cachedItems, ingredients: cachedIngredients, menus: cachedMenus };
 
-                await setDoc(doc(db, "m_ingredients", itemId), {
-                    item_id: itemId, purchase_price: 0, yield_rate: 1.0,
-                    net_unit_price: netPrice, vendor_id: "INTERNAL", updated_at: new Date().toISOString()
-                }, { merge: true });
-            } else {
-                const buy = Number(document.getElementById('ing-purchase-price').value) || 0;
-                const amt = Number(document.getElementById('item-content-amount').value) || 0;
-                const r = Number(document.getElementById('ing-yield-rate').value) || 1.0;
-                const net = (amt > 0 && r > 0) ? (buy / (amt * r)) : 0;
-                await setDoc(doc(db, "m_ingredients", itemId), {
-                    item_id: itemId, purchase_price: buy, yield_rate: r, net_unit_price: net,
-                    vendor_id: document.getElementById('ing-vendor-id').value || "", updated_at: new Date().toISOString()
-                }, { merge: true });
-            }
+    currentRecipe.forEach((row, idx) => {
+        const unitPrice = getEffectivePrice(row.ingredient_id, cache);
+        const cost = unitPrice * (row.quantity || 0);
+        total += cost;
+        const rowCostEl = rows[idx]?.querySelector('.row-cost');
+        if (rowCostEl) rowCostEl.textContent = `¥${Math.round(cost).toLocaleString()}`;
+    });
 
-            currentView = 'list';
-            await reloadData();
-            renderView();
-            showAlert('成功', '保存しました。');
-        } catch (err) {
-            console.error(err);
-            showAlert('エラー', err.message);
-        } finally {
-            if (btnSubmit) { btnSubmit.innerHTML = '<i class="fas fa-save"></i> 情報を保存'; btnSubmit.disabled = false; }
+    const yieldAmount = parseFloat(document.getElementById('recipe-yield-amount')?.value) || 0;
+    const netValue = yieldAmount > 0 ? (total / yieldAmount).toFixed(2) : "0.00";
+    
+    const totalEl = document.getElementById('display-total-cost');
+    const netEl = document.getElementById('display-net-unit-price');
+    if (totalEl) totalEl.textContent = `¥ ${Math.round(total).toLocaleString()}`;
+    if (netEl) netEl.textContent = `¥ ${parseFloat(netValue).toLocaleString('ja-JP', {minimumFractionDigits:2})}`;
+}
+
+function setupIncrementalSearch() {
+    const input = document.getElementById('recipe-search-input');
+    const results = document.getElementById('search-results-list');
+    if (!input || !results) return;
+
+    input.oninput = () => {
+        const query = input.value.trim().toLowerCase();
+        if (!query) { results.innerHTML = ''; return; }
+
+        const filtered = cachedItems.filter(item => {
+            // ingredients タブにあるもの、または sub_recipes にあるもの (自分以外) を対象にしたいが
+            // シンプルに cachedIngredients に含まれる item_id を持つものを検索
+            const isIng = cachedIngredients.some(ig => ig.item_id === item.id);
+            if (!isIng) return false;
+            
+            const name = (item.name || '').toLowerCase();
+            const furigana = (item.furigana || '').toLowerCase();
+            return name.includes(query) || furigana.includes(query);
+        }).slice(0, 10);
+
+        results.innerHTML = filtered.map(item => `
+            <div class="search-result-item" data-id="${item.id}">
+                <span class="name">${item.name}</span>
+                <span class="furigana">${item.furigana || ''}</span>
+                <span class="unit">(${item.unit})</span>
+            </div>
+        `).join('');
+
+        results.querySelectorAll('.search-result-item').forEach(el => {
+            el.onclick = () => {
+                const itemId = el.dataset.id;
+                if (!currentRecipe.some(r => r.ingredient_id === itemId)) {
+                    currentRecipe.push({ ingredient_id: itemId, quantity: 0 });
+                    renderRecipeRows();
+                }
+                input.value = '';
+                results.innerHTML = '';
+                // renderRecipeRows の後に「新しい行のinput」にフォーカスしたい
+                setTimeout(() => {
+                    const inputs = document.querySelectorAll('#recipe-items-container input');
+                    if (inputs.length > 0) inputs[inputs.length - 1].focus();
+                }, 50);
+            };
+        });
+    };
+    
+    // Enterキーで一番上を選択
+    input.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+            const first = results.querySelector('.search-result-item');
+            if (first) first.click();
         }
     };
 }
@@ -779,7 +668,200 @@ function setupListViewListeners() {
     }
 }
 
+export async function initProductsPage(user) {
+    currentUser = user;
+    const container = document.getElementById('products-page-container');
+    
+    // 1. ローディング表示
+    if (container) {
+        container.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 5rem 0; color: var(--text-secondary);">
+                <i class="fas fa-spinner fa-spin" style="font-size: 3rem; margin-bottom: 1rem; color: var(--primary);"></i>
+                <p>商品データを読み込んでいます...</p>
+            </div>
+        `;
+    }
+    
+    try {
+        // 2. データの取得
+        await reloadData();
+        
+        // 3. 描画
+        currentView = 'list';
+        currentPage = 1; // 必ずデータ取得後に初期化
+        renderView(); 
+    } catch (error) {
+        console.error("Failed to load product data:", error);
+        if (container) {
+            container.innerHTML = `
+                <div style="padding: 3rem; color: var(--danger); text-align: center; max-width: 600px; margin: 0 auto; background: #fef2f2; border-radius: 12px; margin-top: 2rem;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                    <h3 style="margin-top: 0;">データの読み込みに失敗しました</h3>
+                    <p style="font-weight: 600; font-size: 1.1rem;">Firebase APIまたはネットワークでエラーが発生しています。</p>
+                    <p style="font-family: monospace; font-size: 0.9rem; background: rgba(0,0,0,0.05); padding: 1rem; border-radius: 8px; text-align: left; overflow-x: auto;">
+                        ${error.message || error.toString()}
+                    </p>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 1.5rem;">※ 詳細なログはブラウザのコンソール(F12)をご確認ください。</p>
+                </div>
+            `;
+        }
+    }
+}
 
+function setupFormLogic() {
+    setupRecipeEditor();
+    const form = document.getElementById('item-form');
+    if (!form) return;
+
+    // Set initial values if editing
+    if (editingItemData) {
+        const item = editingItemData;
+        const menuRecord = cachedMenus.find(m => m.item_id === item.id);
+        currentRecipe = menuRecord?.recipe || [];
+        renderRecipeRows();
+
+        if (currentTab === 'menus' || currentTab === 'sub_recipes' || (menuRecord && menuRecord.is_sub_recipe !== true)) {
+            if (document.getElementById('menu-sales-price')) {
+                document.getElementById('menu-sales-price').value = menuRecord?.sales_price || 0;
+            }
+            if (document.getElementById('menu-dinii-id')) {
+                document.getElementById('menu-dinii-id').value = menuRecord?.dinii_id || '';
+            }
+        } 
+        
+        if (currentTab === 'ingredients') {
+            const ing = cachedIngredients.find(i => i.item_id === item.id);
+            if (document.getElementById('ing-purchase-price')) document.getElementById('ing-purchase-price').value = ing?.purchase_price || 0;
+            if (document.getElementById('ing-yield-rate')) document.getElementById('ing-yield-rate').value = ing?.yield_rate || 1.0;
+            
+            const vendorSelect = document.getElementById('ing-vendor-id');
+            if (vendorSelect) {
+                vendorSelect.innerHTML = '<option value="">業者を選択...</option>';
+                cachedVendors.forEach(v => {
+                    const opt = document.createElement('option');
+                    opt.value = v.vendor_id || v.id;
+                    opt.textContent = v.vendor_name;
+                    if (ing?.vendor_id === opt.value) opt.selected = true;
+                    vendorSelect.appendChild(opt);
+                });
+            }
+        }
+    } else {
+        currentRecipe = [];
+        renderRecipeRows();
+        if (currentTab === 'ingredients') {
+            const vendorSelect = document.getElementById('ing-vendor-id');
+            if (vendorSelect) {
+                vendorSelect.innerHTML = '<option value="">業者を選択...</option>';
+                cachedVendors.forEach(v => {
+                    const opt = document.createElement('option');
+                    opt.value = v.vendor_id || v.id;
+                    opt.textContent = v.vendor_name;
+                    vendorSelect.appendChild(opt);
+                });
+            }
+        }
+    }
+
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        const btnSubmit = document.getElementById('btn-form-submit-proxy');
+        if (btnSubmit) {
+            btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
+            btnSubmit.disabled = true;
+        }
+
+        const itemId = editingItemData ? editingItemData.id : `item_${Date.now()}`;
+
+        const baseItem = {
+            furigana: document.getElementById('item-furigana').value || "",
+            name: document.getElementById('item-name').value,
+            category: document.getElementById('item-category').value,
+            unit: document.getElementById('item-unit').value,
+            content_amount: Number(document.getElementById('item-content-amount').value) || 0,
+            notes: document.getElementById('item-notes').value || "",
+            created_at: editingItemData?.created_at || new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+
+        try {
+            await setDoc(doc(db, "m_items", itemId), baseItem, { merge: true });
+
+            if (currentTab === 'menus') {
+                await setDoc(doc(db, "m_menus", itemId), {
+                    item_id: itemId, 
+                    sales_price: Number(document.getElementById('menu-sales-price').value) || 0,
+                    dinii_id: document.getElementById('menu-dinii-id').value || "", 
+                    recipe: currentRecipe,
+                    is_sub_recipe: false, 
+                    updated_at: new Date().toISOString()
+                }, { merge: true });
+            } else if (currentTab === 'sub_recipes') {
+                const yieldAmount = Number(document.getElementById('recipe-yield-amount').value) || 0;
+                const instructions = document.getElementById('recipe-instructions').value || "";
+                const developer = document.getElementById('recipe-developer').value || "";
+                
+                // レシピ総原価を再計算
+                let totalCost = 0;
+                const cache = { items: cachedItems, ingredients: cachedIngredients, menus: cachedMenus };
+                currentRecipe.forEach(row => {
+                    const up = getEffectivePrice(row.ingredient_id, cache);
+                    totalCost += up * (row.quantity || 0);
+                });
+                const netPrice = yieldAmount > 0 ? (totalCost / yieldAmount) : 0;
+
+                await setDoc(doc(db, "m_menus", itemId), {
+                    item_id: itemId, 
+                    sales_price: 0, 
+                    recipe: currentRecipe,
+                    yield_amount: yieldAmount,
+                    instructions: instructions,
+                    recipe_developer: developer,
+                    is_sub_recipe: true, 
+                    updated_at: new Date().toISOString()
+                }, { merge: true });
+
+                // 自家製も他レシピの「原材料」になり得るので m_ingredients にも登録/更新する
+                await setDoc(doc(db, "m_ingredients", itemId), {
+                    item_id: itemId,
+                    purchase_price: 0, 
+                    yield_rate: 1.0,
+                    net_unit_price: netPrice,
+                    updated_at: new Date().toISOString()
+                }, { merge: true });
+
+            } else {
+                const purchasePrice = Number(document.getElementById('ing-purchase-price').value) || 0;
+                const contentAmount = Number(document.getElementById('item-content-amount').value) || 0;
+                const yieldRate = Number(document.getElementById('ing-yield-rate').value) || 1.0;
+                const netUnitPrice = (contentAmount > 0 && yieldRate > 0) ? (purchasePrice / (contentAmount * yieldRate)) : 0;
+
+                await setDoc(doc(db, "m_ingredients", itemId), {
+                    item_id: itemId,
+                    purchase_price: purchasePrice,
+                    yield_rate: yieldRate,
+                    net_unit_price: netUnitPrice,
+                    vendor_id: document.getElementById('ing-vendor-id').value || "", 
+                    updated_at: new Date().toISOString()
+                }, { merge: true });
+            }
+
+            currentView = 'list';
+            await reloadData();
+            renderView();
+            showAlert('成功', '保存しました。');
+        } catch (err) {
+            console.error(err);
+            showAlert('保存に失敗しました。', err.message);
+        } finally {
+            const btnSubmit = document.getElementById('btn-form-submit-proxy');
+            if (btnSubmit) {
+                btnSubmit.innerHTML = '<i class="fas fa-save" style="margin-right: 0.4rem;"></i> アイテム情報を保存';
+                btnSubmit.disabled = false;
+            }
+        }
+    };
+}
 
 async function reloadData() {
     const [itemsSnap, ingsSnap, menusSnap, vendorsSnap] = await Promise.all([
@@ -1119,49 +1201,29 @@ function renderRecipeRows() {
     const container = document.getElementById('recipe-items-container');
     if (!container) return;
 
-    const isSubRecipe = currentTab === 'sub_recipes';
     container.innerHTML = '';
-    
     currentRecipe.forEach((row, index) => {
         const item = cachedItems.find(it => it.id === row.ingredient_id);
         const div = document.createElement('div');
+        div.style.display = 'flex';
+        div.style.alignItems = 'center';
+        div.style.gap = '0.5rem';
+        div.style.background = 'white';
+        div.style.padding = '0.5rem';
+        div.style.borderRadius = '8px';
+        div.style.border = '1px solid var(--border)';
         
-        if (isSubRecipe) {
-            // High-density row for sub_recipes
-            div.className = 'recipe-row';
-            div.innerHTML = `
-                <div class="recipe-row-name">
-                    <span style="font-weight:700;">${item?.name || '不明'}</span>
-                    <span style="font-size:0.75rem; color:#94a3b8; margin-left:0.5rem;">${item?.unit || ''}</span>
-                </div>
-                <div class="recipe-row-input-group">
-                    <input type="number" class="recipe-row-input" value="${row.quantity}" step="any">
-                    <span class="recipe-row-unit">${item?.unit || ''}</span>
-                </div>
-                <div class="recipe-row-cost row-cost">¥ 0</div>
-                <button type="button" class="recipe-row-remove btn-remove"><i class="fas fa-times"></i></button>
-            `;
-        } else {
-            // Standard row for menus
-            div.style.display = 'flex';
-            div.style.alignItems = 'center';
-            div.style.gap = '0.5rem';
-            div.style.background = 'white';
-            div.style.padding = '0.5rem';
-            div.style.borderRadius = '8px';
-            div.style.border = '1px solid var(--border)';
-            div.innerHTML = `
-                <div style="flex: 1; font-size: 0.85rem; font-weight: 600;">${item?.name || '不明'}</div>
-                <div style="display: flex; align-items: center; gap: 0.3rem;">
-                    <input type="number" value="${row.quantity}" step="any" style="width: 70px; padding: 0.3rem; border: 1px solid var(--border); border-radius: 4px; text-align: right; font-size: 0.85rem;" class="recipe-row-input">
-                    <span style="font-size: 0.75rem; color: var(--text-secondary); width: 25px;">${item?.unit || ''}</span>
-                </div>
-                <div class="row-cost" style="width: 60px; text-align: right; font-size: 0.8rem; font-family: monospace; color: var(--text-secondary);">¥0</div>
-                <button type="button" class="btn-remove" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 0.2rem;"><i class="fas fa-times"></i></button>
-            `;
-        }
+        div.innerHTML = `
+            <div style="flex: 1; font-size: 0.85rem; font-weight: 600;">${item?.name || '不明'}</div>
+            <div style="display: flex; align-items: center; gap: 0.3rem;">
+                <input type="number" value="${row.quantity}" step="any" style="width: 70px; padding: 0.3rem; border: 1px solid var(--border); border-radius: 4px; text-align: right; font-size: 0.85rem;">
+                <span style="font-size: 0.75rem; color: var(--text-secondary); width: 25px;">${item?.unit || ''}</span>
+            </div>
+            <div class="row-cost" style="width: 60px; text-align: right; font-size: 0.8rem; font-family: monospace; color: var(--text-secondary);">¥0</div>
+            <button type="button" class="btn-remove" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 0.2rem;"><i class="fas fa-times"></i></button>
+        `;
 
-        const input = div.querySelector('.recipe-row-input');
+        const input = div.querySelector('input');
         input.addEventListener('input', (e) => {
             row.quantity = Number(e.target.value);
             calculateRecipeCost();
@@ -1179,43 +1241,28 @@ function renderRecipeRows() {
 
 function calculateRecipeCost() {
     let total = 0;
-    const isSubRecipe = currentTab === 'sub_recipes';
     const containers = document.querySelectorAll('#recipe-items-container > div');
-    
-    const cache = {
-        items: cachedItems,
-        ingredients: cachedIngredients,
-        menus: cachedMenus
-    };
+    const cache = { items: cachedItems, ingredients: cachedIngredients, menus: cachedMenus };
 
     currentRecipe.forEach((row, index) => {
         const unitPrice = getEffectivePrice(row.ingredient_id, cache);
         const cost = unitPrice * (row.quantity || 0);
         total += cost;
-        
         const rowCostEl = containers[index]?.querySelector('.row-cost');
         if (rowCostEl) rowCostEl.textContent = `¥${Math.round(cost).toLocaleString()}`;
     });
 
-    if (isSubRecipe) {
-        // v39 Cost Summary items
-        const totalCostEl = document.getElementById('display-total-cost');
-        const yieldInput = document.getElementById('recipe-yield-amount');
-        const netUnitPriceEl = document.getElementById('display-net-unit-price');
-
-        if (totalCostEl) totalCostEl.textContent = `¥ ${Math.round(total).toLocaleString()}`;
+    if (currentTab === 'sub_recipes') {
+        // 自家製タブ用の表示
+        const yieldAmount = parseFloat(document.getElementById('recipe-yield-amount')?.value) || 0;
+        const netValue = yieldAmount > 0 ? (total / yieldAmount) : 0;
         
-        const yieldAmount = parseFloat(yieldInput?.value) || 0;
-        if (netUnitPriceEl) {
-            if (yieldAmount > 0) {
-                const netPrice = total / yieldAmount;
-                netUnitPriceEl.textContent = `¥ ${netPrice.toFixed(2)}`;
-            } else {
-                netUnitPriceEl.textContent = '¥ -';
-            }
-        }
+        const totalEl = document.getElementById('display-total-cost');
+        const netEl = document.getElementById('display-net-unit-price');
+        if (totalEl) totalEl.textContent = `¥ ${Math.round(total).toLocaleString()}`;
+        if (netEl) netEl.textContent = `¥ ${netValue.toLocaleString('ja-JP', {minimumFractionDigits:2})}`;
     } else {
-        // Standard menu cost display
+        // メインタブ（メニュー）用の表示
         const salesPriceInput = document.getElementById('menu-sales-price');
         const salesPrice = (salesPriceInput && salesPriceInput.offsetParent !== null) ? Number(salesPriceInput.value) : 0;
         const ratio = salesPrice > 0 ? Math.round((total / salesPrice) * 100) : 0;
@@ -1224,42 +1271,11 @@ function calculateRecipeCost() {
         if (totalEl) {
             if (salesPrice > 0) {
                 totalEl.textContent = `原価: ¥${Math.round(total).toLocaleString()} (${ratio}%)`;
-                totalEl.style.color = ratio > 35 ? 'var(--danger)' : (ratio > 25 ? 'var(--warning)' : '#059669');
+                totalEl.style.color = ratio > 35 ? 'var(--danger)' : (ratio > 25 ? 'var(--warning)' : '#10b981');
             } else {
                 totalEl.textContent = `構成原価: ¥${Math.round(total).toLocaleString()}`;
                 totalEl.style.color = 'var(--primary)';
             }
-        }
-    }
-}
-
-export async function initProductsPage(user) {
-    currentUser = user;
-    const container = document.getElementById('products-page-container');
-    if (container) {
-        container.innerHTML = `
-            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 5rem 0; color: var(--text-secondary);">
-                <i class="fas fa-spinner fa-spin" style="font-size: 3rem; margin-bottom: 1rem; color: var(--primary);"></i>
-                <p>商品データを読み込んでいます...</p>
-            </div>
-        `;
-    }
-
-    try {
-        await reloadData();
-        currentView = 'list';
-        currentPage = 1;
-        renderView();
-    } catch (error) {
-        console.error("Failed to load products data:", error);
-        if (container) {
-            container.innerHTML = `
-                <div style="padding: 3rem; color: var(--danger); text-align: center; max-width: 600px; margin: 0 auto; background: #fef2f2; border-radius: 12px; margin-top: 2rem;">
-                    <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 1rem;"></i>
-                    <h3 style="margin-top: 0;">データの読み込みに失敗しました</h3>
-                    <p style="font-family: monospace; font-size: 0.9rem;">${error.message}</p>
-                </div>
-            `;
         }
     }
 }
