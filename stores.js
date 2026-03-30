@@ -56,7 +56,9 @@ function renderListView(container) {
                         <th style="padding: 1.2rem; font-weight: 600;">ID</th>
                         <th style="padding: 1.2rem; font-weight: 600;">店舗名</th>
                         <th style="padding: 1.2rem; font-weight: 600;">タイプ</th>
+                        <th style="padding: 1.2rem; font-weight: 600;">Dinii店舗ID</th>
                         <th style="padding: 1.2rem; font-weight: 600;">グループ</th>
+                        <th style="padding: 1.2rem; font-weight: 600;">席数</th>
                         <th style="padding: 1.2rem; font-weight: 600;">席数</th>
                         <th style="padding: 1.2rem; font-weight: 600;">リセット</th>
                         <th style="padding: 1.2rem; text-align: right; font-weight: 600;">操作</th>
@@ -125,6 +127,11 @@ function renderFormView(container) {
                                 <option value="CK">CK (セントラルキッチン)</option>
                             </select>
                         </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 700; font-size: 0.9rem; color: #475569;">Dinii店舗ID (UUID)</label>
+                            <input type="text" id="m-store-dinii-id" placeholder="例: defb1ba1-..." style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px; font-family: monospace;">
+                        </div>
                         <div>
                             <label style="display: block; margin-bottom: 0.5rem; font-weight: 700; font-size: 0.9rem; color: #475569;">グループ名</label>
                             <input type="text" id="m-group-name" placeholder="例: 直営" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
@@ -163,6 +170,7 @@ function renderFormView(container) {
         document.getElementById('m-store-name').value = editingStoreData.store_name || '';
         document.getElementById('m-store-type').value = editingStoreData.store_type || 'Store';
         document.getElementById('m-group-name').value = editingStoreData.group_name || '';
+        document.getElementById('m-store-dinii-id').value = editingStoreData.dinii_store_id || '';
         document.getElementById('m-seat-count').value = editingStoreData.seat_count || '';
         document.getElementById('m-reset-time').value = editingStoreData.reset_time || '05:00';
     }
@@ -221,6 +229,7 @@ function setupFormLogic() {
             store_name: newName,
             store_type: document.getElementById('m-store-type').value,
             group_name: document.getElementById('m-group-name').value.trim(),
+            dinii_store_id: document.getElementById('m-store-dinii-id').value.trim(),
             seat_count: Number(document.getElementById('m-seat-count').value) || 0,
             reset_time: document.getElementById('m-reset-time').value || "05:00"
         };
@@ -296,7 +305,9 @@ function renderTable(filter = "") {
                 <td style="padding: 1.2rem; font-weight: 600; font-family: monospace;">${s.store_id}</td>
                 <td style="padding: 1.2rem; font-weight: 700;">${s.store_name}</td>
                 <td style="padding: 1.2rem;"><span class="badge" style="background: ${s.store_type==='CK'?'#8B5CF6':'var(--primary-light)'}; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">${s.store_type==='CK'?'CK':'店舗'}</span></td>
+                <td style="padding: 1.2rem; font-family: monospace; font-size: 0.75rem; color: var(--text-secondary);">${s.dinii_store_id || '-'}</td>
                 <td style="padding: 1.2rem; color: var(--text-secondary);">${s.group_name || '-'}</td>
+                <td style="padding: 1.2rem;">${s.seat_count || '-'}</td>
                 <td style="padding: 1.2rem;">${s.seat_count || '-'}</td>
                 <td style="padding: 1.2rem; font-family: monospace; color: var(--text-secondary);">${s.reset_time || '05:00'}</td>
                 <td style="padding: 1.2rem; text-align: right;">

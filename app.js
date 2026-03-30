@@ -5,7 +5,7 @@ import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/f
 import { dashboardPageHtml, initDashboardPage } from './dashboard.js';
 import { attendancePageHtml, initAttendancePage } from './attendance.js';
 import { salesPageHtml, initSalesPage } from './sales.js';
-import { storesPageHtml, initStoresPage } from './stores.js?v=26';
+import { storesPageHtml, initStoresPage } from './stores.js?v=27';
 import { usersPageHtml, initUsersPage } from './users.js?v=26';
 import { inventoryPageHtml, initInventoryPage } from './inventory.js?v=26';
 import { procurementPageHtml, initProcurementPage } from './procurement.js';

@@ -1,5 +1,6 @@
 import { db } from './firebase.js';
-import { collection, doc, setDoc, getDocs, orderBy, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, doc, setDoc, getDocs, orderBy, query, where, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { processDiniiCSV as processDiniiMasterCSV } from './dinii_import.js';
 
 const SCHEMA_MAP = {
     t_performance: {
@@ -105,9 +106,10 @@ export async function processFile(file, logFn) {
         const decoder = new TextDecoder('shift-jis');
         const text = decoder.decode(arrayBuffer);
         
-        // Diniiフォーマットの簡易検知 (ヘッダーに'メニューID'または'商品コード'が含まれるか)
+        // Diniiフォーマットの簡易検知
         if (text.includes('メニューID') || text.includes('商品コード') || text.includes('dinii')) {
-            return await processDiniiCSV(text, file.name, logFn);
+            // v48: Dinii専用インポートエンジンを実行
+            return await processDiniiMasterCSV(text, file.name, logFn);
         }
         return await processCSV(text, file.name, logFn);
     } else {
