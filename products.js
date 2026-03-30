@@ -189,7 +189,17 @@ function renderStandardForm(container) {
                                     <label style="font-weight: 800; color: #1e293b; font-size: 0.8rem;">店舗名 <span style="color: var(--danger);">*</span></label>
                                     <select id="item-store-id" style="font-size: 0.95rem; padding: 0.5rem; background: #fff; width: 100%; border: 1px solid var(--border); border-radius: 8px; font-weight: 600;" ${currentTab === 'menus' ? 'required' : ''}>
                                         <option value="">店舗を選択...</option>
-                                        ${cachedStores.filter(s => s.store_type !== 'CK').map(s => `<option value="${s.store_id || s.id}">${s.store_name}</option>`).join('')}
+                                        ${cachedStores.filter(s => s.store_type !== 'CK').map(s => `<option value="${s.store_id || s.id}" ${isEdit && editingItemData.store_id === (s.store_id || s.id) ? 'selected' : ''}>${s.store_name}</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div class="input-group compact-input" style="margin-bottom: 0.5rem; ${currentTab === 'menus' ? '' : 'display:none;'}">
+                                    <label style="font-weight: 700; color: #475569; font-size: 0.8rem;">大分類 <span style="color: var(--danger);">*</span></label>
+                                    <select id="item-major-category" style="font-size: 0.95rem; padding: 0.5rem; background: #fff; width: 100%; border: 1px solid var(--border); border-radius: 8px; font-weight: 600;">
+                                        <option value="">大分類を選択...</option>
+                                        <option value="ドリンク" ${isEdit && editingItemData.major_category === 'ドリンク' ? 'selected' : ''}>ドリンク</option>
+                                        <option value="フード" ${isEdit && editingItemData.major_category === 'フード' ? 'selected' : ''}>フード</option>
+                                        <option value="お通し" ${isEdit && editingItemData.major_category === 'お通し' ? 'selected' : ''}>お通し</option>
+                                        <option value="その他" ${isEdit && editingItemData.major_category === 'その他' ? 'selected' : ''}>その他</option>
                                     </select>
                                 </div>
                                 <div class="input-group compact-input" style="margin-bottom: 0.5rem;">
@@ -811,6 +821,9 @@ function setupFormLogic() {
         if (document.getElementById('item-store-id')) {
             document.getElementById('item-store-id').value = item.store_id || "";
         }
+        if (document.getElementById('item-major-category')) {
+            document.getElementById('item-major-category').value = item.major_category || "";
+        }
 
         currentRecipe = menuRecord?.recipe || [];
         renderRecipeRows();
@@ -880,6 +893,7 @@ function setupFormLogic() {
             content_amount: Number(document.getElementById('item-content-amount')?.value || 0) || editingItemData?.content_amount || 0,
             notes: document.getElementById('item-notes')?.value || editingItemData?.notes || "",
             store_id: document.getElementById('item-store-id')?.value || "",
+            major_category: document.getElementById('item-major-category')?.value || "",
             created_at: editingItemData?.created_at || new Date().toISOString(),
             updated_at: new Date().toISOString()
         };
@@ -1007,11 +1021,10 @@ function renderTable(filter = "") {
     headerRow.innerHTML = '';
     if (currentTab === 'menus' || currentTab === 'sub_recipes') {
         headerRow.innerHTML = `
-            <th style="padding: 1rem; font-weight: 600; width: 30%;">品目名</th>
+            <th style="padding: 1rem; font-weight: 600; width: 40%;">品目名 / 店舗 / 大分類</th>
             <th style="padding: 1rem; font-weight: 600;">${currentTab === 'menus' ? '販売単価' : '用途'}</th>
             <th style="padding: 1rem; font-weight: 600;">計算原価</th>
             <th style="padding: 1rem; font-weight: 600;">${currentTab === 'menus' ? '粗利(率)' : '備考'}</th>
-            <th style="padding: 1rem; font-weight: 600;">${currentTab === 'menus' ? 'Dinii ID' : ''}</th>
             <th style="padding: 1rem; text-align: right; font-weight: 600;">アクション</th>
         `;
     } else {
@@ -1032,12 +1045,20 @@ function renderTable(filter = "") {
     const filteredItems = cachedItems.filter(item => {
         const nameHira = toHiragana((item.name || "").toLowerCase());
         const catHira = toHiragana((item.category || "").toLowerCase());
+        const majHira = toHiragana((item.major_category || "").toLowerCase());
         const furiHira = (item.furigana || "").toLowerCase();
+        
+        const store = (cachedStores || []).find(s => (s.store_id || s.id) === item.store_id);
+        const snHira = toHiragana((store?.store_name || "").toLowerCase());
 
         const isMatch = (item.name && item.name.toLowerCase().includes(query)) ||
                       nameHira.includes(queryHira) ||
                       (item.category && item.category.toLowerCase().includes(query)) ||
                       catHira.includes(queryHira) ||
+                      (item.major_category && item.major_category.toLowerCase().includes(query)) ||
+                      majHira.includes(queryHira) ||
+                      (store?.store_name && store.store_name.toLowerCase().includes(query)) ||
+                      snHira.includes(queryHira) ||
                       furiHira.includes(queryHira);
         
         if (!isMatch && filter !== "") return false;
@@ -1091,15 +1112,17 @@ function renderTable(filter = "") {
             const profit = salesPrice - cost;
             const margin = salesPrice > 0 ? (profit / salesPrice) * 100 : 0;
 
-            const notesIcon = item.notes ? `<i class="fas fa-comment-dots btn-notes" style="color:var(--primary); cursor:pointer; margin-left:0.5rem;" title="備考あり"></i>` : '';
-
-            // Highlight if cost or pricing is weird
-            if (cost === 0) tr.style.background = '#fef2f2';
+            const store = (cachedStores || []).find(s => (s.store_id || s.id) === item.store_id);
+            const storeName = store ? store.store_name : "";
 
             tr.innerHTML = `
                 <td style="padding: 1rem; font-weight: 600;">
                     ${item.furigana ? `<div style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.2; margin-bottom: 0.1rem;">${item.furigana}</div>` : ''}
-                    <div style="font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem;">${item.name} ${notesIcon}</div>
+                    <div style="font-size: 1.05rem; display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                        ${item.name} ${notesIcon}
+                        ${storeName ? `<span style="font-size: 0.65rem; color: #64748b; background: #f1f5f9; padding: 0.1rem 0.4rem; border-radius: 4px; font-weight: 500;">${storeName}</span>` : ''}
+                        ${item.major_category ? `<span style="font-size: 0.65rem; color: #7c3aed; background: #f5f3ff; padding: 0.1rem 0.4rem; border-radius: 4px; font-weight: 500;">${item.major_category}</span>` : ''}
+                    </div>
                     <div style="margin-top: 0.4rem;"><span class="badge ${currentTab === 'menus' ? 'badge-blue' : 'badge-orange'}" style="font-size: 0.65rem;">${item.category || '未分類'}</span></div>
                 </td>
                 <td style="padding: 1rem; font-weight: 600; font-family: monospace;">
@@ -1114,7 +1137,6 @@ function renderTable(filter = "") {
                         <div style="font-size: 0.8rem; color: var(--text-secondary); max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.notes || '-'}</div>
                     `}
                 </td>
-                <td style="padding: 1rem; color:var(--text-secondary); font-size:0.8rem; font-family: monospace;">${menu?.dinii_id || ''}</td>
                 <td style="padding: 1rem; text-align: right;">
                     <button class="btn btn-edit" style="padding: 0.5rem; background: transparent; color: var(--text-secondary);" title="編集"><i class="fas fa-edit"></i></button>
                     <!-- 行削除ボタンは廃止（編集画面内へ集約） -->
