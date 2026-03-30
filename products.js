@@ -11,6 +11,7 @@ let cachedItems = [];
 let cachedIngredients = [];
 let cachedMenus = [];
 let cachedVendors = [];
+let cachedStores = []; // 追加: 店舗リスト用
 let currentUser = null;
 let editingItemData = null;
 let currentSearchQuery = ''; // 検索条件の永続化用
@@ -184,6 +185,13 @@ function renderStandardForm(container) {
                                 基本スペック
                             </h4>
                             <div style="margin-bottom: 1rem;">
+                                 <div class="input-group compact-input" style="margin-bottom: 0.5rem; ${currentTab === 'menus' ? '' : 'display:none;'}">
+                                    <label style="font-weight: 800; color: #1e293b; font-size: 0.8rem;">店舗名 <span style="color: var(--danger);">*</span></label>
+                                    <select id="item-store-id" style="font-size: 0.95rem; padding: 0.5rem; background: #fff; width: 100%; border: 1px solid var(--border); border-radius: 8px; font-weight: 600;" ${currentTab === 'menus' ? 'required' : ''}>
+                                        <option value="">店舗を選択...</option>
+                                        ${cachedStores.filter(s => s.store_type !== 'CK').map(s => `<option value="${s.store_id || s.id}">${s.store_name}</option>`).join('')}
+                                    </select>
+                                </div>
                                 <div class="input-group compact-input" style="margin-bottom: 0.5rem;">
                                     <label style="font-weight: 700; color: #475569; font-size: 0.8rem;">ふりがな（ひらがな）</label>
                                     <input type="text" id="item-furigana" placeholder="例: ばちまぐろ / とくようしょうゆ" 
@@ -365,19 +373,30 @@ function renderFormActions(isEdit) {
 }
 
 function attachGlobalFormEvents() {
+    // --- 1. DOMの確定と初期化を最優先で実行 ---
+    // setupFormLogic内でフォームのクローン（古いリスナーの除去）が行われます。
+    // これにより、クローン後の新しいDOM要素に対してイベントを確実に紐付けられます。
+    setupFormLogic();
+
     const isEdit = !!editingItemData;
     
-    document.getElementById('btn-form-back').onclick = document.getElementById('btn-form-cancel').onclick = () => {
-        currentView = 'list';
-        renderView();
-    };
+    const btnBack = document.getElementById('btn-form-back');
+    const btnCancel = document.getElementById('btn-form-cancel');
+    if (btnBack) btnBack.onclick = () => { currentView = 'list'; renderView(); };
+    if (btnCancel) btnCancel.onclick = () => { currentView = 'list'; renderView(); };
 
     // Proxy submit button handler
     const btnSubmitProxy = document.getElementById('btn-form-submit-proxy');
     if (btnSubmitProxy) {
-        btnSubmitProxy.onclick = () => {
+        btnSubmitProxy.onclick = (e) => {
+            console.log("Proxy submit clicked.");
+            e.preventDefault();
+            e.stopPropagation();
             const form = document.getElementById('item-form');
-            if (form) form.requestSubmit();
+            if (form) {
+                console.log("Requesting form submit...");
+                form.requestSubmit();
+            }
         };
     }
 
@@ -430,21 +449,21 @@ function attachGlobalFormEvents() {
     
     // --- Dynamic calculations and display logic ---
 
-// 単位ラベルのリアルタイム連動
+    // 単位ラベルのリアルタイム連動
     const unitInput = document.getElementById('item-unit');
     const updateUnitLabels = () => {
         const addOnStr = unitInput.value.trim();
         const addonC = document.getElementById('addon-content-amount');
         if (addonC) {
-            addonC.textContent = ''; // 確実に空にする
+            addonC.textContent = ''; 
             if (addOnStr) {
-                addonC.textContent = addOnStr; // 入力された文字だけを純粋に反映
+                addonC.textContent = addOnStr; 
             }
         }
     };
     if (unitInput) {
         unitInput.addEventListener('input', updateUnitLabels);
-        updateUnitLabels(); // 初期表示時にも実行
+        updateUnitLabels(); 
     }
 
     // 正味単価の自動計算ロジック
@@ -478,12 +497,11 @@ function attachGlobalFormEvents() {
             const post = parseFloat(document.getElementById('calc-post').value);
             if (pre > 0 && post >= 0) {
                 let rate = post / pre;
-                rate = Math.round(rate * 100) / 100; // 小数第2位まで保持
+                rate = Math.round(rate * 100) / 100; 
                 const yieldInput = document.getElementById('ing-yield-rate');
                 if (yieldInput) {
                     yieldInput.value = rate;
-                    updateNetUnitPrice(); // 正味単価も再計算
-                    // ピカッと光らせて変更を視覚的に通知
+                    updateNetUnitPrice(); 
                     yieldInput.style.backgroundColor = '#ecfdf5';
                     yieldInput.style.transition = 'background-color 0.4s';
                     setTimeout(() => yieldInput.style.backgroundColor = 'transparent', 500);
@@ -509,7 +527,6 @@ function attachGlobalFormEvents() {
     }, 100);
 
     toggleFormSections();
-    setupFormLogic();
 }
 
 function updateSubRecipeSummary() {
@@ -768,14 +785,33 @@ export async function initProductsPage(user) {
 }
 
 function setupFormLogic() {
-    setupRecipeEditor();
+    console.log("setupFormLogic starting...");
     const form = document.getElementById('item-form');
-    if (!form) return;
+    if (!form) {
+        console.warn("item-form not found.");
+        return;
+    }
+
+    // --- 1. DOMのクローンと置換 (古いリスナーの完全除去) ---
+    // これを最初に行わないと、後で設定する要素ごとのonclick等のイベントが消失します。
+    const newForm = form.cloneNode(true);
+    form.parentNode.replaceChild(newForm, form);
+    const hardenedForm = newForm;
+    console.log("Form cloned and replaced.");
+
+    // --- 2. 子コンポーネントと初期値の設定 (クローン後のDOMに対して行う) ---
+    setupRecipeEditor();
 
     // Set initial values if editing
     if (editingItemData) {
         const item = editingItemData;
         const menuRecord = cachedMenus.find(m => m.item_id === item.id);
+        
+        // 店舗名の初期値をセット
+        if (document.getElementById('item-store-id')) {
+            document.getElementById('item-store-id').value = item.store_id || "";
+        }
+
         currentRecipe = menuRecord?.recipe || [];
         renderRecipeRows();
 
@@ -822,8 +858,12 @@ function setupFormLogic() {
         }
     }
 
-    form.onsubmit = async (e) => {
+    // --- 3. サブミットイベントの紐付け ---
+    hardenedForm.addEventListener('submit', async (e) => {
+        console.log("Submit event triggered.");
         e.preventDefault();
+        e.stopPropagation();
+
         const btnSubmit = document.getElementById('btn-form-submit-proxy');
         if (btnSubmit) {
             btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
@@ -833,32 +873,38 @@ function setupFormLogic() {
         const itemId = editingItemData ? editingItemData.id : `item_${Date.now()}`;
 
         const baseItem = {
-            furigana: document.getElementById('item-furigana').value || "",
-            name: document.getElementById('item-name').value,
-            category: document.getElementById('item-category').value,
-            unit: document.getElementById('item-unit').value,
-            content_amount: Number(document.getElementById('item-content-amount').value) || 0,
-            notes: document.getElementById('item-notes').value || "",
+            furigana: document.getElementById('item-furigana')?.value || "",
+            name: document.getElementById('item-name')?.value || editingItemData?.name || "",
+            category: document.getElementById('item-category')?.value || editingItemData?.category || "",
+            unit: document.getElementById('item-unit')?.value || editingItemData?.unit || "",
+            content_amount: Number(document.getElementById('item-content-amount')?.value || 0) || editingItemData?.content_amount || 0,
+            notes: document.getElementById('item-notes')?.value || editingItemData?.notes || "",
+            store_id: document.getElementById('item-store-id')?.value || "",
             created_at: editingItemData?.created_at || new Date().toISOString(),
             updated_at: new Date().toISOString()
         };
 
         try {
+            console.log("Starting Firestore write sequence for itemId:", itemId);
+            console.log("Base Item data:", baseItem);
+            
             await setDoc(doc(db, "m_items", itemId), baseItem, { merge: true });
+            console.log("m_items saved successfully.");
 
             if (currentTab === 'menus') {
                 await setDoc(doc(db, "m_menus", itemId), {
                     item_id: itemId, 
-                    sales_price: Number(document.getElementById('menu-sales-price').value) || 0,
-                    dinii_id: document.getElementById('menu-dinii-id').value || "", 
+                    sales_price: Number(document.getElementById('menu-sales-price')?.value || 0) || 0,
+                    dinii_id: document.getElementById('menu-dinii-id')?.value || "", 
                     recipe: currentRecipe,
                     is_sub_recipe: false, 
                     updated_at: new Date().toISOString()
                 }, { merge: true });
+                console.log("m_menus (standard) saved successfully.");
             } else if (currentTab === 'sub_recipes') {
-                const yieldAmount = Number(document.getElementById('recipe-yield-amount').value) || 0;
-                const instructions = document.getElementById('recipe-instructions').value || "";
-                const developer = document.getElementById('recipe-developer').value || "";
+                const yieldAmount = Number(document.getElementById('recipe-yield-amount')?.value || 0) || 0;
+                const instructions = document.getElementById('recipe-instructions')?.value || "";
+                const developer = document.getElementById('recipe-developer')?.value || "";
                 
                 // レシピ総原価を再計算
                 let totalCost = 0;
@@ -879,6 +925,7 @@ function setupFormLogic() {
                     is_sub_recipe: true, 
                     updated_at: new Date().toISOString()
                 }, { merge: true });
+                console.log("m_menus (sub-recipe) saved successfully.");
 
                 // 自家製も他レシピの「原材料」になり得るので m_ingredients にも登録/更新する
                 await setDoc(doc(db, "m_ingredients", itemId), {
@@ -888,11 +935,12 @@ function setupFormLogic() {
                     net_unit_price: netPrice,
                     updated_at: new Date().toISOString()
                 }, { merge: true });
+                console.log("m_ingredients (sub-recipe cost) saved successfully.");
 
             } else {
-                const purchasePrice = Number(document.getElementById('ing-purchase-price').value) || 0;
-                const contentAmount = Number(document.getElementById('item-content-amount').value) || 0;
-                const yieldRate = Number(document.getElementById('ing-yield-rate').value) || 1.0;
+                const purchasePrice = Number(document.getElementById('ing-purchase-price')?.value || 0) || 0;
+                const contentAmount = Number(document.getElementById('item-content-amount')?.value || 0) || 0;
+                const yieldRate = Number(document.getElementById('ing-yield-rate')?.value || 1.0) || 1.0;
                 const netUnitPrice = (contentAmount > 0 && yieldRate > 0) ? (purchasePrice / (contentAmount * yieldRate)) : 0;
 
                 await setDoc(doc(db, "m_ingredients", itemId), {
@@ -900,15 +948,19 @@ function setupFormLogic() {
                     purchase_price: purchasePrice,
                     yield_rate: yieldRate,
                     net_unit_price: netUnitPrice,
-                    vendor_id: document.getElementById('ing-vendor-id').value || "", 
+                    vendor_id: document.getElementById('ing-vendor-id')?.value || "", 
                     updated_at: new Date().toISOString()
                 }, { merge: true });
+                console.log("m_ingredients (standard) saved successfully.");
             }
 
             currentView = 'list';
+            console.log("Reloading data...");
             await reloadData();
+            console.log("Data reloaded. Rendering view...");
             renderView();
             showAlert('成功', '保存しました。');
+            console.log("Save cycle complete.");
         } catch (err) {
             console.error(err);
             showAlert('保存に失敗しました。', err.message);
@@ -919,21 +971,23 @@ function setupFormLogic() {
                 btnSubmit.disabled = false;
             }
         }
-    };
+    });
 }
 
 async function reloadData() {
-    const [itemsSnap, ingsSnap, menusSnap, vendorsSnap] = await Promise.all([
+    const [itemsSnap, ingsSnap, menusSnap, vendorsSnap, storesSnap] = await Promise.all([
         getDocs(collection(db, "m_items")),
         getDocs(collection(db, "m_ingredients")),
         getDocs(collection(db, "m_menus")),
-        getDocs(collection(db, "m_suppliers"))
+        getDocs(collection(db, "m_suppliers")),
+        getDocs(collection(db, "m_stores"))
     ]);
 
     cachedItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     cachedIngredients = ingsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     cachedMenus = menusSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     cachedVendors = vendorsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    cachedStores = storesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
 function toHiragana(str) {
