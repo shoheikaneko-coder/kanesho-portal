@@ -231,7 +231,7 @@ function setupFormLogic() {
             'Email': document.getElementById('user-email').value,
             'Role': document.getElementById('user-role').value,
             'Store': selectedOpt ? selectedOpt.text : '',
-            'StoreID': storeSelect.value,
+            'StoreID': storeSelect.value || '', // StoreID is now primary
             'UpdatedAt': new Date().toISOString()
         };
 

@@ -132,23 +132,46 @@ export const attendancePageHtml = `
 // ─── 状態 ────────────────────────────────────────────────────
 let currentUser = null;
 let tabletStore = '';       // タブレットの所属店舗名
+let tabletStoreID = '';     // タブレットの所属店舗ID [NEW]
+let tabletGroup = '';       // タブレットの所属グループ名 [NEW]
 let allStaff = [];          // m_users全件
+let cachedStoresData = [];  // 店舗マスタ全件 [NEW]
 let recentPunches = [];     // 直近24時間の打刻レコード（{id, ...data}[]）
 let clockTimer = null;
 
 // ─── 初期化 ──────────────────────────────────────────────────
 export async function initAttendancePage(user) {
     currentUser = user || {};
+    tabletStoreID = currentUser.StoreID || '';
     tabletStore = currentUser.Store || currentUser.store_name || '';
     
-    // Admin用：店舗が未設定の場合は、全スタッフを表示するか、最初の店舗をデフォルトにする
-    const isAdmin = currentUser.Role === 'Admin' || currentUser.Role === '管理者';
-    if (!tabletStore && isAdmin) {
+    // 店舗マスタを先に取得して、タブレット店舗の詳細（ID, グループ）を特定する
+    try {
         const storeSnap = await getDocs(collection(db, "m_stores"));
-        if (!storeSnap.empty) {
-            const firstStore = storeSnap.docs[0].data();
-            tabletStore = firstStore.store_name || firstStore.Name || '';
+        cachedStoresData = storeSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // タブレット店舗の特定（IDまたは名前で検索）
+        let myStore = cachedStoresData.find(s => s.id === tabletStoreID);
+        if (!myStore && tabletStore) {
+            myStore = cachedStoresData.find(s => s.store_name === tabletStore);
         }
+
+        if (myStore) {
+            tabletStore = myStore.store_name || '';
+            tabletStoreID = myStore.id;
+            tabletGroup = myStore.group_name || '';
+        }
+
+        // Admin用：店舗が未設定の場合は、最初の店舗をデフォルトにする
+        const isAdmin = currentUser.Role === 'Admin' || currentUser.Role === '管理者';
+        if (!tabletStoreID && isAdmin && cachedStoresData.length > 0) {
+            const firstStore = cachedStoresData[0];
+            tabletStore = firstStore.store_name || '';
+            tabletStoreID = firstStore.id;
+            tabletGroup = firstStore.group_name || '';
+        }
+    } catch (e) {
+        console.error("Failed to load store metadata:", e);
     }
 
     startClock();
@@ -164,6 +187,7 @@ export async function initAttendancePage(user) {
         if (dateInput) dateInput.value = todayStr();
     }
 }
+
 
 // ─── 時計 ────────────────────────────────────────────────────
 function startClock() {
@@ -207,7 +231,15 @@ async function loadAllStaff() {
         snap.forEach(d => {
             const data = d.data();
             if (data.Role === 'Tablet' || data.Role === '店舗タブレット') return;
-            allStaff.push({ id: d.id, ...data });
+
+            // ID紐付けの自動補完 (Lazy Migration)
+            let sId = data.StoreID;
+            if (!sId && data.Store) {
+                const matched = cachedStoresData.find(s => s.store_name === data.Store);
+                if (matched) sId = matched.id;
+            }
+
+            allStaff.push({ id: d.id, ...data, StoreID: sId });
         });
     } catch (e) { console.error(e); }
 }
@@ -258,37 +290,62 @@ function renderUnclockedDropdown(extraStoreFilter = null) {
     if (!sel) return;
 
     if (label) {
+        const storeDisplayName = tabletStore || '店舗未設定';
+        const groupBadge = tabletGroup ? `<span style="font-size:0.75rem; background:#f1f5f9; color:#475569; padding:0.1rem 0.4rem; border-radius:4px; margin-left:0.5rem; border:1px solid #e2e8f0;">${tabletGroup}グループ</span>` : '';
+        
+        let warning = '';
+        const isAdmin = currentUser.Role === 'Admin' || currentUser.Role === '管理者';
+        if (isAdmin && !tabletGroup && !extraStoreFilter) {
+            warning = `<div style="font-size:0.7rem; color:var(--danger); margin-top:0.3rem;"><i class="fas fa-exclamation-triangle"></i> グループ未設定のためCK共有が無効です</div>`;
+        }
+
         label.innerHTML = extraStoreFilter
-            ? `<i class="fas fa-hands-helping" style="color:var(--secondary);"></i> ヘルプ出勤モード：${extraStoreFilter}`
-            : `<i class="fas fa-store"></i> ${tabletStore || '店舗未設定'}`;
+            ? `<div><i class="fas fa-hands-helping" style="color:var(--secondary);"></i> ヘルプ出勤モード：${extraStoreFilter}</div>`
+            : `<div><i class="fas fa-store"></i> ${storeDisplayName}${groupBadge}</div>${warning}`;
     }
 
     const statuses = calcStaffStatuses();
-    // 出勤中（working/break）のstaff_idセット
     const activeSids = new Set(
         Object.entries(statuses)
             .filter(([, v]) => v.status !== 'off')
             .map(([sid]) => sid)
     );
 
-    const targetStore = extraStoreFilter || tabletStore;
-    const candidates = allStaff.filter(s => {
-        const store = s.Store || s.store_name || '';
-        return store === targetStore;
-    });
- 
-    const unclocked = candidates.filter(s => {
-        // staff_id は EmployeeCode または doc id
+    // フィルタリングロジック：同一店舗 OR 同一グループのCK
+    const unclocked = allStaff.filter(s => {
         const sid = String(s.EmployeeCode || s.id);
-        const isActive = activeSids.has(sid);
-        return !isActive;
+        if (activeSids.has(sid)) return false;
+
+        // IDベースでの店舗一致
+        if (extraStoreFilter) {
+            // ヘルプモード時は店舗名での後方互換マッチ
+            const sName = s.Store || '';
+            if (sName === extraStoreFilter) return true;
+        } else {
+            if (s.StoreID === tabletStoreID) return true;
+        }
+
+        // CK共有の判定
+        if (!extraStoreFilter && tabletGroup) {
+            const storeInfo = cachedStoresData.find(st => st.id === s.StoreID);
+            if (storeInfo && storeInfo.store_type === 'CK' && storeInfo.group_name === tabletGroup) {
+                return true;
+            }
+        }
+        return false;
     });
  
     sel.innerHTML = '<option value="">スタッフを選択してください</option>';
     unclocked.forEach(s => {
         const opt = document.createElement('option');
         opt.value = s.id;
-        opt.textContent = s.Name || s.name || 'No Name';
+        
+        // CK所属の場合は識別ラベルを付与
+        const storeInfo = cachedStoresData.find(st => st.id === s.StoreID);
+        const isCK = storeInfo?.store_type === 'CK';
+        const ckLabel = isCK ? ' 🏢(CK)' : '';
+        
+        opt.textContent = `${s.Name || s.name || 'No Name'}${ckLabel}`;
         sel.appendChild(opt);
     });
 }
