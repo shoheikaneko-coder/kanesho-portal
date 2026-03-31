@@ -297,31 +297,6 @@ function renderStandardForm(container) {
 
                     <!-- 右カラム: 金額設定・ボタン -->
                     <div class="form-col-right" style="flex: 1; display: flex; flex-direction: column; gap: 1.5rem;">
-                        <!-- 販売・原価セクション -->
-                        <section id="section-menu" style="display: flex; flex-direction: column; background: #f1f5f9; padding: 1.2rem; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-                            <h4 id="section-menu-title" style="margin-top: 0; margin-bottom: 1rem; color: #2563EB; font-size: 0.95rem; font-weight: 800;">
-                                販売・レシピ設定
-                            </h4>
-                            <div id="menu-price-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-                                <div class="input-group compact-input" style="margin-bottom: 0;">
-                                    <label style="font-size: 0.8rem; font-weight: 700;">販売価格(税込)</label>
-                                    <div class="input-with-addon-wrapper">
-                                        <input type="number" id="menu-sales-price" placeholder="例: 1200" style="padding:0.6rem; font-weight: 700; font-family: monospace;">
-                                        <span class="input-addon" style="padding:0 0.8rem; font-size:0.8rem;">円</span>
-                                    </div>
-                                </div>
-                                <div class="input-group compact-input" style="margin-bottom: 0;">
-                                    <label style="font-size: 0.8rem; font-weight: 700;">Dinii ID</label>
-                                    <input type="text" id="menu-dinii-id" placeholder="連携コード" style="padding:0.6rem; font-family: monospace;">
-                                </div>
-                            </div>
-                            <div id="section-recipe">
-                                <label style="font-size: 0.8rem; font-weight: 700; margin-bottom: 0.4rem; display: block;">レシピ構成 (食材の積み上げ)</label>
-                                <div style="display: flex; gap: 0.5rem; margin-bottom: 0.8rem;">
-                                    <select id="recipe-add-select" style="flex: 1; padding: 0.4rem; border-radius: 8px; border: 1px solid var(--border); font-size:0.9rem;"></select>
-                                    <button type="button" id="btn-recipe-add" class="btn" style="background: #2563EB; color: white; padding: 0.4rem 0.8rem;"><i class="fas fa-plus"></i></button>
-                                </div>
-                                <div id="recipe-items-container" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 200px; overflow-y: auto;">
                                     <!-- Recipe rows dynamic -->
                                 </div>
                                 <div id="recipe-total-cost" style="margin-top: 0.8rem; text-align: right; font-weight: 800; color: var(--primary); font-size: 1rem;">
@@ -576,7 +551,9 @@ function attachGlobalFormEvents() {
     }
 
     setTimeout(() => {
-        calculateRecipeCost();
+        if (currentTab === 'sub_recipes' || currentTab === 'menus') {
+            calculateRecipeCost();
+        }
     }, 100);
 }
 
@@ -848,7 +825,9 @@ function setupFormLogic() {
     const hardenedForm = newForm;
     console.log("Form cloned and replaced.");
 
-    setupRecipeEditor();
+    if (currentTab === 'menus' || currentTab === 'sub_recipes') {
+        setupRecipeEditor();
+    }
 
     if (editingItemData) {
         const item = editingItemData;
@@ -1268,31 +1247,6 @@ function renderPagination(totalPages, filter) {
     container.appendChild(btnNext);
 }
 
-function toggleFormSections() {
-    const sMenu = document.getElementById('section-menu');
-    const sRecipe = document.getElementById('section-recipe');
-    const sIng = document.getElementById('section-ingredient');
-    
-    if (currentTab === 'menus') {
-        sMenu.style.display = 'flex';
-        sRecipe.style.display = 'flex';
-        sIng.style.display = 'none';
-        document.getElementById('menu-price-container').style.display = 'flex';
-    } else if (currentTab === 'sub_recipes') {
-        sMenu.style.display = 'flex';
-        sRecipe.style.display = 'flex';
-        sIng.style.display = 'none';
-        document.getElementById('menu-price-container').style.display = 'none';
-        document.getElementById('section-menu-title').textContent = '基本設定';
-        document.getElementById('section-menu-title').style.color = '#059669';
-    } else {
-        sMenu.style.display = 'none';
-        sRecipe.style.display = 'none';
-        sIng.style.display = 'flex';
-        document.getElementById('section-menu-title').textContent = '販売・レシピ設定';
-        document.getElementById('section-menu-title').style.color = '#2563EB';
-    }
-}
 
 let currentRecipe = [];
 
