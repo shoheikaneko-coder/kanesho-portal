@@ -151,18 +151,30 @@ export async function initAttendanceCheckPage() {
                     // 打刻データペアリングロジック
                     const recs = staff.records.sort((a,b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
                     let lastIn = null;
+                    let breakStartT = null;
+                    let totalBreakMs = 0;
                     recs.forEach(r => {
                         if (!r.timestamp) return;
-                        const type = String(r.type || '').toUpperCase();
+                        const type = String(r.type || '').toLowerCase();
                         const ts = new Date(r.timestamp);
                         workDays.add(r.timestamp.substring(0, 10));
 
-                        if (type === 'IN' || type.includes('出勤')) {
+                        if (type === 'check_in' || type === 'in' || type.includes('出勤')) {
                             lastIn = ts;
-                        } else if ((type === 'OUT' || type.includes('退勤')) && lastIn) {
-                            const diff = (ts - lastIn) / (1000 * 60 * 60);
-                            if (diff > 0) totalHours += diff;
+                            totalBreakMs = 0;
+                            breakStartT = null;
+                        } else if (type === 'break_start' || type.includes('休憩開始')) {
+                            breakStartT = ts;
+                        } else if ((type === 'break_end' || type.includes('休憩終了')) && breakStartT) {
+                            totalBreakMs += (ts - breakStartT);
+                            breakStartT = null;
+                        } else if ((type === 'check_out' || type === 'out' || type.includes('退勤')) && lastIn) {
+                            const grossMs = ts - lastIn;
+                            const netMs = Math.max(0, grossMs - totalBreakMs);
+                            if (netMs > 0) totalHours += netMs / 3600000;
                             lastIn = null;
+                            totalBreakMs = 0;
+                            breakStartT = null;
                         }
                     });
                 }
@@ -246,22 +258,33 @@ function showDetail(staff, month) {
         let isImported = false;
         
         let lastIn = null;
+        let breakStartT = null;
+        let totalBreakMs = 0;
         dayRecs.forEach(r => {
             storeName = r.store_name || '-';
             if (r.total_labor_hours !== undefined) {
                 isImported = true;
                 hours += Number(r.total_labor_hours) || 0;
             } else if (r.timestamp) {
-                const type = String(r.type || '').toUpperCase();
+                const type = String(r.type || '').toLowerCase();
                 const timeStr = formatTime(r.timestamp);
-                if (type === 'IN' || type.includes('出勤')) {
+                if (type === 'check_in' || type === 'in' || type.includes('出勤')) {
                     inTime = timeStr;
                     lastIn = new Date(r.timestamp);
-                } else if ((type === 'OUT' || type.includes('退勤'))) {
+                    totalBreakMs = 0;
+                    breakStartT = null;
+                } else if (type === 'break_start' || type.includes('休憩開始')) {
+                    breakStartT = new Date(r.timestamp);
+                } else if ((type === 'break_end' || type.includes('休憩終了')) && breakStartT) {
+                    totalBreakMs += (new Date(r.timestamp) - breakStartT);
+                    breakStartT = null;
+                } else if ((type === 'check_out' || type === 'out' || type.includes('退勤')) && lastIn) {
                     outTime = timeStr;
-                    if (lastIn) {
-                        hours += (new Date(r.timestamp) - lastIn) / 3600000;
-                    }
+                    const grossMs = new Date(r.timestamp) - lastIn;
+                    hours += Math.max(0, grossMs - totalBreakMs) / 3600000;
+                    lastIn = null;
+                    totalBreakMs = 0;
+                    breakStartT = null;
                 }
             }
         });
