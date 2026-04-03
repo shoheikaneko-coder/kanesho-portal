@@ -292,22 +292,44 @@ async function refreshDashboard() {
             } else {
                 // 打刻データの場合のみペア計算を行う
                 recs.sort((a,b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
-                let inT = null;
+
+                let inT = null;           // 出勤時刻
+                let breakStartT = null;   // 休憩開始時刻
+                let totalBreakMs = 0;     // 当日の休憩合計（ミリ秒）
+                let calcSid = "";         // 計算に使うstore_id
+
                 recs.forEach(r => {
                     const ts = r.timestamp || r.date || r.Date || "";
                     if (!ts) return;
-                    // store_id がない場合は store_name から逆引き補完（perStaff と同じ解決ロジック）
                     const sid = r.store_id || r.StoreID || storeNameToId[r.store_name] || "";
                     const type = String(r.type || r.Type || r['区分'] || '').toLowerCase();
-                    if (type === 'in' || type.includes('check_in') || type.includes('出勤')) inT = new Date(ts);
-                    else if ((type === 'out' || type.includes('check_out') || type.includes('退勤')) && inT) {
-                        const h = (new Date(ts) - inT) / 3600000;
+
+                    if (type === 'in' || type.includes('check_in') || type.includes('出勤')) {
+                        inT = new Date(ts);
+                        totalBreakMs = 0;  // 新しい出勤サイクルで休憩をリセット
+                        breakStartT = null;
+                        calcSid = sid;
+                    } else if (type.includes('break_start') || type.includes('休憩開始')) {
+                        breakStartT = new Date(ts);
+                    } else if ((type.includes('break_end') || type.includes('休憩終了')) && breakStartT) {
+                        // 休憩時間を累積
+                        totalBreakMs += (new Date(ts) - breakStartT);
+                        breakStartT = null;
+                    } else if ((type === 'out' || type.includes('check_out') || type.includes('退勤')) && inT) {
+                        // 実労働時間 = (退勤 - 出勤) - 休憩合計
+                        const grossMs = new Date(ts) - inT;
+                        const netMs = Math.max(0, grossMs - totalBreakMs);
+                        const h = netMs / 3600000;
                         const ym = ts.substring(0, 7);
-                        if (ym && sid) {
-                            const k = `${ym}__${sid}`;
+                        const finalSid = calcSid || sid;
+                        if (ym && finalSid) {
+                            const k = `${ym}__${finalSid}`;
                             laborMap[k] = (laborMap[k] || 0) + h;
                         }
                         inT = null;
+                        totalBreakMs = 0;
+                        breakStartT = null;
+                        calcSid = "";
                     }
                 });
             }
