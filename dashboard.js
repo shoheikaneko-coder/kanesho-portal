@@ -296,7 +296,8 @@ async function refreshDashboard() {
                 recs.forEach(r => {
                     const ts = r.timestamp || r.date || r.Date || "";
                     if (!ts) return;
-                    const sid = r.store_id || r.StoreID || "";
+                    // store_id がない場合は store_name から逆引き補完（perStaff と同じ解決ロジック）
+                    const sid = r.store_id || r.StoreID || storeNameToId[r.store_name] || "";
                     const type = String(r.type || r.Type || r['区分'] || '').toLowerCase();
                     if (type === 'in' || type.includes('check_in') || type.includes('出勤')) inT = new Date(ts);
                     else if ((type === 'out' || type.includes('check_out') || type.includes('退勤')) && inT) {
