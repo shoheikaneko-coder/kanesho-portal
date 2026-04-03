@@ -19,7 +19,8 @@ export async function processDiniiCSV(text, filename, logFn) {
         choiceId: headers.indexOf('チョイスID'),
         choiceName: headers.indexOf('チョイス名称'),
         priceExclTax: headers.indexOf('売価(税抜)'),
-        quantity: headers.indexOf('出数')
+        quantity: headers.indexOf('出数'),
+        taxType: headers.indexOf('消費税率区分')
     };
 
     if (idx.diniiId === -1 || idx.storeDiniiId === -1) {
@@ -67,7 +68,8 @@ export async function processDiniiCSV(text, filename, logFn) {
             choice_name: row[idx.choiceName] || "",
             sales_price: Number(row[idx.priceExclTax]) || 0,
             last_month_sales: Number(row[idx.quantity]) || 0,
-            is_primary: choiceId === ""
+            is_primary: choiceId === "",
+            tax_type: row[idx.taxType] || ""
         };
         
         menuGroups[key].variants.push(variant);
@@ -107,10 +109,18 @@ export async function processDiniiCSV(text, filename, logFn) {
                 }
             }
 
-            await updateDoc(menuRef, {
+            const primaryVar = group.variants.find(v => v.choice_id === "");
+            const updatePayload = {
                 variants: updatedVariants,
                 updated_at: new Date().toISOString()
-            });
+            };
+            if (primaryVar) {
+                updatePayload.sales_price = primaryVar.sales_price;
+                updatePayload.name = group.name; // 最新の名称に更新
+                updatePayload.category = group.category; // カテゴリも更新
+            }
+
+            await updateDoc(menuRef, updatePayload);
 
             // m_items 名も同期
             if (existingData.item_id) {
@@ -125,7 +135,24 @@ export async function processDiniiCSV(text, filename, logFn) {
             // 新規登録
             // 1. m_items 作成
             const itemId = `item_${Date.now()}_${Math.floor(Math.random()*1000)}`;
-            const itemData = {
+            const primaryVar = group.variants.find(v => v.choice_id === "");
+            const menuData = {
+                id: docId,
+                item_id: itemId,
+                dinii_id: group.diniiId,
+                name: group.name,
+                category: group.category,
+                store_id: group.storeId,
+                sales_price: primaryVar ? primaryVar.sales_price : 0,
+                variants: group.variants.map(v => ({
+                    ...v,
+                    recipe: [],
+                    recipe_status: "pending"
+                })),
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+            await setDoc(doc(db, "m_items", itemId), {
                 id: itemId,
                 name: group.name,
                 category: group.category,
@@ -137,25 +164,10 @@ export async function processDiniiCSV(text, filename, logFn) {
                 notes: "Diniiインポートにより作成",
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
-            };
-            await setDoc(doc(db, "m_items", itemId), itemData);
-
-            // 2. m_menus 作ate
-            const variants = group.variants.map(v => ({
-                ...v,
-                recipe: [],
-                recipe_status: "pending"
-            }));
-
-            await setDoc(menuRef, {
-                item_id: itemId,
-                dinii_id: group.diniiId,
-                store_id: group.storeId,
-                variants: variants,
-                is_sub_recipe: false,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
             });
+
+            // 2. m_menus 作成
+            await setDoc(menuRef, menuData);
             createdCount++;
         }
     }

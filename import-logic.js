@@ -41,7 +41,8 @@ const SCHEMA_MAP = {
         choice_name:         ['choice_name', 'チョイス名称'],
         quantity_sold:       ['quantity_sold', '数量', '合計数量', '売上数量', '販売数'],
         unit_price:          ['unit_price', '売価(税抜)', '単価'],
-        total_sales:         ['total_sales', '売上金額', '販売金額(税込)'] // 計算で上書きするが、念のためマップ
+        total_sales:         ['total_sales', '売上金額', '販売金額(税込)'], // 計算で上書きするが、念のためマップ
+        tax_type:            ['tax_type', '消費税率区分']
     }
 };
 
@@ -369,7 +370,8 @@ async function processDiniiCSV(text, filename, logFn) {
             }
         }
 
-        const docId = `${storeId}_${targetYM}_${finalData.dinii_id || 'no_id'}_${choiceId || 'main'}_${i}`;
+        // ドキュメントIDの生成 (行番号 _i を排除し、データ固有のキーにすることで重複保存を防止)
+        const docId = `${storeId}_${targetYM}_${finalData.dinii_id || 'no_id'}_${choiceId || 'main'}`;
         await setDoc(doc(db, "t_monthly_sales", docId), finalData);
         count++;
     }

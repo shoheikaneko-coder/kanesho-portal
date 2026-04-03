@@ -531,6 +531,7 @@ async function punch(staff, type) {
         year_month: todayStr().substring(0, 7),
         staff_id: staff.EmployeeCode || staff.id,
         staff_name: staff.Name,
+        store_id: tabletStoreID,   // 人時売上計算に必要なため追加
         store_name: tabletStore,
         type
     };

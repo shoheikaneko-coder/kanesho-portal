@@ -255,10 +255,17 @@ async function refreshDashboard() {
             if (ts.substring(0, 10) >= dateFrom && ts.substring(0, 10) <= dateTo) laborRaw.push(d);
         });
 
+        // store_name → store_id 逆引きマップ（直接打刻の過去データ救済用）
+        const storeNameToId = {};
+        Object.entries(storeMap).forEach(([k, v]) => {
+            if (v.store_name) storeNameToId[v.store_name] = v.store_id || k;
+        });
+
         const perStaff = {};
         laborRaw.forEach(r => {
             const ts = r.timestamp || r.date || r.Date || "";
-            const sid = r.store_id || r.StoreID || "";
+            // store_id がない場合は store_name から逆引き補完（直接打刻の過去データ対応）
+            const sid = r.store_id || r.StoreID || storeNameToId[r.store_name] || "";
             const staffId = r.staff_id || r.staff_code || r.EmployeeCode || "";
             if (!ts || !sid || !staffId) return;
 

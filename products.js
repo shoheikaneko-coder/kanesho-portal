@@ -45,49 +45,63 @@ function renderRecipeEditor(container, type) {
     const isEdit = !!editingItemData;
     const menuData = isEdit ? cachedMenus.find(m => m.item_id === editingItemData.id) : null;
     const isMenu = type === 'menus';
-    const themeColor = isMenu ? '#2563EB' : '#059669';
-    const themeBg = isMenu ? '#f1f5f9' : '#f8fafc';
+    
+    // Pro Edition Themes
+    const themeClass = isMenu ? 'menu-theme' : 'homemade-theme';
+    const primaryColor = isMenu ? 'var(--recipe-menu-primary)' : 'var(--recipe-homemade-primary)';
     
     container.innerHTML = `
-        <div class="animate-fade-in recipe-form-v39-container" style="background: white; border-radius: 12px; box-shadow: 0 4px 30px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column; height: 100%;">
-            <!-- Header (Sticky) -->
-            <div class="recipe-header-sticky" style="position: sticky; top: 0; z-index: 100; background: ${themeBg}; border-bottom: 1px solid var(--border);">
-                <div style="padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center;">
-                    <h3 style="margin: 0; font-size: 1.1rem; color: #1e293b; display: flex; align-items: center; gap: 0.8rem;">
-                        <i class="fas ${isMenu ? 'fa-utensils' : 'fa-mortar-pestle'}" style="color: ${themeColor};"></i>
-                        ${isMenu ? '販売メニュー設定' : '自家製原材料マスタ'} - ${isEdit ? '高度編集' : '新規開発'}
+        <div class="animate-fade-in recipe-form-pro-container">
+            <!-- Dashboard Header (Sticky) -->
+            <div class="recipe-header-pro">
+                <div class="recipe-header-main">
+                    <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 1rem;">
+                        <span style="background: ${primaryColor}; color: white; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px ${primaryColor}44;">
+                            <i class="fas ${isMenu ? 'fa-utensils' : 'fa-mortar-pestle'}"></i>
+                        </span>
+                        <div>
+                            <span style="display: block; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b; margin-bottom: 2px;">
+                                ${isMenu ? 'SALES MENU MASTER' : 'HOMEMADE INGREDIENT'}
+                            </span>
+                            ${isEdit ? editingItemData.name : '新規開発項目'}
+                        </div>
                     </h3>
-                    <button id="btn-form-back" class="btn" style="background: white; border: 1px solid var(--border); color: var(--text-secondary); padding: 0.5rem 1rem;">
-                        <i class="fas fa-arrow-left"></i> 戻る
-                    </button>
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <span class="badge ${isEdit ? 'badge-active' : 'badge-pending'}" style="padding: 0.5rem 1rem; border-radius: 20px;">
+                            ${isEdit ? '編集モード' : 'ドラフト作成'}
+                        </span>
+                        <button id="btn-form-back" class="btn" style="background: white; border: 1.5px solid #e2e8f0; color: #64748b; font-weight: 700; border-radius: 10px;">
+                            <i class="fas fa-arrow-left"></i> 戻る
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Upper Section: Spec (Sticky inside header) -->
-                <div class="recipe-section recipe-header-grid" style="border-top: 1px solid var(--border); grid-template-columns: repeat(${isMenu ? 4 : 5}, 1fr);">
+                <!-- Spec Grid -->
+                <div class="recipe-header-spec-grid" style="grid-template-columns: repeat(${isMenu ? 4 : 5}, 1fr);">
                     <div class="input-group compact-input" style="margin-bottom:0;">
                         <label>ふりがな</label>
-                        <input type="text" id="item-furigana" value="${isEdit ? (editingItemData.furigana || '') : ''}" placeholder="ひらがな">
+                        <input type="text" id="item-furigana" value="${isEdit ? (editingItemData.furigana || '') : ''}" placeholder="ひらがな" class="recipe-pro-input">
                     </div>
                     <div class="input-group compact-input" style="margin-bottom:0;">
-                        <label>品目名 / ${isMenu ? 'メニュー名' : '仕込み名称'} <span style="color:var(--danger)">*</span></label>
-                        <input type="text" id="item-name" required value="${isEdit ? editingItemData.name : ''}" style="font-weight:800; font-size:1.1rem; border-color:${themeColor};">
+                        <label>品目名 / 名称 <span style="color:var(--danger)">*</span></label>
+                        <input type="text" id="item-name" required value="${isEdit ? editingItemData.name : ''}" class="recipe-pro-input" style="border-width: 2px; border-color: ${primaryColor}44;">
                     </div>
                     <div class="input-group compact-input" style="margin-bottom:0;">
                         <label>カテゴリー</label>
-                        <input type="text" id="item-category" value="${isEdit ? (editingItemData.category || '') : ''}" placeholder="例: ${isMenu ? '一品 / 麺' : 'スープ / タレ'}">
+                        <input type="text" id="item-category" value="${isEdit ? (editingItemData.category || '') : ''}" placeholder="例: 一品 / タレ" class="recipe-pro-input">
                     </div>
                     
                     ${isMenu ? `
                     <div class="input-group compact-input" style="margin-bottom:0;">
-                        <label>店舗 <span style="color:var(--danger)">*</span></label>
-                        <select id="item-store-id" style="padding:0.4rem; font-weight:600; border-radius:6px; border:1px solid var(--border);" required>
+                        <label>販売店舗 <span style="color:var(--danger)">*</span></label>
+                        <select id="item-store-id" class="recipe-pro-input" required>
                             <option value="">選択...</option>
                             ${cachedStores.filter(s => s.store_type !== 'CK').map(s => `<option value="${s.store_id || s.id}" ${isEdit && editingItemData.store_id === (s.store_id || s.id) ? 'selected' : ''}>${s.store_name}</option>`).join('')}
                         </select>
                     </div>
                     <div class="input-group compact-input" style="margin-bottom:0;">
-                         <label>大分類 <span style="color:var(--danger)">*</span></label>
-                         <select id="item-major-category" style="padding:0.4rem; font-weight:700; border-radius:6px; border:1px solid var(--border);" required>
+                         <label>メニュー区分 <span style="color:var(--danger)">*</span></label>
+                         <select id="item-major-category" class="recipe-pro-input" required>
                             <option value="">選択...</option>
                             <option value="ドリンク" ${isEdit && editingItemData.major_category === 'ドリンク' ? 'selected' : ''}>ドリンク</option>
                             <option value="フード" ${isEdit && editingItemData.major_category === 'フード' ? 'selected' : ''}>フード</option>
@@ -96,114 +110,141 @@ function renderRecipeEditor(container, type) {
                     </div>
                     <div class="input-group compact-input" style="margin-bottom:0;">
                         <label>ポーション量</label>
-                        <div style="display:flex; align-items:center; gap:0.3rem;">
-                            <input type="number" id="item-portion-amount" value="${isEdit ? (editingItemData.portion_amount || '') : ''}" step="any" placeholder="0" style="text-align:right;">
-                            <span id="portion-unit-label" style="font-weight:700; color:var(--text-secondary); width:25px; font-size:0.85rem;">-</span>
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <input type="number" id="item-portion-amount" value="${isEdit ? (editingItemData.portion_amount || '') : ''}" step="any" placeholder="0" class="recipe-pro-input" style="flex:1; text-align:right;">
+                            <span id="portion-unit-label" style="font-weight:800; color:#64748b; font-size:0.9rem; width:30px;">-</span>
                         </div>
                     </div>
                     <div class="input-group compact-input" style="margin-bottom:0;">
                         <label>Dinii ID (読取専用)</label>
-                        <input type="text" id="menu-dinii-id" value="${menuData?.dinii_id || ''}" readonly style="background:#f1f5f9; color:#64748b; font-family:monospace; font-size:0.8rem; border-style:dashed;">
+                        <input type="text" id="menu-dinii-id" value="${menuData?.dinii_id || ''}" readonly class="recipe-pro-input" style="background:#f8fafc; color:#94a3b8; font-family:monospace; border-style:dashed;">
                     </div>
                     <div class="input-group compact-input" style="margin-bottom:0;">
-                        <label>販売価格 (連携済・読取専用)</label>
-                        <div style="display:flex; align-items:center; gap:0.2rem;">
-                            <span style="font-size:0.8rem; color:#64748b;">¥</span>
-                            <input type="text" id="menu-sales-price" value="${(menuData?.sales_price || 0).toLocaleString()}" readonly style="background:#f1f5f9; color:#1e293b; font-weight:700; font-family:monospace; border-style:dashed;">
+                        <label>販売単価 (ダイニー同期)</label>
+                        <div style="display:flex; align-items:center; gap:0.3rem;">
+                            <span style="font-weight:700; color:#94a3b8;">¥</span>
+                            <input type="text" id="menu-sales-price" value="${(menuData?.sales_price || 0).toLocaleString()}" readonly class="recipe-pro-input" style="background:#f8fafc; color:#1e293b; font-weight:800; border-style:dashed; flex:1; text-align:right;">
                         </div>
                     </div>
                     ` : `
                     <div class="input-group compact-input" style="margin-bottom:0;">
                         <label>管理単位 <span style="color:var(--danger)">*</span></label>
-                        <input type="text" id="item-unit" value="${isEdit ? (editingItemData.unit || '') : ''}" required placeholder="g / ml / 枚">
+                        <input type="text" id="item-unit" value="${isEdit ? (editingItemData.unit || '') : ''}" required placeholder="g / ml / 枚" class="recipe-pro-input">
                     </div>
                     <div class="input-group compact-input" style="margin-bottom:0;">
                         <label>レシピ開発者</label>
-                        <input type="text" id="recipe-developer" value="${menuData?.recipe_developer || ''}" placeholder="フルネームを入力してください">
+                        <input type="text" id="recipe-developer" value="${menuData?.recipe_developer || ''}" placeholder="担当者名" class="recipe-pro-input">
                     </div>
                     `}
                 </div>
 
-                <!-- Middle Section: Summary (Sticky inside header) -->
-                <div class="recipe-middle-summary" style="background: ${isMenu ? '#fff' : '#f0fdf4'}; border-top: 1px solid var(--border);">
-                    <div class="summary-item">
-                        <span class="summary-label">レシピ構成 総原価</span>
-                        <span class="summary-value" id="display-total-cost" style="color: #475569;">¥ 0</span>
+                <!-- Profit Cockpit (Summary Bar) -->
+                <div class="recipe-summary-cockpit ${themeClass}">
+                    <div class="cockpit-item">
+                        <span class="cockpit-label">レシピ構成 総原価</span>
+                        <div class="cockpit-value" id="display-total-cost">¥ 0</div>
                     </div>
                     
                     ${isMenu ? `
-                    <div class="summary-item" style="text-align: right;">
-                        <span class="summary-label">販売原価率</span>
-                        <div id="display-margin-ratio" class="summary-value" style="color: ${themeColor};">
-                            0<span class="summary-unit-small">%</span>
+                    <div class="cockpit-item" style="text-align: right;">
+                        <span class="cockpit-label">最終 販売原価率</span>
+                        <div id="display-margin-ratio" class="cockpit-value" style="color: #6ee7b7;">
+                            0.0<span class="summary-unit-small">%</span>
                         </div>
                     </div>
                     ` : `
-                    <div class="summary-item" style="text-align: right;">
-                        <span class="summary-label">算出 正味単価</span>
-                        <div id="display-net-unit-price" class="summary-value cyan-blue">
+                    <div class="cockpit-item" style="text-align: right;">
+                        <span class="cockpit-label">算出 正味仕込単価</span>
+                        <div id="display-net-unit-price" class="cockpit-value" style="color: #7dd3fc;">
                             ¥ 0.00<span class="summary-unit-small">/ ${isEdit ? (editingItemData.unit || '単位') : '単位'}</span>
                         </div>
                     </div>
                     `}
                 </div>
+
+                <!-- Mobile Tab Navigation -->
+                <div class="recipe-mobile-nav">
+                    <button type="button" class="recipe-tab-btn active ${themeClass}" id="tab-btn-structure">
+                        <i class="fas fa-layer-group"></i> レシピ構成
+                    </button>
+                    <button type="button" class="recipe-tab-btn" id="tab-btn-instructions">
+                        <i class="fas fa-list-ol"></i> 工程・メモ
+                    </button>
+                </div>
             </div>
 
             <form id="item-form" style="flex: 1; overflow: hidden; display: flex; flex-direction: column;">
-                <!-- Lower Section: Main Content (Scrollable) -->
-                <div class="recipe-bottom-grid" style="flex: 1; overflow: hidden;">
-                    <!-- Left: Instructions & Yield/Memo (40%) -->
-                    <div class="recipe-section recipe-instructions-area" style="overflow-y: auto; background: #fff; border-right: 1px solid #edf2f7;">
-                        <h4 style="font-size: 0.9rem; color: #64748b; margin-bottom: 0.8rem;"><i class="fas ${isMenu ? 'fa-sticky-note' : 'fa-list-ol'}"></i> ${isMenu ? '備考・提供メモ' : '作り方・工程'}</h4>
-                        <textarea id="recipe-instructions" style="width:100%; height:250px; border:1px solid #e2e8f0; border-radius:8px; padding:1rem; resize:none; outline:none; font-size:0.95rem; line-height:1.6; color:#334155;" placeholder="${isMenu ? '盛り付けの注意点、提供順序など' : '1. 材料を計量する\n2. 鍋に入れて中火で加熱する...'}">${isMenu ? (editingItemData?.notes || '') : (menuData?.instructions || '')}</textarea>
-
-                        <!-- Special Control Area (Left Side) -->
-                        <div class="yield-ritual-container" style="background: ${isMenu ? '#fcfcfc' : '#f0fdf4'}; border: 1px solid ${isMenu ? '#e2e8f0' : '#bbf7d0'};">
-                            ${isMenu ? `
-                            <h4 style="font-size: 0.85rem; color: #1e293b; margin-bottom: 0.8rem; font-weight: 800;">
-                                <i class="fas fa-info-circle" style="color:#2563EB"></i> メニュー管理
+                <!-- Main Content Area -->
+                <div class="recipe-main-content">
+                    
+                    <!-- Right/Main: Recipe Structure Panel (60% Desktop) -->
+                    <div class="recipe-card-panel" id="panel-structure" style="flex: 0 0 58%;">
+                        <div style="padding: 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+                            <h4 style="margin: 0; font-size: 1rem; font-weight: 800; color: #334155;">
+                                <i class="fas fa-mortar-pestle" style="color: ${primaryColor}; margin-right: 0.5rem;"></i> レシピ構成明細
                             </h4>
-                            <p style="font-size:0.8rem; color:#64748b; margin-bottom:1rem;">レシピ構成を積み上げて原価率を確認してください。Diniiとの連携データは自動で同期されます。</p>
-                            ` : `
-                            <h4 style="font-size: 0.85rem; color: #1e293b; margin-bottom: 0.8rem; font-weight: 800;">
-                                <i class="fas fa-flask" style="color:#059669"></i> 今回の出来高（仕上がり量）
-                            </h4>
-                            <div style="display: flex; align-items: center; gap: 1rem;">
-                                <input type="number" id="recipe-yield-amount" class="yield-input-field yield-input-error" value="${menuData?.yield_amount || 0}" step="any">
-                                <span style="font-size: 1.2rem; font-weight: 800; color: #334155;">${isEdit ? (editingItemData.unit || '') : ''}</span>
-                            </div>
-                            <p style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;">※ 出来高が 0 の場合は保存できません</p>
-                            `}
+                            <span style="font-size: 0.75rem; color: #94a3b8;">表示順の調整が可能です</span>
                         </div>
-                    </div>
-
-                    <!-- Right: Recipe Table (60%) -->
-                    <div class="recipe-section recipe-table-area" style="overflow-y: auto;">
-                        <h4 style="font-size: 0.9rem; color: #64748b; margin-bottom: 0.8rem;"><i class="fas fa-utensils"></i> レシピ構成</h4>
                         
-                        <div class="incremental-search-container">
-                            <div class="input-with-addon-wrapper" style="margin-bottom: 1rem;">
-                                <input type="text" id="recipe-search-input" placeholder="食材名・ふりがなで検索 (選んでEnterで追加)..." style="border-radius: 8px 0 0 8px; height:44px;">
-                                <span class="input-addon" style="background:${themeColor}; color:white; border-color:${themeColor}; width:50px;">
-                                    <i class="fas fa-search"></i>
-                                </span>
+                        <div style="padding: 1.5rem; flex: 1; overflow-y: auto;">
+                            <!-- Incremental Search -->
+                            <div class="incremental-search-v2">
+                                <div style="position: relative;">
+                                    <i class="fas fa-search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                                    <input type="text" id="recipe-search-input" placeholder="食材・自家製品を検索 (ひらがな可)..." style="width: 100%; border: none; padding: 0.8rem 1rem 0.8rem 2.8rem; font-size: 1rem; outline: none; font-weight: 600;">
+                                </div>
+                                <div id="search-results-list" class="incremental-search-results"></div>
                             </div>
-                            <div id="search-results-list" class="incremental-search-results"></div>
-                        </div>
 
-                        <div id="recipe-items-container" style="padding-bottom: 2rem;">
-                            <!-- Recipe rows dynamic -->
+                            <div id="recipe-items-container" style="padding-bottom: 2rem;">
+                                <!-- Recipe rows dynamic -->
+                            </div>
                         </div>
                     </div>
+
+                    <!-- Left/Side: Instructions & Metadata Panel (42% Desktop) -->
+                    <div class="recipe-card-panel tab-hidden" id="panel-instructions" style="flex: 0 0 38%; margin-left: 0;">
+                        <div style="padding: 1.5rem; border-bottom: 1px solid #f1f5f9;">
+                            <h4 style="margin: 0; font-size: 1rem; font-weight: 800; color: #334155;">
+                                <i class="fas fa-pen-nib" style="color: #94a3b8; margin-right: 0.5rem;"></i> ${isMenu ? '提供・盛り付けメモ' : '仕込み工程・作り方'}
+                            </h4>
+                        </div>
+                        
+                        <div style="padding: 1.5rem; flex: 1; overflow-y: auto;">
+                            <textarea id="recipe-instructions" style="width:100%; height:320px; border:1.5px solid #e2e8f0; border-radius:12px; padding:1.2rem; resize:none; outline:none; font-size:0.95rem; line-height:1.7; color:#334155; background: #fcfcfc;" placeholder="${isMenu ? '盛り付けのポイント、提供時の注意点などを記入...' : '1. 下準備\n2. 加熱工程...\n3. 冷却・保存方法...'}">${isMenu ? (editingItemData?.notes || '') : (menuData?.instructions || '')}</textarea>
+
+                            <div style="margin-top: 2rem; padding: 1.5rem; border-radius: 16px; background: ${isMenu ? '#f8fafc' : '#f0fdfa'}; border: 1.5px dashed ${isMenu ? '#e2e8f0' : '#99f6e4'};">
+                                ${isMenu ? `
+                                    <h5 style="margin: 0 0 0.5rem 0; font-weight: 800; color: #1e293b;">
+                                        <i class="fas fa-chart-line" style="color: #4f46e5;"></i> メニュー収益管理
+                                    </h5>
+                                    <p style="font-size: 0.8rem; color: #64748b; line-height: 1.5;">
+                                        ダイニーの最新販売価格とレシピ原価を突き合わせ、常にリアルタイムな原価率を算出しています。
+                                    </p>
+                                ` : `
+                                    <h5 style="margin: 0 0 1rem 0; font-weight: 800; color: #064e3b; display: flex; align-items: center; gap: 0.5rem;">
+                                        <i class="fas fa-balance-scale" style="color: #0d9488;"></i> 最終出来高（仕上がり量）
+                                    </h5>
+                                    <div style="display: flex; align-items: center; gap: 0.8rem;">
+                                        <input type="number" id="recipe-yield-amount" class="recipe-pro-input" value="${menuData?.yield_amount || 0}" step="any" style="width: 140px; font-size: 1.5rem; font-weight: 900; text-align: right; border-color: ${menuData?.yield_amount > 0 ? '#10b981' : '#ef4444'};">
+                                        <span style="font-size: 1.4rem; font-weight: 800; color: #334155;">${isEdit ? (editingItemData.unit || '') : ''}</span>
+                                    </div>
+                                    <p style="font-size: 0.75rem; color: ${menuData?.yield_amount > 0 ? '#64748b' : '#ef4444'}; margin-top: 0.6rem; font-weight: 600;">
+                                        ※ 仕込単価を算出するために正確な数値を入力してください
+                                    </p>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
-                <!-- Actions (Fixed Bottom) -->
-                <div class="recipe-footer-actions" style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 1rem 2.5rem;">
+                <!-- Modern Sticky Footer -->
+                <div style="background: white; border-top: 1px solid #e2e8f0; padding: 1.2rem 2.5rem; z-index: 100;">
                     <div style="display: flex; justify-content: flex-end; align-items: center; gap: 2rem;">
-                        <div id="save-guard-message" style="color: var(--danger); font-size: 0.85rem; font-weight: 700; display: none;">
+                        <div id="save-guard-message" style="color: var(--danger); font-size: 0.85rem; font-weight: 800; display: none;">
                             <i class="fas fa-exclamation-triangle"></i> 出来高を入力してください
                         </div>
-
                         <div class="mobile-fixed-bottom desktop-actions" style="padding: 0; background: transparent; border: none; box-shadow: none; position: static;">
                             ${renderFormActions(isEdit)}
                         </div>
@@ -295,15 +336,8 @@ function renderStandardForm(container) {
                         </section>
                     </div>
 
-                    <!-- 右カラム: 金額設定・ボタン -->
+                    <!-- 右カラム: 仕入情報・ボタン -->
                     <div class="form-col-right" style="flex: 1; display: flex; flex-direction: column; gap: 1.5rem;">
-                                    <!-- Recipe rows dynamic -->
-                                </div>
-                                <div id="recipe-total-cost" style="margin-top: 0.8rem; text-align: right; font-weight: 800; color: var(--primary); font-size: 1rem;">
-                                    原価: ¥0
-                                </div>
-                            </div>
-                        </section>
 
                         <!-- 仕入・歩留セクション -->
                         <section id="section-ingredient" style="flex: 1; display: flex; flex-direction: column; background: #ecfdf5; padding: 1.2rem; border-radius: 12px; border: 1px solid #bbf7d0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
@@ -351,11 +385,11 @@ function renderStandardForm(container) {
                                     <label style="font-size: 0.7rem; font-weight: 700; color: #059669; margin-bottom: 0;">
                                         <i class="fas fa-calculator"></i> 歩留計算アシスタント（量を測って入力し反映をタップ）
                                     </label>
-                                    <div style="display: flex; gap: 0.4rem; align-items: center;">
-                                        <input type="number" id="calc-pre" placeholder="加工前（左）" style="flex:1; width:70px; padding:0.3rem; font-size:0.8rem; font-family: monospace;" min="0">
-                                        <span style="font-size: 0.7rem; font-weight: bold;">→</span>
-                                        <input type="number" id="calc-post" placeholder="加工後（右）" style="flex:1; width:70px; padding:0.3rem; font-size:0.8rem; font-family: monospace;" min="0">
-                                        <button type="button" id="btn-calc-yield" class="btn" style="background: #10b981; color: white; padding: 0.3rem 0.6rem; font-size: 0.75rem; border-radius: 4px;">反映</button>
+                                    <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+                                        <input type="number" id="calc-pre" placeholder="加工前" style="flex:1; min-width:80px; padding:0.5rem; font-size:0.9rem; font-family: monospace;" min="0">
+                                        <span style="font-size: 0.8rem; font-weight: bold; color: #10b981;">→</span>
+                                        <input type="number" id="calc-post" placeholder="加工後" style="flex:1; min-width:80px; padding:0.5rem; font-size:0.9rem; font-family: monospace;" min="0">
+                                        <button type="button" id="btn-calc-yield" class="btn" style="background: #10b981; color: white; padding: 0.5rem 1rem; font-size: 0.85rem; border-radius: 6px; font-weight: 700; flex-shrink: 0;">反映</button>
                                     </div>
                                 </div>
                             </div>
@@ -420,6 +454,29 @@ function attachGlobalFormEvents() {
 
     const isEdit = !!editingItemData;
     
+    // v50 Pro Edition: Mobile Tab Switching Logic
+    const btnStructure = document.getElementById('tab-btn-structure');
+    const btnInstructions = document.getElementById('tab-btn-instructions');
+    const panelStructure = document.getElementById('panel-structure');
+    const panelInstructions = document.getElementById('panel-instructions');
+    
+    if (btnStructure && btnInstructions && panelStructure && panelInstructions) {
+        const themeClass = currentTab === 'menus' ? 'menu-theme' : 'homemade-theme';
+        
+        btnStructure.onclick = () => {
+            panelStructure.classList.remove('tab-hidden');
+            panelInstructions.classList.add('tab-hidden');
+            btnStructure.classList.add('active', themeClass);
+            btnInstructions.classList.remove('active', 'menu-theme', 'homemade-theme');
+        };
+        btnInstructions.onclick = () => {
+            panelStructure.classList.add('tab-hidden');
+            panelInstructions.classList.remove('tab-hidden');
+            btnInstructions.classList.add('active', themeClass);
+            btnStructure.classList.remove('active', 'menu-theme', 'homemade-theme');
+        };
+    }
+
     const btnBack = document.getElementById('btn-form-back');
     const btnCancel = document.getElementById('btn-form-cancel');
     if (btnBack) btnBack.onclick = () => { currentView = 'list'; renderView(); };
@@ -591,15 +648,35 @@ function setupIncrementalSearch() {
     let latestFiltered = [];
 
     const renderResults = () => {
-        results.innerHTML = latestFiltered.map((item, idx) => `
-            <div class="search-result-item ${idx === selectedIndex ? 'selected' : ''}" data-id="${item.id}">
-                <div class="name-box">
-                    <span class="name">${item.name}</span>
-                    <span class="furigana">${item.furigana || ''}</span>
+        results.innerHTML = latestFiltered.map((item, idx) => {
+            const menu = cachedMenus.find(m => m.item_id === item.id);
+            const isSub = menu?.is_sub_recipe;
+            
+            // 価格表示（メニューなら販売点価格、食材なら購入単価）
+            let priceStr = "";
+            if (isSub) {
+                priceStr = `¥${Math.round(menu.sales_price || 0).toLocaleString()}`;
+            } else {
+                const ing = cachedIngredients.find(ig => ig.item_id === item.id);
+                priceStr = ing ? `¥${Math.round(ing.purchase_price || 0).toLocaleString()}` : "";
+            }
+
+            return `
+                <div class="search-result-item ${idx === selectedIndex ? 'selected' : ''}" data-id="${item.id}" style="padding: 0.8rem 1.2rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; flex-direction: column;">
+                        <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 600;">${item.furigana || ''}</span>
+                        <div style="font-weight: 800; font-size: 1.05rem; color: #1e293b;">
+                            <i class="fas ${isSub ? 'fa-mortar-pestle' : 'fa-seedling'}" style="color: ${isSub ? '#0ea5e9' : '#10b981'}; margin-right: 0.5rem;"></i>
+                            ${item.name}
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-weight: 900; color: #059669; font-size: 1.1rem; font-family: 'Outfit', sans-serif;">${priceStr}</div>
+                        <span style="font-size: 0.7rem; color: #94a3b8; font-weight: 700; background: #f8fafc; padding: 2px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">${item.unit || '個'}</span>
+                    </div>
                 </div>
-                <span class="unit">${item.unit}</span>
-            </div>
-        `).join('');
+            `;
+        }).join('');
 
         const items = results.querySelectorAll('.search-result-item');
         items.forEach((el, idx) => {

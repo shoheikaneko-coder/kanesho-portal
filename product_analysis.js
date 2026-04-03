@@ -172,7 +172,8 @@ async function runAnalysis() {
         // 2. Get Dinii Monthly Sales (Source for Item Breakdown)
         const q = query(collection(db, "t_monthly_sales"), where("store_id", "==", storeId), where("year_month", "==", yearMonth));
         const salesSnap = await getDocs(q);
-        const monthlySales = salesSnap.docs.map(d => d.data());
+        // v50: チョイスIDがある行（オプション行）を除外し、主データ（is_total: true）のみで集計を行う
+        const monthlySales = salesSnap.docs.map(d => d.data()).filter(ms => ms.is_total);
 
         if (monthlySales.length === 0) {
             showAlert('通知', '該当月の売上データが見つかりません。Dinii CSVをインポートしてください。');

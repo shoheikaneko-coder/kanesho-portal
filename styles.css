@@ -922,70 +922,203 @@ p { color: var(--text-secondary); line-height: 1.5; }
 }
 
 /* Sub-Recipe v43 Slate & Cyan Theme */
-.recipe-form-v39-container {
-    background: #fdfdfd;
+
+/* ==========================================
+   v50: Recipe Editor - Pro Edition Upgrade
+   (Indigo/Slate for Menu, Teal/Emerald for Homemade)
+   ========================================== */
+
+:root {
+    --recipe-menu-primary: #4f46e5;
+    --recipe-menu-dark: #1e1b4b;
+    --recipe-homemade-primary: #0d9488;
+    --recipe-homemade-dark: #064e3b;
+    --recipe-card-bg: #ffffff;
 }
 
-.recipe-header-sticky {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+.recipe-form-pro-container {
+    background: #f8fafc;
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
 }
 
-.recipe-middle-summary {
+/* Dashboard Header */
+.recipe-header-pro {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+    transition: all 0.3s ease;
+}
+
+.recipe-header-main {
+    padding: 1.2rem 2rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1.5rem 3rem;
+}
+
+.recipe-header-spec-grid {
+    display: grid;
+    gap: 1.2rem;
+    padding: 0.5rem 2rem 1.5rem 2rem;
+}
+
+/* Profit Cockpit (Summary) */
+.recipe-summary-cockpit {
+    padding: 1.5rem 2.5rem;
     color: white;
-    background: #1e293b; /* Slate Gray */
-    border-bottom: 2px solid #334155;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: inset 0 4px 12px rgba(0,0,0,0.15);
 }
 
-.summary-value.cyan-blue {
-    color: #0ea5e9; /* Cyan Blue */
-    font-size: 2.2rem;
-    font-weight: 800;
-    text-shadow: 0 0 10px rgba(14, 165, 233, 0.2);
+.recipe-summary-cockpit.menu-theme {
+    background: linear-gradient(135deg, #1e1b4b, #312e81);
+    border-bottom: 2px solid #4f46e5;
 }
 
-.summary-unit-small {
-    font-size: 1.1rem;
-    opacity: 0.6;
-    margin-left: 0.5rem;
-    font-weight: 500;
+.recipe-summary-cockpit.homemade-theme {
+    background: linear-gradient(135deg, #064e3b, #065f46);
+    border-bottom: 2px solid #10b981;
 }
 
-/* Yield Ritual Styling */
-.yield-ritual-container {
-    margin-top: 1.5rem;
-    padding: 1.2rem;
-    background: #f8fafc;
-    border-radius: 10px;
+.cockpit-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
 }
 
-.yield-input-field {
-    width: 120px;
-    font-size: 1.5rem;
+.cockpit-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    opacity: 0.8;
+}
+
+.cockpit-value {
+    font-size: 2.4rem;
     font-weight: 900;
-    padding: 0.5rem 1rem;
+    font-family: 'Outfit', 'Inter', sans-serif;
+    line-height: 1;
+}
+
+/* Mobile Tabs Control */
+.recipe-mobile-nav {
+    display: none; /* Desktop hidden */
+    background: white;
+    border-bottom: 1px solid var(--border);
+    padding: 0.5rem;
+    gap: 0.5rem;
+}
+
+.recipe-tab-btn {
+    flex: 1;
+    padding: 0.6rem;
+    border: none;
+    background: #f1f5f9;
+    color: #64748b;
     border-radius: 8px;
-    border: 3px solid transparent;
-    text-align: right;
-    transition: all 0.2s ease;
-    outline: none;
+    font-weight: 700;
+    font-size: 0.85rem;
+    transition: all 0.2s;
 }
 
-.yield-input-error {
-    border-color: #ef4444; /* Red */
-    background: #fef2f2;
+.recipe-tab-btn.active.menu-theme {
+    background: #4f46e5;
+    color: white;
 }
 
-.yield-input-valid {
-    border-color: #10b981; /* Green */
-    background: #f0fdf4;
+.recipe-tab-btn.active.homemade-theme {
+    background: #0d9488;
+    color: white;
 }
 
-/* Incremental Search Selection */
-.search-result-item.selected {
-    background: #f0f9ff;
-    border-left: 4px solid #0ea5e9;
+/* Content Area */
+.recipe-main-content {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    background: #f8fafc;
+}
+
+.recipe-card-panel {
+    background: white;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    margin: 1.5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Responsive Handling */
+@media (max-width: 1024px) {
+    .recipe-header-spec-grid {
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .recipe-mobile-nav {
+        display: flex;
+    }
+    .recipe-main-content {
+        flex-direction: column;
+        overflow-y: auto;
+    }
+    .recipe-card-panel {
+        margin: 1rem;
+        flex: none;
+    }
+    
+    /* Tab Switching Logic Classes */
+    .tab-hidden {
+        display: none !important;
+    }
+    
+    .recipe-header-spec-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+    
+    .cockpit-value {
+        font-size: 1.8rem;
+    }
+    
+    .recipe-header-main h3 {
+        font-size: 1rem;
+    }
+}
+
+/* Modern Input refinements inside Recipe Editor */
+.recipe-pro-input {
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.6rem 0.8rem;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.recipe-pro-input:focus {
+    border-color: var(--recipe-menu-primary);
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+    background: #fdfdfd;
+}
+
+/* Item Selection Enhancement */
+.incremental-search-v2 {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }

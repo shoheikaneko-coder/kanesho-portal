@@ -80,7 +80,7 @@ export async function calculateAllTheoreticalStocks(storeCode, masterCache) {
             // Note: Since t_monthly_sales is monthly, we can only filter by year_month >= startYM.
             // THIS IS AN APPROXIMATION because daily sales are not in t_monthly_sales.
             const totalConsumed = sales
-                .filter(s => s.year_month >= startYM)
+                .filter(s => s.year_month >= startYM && s.is_total) // v50: 二重カウント防止のため is_total: true のデータのみ使用
                 .reduce((sum, s) => {
                     const menu = masterCache.menus.find(m => m.dinii_id === s.dinii_id);
                     if (menu) {
