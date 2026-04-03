@@ -20,6 +20,7 @@ import { rolePermissionsPageHtml, initRolePermissionsPage } from './role_permiss
 import { menuOrderPageHtml, initMenuOrderPage } from './menu_order.js';
 import { csvImportPageHtml, initCsvImportPage } from './csv_import.js';
 import { productAnalysisPageHtml, initProductAnalysisPage } from './product_analysis.js?v=26';
+import { notificationsPageHtml, initNotificationsPage } from './notifications.js';
 import { getDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 console.log("AntiGravity Portal: app.js loaded successfully.");
@@ -355,6 +356,11 @@ function showPage(target) {
                 pageContent.innerHTML = csvImportPageHtml;
                 initCsvImportPage();
                 break;
+            case 'notifications':
+                pageTitle.textContent = '通知センター';
+                pageContent.innerHTML = notificationsPageHtml;
+                initNotificationsPage();
+                break;
         }
     } catch (err) {
         console.error(err);
@@ -507,6 +513,8 @@ import { onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/10.
 function initNotificationBadge() {
     const btnNotify = document.getElementById('btn-notifications');
     if (!btnNotify) return;
+
+    btnNotify.onclick = () => showPage('notifications');
 
     // 管理者のみバッジを表示（または全ユーザーで自分の申請状況を見る場合は共通）
     // 今回は「管理者への申請」がメインなので、管理者にバッジを表示する

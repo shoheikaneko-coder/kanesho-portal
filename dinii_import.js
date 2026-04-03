@@ -1,5 +1,5 @@
 import { db } from './firebase.js';
-import { collection, doc, setDoc, getDocs, getDoc, query, where, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, doc, setDoc, getDocs, getDoc, query, where, updateDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 /**
  * Dinii CSV インポートエンジン (v48)
@@ -168,6 +168,27 @@ export async function processDiniiCSV(text, filename, logFn) {
 
             // 2. m_menus 作成
             await setDoc(menuRef, menuData);
+
+            // レシピ未登録通知を作成
+            try {
+                const storesSnap = await getDocs(collection(db, "m_stores"));
+                const stores = storesSnap.docs.map(d => ({id: d.id, ...d.data()}));
+                const store = stores.find(s => (s.store_id || s.id) === group.storeId);
+                
+                await addDoc(collection(db, "notifications"), {
+                    type: "recipe_missing",
+                    status: "pending",
+                    menu_name: group.name,
+                    store_id: group.storeId,
+                    store_name: store ? (store.store_name || store.Name) : "不明",
+                    menu_id: itemId,
+                    created_at: new Date().toISOString(),
+                    message: `新規メニュー「${group.name}」のレシピが未登録です`
+                });
+            } catch (err) {
+                console.error("Notification creation failed:", err);
+            }
+
             createdCount++;
         }
     }

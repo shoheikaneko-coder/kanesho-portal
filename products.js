@@ -15,6 +15,7 @@ let cachedStores = []; // 追加: 店舗リスト用
 let currentUser = null;
 let editingItemData = null;
 let currentSearchQuery = ''; // 検索条件の永続化用
+let missingRecipeOnly = false; // レシピ未登録のみ表示フィルタ
 
 export const productsPageHtml = `
     <div id="products-page-container" class="animate-fade-in">
@@ -790,8 +791,16 @@ function renderListView(container) {
                     <i class="fas fa-search" style="top: 0.8rem;"></i>
                     <input type="text" id="master-search" placeholder="名称やカテゴリで検索..." style="padding-top: 0.6rem; padding-bottom: 0.6rem;" value="${currentSearchQuery}">
                 </div>
-                <div id="master-count" style="color: var(--text-secondary); font-size: 0.9rem; font-weight: 500;">
-                    表示中: ...
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div id="master-count" style="color: var(--text-secondary); font-size: 0.9rem; font-weight: 500;">
+                        表示中: ...
+                    </div>
+                    ${currentTab === 'menus' ? `
+                    <div style="display: flex; align-items: center; gap: 0.5rem; background: #fff5f5; padding: 0.4rem 0.8rem; border-radius: 8px; border: 1px solid #fee2e2;">
+                        <input type="checkbox" id="filter-missing-recipe" ${missingRecipeOnly ? 'checked' : ''} style="cursor: pointer;">
+                        <label for="filter-missing-recipe" style="font-size: 0.85rem; font-weight: 700; color: #e53e3e; cursor: pointer;">未登録のみ表示</label>
+                    </div>
+                    ` : ''}
                 </div>
             </div>
 
@@ -847,6 +856,15 @@ function setupListViewListeners() {
             renderTable(currentSearchQuery);
         };
     }
+
+    const missingFilter = container.querySelector('#filter-missing-recipe');
+    if (missingFilter) {
+        missingFilter.onchange = () => {
+            missingRecipeOnly = missingFilter.checked;
+            currentPage = 1;
+            renderTable(currentSearchQuery);
+        };
+    }
 }
 
 export async function initProductsPage(user) {
@@ -871,6 +889,23 @@ export async function initProductsPage(user) {
         currentView = 'list';
         currentPage = 1; // 必ずデータ取得後に初期化
         renderView(); 
+
+        // 通知センターからの深リンク対応
+        if (window.__productTargetMenuId) {
+            const menuId = window.__productTargetMenuId;
+            window.__productTargetMenuId = null;
+            const item = cachedItems.find(it => it.id === menuId);
+            if (item) {
+                // タブを自動で切り替える
+                const menu = cachedMenus.find(m => m.item_id === item.id);
+                if (menu) {
+                    currentTab = menu.is_sub_recipe ? 'sub_recipes' : 'menus';
+                    editingItemData = item;
+                    currentView = 'form';
+                    renderView();
+                }
+            }
+        }
     } catch (error) {
         console.error("Failed to load product data:", error);
         if (container) {
@@ -1031,6 +1066,24 @@ function setupFormLogic() {
 
             currentView = 'list';
             await reloadData();
+            
+            // レシピ未登録通知を自動的に解消(doneにする) または 削除
+            if (currentTab === 'menus' || currentTab === 'sub_recipes') {
+                try {
+                    const qNotif = query(collection(db, "notifications"), 
+                        where("menu_id", "==", itemId),
+                        where("type", "==", "recipe_missing"),
+                        where("status", "==", "pending")
+                    );
+                    const notifSnap = await getDocs(qNotif);
+                    const batchNotif = [];
+                    notifSnap.forEach(d => {
+                        batchNotif.push(updateDoc(doc(db, "notifications", d.id), { status: "done" }));
+                    });
+                    if (batchNotif.length > 0) await Promise.all(batchNotif);
+                } catch (e) { console.error("Auto-resolve notification error:", e); }
+            }
+
             renderView();
             showAlert('成功', '保存しました。');
         } catch (err) {
@@ -1080,10 +1133,11 @@ function renderTable(filter = "") {
     headerRow.innerHTML = '';
     if (currentTab === 'menus' || currentTab === 'sub_recipes') {
         headerRow.innerHTML = `
-            <th style="padding: 1rem; font-weight: 600; width: 40%;">品目名 / 店舗 / 大分類</th>
+            <th style="padding: 1rem; font-weight: 600; width: 35%;">品目名 / 店舗 / 大分類</th>
             <th style="padding: 1rem; font-weight: 600;">${currentTab === 'menus' ? '販売単価' : '用途'}</th>
             <th style="padding: 1rem; font-weight: 600;">計算原価</th>
             <th style="padding: 1rem; font-weight: 600;">${currentTab === 'menus' ? '粗利(率)' : '備考'}</th>
+            <th style="padding: 1rem; font-weight: 600;">レシピ</th>
             <th style="padding: 1rem; text-align: right; font-weight: 600;">アクション</th>
         `;
     } else {
@@ -1123,6 +1177,13 @@ function renderTable(filter = "") {
         if (!isMatch && filter !== "") return false;
 
         const menu = cachedMenus.find(m => m.item_id === item.id);
+        
+        // レシピ未登録フィルタ
+        if (currentTab === 'menus' && missingRecipeOnly) {
+            const hasRecipe = menu && menu.recipe && menu.recipe.length > 0;
+            if (hasRecipe) return false;
+        }
+
         if (currentTab === 'menus') {
             // is_sub_recipe が存在しない、または false
             return menu && (menu.is_sub_recipe !== true);
@@ -1196,9 +1257,13 @@ function renderTable(filter = "") {
                         <div style="font-size: 0.8rem; color: var(--text-secondary); max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.notes || '-'}</div>
                     `}
                 </td>
+                <td style="padding: 1rem;">
+                    ${(menu?.recipe?.length || 0) > 0 ? 
+                        '<span class="badge" style="background:#f0fdf4; color:#10b981; border:1px solid #bbf7d0; font-size:0.75rem;">登録済</span>' : 
+                        '<span class="badge" style="background:#fef2f2; color:#ef4444; border:1px solid #fee2e2; font-size:0.75rem;">未登録</span>'}
+                </td>
                 <td style="padding: 1rem; text-align: right;">
                     <button class="btn btn-edit" style="padding: 0.5rem; background: transparent; color: var(--text-secondary);" title="編集"><i class="fas fa-edit"></i></button>
-                    <!-- 行削除ボタンは廃止（編集画面内へ集約） -->
                 </td>
             `;
 
