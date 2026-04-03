@@ -243,61 +243,94 @@ function showDetail(staff, month) {
         const t2 = b.timestamp || b.date || '';
         return t1.localeCompare(t2);
     });
-    
-    const dates = {};
-    recs.forEach(r => {
-        const ts = r.timestamp || r.date || "";
-        const d = ts.substring(0, 10);
-        if(!dates[d]) dates[d] = [];
-        dates[d].push(r);
-    });
 
-    Object.keys(dates).sort().forEach(d => {
-        const dayRecs = dates[d];
-        let inTime = '-', outTime = '-', storeName = '-', hours = 0;
-        let isImported = false;
-        
-        let lastIn = null;
-        let breakStartT = null;
-        let totalBreakMs = 0;
-        dayRecs.forEach(r => {
-            storeName = r.store_name || '-';
-            if (r.total_labor_hours !== undefined) {
-                isImported = true;
-                hours += Number(r.total_labor_hours) || 0;
-            } else if (r.timestamp) {
-                const type = String(r.type || '').toLowerCase();
-                const timeStr = formatTime(r.timestamp);
-                if (type === 'check_in' || type === 'in' || type.includes('出勤')) {
-                    inTime = timeStr;
-                    lastIn = new Date(r.timestamp);
-                    totalBreakMs = 0;
-                    breakStartT = null;
-                } else if (type === 'break_start' || type.includes('休憩開始')) {
-                    breakStartT = new Date(r.timestamp);
-                } else if ((type === 'break_end' || type.includes('休憩終了')) && breakStartT) {
-                    totalBreakMs += (new Date(r.timestamp) - breakStartT);
-                    breakStartT = null;
-                } else if ((type === 'check_out' || type === 'out' || type.includes('退勤')) && lastIn) {
-                    outTime = timeStr;
-                    const grossMs = new Date(r.timestamp) - lastIn;
-                    hours += Math.max(0, grossMs - totalBreakMs) / 3600000;
-                    lastIn = null;
-                    totalBreakMs = 0;
-                    breakStartT = null;
+    // ─ 出勤日基準で日次データを構築（日またぎシフト対応） ─
+    // check_out が日付をまたいでも、出勤した日の行に正しく表示する
+    const dayData = {}; // { [YYYY-MM-DD]: { inTime, outTime, breakMs, hours, storeName, isImported } }
+
+    let activeIn = null;        // check_in の Date オブジェクト
+    let activeInDate = null;    // check_in 日付 (YYYY-MM-DD)
+    let activeInTime = null;    // check_in 表示時刻
+    let activeStoreName = null;
+    let breakStartT = null;
+    let totalBreakMs = 0;
+
+    recs.forEach(r => {
+        const storeName = r.store_name || '-';
+
+        if (r.total_labor_hours !== undefined) {
+            // KOTインポートデータ
+            const d = (r.timestamp || r.date || '').substring(0, 10);
+            if (!dayData[d]) dayData[d] = { inTime: '(インポート)', outTime: '-', breakMs: 0, hours: 0, storeName, isImported: true };
+            dayData[d].hours += Number(r.total_labor_hours) || 0;
+
+        } else if (r.timestamp) {
+            const type = String(r.type || '').toLowerCase();
+            const timeStr = formatTime(r.timestamp);
+            const date = r.timestamp.substring(0, 10);
+
+            if (type === 'check_in' || type === 'in' || type.includes('出勤')) {
+                activeIn = new Date(r.timestamp);
+                activeInDate = date;
+                activeInTime = timeStr;
+                activeStoreName = storeName;
+                totalBreakMs = 0;
+                breakStartT = null;
+                if (!dayData[date]) {
+                    dayData[date] = { inTime: timeStr, outTime: '-', breakMs: 0, hours: 0, storeName, isImported: false };
+                } else {
+                    dayData[date].inTime = timeStr;
+                    dayData[date].storeName = storeName;
+                }
+
+            } else if (type === 'break_start' || type.includes('休憩開始')) {
+                breakStartT = new Date(r.timestamp);
+
+            } else if ((type === 'break_end' || type.includes('休憩終了')) && breakStartT) {
+                totalBreakMs += (new Date(r.timestamp) - breakStartT);
+                breakStartT = null;
+
+            } else if (type === 'check_out' || type === 'out' || type.includes('退勤')) {
+                if (activeIn) {
+                    // ペアになった退勤：出勤日を基準キーにして集計
+                    const grossMs = new Date(r.timestamp) - activeIn;
+                    const netMs = Math.max(0, grossMs - totalBreakMs);
+                    const key = activeInDate;
+                    if (!dayData[key]) {
+                        dayData[key] = { inTime: activeInTime || '-', outTime: '-', breakMs: 0, hours: 0, storeName: activeStoreName || storeName, isImported: false };
+                    }
+                    dayData[key].outTime = timeStr;
+                    dayData[key].breakMs = totalBreakMs;
+                    dayData[key].hours += netMs / 3600000;
+                    activeIn = null; activeInDate = null; activeInTime = null;
+                    totalBreakMs = 0; breakStartT = null;
+                } else {
+                    // 対応する check_in がない孤立退勤：退勤時刻だけ記録
+                    if (!dayData[date]) {
+                        dayData[date] = { inTime: '-', outTime: timeStr, breakMs: 0, hours: 0, storeName, isImported: false };
+                    } else {
+                        dayData[date].outTime = timeStr;
+                    }
                 }
             }
-        });
+        }
+    });
+
+    // ─ 描画 ─
+    Object.keys(dayData).sort().forEach(d => {
+        const day = dayData[d];
+        const breakMin = Math.round(day.breakMs / 60000);
+        const breakStr = breakMin > 0 ? `${breakMin}分` : '-';
 
         const tr = document.createElement('tr');
         tr.style.borderBottom = '1px solid var(--border)';
         tr.innerHTML = `
             <td style="padding: 0.75rem 0.5rem;">${d}</td>
-            <td style="padding: 0.75rem 0.5rem;">${storeName}</td>
-            <td style="padding: 0.75rem 0.5rem; font-weight: 500;">${isImported ? '(インポート)' : inTime}</td>
-            <td style="padding: 0.75rem 0.5rem; font-weight: 500;">${isImported ? '-' : outTime}</td>
-            <td style="padding: 0.75rem 0.5rem; text-align: right;">-</td>
-            <td style="padding: 0.75rem 0.5rem; text-align: right; font-weight: 600;">${hours.toFixed(1)}h</td>
+            <td style="padding: 0.75rem 0.5rem;">${day.storeName}</td>
+            <td style="padding: 0.75rem 0.5rem; font-weight: 500;">${day.isImported ? '(インポート)' : day.inTime}</td>
+            <td style="padding: 0.75rem 0.5rem; font-weight: 500;">${day.isImported ? '-' : day.outTime}</td>
+            <td style="padding: 0.75rem 0.5rem; text-align: right;">${day.isImported ? '-' : breakStr}</td>
+            <td style="padding: 0.75rem 0.5rem; text-align: right; font-weight: 600;">${day.hours.toFixed(1)}h</td>
         `;
         tbody.appendChild(tr);
     });
