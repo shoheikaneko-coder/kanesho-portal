@@ -525,14 +525,20 @@ async function punch(staff, type) {
     const jstNow = new Date(now.getTime() + jstOffset);
     const jstIso = jstNow.toISOString().replace('Z', '+09:00');
 
+    // CKスタッフ判定：所属店舗タイプがCKの場合、按分計算用に自店舗IDを使う
+    // store_id/store_nameはUI（ギャラリー表示）のためにタブレット店舗のまま維持する
+    const staffStoreInfo = cachedStoresData.find(s => s.id === staff.StoreID);
+    const isCKStaff = !!(staffStoreInfo && staffStoreInfo.store_type === 'CK');
+
     const data = {
         timestamp: jstIso,
         date: todayStr(),
         year_month: todayStr().substring(0, 7),
         staff_id: staff.EmployeeCode || staff.id,
         staff_name: staff.Name,
-        store_id: tabletStoreID,   // 人時売上計算に必要なため追加
-        store_name: tabletStore,
+        store_id: tabletStoreID,              // UI用（ギャラリー表示）
+        store_name: tabletStore,              // UI用（ギャラリー表示）
+        labor_store_id: isCKStaff ? staff.StoreID : tabletStoreID,  // CK按分計算用
         type
     };
     try {

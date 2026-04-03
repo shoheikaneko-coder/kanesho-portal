@@ -264,8 +264,8 @@ async function refreshDashboard() {
         const perStaff = {};
         laborRaw.forEach(r => {
             const ts = r.timestamp || r.date || r.Date || "";
-            // store_id がない場合は store_name から逆引き補完（直接打刻の過去データ対応）
-            const sid = r.store_id || r.StoreID || storeNameToId[r.store_name] || "";
+            // labor_store_id（CK按分用）を優先。なければ store_id、さらに store_name 逆引きでフォールバック
+            const sid = r.labor_store_id || r.store_id || r.StoreID || storeNameToId[r.store_name] || "";
             const staffId = r.staff_id || r.staff_code || r.EmployeeCode || "";
             if (!ts || !sid || !staffId) return;
 
@@ -301,7 +301,7 @@ async function refreshDashboard() {
                 recs.forEach(r => {
                     const ts = r.timestamp || r.date || r.Date || "";
                     if (!ts) return;
-                    const sid = r.store_id || r.StoreID || storeNameToId[r.store_name] || "";
+                    const sid = r.labor_store_id || r.store_id || r.StoreID || storeNameToId[r.store_name] || "";
                     const type = String(r.type || r.Type || r['区分'] || '').toLowerCase();
 
                     if (type === 'in' || type.includes('check_in') || type.includes('出勤')) {
