@@ -719,19 +719,25 @@ function setupIncrementalSearch() {
         const queryHira = toHiragana(query);
 
         latestFiltered = cachedItems.filter(item => {
-            // そのアイテムが「食材」として登録されているか（購入価格などがあるか）の判定
-            // cachedIngredients の中身は m_ingredients コレクションの全アイテム
-            const isIng = cachedIngredients.some(ig => (ig.item_id === item.id || ig.id === item.id));
-            if (!isIng) return false;
+            // A: 原材料（m_ingredients）に登録されているか
+            const isIngredient = cachedIngredients.some(ig => (ig.item_id === item.id || ig.id === item.id));
+            
+            // B: 自家製原材料（m_menus で is_sub_recipe: true）か
+            const menu = cachedMenus.find(m => (m.item_id === item.id || m.id === item.id));
+            const isSubRecipe = menu?.is_sub_recipe === true;
+
+            // 材料にならない「ただの販売メニュー」は除外
+            if (!isIngredient && !isSubRecipe) return false;
 
             const name = (item.name || '').toLowerCase();
             const nameHira = toHiragana(name);
             const furigana = (item.furigana || '').toLowerCase();
             const furiHira = toHiragana(furigana);
 
+            // 名称の完全・部分一致、または かな変換後の一致
             return name.includes(query) || nameHira.includes(queryHira) || 
                    furigana.includes(query) || furiHira.includes(queryHira);
-        }).slice(0, 15); // ちょっと多めに15件まで表示
+        }).slice(0, 15);
 
         selectedIndex = -1;
         renderResults();
