@@ -642,15 +642,38 @@ function updateSubRecipeSummary() {
 function setupIncrementalSearch() {
     const input = document.getElementById('recipe-search-input');
     const results = document.getElementById('search-results-list');
-    if (!input || !results) return;
+    
+    if (!input || !results) {
+        console.warn("[Search] Elements not found: input=" + !!input + ", results=" + !!results);
+        return;
+    }
+
+    console.log("[Search] Input Connected! (recipe-search-input)");
 
     let selectedIndex = -1;
-
     let latestFiltered = [];
 
+    const selectItem = (item) => {
+        console.log("[Search] Selecting item:", item.name);
+        if (!currentRecipe.some(r => r.ingredient_id === item.id)) {
+            currentRecipe.push({ ingredient_id: item.id, quantity: 0 });
+            renderRecipeRows();
+        }
+        input.value = '';
+        latestFiltered = [];
+        renderResults();
+        selectedIndex = -1;
+        
+        setTimeout(() => {
+            const inputs = document.querySelectorAll('#recipe-items-container input');
+            if (inputs.length > 0) inputs[inputs.length - 1].focus();
+        }, 50);
+    };
+
     const renderResults = () => {
+        console.log("[Search] Rendering " + latestFiltered.length + " results");
         results.innerHTML = latestFiltered.map((item, idx) => {
-            const menu = cachedMenus.find(m => m.item_id === item.id);
+            const menu = cachedMenus.find(m => (m.item_id === item.id || m.id === item.id));
             const isSub = menu?.is_sub_recipe;
             
             // 価格表示（メニューなら販売点価格、食材なら購入単価）
@@ -658,12 +681,12 @@ function setupIncrementalSearch() {
             if (isSub) {
                 priceStr = `¥${Math.round(menu.sales_price || 0).toLocaleString()}`;
             } else {
-                const ing = cachedIngredients.find(ig => ig.item_id === item.id);
+                const ing = cachedIngredients.find(ig => (ig.item_id === item.id || ig.id === item.id));
                 priceStr = ing ? `¥${Math.round(ing.purchase_price || 0).toLocaleString()}` : "";
             }
 
             return `
-                <div class="search-result-item ${idx === selectedIndex ? 'selected' : ''}" data-id="${item.id}" style="padding: 0.8rem 1.2rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+                <div class="search-result-item ${idx === selectedIndex ? 'selected' : ''}" data-id="${item.id}" style="padding: 0.8rem 1.2rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
                     <div style="display: flex; flex-direction: column;">
                         <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 600;">${item.furigana || ''}</span>
                         <div style="font-weight: 800; font-size: 1.05rem; color: #1e293b;">
@@ -692,24 +715,11 @@ function setupIncrementalSearch() {
         }
     };
 
-    const selectItem = (item) => {
-        if (!currentRecipe.some(r => r.ingredient_id === item.id)) {
-            currentRecipe.push({ ingredient_id: item.id, quantity: 0 });
-            renderRecipeRows();
-        }
-        input.value = '';
-        latestFiltered = [];
-        renderResults();
-        selectedIndex = -1;
-        
-        setTimeout(() => {
-            const inputs = document.querySelectorAll('#recipe-items-container input');
-            if (inputs.length > 0) inputs[inputs.length - 1].focus();
-        }, 50);
-    };
-
-    input.oninput = () => {
+    // イベントリスナーの重複登録を避けるため、既存のリスナーをクリアするか新しく追加する
+    input.addEventListener('input', () => {
         const query = input.value.trim().toLowerCase();
+        console.log("[Search] Query: " + query);
+        
         if (!query) { 
             latestFiltered = [];
             renderResults();
@@ -734,16 +744,16 @@ function setupIncrementalSearch() {
             const furigana = (item.furigana || '').toLowerCase();
             const furiHira = toHiragana(furigana);
 
-            // 名称の完全・部分一致、または かな変換後の一致
             return name.includes(query) || nameHira.includes(queryHira) || 
                    furigana.includes(query) || furiHira.includes(queryHira);
         }).slice(0, 15);
 
+        console.log("[Search] Candidates found: " + latestFiltered.length);
         selectedIndex = -1;
         renderResults();
-    };
+    });
     
-    input.onkeydown = (e) => {
+    input.addEventListener('keydown', (e) => {
         if (latestFiltered.length === 0) return;
 
         if (e.key === 'ArrowDown') {
@@ -756,19 +766,25 @@ function setupIncrementalSearch() {
             renderResults();
         } else if (e.key === 'Enter') {
             e.preventDefault();
-            // 明示的に選択（selectedIndex >= 0）されている場合のみ追加
             if (selectedIndex >= 0 && latestFiltered[selectedIndex]) {
                 selectItem(latestFiltered[selectedIndex]);
+            } else if (latestFiltered.length > 0) {
+                // 未選択状態でEnterなら先頭を追加
+                selectItem(latestFiltered[0]);
             }
-            // selectedIndex === -1 の場合は何もしない（Enter追加を禁止）
         } else if (e.key === 'Escape') {
             latestFiltered = [];
             renderResults();
         }
-    };
+    });
 
-    // フォーカスが外れたら閉じる（少し遅延させてクリックイベントが間に合うようにする）
-    input.onblur = () => setTimeout(() => { results.style.display = 'none'; }, 200);
+    input.addEventListener('focus', () => {
+        if (latestFiltered.length > 0) results.style.display = 'block';
+    });
+
+    input.addEventListener('blur', () => {
+        setTimeout(() => { results.style.display = 'none'; }, 200);
+    });
 }
 
 function renderListView(container) {
