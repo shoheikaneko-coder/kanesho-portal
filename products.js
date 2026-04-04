@@ -716,13 +716,22 @@ function setupIncrementalSearch() {
             return; 
         }
 
+        const queryHira = toHiragana(query);
+
         latestFiltered = cachedItems.filter(item => {
-            const isIng = cachedIngredients.some(ig => ig.item_id === item.id);
+            // そのアイテムが「食材」として登録されているか（購入価格などがあるか）の判定
+            // cachedIngredients の中身は m_ingredients コレクションの全アイテム
+            const isIng = cachedIngredients.some(ig => (ig.item_id === item.id || ig.id === item.id));
             if (!isIng) return false;
+
             const name = (item.name || '').toLowerCase();
+            const nameHira = toHiragana(name);
             const furigana = (item.furigana || '').toLowerCase();
-            return name.includes(query) || furigana.includes(query);
-        }).slice(0, 10);
+            const furiHira = toHiragana(furigana);
+
+            return name.includes(query) || nameHira.includes(queryHira) || 
+                   furigana.includes(query) || furiHira.includes(queryHira);
+        }).slice(0, 15); // ちょっと多めに15件まで表示
 
         selectedIndex = -1;
         renderResults();
