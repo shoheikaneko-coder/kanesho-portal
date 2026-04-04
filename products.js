@@ -189,12 +189,12 @@ function renderRecipeEditor(container, type) {
                         
                         <div style="padding: 1.5rem; flex: 1; overflow-y: auto;">
                             <!-- Incremental Search -->
-                            <div class="incremental-search-v2">
+                            <div class="incremental-search-v2" style="position: relative;">
                                 <div style="position: relative;">
                                     <i class="fas fa-search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
                                     <input type="text" id="recipe-search-input" placeholder="食材・自家製品を検索 (ひらがな可)..." style="width: 100%; border: none; padding: 0.8rem 1rem 0.8rem 2.8rem; font-size: 1rem; outline: none; font-weight: 600;">
                                 </div>
-                                <div id="search-results-list" class="incremental-search-results"></div>
+                                <div id="search-results-list" class="incremental-search-results" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 1000; background: white; border: 1px solid #e2e8f0; border-radius: 0 0 12px 12px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); max-height: 300px; overflow-y: auto;"></div>
                             </div>
 
                             <div id="recipe-items-container" style="padding-bottom: 2rem;">
@@ -645,9 +645,13 @@ function setupIncrementalSearch() {
     
     if (!input || !results) return;
 
-    // イベントリスナーの重複を避けるため、既存のinputをクローンして置き換える（最重要）
+    // 二重初期化防止: すでに初期化済みの場合はスキップ
+    if (input.dataset.initialized === 'true') return;
+
+    // イベントリスナーのリセット（クローンによる完全初期化）
     const newInput = input.cloneNode(true);
     input.parentNode.replaceChild(newInput, input);
+    newInput.dataset.initialized = 'true';
 
     let selectedIndex = -1;
     let latestFiltered = [];
@@ -675,14 +679,17 @@ function setupIncrementalSearch() {
             
             let priceStr = "";
             if (isSub) {
+                // 自家製の場合はメニュー価格
                 priceStr = `¥${Math.round(menu.sales_price || 0).toLocaleString()}`;
             } else {
+                // 原材料の場合は購入価格
                 const ing = cachedIngredients.find(ig => (ig.item_id === item.id || ig.id === item.id));
                 priceStr = ing ? `¥${Math.round(ing.purchase_price || 0).toLocaleString()}` : "";
             }
 
             return `
-                <div class="search-result-item ${idx === selectedIndex ? 'selected' : ''}" data-id="${item.id}" style="padding: 0.8rem 1.2rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                <div class="search-result-item ${idx === selectedIndex ? 'selected' : ''}" data-id="${item.id}" 
+                     style="padding: 0.8rem 1.2rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
                     <div style="display: flex; flex-direction: column;">
                         <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 600;">${item.furigana || ''}</span>
                         <div style="font-weight: 800; font-size: 1.05rem; color: #1e293b;">
