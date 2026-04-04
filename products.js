@@ -187,7 +187,7 @@ function renderRecipeEditor(container, type) {
                             <span style="font-size: 0.75rem; color: #94a3b8;">表示順の調整が可能です</span>
                         </div>
                         
-                        <div style="padding: 1.5rem; flex: 1; overflow-y: auto;">
+                        <div style="padding: 1.5rem; flex: 1; overflow: visible !important;">
                             <!-- Incremental Search -->
                             <div class="incremental-search-v2" style="position: relative; overflow: visible;">
                                 <div style="position: relative;">
@@ -256,7 +256,10 @@ function renderRecipeEditor(container, type) {
     `;
     
     // イベント紐付け
-    setupIncrementalSearch();
+    // 描画完了を待ってから検索機能を紐付ける
+    setTimeout(() => {
+        setupIncrementalSearch();
+    }, 100);
     attachGlobalFormEvents();
 }
 
@@ -605,7 +608,9 @@ function attachGlobalFormEvents() {
 
     document.getElementById('recipe-yield-amount')?.addEventListener('input', calculateRecipeCost);
     if (currentTab === 'sub_recipes' || currentTab === 'menus') {
-        setupIncrementalSearch();
+        setTimeout(() => {
+            setupIncrementalSearch();
+        }, 100);
     }
 
     setTimeout(() => {
