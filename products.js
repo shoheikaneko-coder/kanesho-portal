@@ -645,6 +645,10 @@ function setupIncrementalSearch() {
     
     if (!input || !results) return;
 
+    // イベントリスナーの重複を避けるため、既存のinputをクローンして置き換える（最重要）
+    const newInput = input.cloneNode(true);
+    input.parentNode.replaceChild(newInput, input);
+
     let selectedIndex = -1;
     let latestFiltered = [];
 
@@ -653,7 +657,7 @@ function setupIncrementalSearch() {
             currentRecipe.push({ ingredient_id: item.id, quantity: 0 });
             renderRecipeRows();
         }
-        input.value = '';
+        newInput.value = '';
         latestFiltered = [];
         renderResults();
         selectedIndex = -1;
@@ -669,7 +673,6 @@ function setupIncrementalSearch() {
             const menu = cachedMenus.find(m => (m.item_id === item.id || m.id === item.id));
             const isSub = menu?.is_sub_recipe;
             
-            // 価格表示（メニューなら販売点価格、食材なら購入単価）
             let priceStr = "";
             if (isSub) {
                 priceStr = `¥${Math.round(menu.sales_price || 0).toLocaleString()}`;
@@ -706,15 +709,13 @@ function setupIncrementalSearch() {
         
         results.style.display = latestFiltered.length > 0 ? 'block' : 'none';
         
-        // 選択された要素をスクロール
         if (selectedIndex >= 0 && items[selectedIndex]) {
             items[selectedIndex].scrollIntoView({ block: 'nearest' });
         }
     };
 
-    // イベントリスナーの追加
-    input.addEventListener('input', () => {
-        const query = input.value.trim().toLowerCase();
+    newInput.addEventListener('input', () => {
+        const query = newInput.value.trim().toLowerCase();
         
         if (!query) { 
             latestFiltered = [];
@@ -725,14 +726,10 @@ function setupIncrementalSearch() {
         const queryHira = toHiragana(query);
 
         latestFiltered = cachedItems.filter(item => {
-            // A: 原材料（m_ingredients）に登録されているか
             const isIngredient = cachedIngredients.some(ig => (ig.item_id === item.id || ig.id === item.id));
-            
-            // B: 自家製原材料（m_menus で is_sub_recipe: true）か
             const menu = cachedMenus.find(m => (m.item_id === item.id || m.id === item.id));
             const isSubRecipe = menu?.is_sub_recipe === true;
 
-            // 材料にならない「ただの販売メニュー」は除外
             if (!isIngredient && !isSubRecipe) return false;
 
             const name = (item.name || '').toLowerCase();
@@ -748,7 +745,7 @@ function setupIncrementalSearch() {
         renderResults();
     });
     
-    input.addEventListener('keydown', (e) => {
+    newInput.addEventListener('keydown', (e) => {
         if (latestFiltered.length === 0) return;
 
         if (e.key === 'ArrowDown') {
@@ -761,22 +758,20 @@ function setupIncrementalSearch() {
             renderResults();
         } else if (e.key === 'Enter') {
             e.preventDefault();
-            // 明示的に選択（selectedIndex >= 0）されている場合のみ追加
             if (selectedIndex >= 0 && latestFiltered[selectedIndex]) {
                 selectItem(latestFiltered[selectedIndex]);
             }
-            // selectedIndex === -1 の場合は「Enterでの自動追加」を禁止
         } else if (e.key === 'Escape') {
             latestFiltered = [];
             renderResults();
         }
     });
 
-    input.addEventListener('focus', () => {
+    newInput.addEventListener('focus', () => {
         if (latestFiltered.length > 0) results.style.display = 'block';
     });
 
-    input.addEventListener('blur', () => {
+    newInput.addEventListener('blur', () => {
         setTimeout(() => { results.style.display = 'none'; }, 200);
     });
 }
