@@ -643,18 +643,12 @@ function setupIncrementalSearch() {
     const input = document.getElementById('recipe-search-input');
     const results = document.getElementById('search-results-list');
     
-    if (!input || !results) {
-        console.warn("[Search] Elements not found: input=" + !!input + ", results=" + !!results);
-        return;
-    }
-
-    console.log("[Search] Input Connected! (recipe-search-input)");
+    if (!input || !results) return;
 
     let selectedIndex = -1;
     let latestFiltered = [];
 
     const selectItem = (item) => {
-        console.log("[Search] Selecting item:", item.name);
         if (!currentRecipe.some(r => r.ingredient_id === item.id)) {
             currentRecipe.push({ ingredient_id: item.id, quantity: 0 });
             renderRecipeRows();
@@ -671,7 +665,6 @@ function setupIncrementalSearch() {
     };
 
     const renderResults = () => {
-        console.log("[Search] Rendering " + latestFiltered.length + " results");
         results.innerHTML = latestFiltered.map((item, idx) => {
             const menu = cachedMenus.find(m => (m.item_id === item.id || m.id === item.id));
             const isSub = menu?.is_sub_recipe;
@@ -704,7 +697,11 @@ function setupIncrementalSearch() {
 
         const items = results.querySelectorAll('.search-result-item');
         items.forEach((el, idx) => {
-            el.onclick = () => selectItem(latestFiltered[idx]);
+            el.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                selectItem(latestFiltered[idx]);
+            };
         });
         
         results.style.display = latestFiltered.length > 0 ? 'block' : 'none';
@@ -715,10 +712,9 @@ function setupIncrementalSearch() {
         }
     };
 
-    // イベントリスナーの重複登録を避けるため、既存のリスナーをクリアするか新しく追加する
+    // イベントリスナーの追加
     input.addEventListener('input', () => {
         const query = input.value.trim().toLowerCase();
-        console.log("[Search] Query: " + query);
         
         if (!query) { 
             latestFiltered = [];
@@ -748,7 +744,6 @@ function setupIncrementalSearch() {
                    furigana.includes(query) || furiHira.includes(queryHira);
         }).slice(0, 15);
 
-        console.log("[Search] Candidates found: " + latestFiltered.length);
         selectedIndex = -1;
         renderResults();
     });
@@ -766,12 +761,11 @@ function setupIncrementalSearch() {
             renderResults();
         } else if (e.key === 'Enter') {
             e.preventDefault();
+            // 明示的に選択（selectedIndex >= 0）されている場合のみ追加
             if (selectedIndex >= 0 && latestFiltered[selectedIndex]) {
                 selectItem(latestFiltered[selectedIndex]);
-            } else if (latestFiltered.length > 0) {
-                // 未選択状態でEnterなら先頭を追加
-                selectItem(latestFiltered[0]);
             }
+            // selectedIndex === -1 の場合は「Enterでの自動追加」を禁止
         } else if (e.key === 'Escape') {
             latestFiltered = [];
             renderResults();
