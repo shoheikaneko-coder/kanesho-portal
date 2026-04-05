@@ -26,75 +26,118 @@ export const goalsAdminPageHtml = `
             </div>
         </div>
 
-        <div id="goal-admin-form-container" class="glass-panel" style="padding: 2.5rem; display: none;">
-            <h3 style="margin-top: 0; margin-bottom: 2rem; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 0.8rem;">
-                <i class="fas fa-flag-checkered"></i> 年間ターゲット設定 (<span id="goal-admin-display-fy">----</span>年度)
+        <div id="goal-admin-form-container" class="glass-panel" style="padding: 2.5rem; display: none; max-width: 1000px; margin: 0 auto;">
+            <h3 style="margin-top: 0; margin-bottom: 2.5rem; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 0.8rem; display: flex; align-items: center; gap: 0.8rem;">
+                <i class="fas fa-flag-checkered" style="font-size: 1.4rem;"></i> 
+                <span>年間ターゲット設定 (<span id="goal-admin-display-fy" style="font-weight: 800;">----</span>年度)</span>
             </h3>
             
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2.5rem;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 3rem;">
                 <!-- 基本目標 -->
                 <div class="form-section">
-                    <h4 style="margin-bottom: 1.5rem; font-size: 1rem; color: var(--text-primary);"><i class="fas fa-chart-line"></i> 売上・客数目標</h4>
-                    <div style="display: flex; flex-direction: column; gap: 1.2rem;">
-                        <div>
+                    <h4 style="margin-bottom: 1.5rem; font-size: 1.1rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.6rem;">
+                        <i class="fas fa-chart-line" style="color: var(--primary);"></i> 売上・客数目標
+                    </h4>
+                    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                        <div style="max-width: 380px;">
                             <label class="field-label">年間売上目標 (税抜)</label>
-                            <div style="position: relative;">
-                                <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary);">¥</span>
-                                <input type="number" id="goal-total-sales" class="form-input" style="padding-left: 2.2rem; font-weight: 700; font-size: 1.2rem;" placeholder="0">
+                            <div class="input-group">
+                                <span class="input-group-text">¥</span>
+                                <input type="text" id="goal-total-sales" class="form-input" style="font-weight: 800; font-size: 1.3rem; color: var(--primary);" placeholder="150,000,000">
                             </div>
                         </div>
-                        <div>
+                        <div style="max-width: 380px;">
                             <label class="field-label">年間客数目標</label>
-                            <div style="position: relative;">
-                                <input type="number" id="goal-total-cust" class="form-input" style="font-weight: 700; font-size: 1.2rem;" placeholder="0">
-                                <span style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary);">名</span>
+                            <div class="input-group">
+                                <input type="text" id="goal-total-cust" class="form-input" style="font-weight: 800; font-size: 1.3rem;" placeholder="45,000">
+                                <span class="input-group-text">名</span>
                             </div>
                         </div>
-                        <div>
-                            <label class="field-label">想定客単価 (自動計算)</label>
-                            <div id="goal-avg-spend" style="font-size: 1.3rem; font-weight: 800; color: var(--secondary); padding: 0.5rem 0;">¥ 0</div>
+                        <div style="max-width: 380px; padding: 0.5rem 0.8rem; background: rgba(59, 130, 246, 0.05); border-radius: 8px; border: 1px dashed rgba(59, 130, 246, 0.3);">
+                            <label class="field-label" style="font-size: 0.8rem; color: var(--text-secondary);">想定客単価 (自動計算)</label>
+                            <div id="goal-avg-spend" style="font-size: 1.4rem; font-weight: 900; color: var(--secondary);">¥ 0</div>
                         </div>
                     </div>
                 </div>
 
                 <!-- 経営指標 KPI -->
                 <div class="form-section">
-                    <h4 style="margin-bottom: 1.5rem; font-size: 1rem; color: var(--text-primary);"><i class="fas fa-user-clock"></i> 経営指標 (人時売上・比率)</h4>
-                    <div style="display: flex; flex-direction: column; gap: 1.2rem;">
-                        <div>
+                    <h4 style="margin-bottom: 1.5rem; font-size: 1.1rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.6rem;">
+                        <i class="fas fa-user-clock" style="color: var(--warning);"></i> 経営指標 (人時売上・比率)
+                    </h4>
+                    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                        <div style="max-width: 300px;">
                             <label class="field-label">目標人件費率 (%)</label>
-                            <div style="position: relative;">
-                                <input type="number" id="goal-labor-rate" class="form-input" style="font-weight: 700;" placeholder="0.0" step="0.1">
-                                <span style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary);">%</span>
+                            <div class="input-group">
+                                <input type="number" id="goal-labor-rate" class="form-input" style="font-weight: 800; text-align: right;" placeholder="33.5" step="0.1">
+                                <span class="input-group-text">%</span>
                             </div>
                         </div>
-                        <div>
+                        <div style="max-width: 380px;">
                             <label class="field-label">営業人時売上目標</label>
-                            <div style="position: relative;">
-                                <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary);">¥</span>
-                                <input type="number" id="goal-sph-op" class="form-input" style="padding-left: 2.2rem; font-weight: 700; border-color: var(--warning);" placeholder="0">
+                            <div class="input-group">
+                                <span class="input-group-text" style="color: var(--warning);">¥</span>
+                                <input type="text" id="goal-sph-op" class="form-input" style="font-weight: 800; border-left: none;" placeholder="4,500">
                             </div>
-                            <p style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.4rem;">※売上税抜 ÷ 営業労働h</p>
+                            <p style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.4rem; font-weight: 600;">※売上税抜 ÷ 営業労働h</p>
                         </div>
-                        <div>
+                        <div style="max-width: 380px;">
                             <label class="field-label">総人時売上目標</label>
-                            <div style="position: relative;">
-                                <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary);">¥</span>
-                                <input type="number" id="goal-sph-total" class="form-input" style="padding-left: 2.2rem; font-weight: 700; border-color: #8B5CF6;" placeholder="0">
+                            <div class="input-group">
+                                <span class="input-group-text" style="color: #8B5CF6;">¥</span>
+                                <input type="text" id="goal-sph-total" class="form-input" style="font-weight: 800; border-left: none;" placeholder="3,800">
                             </div>
-                            <p style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.4rem;">※売上税抜 ÷ (営業+CK按分h)</p>
+                            <p style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.4rem; font-weight: 600;">※売上税抜 ÷ (営業+CK按分h)</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div style="margin-top: 3rem; text-align: center; border-top: 1px solid var(--border); padding-top: 2rem;">
-                <button id="goal-admin-save-btn" class="btn btn-primary" style="padding: 1rem 4rem; font-size: 1.1rem; font-weight: 700;">
-                    <i class="fas fa-save"></i> 年間マスタを保存
+            <div style="margin-top: 4rem; text-align: center; border-top: 1px solid var(--border); padding-top: 2.5rem;">
+                <button id="goal-admin-save-btn" class="btn btn-primary" style="padding: 1.2rem 5rem; font-size: 1.2rem; font-weight: 900; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); border-radius: 30px;">
+                    <i class="fas fa-save"></i> 2026年度 年間マスタを保存
                 </button>
             </div>
         </div>
     </div>
+
+    <style>
+        .input-group {
+            display: flex;
+            align-items: stretch;
+            width: 100%;
+            background: #fff;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .input-group:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        }
+        .input-group .form-input {
+            flex: 1;
+            border: none !important;
+            border-radius: 0 !important;
+            padding: 0.8rem 1rem !important;
+            text-align: right;
+            box-shadow: none !important;
+        }
+        .input-group-text {
+            background: #f8fafc;
+            color: var(--text-secondary);
+            padding: 0 1.2rem;
+            display: flex;
+            align-items: center;
+            font-size: 1rem;
+            font-weight: 800;
+            border-left: 1px solid var(--border);
+            border-right: 1px solid var(--border);
+        }
+        .input-group-text:first-child { border-left: none; }
+        .input-group-text:last-child { border-right: none; }
+    </style>
 `;
 
 // 店長用：月次計画シミュレーター (Phase 2で詳細実装)
@@ -241,15 +284,26 @@ export async function initGoalsAdminPage() {
     const custIn = document.getElementById('goal-total-cust');
     const avgLabel = document.getElementById('goal-avg-spend');
 
+    const sphOpIn = document.getElementById('goal-sph-op');
+    const sphTotalIn = document.getElementById('goal-sph-total');
+
+    const formatIn = (el) => {
+        el.oninput = () => {
+            let val = el.value.replace(/,/g, '').replace(/[^\d]/g, '');
+            if (val === '') el.value = '';
+            else el.value = parseInt(val).toLocaleString();
+            updateAvg();
+        };
+    };
+
+    [salesIn, custIn, sphOpIn, sphTotalIn].forEach(formatIn);
+
     const updateAvg = () => {
-        const s = parseFloat(salesIn.value) || 0;
-        const c = parseFloat(custIn.value) || 0;
+        const s = parseFloat(salesIn.value.replace(/,/g, '')) || 0;
+        const c = parseFloat(custIn.value.replace(/,/g, '')) || 0;
         const avg = c > 0 ? Math.round(s / c) : 0;
         avgLabel.textContent = `¥ ${avg.toLocaleString()}`;
     };
-
-    salesIn.oninput = updateAvg;
-    custIn.oninput = updateAvg;
 
     loadBtn.onclick = async () => {
         const fy = fySel.value;
@@ -265,22 +319,23 @@ export async function initGoalsAdminPage() {
             
             document.getElementById('goal-admin-form-container').style.display = 'block';
             document.getElementById('goal-admin-display-fy').textContent = fy;
+            document.getElementById('goal-admin-save-btn').textContent = `${fy}年度 年間マスタを保存`;
             
             if (snap.exists()) {
                 const d = snap.data();
                 currentAdminGoal = d;
-                salesIn.value = d.total_sales_target || 0;
-                custIn.value = d.total_cust_target || 0;
+                salesIn.value = (d.total_sales_target || 0).toLocaleString();
+                custIn.value = (d.total_cust_target || 0).toLocaleString();
                 document.getElementById('goal-labor-rate').value = d.target_labor_rate || 0;
-                document.getElementById('goal-sph-op').value = d.target_sales_per_hour_op || 0;
-                document.getElementById('goal-sph-total').value = d.target_sales_per_hour_total || 0;
+                sphOpIn.value = (d.target_sales_per_hour_op || 0).toLocaleString();
+                sphTotalIn.value = (d.target_sales_per_hour_total || 0).toLocaleString();
             } else {
                 currentAdminGoal = null;
                 salesIn.value = "";
                 custIn.value = "";
                 document.getElementById('goal-labor-rate').value = "";
-                document.getElementById('goal-sph-op').value = "";
-                document.getElementById('goal-sph-total').value = "";
+                sphOpIn.value = "";
+                sphTotalIn.value = "";
             }
             updateAvg();
         } catch (e) {
@@ -295,8 +350,8 @@ export async function initGoalsAdminPage() {
     saveBtn.onclick = async () => {
         const fy = fySel.value;
         const sid = storeSel.value;
-        const s = parseFloat(salesIn.value) || 0;
-        const c = parseFloat(custIn.value) || 0;
+        const s = parseFloat(salesIn.value.replace(/,/g, '')) || 0;
+        const c = parseFloat(custIn.value.replace(/,/g, '')) || 0;
         
         if (s <= 0) return alert('年間売上目標を入力してください');
 
@@ -311,8 +366,8 @@ export async function initGoalsAdminPage() {
                 total_sales_target: s,
                 total_cust_target: c,
                 target_labor_rate: parseFloat(document.getElementById('goal-labor-rate').value) || 0,
-                target_sales_per_hour_op: parseInt(document.getElementById('goal-sph-op').value) || 0,
-                target_sales_per_hour_total: parseInt(document.getElementById('goal-sph-total').value) || 0,
+                target_sales_per_hour_op: parseInt(sphOpIn.value.replace(/,/g, '')) || 0,
+                target_sales_per_hour_total: parseInt(sphTotalIn.value.replace(/,/g, '')) || 0,
                 updated_at: new Date(),
                 updated_by: JSON.parse(localStorage.getItem('currentUser'))?.Name || 'Admin'
             };
@@ -323,7 +378,7 @@ export async function initGoalsAdminPage() {
             alert('保存エラー: ' + e.message);
         } finally {
             saveBtn.disabled = false;
-            saveBtn.innerHTML = '<i class="fas fa-save"></i> 年間マスタを保存';
+            saveBtn.innerHTML = '<i class="fas fa-save"></i> 2026年度 年間マスタを保存';
         }
     };
 }
