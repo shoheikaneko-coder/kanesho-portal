@@ -19,6 +19,16 @@ export const homePageHtml = `
                 <!-- KPIカードがここに動的に生成される -->
             </div>
         </div>
+ 
+        <!-- 本日の出動布陣 -->
+        <div id="today-shifts-container" style="display: none; margin-bottom: 3.5rem;">
+            <h3 style="display: flex; align-items: center; gap: 0.8rem; margin-bottom: 1.5rem; color: var(--text-primary); font-weight: 800;">
+                <i class="fas fa-users-rectangle" style="color: #7c3aed;"></i> 本日の出勤メンバー
+            </h3>
+            <div id="home-shift-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.2rem;">
+                <!-- シフトカードがここに動的に生成される -->
+            </div>
+        </div>
 
         <!-- 業務オペレーション (ハブ) -->
         <div id="operations-hub">
@@ -136,9 +146,60 @@ export async function initHomePage() {
     if (permissions.includes('home_performance')) {
         await renderPerformanceSummary(user);
     }
+ 
+    // 本日のシフトの描画 (共通)
+    await renderTodayShifts(user);
 
     // 業務カードの描画
     renderOperationCards(permissions);
+}
+
+/**
+ * 本日の出勤メンバーを表示
+ */
+async function renderTodayShifts(user) {
+    const container = document.getElementById('today-shifts-container');
+    const grid = document.getElementById('home-shift-grid');
+    if (!container || !grid) return;
+
+    const storeId = user.StoreID || user.StoreId;
+    if (!storeId || storeId === 'ALL') return;
+
+    container.style.display = 'block';
+    const todayYmd = new Date().toISOString().split('T')[0];
+
+    try {
+        const q = query(collection(db, "t_shifts"), 
+            where("storeId", "==", storeId),
+            where("date", "==", todayYmd),
+            where("status", "==", "confirmed"));
+        
+        const snap = await getDocs(q);
+        if (snap.empty) {
+            grid.innerHTML = '<div style="grid-column: 1/-1; padding: 1.5rem; background: #f8fafc; border-radius: 16px; text-align: center; color: var(--text-secondary); border: 1px dashed var(--border); font-size: 0.9rem;">本日の確定済みシフトはありません。</div>';
+            return;
+        }
+
+        let html = '';
+        snap.forEach(d => {
+            const s = d.data();
+            html += `
+                <div style="display: flex; align-items: center; gap: 1rem; padding: 1.2rem; background: white; border-radius: 20px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); border-left: 5px solid #8b5cf6;">
+                    <div style="width: 44px; height: 44px; background: #f5f3ff; color: #7c3aed; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.1rem;">
+                        ${s.userName.substring(0,1)}
+                    </div>
+                    <div>
+                        <div style="font-weight: 800; color: var(--text-primary); font-size: 1rem; margin-bottom: 0.1rem;">${s.userName}</div>
+                        <div style="font-size: 0.8rem; color: #7c3aed; font-weight: 700; letter-spacing: 0.05rem;">${s.start} - ${s.end}</div>
+                    </div>
+                </div>
+            `;
+        });
+        grid.innerHTML = html;
+    } catch (e) {
+        console.error("Shift load error:", e);
+        grid.innerHTML = '<div style="grid-column: 1/-1; color: var(--danger); padding:1rem;">シムトデータの取得に失敗しました。</div>';
+    }
 }
 
 async function renderPerformanceSummary(user) {
