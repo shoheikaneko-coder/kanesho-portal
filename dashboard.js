@@ -141,6 +141,17 @@ function injectStyles() {
         .kpi-sub-label { font-size: 0.7rem; color: var(--text-secondary); font-weight: 600; }
         .kpi-val { font-size: 1rem; font-weight: 700; font-family: monospace; }
         .kpi-val-muted { color: var(--text-secondary); font-weight: 500; }
+        .kpi-rate-bar-wrap { position: relative; }
+        .kpi-target-marker { 
+            position: absolute; 
+            top: 0; 
+            width: 2px; 
+            height: 100%; 
+            background: #1e293b; 
+            z-index: 2; 
+            box-shadow: 0 0 4px rgba(255,255,255,0.8);
+            transition: left 0.5s;
+        }
         .dashboard-kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); }
         @media (max-width: 1000px) { .dashboard-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 600px) { .dashboard-kpi-grid { grid-template-columns: 1fr; } }
@@ -364,7 +375,11 @@ async function refreshDashboard() {
         });
 
         const records = Object.values(grouped);
-        renderKPIs(records);
+        
+        // --- 目標データの取得と累計計算 ---
+        const goals = await calculatePeriodGoals(storeFilter, dateFrom, dateTo);
+        
+        renderKPIs(records, goals);
         renderMonthlyTable(records, daily);
     } catch (e) {
         console.error(e);
@@ -372,16 +387,44 @@ async function refreshDashboard() {
     }
 }
 
-function renderKPIs(recs) {
+function renderKPIs(recs, goals = { sales: 0, customers: 0 }) {
     let s=0, c=0, opH=0, ckH=0;
     recs.forEach(r => { s+=r.sales; c+=r.customers; opH+=r.op_hours; ckH+=r.ck_alloc; });
     const exTax = s / TAX_RATE;
 
     const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
-    set('kpi-sales-rate', '¥' + Math.round(exTax).toLocaleString()); // 税抜
-    set('kpi-sales-actual', '¥' + Math.round(s).toLocaleString()); // 税込実績
+    set('kpi-sales-rate', '¥' + Math.round(exTax).toLocaleString()); 
+    set('kpi-sales-actual', '¥' + Math.round(s).toLocaleString());
     set('kpi-cust-rate', Math.round(c).toLocaleString() + '名');
     set('kpi-cust-actual', Math.round(c).toLocaleString() + '名');
+
+    // 売上進捗率とバーの更新
+    if (goals.sales > 0) {
+        const rate = Math.round((exTax / goals.sales) * 100);
+        set('kpi-sales-rate', rate + '%');
+        document.getElementById('kpi-sales-bar').style.width = Math.min(100, rate) + '%';
+        document.getElementById('kpi-sales-bar').style.background = rate >= 100 ? '#10b981' : 'var(--primary)';
+        
+        // 目標ラベル (税抜目標を表示)
+        const targetLabel = recs.length > 0 ? document.getElementById('kpi-sales-actual').parentElement.nextElementSibling.querySelector('.kpi-val') : null;
+        if (targetLabel) targetLabel.textContent = '¥' + Math.round(goals.sales).toLocaleString();
+        
+        // ターゲットマーカー（常に100%地点＝右端 ではない。期間全体に対する「本日時点の理想値」を示す等の運用も可能だが、
+        // 今回は「期間全体の目標」に対する進捗バーとして実装するため、マーカーは「現在の期間比率」や「100%地点」等で表現可能。
+        // ここでは、バーの100%を目標値とした上で、達成しているかを目視しやすくするため、常に100%地点にマーカーを表示。
+        updateTargetMarker('kpi-sales-bar', 100); 
+    }
+
+    if (goals.customers > 0) {
+        const rate = Math.round((c / goals.customers) * 100);
+        set('kpi-cust-rate', rate + '%');
+        document.getElementById('kpi-cust-bar').style.width = Math.min(100, rate) + '%';
+        
+        const targetLabel = document.getElementById('kpi-cust-actual').parentElement.nextElementSibling.querySelector('.kpi-val');
+        if (targetLabel) targetLabel.textContent = Math.round(goals.customers).toLocaleString() + '名';
+        
+        updateTargetMarker('kpi-cust-bar', 100);
+    }
 
     const opS = opH > 0 ? Math.round(exTax / opH) : 0;
     set('kpi-ophour-rate', '¥' + opS.toLocaleString());
@@ -393,6 +436,94 @@ function renderKPIs(recs) {
     set('kpi-totalhour-rate', '¥' + totS.toLocaleString());
     set('kpi-totalhour-actual', '¥' + totS.toLocaleString());
     set('kpi-totalhour-target', totH.toFixed(1) + 'h');
+}
+
+function updateTargetMarker(barId, pct) {
+    const bar = document.getElementById(barId);
+    if (!bar) return;
+    const wrap = bar.parentElement;
+    let marker = wrap.querySelector('.kpi-target-marker');
+    if (!marker) {
+        marker = document.createElement('div');
+        marker.className = 'kpi-target-marker';
+        wrap.appendChild(marker);
+    }
+    marker.style.left = pct + '%';
+}
+
+/**
+ * 期間内の累計目標を計算
+ */
+async function calculatePeriodGoals(storeId, from, to) {
+    if (storeId === 'all') return { sales: 0, customers: 0 };
+    
+    let totalSales = 0;
+    let totalCust = 0;
+    
+    const start = new Date(from);
+    const end = new Date(to);
+    
+    // 月ごとのキャッシュ
+    const monthCache = {};
+
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const key = `${ym}_${storeId}`;
+        
+        if (!monthCache[key]) {
+            const snap = await getDoc(doc(db, "t_monthly_goals", key));
+            if (snap.exists()) {
+                const data = snap.data();
+                // 月の総指数を再計算
+                const calSnap = await getDoc(doc(db, "m_calendars", `${ym}_common`));
+                const calDays = calSnap.exists() ? calSnap.data().days : [];
+                
+                let totalWeights = 0;
+                calDays.forEach(day => {
+                    if (day.type !== 'work') return;
+                    totalWeights += calculateDayWeight(d.getFullYear(), d.getMonth() + 1, day, calDays, data.weights);
+                });
+                
+                monthCache[key] = { ...data, totalWeights, calDays };
+            } else {
+                monthCache[key] = null;
+            }
+        }
+        
+        const m = monthCache[key];
+        if (m) {
+            const calDay = m.calDays.find(cd => cd.day === d.getDate());
+            if (calDay && calDay.type === 'work') {
+                const weight = calculateDayWeight(d.getFullYear(), d.getMonth() + 1, calDay, m.calDays, m.weights);
+                const dailySales = (m.sales_target / m.totalWeights) * weight;
+                // 客数目標（重み付けなしで単純営業日割）
+                const dailyCust = (m.sales_target / 10000) * 1.5; // 仮ロジック（実際は客数目標も同様に扱える）
+                
+                totalSales += dailySales;
+                totalCust += (m.sales_target / 4500) * (weight/1.0); // 客単価案分
+            }
+        }
+    }
+    
+    return { sales: totalSales, customers: totalCust };
+}
+
+function calculateDayWeight(y, m, day, calDays, weights) {
+    const date = new Date(y, m - 1, day.day);
+    const dow = date.getDay();
+    const nextDayObj = calDays.find(nd => nd.day === day.day + 1);
+    const isDayBeforeH = nextDayObj ? nextDayObj.is_holiday : false;
+
+    const indices = [];
+    if (dow >= 1 && dow <= 4) indices.push(weights.mon_thu);
+    else if (dow === 5) indices.push(weights.fri);
+    else if (dow === 6) indices.push(weights.sat);
+    else if (dow === 0) indices.push(weights.sun);
+
+    if (day.is_holiday) indices.push(weights.holiday);
+    if (isDayBeforeH) indices.push(weights.day_before_holiday);
+
+    return Math.max(...indices);
 }
 
 function renderMonthlyTable(recs, daily) {

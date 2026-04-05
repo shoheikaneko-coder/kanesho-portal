@@ -22,6 +22,7 @@ import { csvImportPageHtml, initCsvImportPage } from './csv_import.js';
 import { productAnalysisPageHtml, initProductAnalysisPage } from './product_analysis.js?v=26';
 import { notificationsPageHtml, initNotificationsPage } from './notifications.js';
 import { calendarAdminPageHtml, initCalendarAdminPage, calendarViewerPageHtml, initCalendarViewerPage } from './calendar.js?v=2';
+import { goalsAdminPageHtml, initGoalsAdminPage, goalsStorePageHtml, initGoalsStorePage } from './goals.js';
 import { getDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 console.log("AntiGravity Portal: app.js loaded successfully.");
@@ -42,6 +43,7 @@ const defaultMenuItems = [
     { id: 'sales', name: '営業実績報告', icon: 'fa-calculator', category: '業務メニュー' },
     { id: 'recipe_viewer', name: 'レシピ閲覧', icon: 'fa-book-open', category: '業務メニュー' },
     { id: 'product_analysis', name: '商品分析(4つの窓)', icon: 'fa-chart-pie', category: '業務メニュー' },
+    { id: 'goals_store', name: '月次計画 (店長用)', icon: 'fa-tasks', category: '業務メニュー' },
     { id: 'users', name: 'ユーザー登録/変更', icon: 'fa-users-cog', category: 'マスタ管理' },
     { id: 'stores', name: '店舗マスタ', icon: 'fa-store-alt', category: 'マスタ管理' },
     { id: 'store_items', name: '店舗別在庫設定', icon: 'fa-tasks', category: 'マスタ管理' },
@@ -53,6 +55,7 @@ const defaultMenuItems = [
     { id: 'csv_import', name: 'CSVインポート', icon: 'fa-file-import', category: 'マスタ管理' },
     { id: 'menu_order', name: 'メニュー並び順', icon: 'fa-sort-amount-down', category: 'マスタ管理' },
     { id: 'calendar_admin', name: '営業カレンダー作成', icon: 'fa-calendar-plus', category: 'マスタ管理' },
+    { id: 'goals_admin', name: '目標設定 (社長用)', icon: 'fa-bullseye', category: 'マスタ管理' },
     { id: 'line_share', name: 'アプリをLINE共有', icon: 'fa-share-alt', category: 'マスタ管理' }
 ];
 
@@ -372,6 +375,16 @@ function showPage(target) {
                 pageTitle.textContent = '営業カレンダー';
                 pageContent.innerHTML = calendarViewerPageHtml;
                 initCalendarViewerPage();
+                break;
+            case 'goals_admin':
+                pageTitle.textContent = '年間ターゲット設定';
+                pageContent.innerHTML = goalsAdminPageHtml;
+                initGoalsAdminPage();
+                break;
+            case 'goals_store':
+                pageTitle.textContent = '月次按分シミュレーション';
+                pageContent.innerHTML = goalsStorePageHtml;
+                initGoalsStorePage();
                 break;
         }
     } catch (err) {
