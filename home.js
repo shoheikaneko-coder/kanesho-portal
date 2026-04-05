@@ -6,7 +6,7 @@ export const homePageHtml = `
         <!-- ヘッドライン: ログイン中の主体名 -->
         <div style="margin-bottom: 3rem; text-align: center; padding-top: 1rem;">
             <h1 id="cockpit-user-name" style="font-size: 3.2rem; font-weight: 900; color: var(--primary); margin: 0; letter-spacing: -1px; text-shadow: 0 4px 10px rgba(0,0,0,0.05);">----</h1>
-            <p style="color: var(--text-secondary); font-size: 1.1rem; margin-top: 0.5rem; font-weight: 500;">本日も一日、よろしくお願いいたします。</p>
+            <p id="cockpit-user-meta" style="color: var(--text-secondary); font-size: 1.1rem; margin-top: 0.5rem; font-weight: 600; letter-spacing: 0.05rem;">----</p>
         </div>
 
         <!-- 昨日の実績サマリー (権限がある場合のみ描画) -->
@@ -98,6 +98,28 @@ export async function initHomePage() {
     // 名前を表示
     const nameEl = document.getElementById('cockpit-user-name');
     if (nameEl) nameEl.textContent = user.Name || user.name || 'User';
+
+    // 店舗名と役職を表示
+    const metaEl = document.getElementById('cockpit-user-meta');
+    if (metaEl) {
+        let storeName = '店舗情報なし';
+        if (user.StoreId) {
+            try {
+                const storeSnap = await getDoc(doc(db, "m_stores", user.StoreId));
+                if (storeSnap.exists()) storeName = storeSnap.data().name;
+                else if (user.StoreId === 'ALL') storeName = '統括・全店舗';
+            } catch (e) { console.error("Store load error:", e); }
+        }
+
+        const roleMap = {
+            'Admin': '管理者',
+            'Manager': '店長',
+            'Staff': '一般社員',
+            'Tablet': '店舗タブレット'
+        };
+        const roleName = roleMap[user.Role] || user.Role || '一般';
+        metaEl.textContent = `${storeName} ｜ ${roleName}`;
+    }
 
     const permissions = window.appState ? window.appState.permissions : [];
     
