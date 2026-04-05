@@ -29,6 +29,9 @@ export const calendarAdminPageHtml = `
         </div>
 
         <div class="glass-panel" style="padding: 2rem;">
+            <div id="cal-admin-actual-date-header" style="margin-bottom: 1.5rem; text-align: center; border-bottom: 2px solid var(--primary); display: inline-block; padding: 0 1rem 0.5rem;">
+                <h3 id="cal-admin-actual-date-display" style="margin:0; font-size: 1.5rem; color: var(--text-primary); font-weight: 800;">----年 --月</h3>
+            </div>
             <div id="calendar-admin-grid-container"></div>
             
             <div style="margin-top: 2rem; display: flex; justify-content: space-between; align-items: center;">
@@ -167,6 +170,13 @@ let currentViewState = {
     days: []
 };
 
+// ヘルパー: 会計年度と月から実際の西暦を計算
+function getActualYear(fy, month) {
+    const fyear = parseInt(fy);
+    const m = parseInt(month);
+    return (m >= 7) ? fyear : fyear + 1;
+}
+
 /**
  * 管理画面の初期化
  */
@@ -211,7 +221,8 @@ export async function initCalendarAdminPage() {
         const cbOff = document.getElementById('opt-is-off');
         const inputLabel = document.getElementById('opt-day-label');
 
-        title.textContent = `${currentAdminState.month}月${day}日の設定`;
+        const actualYear = getActualYear(currentAdminState.year, currentAdminState.month);
+        title.textContent = `${actualYear}年 ${currentAdminState.month}月${day}日の設定`;
         cbHoliday.checked = dObj.is_holiday || false;
         cbMarket.checked = dObj.is_market_off || false;
         cbOff.checked = dObj.type === 'off';
@@ -333,7 +344,7 @@ function setupSelectors(yearId, monthId) {
     
     const now = new Date();
     const startY = 2023; 
-    const endY = now.getFullYear() + 1;
+    const endY = now.getFullYear() + 2; // 少し未来まで
     
     ySel.innerHTML = '';
     for (let y = startY; y <= endY; y++) {
@@ -375,7 +386,8 @@ async function loadStoreOptions(id, includeCommon) {
  */
 async function refreshAdminCalendar() {
     const { year, month, storeId } = currentAdminState;
-    const ym = `${year}-${String(month).padStart(2, '0')}`;
+    const actualYear = getActualYear(year, month);
+    const ym = `${actualYear}-${String(month).padStart(2, '0')}`;
     
     const commonSnap = await getDoc(doc(db, "m_calendars", `${ym}_common`));
     const commonData = commonSnap.exists() ? commonSnap.data() : { days: [] };
@@ -386,7 +398,7 @@ async function refreshAdminCalendar() {
         if (sSnap.exists()) storeData = sSnap.data();
     }
 
-    const daysInMonth = new Date(year, month, 0).getDate();
+    const daysInMonth = new Date(actualYear, month, 0).getDate();
     const days = [];
     for (let d = 1; d <= daysInMonth; d++) {
         const cDay = commonData.days?.find(i => i.day === d) || { type: 'work' };
@@ -401,6 +413,13 @@ async function refreshAdminCalendar() {
     }
     
     currentAdminState.days = days;
+    
+    // UI上の実際の年月表示を更新
+    const display = document.getElementById('cal-admin-actual-date-display');
+    if (display) {
+        display.textContent = `${actualYear}年 ${month}月`;
+    }
+
     renderCalendarGrid('calendar-admin-grid-container', days, true, year, month);
     updateCounter('cal-admin-counter', days);
 }
@@ -408,11 +427,12 @@ async function refreshAdminCalendar() {
 /**
  * グリッド描画
  */
-function renderCalendarGrid(containerId, days, editable, year, month) {
+function renderCalendarGrid(containerId, days, editable, fy, month) {
     const container = document.getElementById(containerId);
     if (!container) return;
     
-    const firstDay = new Date(year, month - 1, 1).getDay();
+    const actualYear = getActualYear(fy, month);
+    const firstDay = new Date(actualYear, month - 1, 1).getDay();
     
     let html = '<div class="calendar-grid">';
     const headers = ['日', '月', '火', '水', '木', '金', '土'];
@@ -450,7 +470,8 @@ function updateCounter(id, days) {
  */
 async function saveCalendar() {
     const { year, month, storeId, days } = currentAdminState;
-    const ym = `${year}-${String(month).padStart(2, '0')}`;
+    const actualYear = getActualYear(year, month);
+    const ym = `${actualYear}-${String(month).padStart(2, '0')}`;
     const total = days.filter(d => d.type === 'work').length;
     
     const btn = document.getElementById('cal-admin-save-btn');
