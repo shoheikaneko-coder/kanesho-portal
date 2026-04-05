@@ -23,6 +23,7 @@ import { productAnalysisPageHtml, initProductAnalysisPage } from './product_anal
 import { notificationsPageHtml, initNotificationsPage } from './notifications.js';
 import { calendarAdminPageHtml, initCalendarAdminPage, calendarViewerPageHtml, initCalendarViewerPage } from './calendar.js?v=2';
 import { goalsAdminPageHtml, initGoalsAdminPage, goalsStorePageHtml, initGoalsStorePage } from './goals.js';
+import { homePageHtml, initHomePage } from './home.js';
 import { getDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 console.log("AntiGravity Portal: app.js loaded successfully.");
@@ -30,19 +31,16 @@ console.log("AntiGravity Portal: app.js loaded successfully.");
 const state = {
     currentUser: null,
     currentPage: 'home',
+    permissions: [],
     menuOrder: []
 };
+window.appState = state;
 
 const defaultMenuItems = [
     { id: 'home', name: 'ホーム', icon: 'fa-home', category: 'メインメニュー' },
     { id: 'dashboard', name: 'ダッシュボード', icon: 'fa-chart-line', category: 'メインメニュー' },
-    { id: 'attendance', name: '勤怠入力', icon: 'fa-clock', category: '業務メニュー' },
     { id: 'attendance_check', name: '勤怠状況確認', icon: 'fa-clipboard-check', category: '業務メニュー' },
-    { id: 'inventory', name: '在庫管理', icon: 'fa-warehouse', category: '業務メニュー' },
-    { id: 'procurement', name: '仕入れ', icon: 'fa-shopping-cart', category: '業務メニュー' },
-    { id: 'sales', name: '営業実績報告', icon: 'fa-calculator', category: '業務メニュー' },
     { id: 'recipe_viewer', name: 'レシピ閲覧', icon: 'fa-book-open', category: '業務メニュー' },
-    { id: 'product_analysis', name: '商品分析(4つの窓)', icon: 'fa-chart-pie', category: '業務メニュー' },
     { id: 'goals_store', name: '月次計画 (店長用)', icon: 'fa-tasks', category: '業務メニュー' },
     { id: 'users', name: 'ユーザー登録/変更', icon: 'fa-users-cog', category: 'マスタ管理' },
     { id: 'stores', name: '店舗マスタ', icon: 'fa-store-alt', category: 'マスタ管理' },
@@ -95,12 +93,8 @@ async function loginSuccess(user) {
 
     if (targetPage) {
         showPage(targetPage);
-    } else if (user.Role === 'Admin' || user.Role === '管理者') {
-        showPage('dashboard');
-    } else if (user.Role === 'Tablet' || user.Role === '店舗タブレット' || user.Role === 'Staff' || user.Role === '一般社員') {
-        showPage('inventory');
     } else {
-        showPage('dashboard');
+        showPage('home');
     }
 
     // 通知バッジの初期化
@@ -187,6 +181,8 @@ async function renderSidebar(user) {
     let allowed = [];
     if (role === 'Admin' || role === '管理者') {
         allowed = sortedMenu.map(m => m.id);
+        // 管理者は、サイドバーにはないがホームに存在する項目も全て許可
+        ['sales','attendance','inventory','procurement','product_analysis','home_performance'].forEach(id => allowed.push(id));
     } else {
         try {
             const docSnap = await getDoc(doc(db, "m_role_permissions", role));
@@ -201,6 +197,7 @@ async function renderSidebar(user) {
             allowed = ['home'];
         }
     }
+    state.permissions = allowed;
 
     // HTML生成
     let html = '';
@@ -262,14 +259,8 @@ function showPage(target) {
         switch (target) {
             case 'home':
                 pageTitle.textContent = 'ホーム';
-                pageContent.innerHTML = `
-                    <div class="animate-fade-in">
-                        <div class="glass-panel" style="padding: 3rem; text-align: center;">
-                            <h1 style="color: var(--primary); font-size: 2.5rem; margin-bottom: 1rem;">Welcome, ${userName}</h1>
-                            <p>左メニューから機能を選択してください。</p>
-                        </div>
-                    </div>
-                `;
+                pageContent.innerHTML = homePageHtml;
+                initHomePage();
                 break;
             case 'dashboard':
                 pageTitle.textContent = 'ダッシュボード';

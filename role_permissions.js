@@ -90,7 +90,8 @@ const menuItems = [
     { id: 'sales_correction', name: '営業実績修正', icon: 'fa-edit' },
     { id: 'csv_export', name: 'CSV出力', icon: 'fa-file-csv' },
     { id: 'menu_order', name: 'メニュー並び順', icon: 'fa-sort-amount-down' },
-    { id: 'line_share', name: 'アプリをLINE共有', icon: 'fa-share-alt' }
+    { id: 'line_share', name: 'アプリをLINE共有', icon: 'fa-share-alt' },
+    { id: 'home_performance', name: 'ホーム実績サマリー表示', icon: 'fa-eye-slash' }
 ];
 
 let selectedRole = 'Admin';
