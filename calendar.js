@@ -45,6 +45,46 @@ export const calendarAdminPageHtml = `
         </div>
     </div>
 
+    <!-- 個別日編集用ポップアップ -->
+    <div id="day-editor-modal" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:10000; align-items:center; justify-content:center; backdrop-filter: blur(4px);">
+        <div class="glass-panel animate-scale-in" style="width:100%; max-width:320px; padding:1.5rem; position:relative;">
+            <h4 id="editor-day-title" style="margin:0 0 1.2rem; font-size:1.1rem; color:var(--text-primary); border-bottom:1px solid var(--border); padding-bottom:0.8rem;">日付設定</h4>
+            
+            <div style="display:flex; flex-direction:column; gap:1.2rem;">
+                <!-- 祝日設定 -->
+                <div id="editor-holiday-row" style="display:flex; align-items:center; justify-content:space-between;">
+                    <label style="font-weight:600; font-size:0.9rem; color:var(--text-primary); cursor:pointer;" for="opt-is-holiday">祝日として表示</label>
+                    <input type="checkbox" id="opt-is-holiday" style="width:20px; height:20px; cursor:pointer;">
+                </div>
+                
+                <!-- 祝日ラベル -->
+                <div id="editor-label-row">
+                    <label class="field-label" style="font-size:0.75rem;">祝日名・備考</label>
+                    <input type="text" id="opt-day-label" class="form-input" placeholder="例：成人の日、振替休日" style="padding:0.5rem;">
+                </div>
+
+                <!-- 市場休設定 -->
+                <div id="editor-market-row" style="display:flex; align-items:center; justify-content:space-between;">
+                    <label style="font-weight:600; font-size:0.9rem; color:var(--text-primary); cursor:pointer;" for="opt-is-market">市場休業日</label>
+                    <input type="checkbox" id="opt-is-market" style="width:20px; height:20px; cursor:pointer;">
+                </div>
+
+                <hr style="border:none; border-top:1px solid var(--border); margin:0;">
+
+                <!-- 店休日設定 -->
+                <div style="display:flex; align-items:center; justify-content:space-between;">
+                    <label style="font-weight:700; font-size:0.9rem; color:var(--primary); cursor:pointer;" for="opt-is-off">店の休業日</label>
+                    <input type="checkbox" id="opt-is-off" style="width:20px; height:20px; cursor:pointer;">
+                </div>
+            </div>
+
+            <div style="margin-top:2rem; display:flex; gap:0.8rem;">
+                <button class="btn btn-secondary" style="flex:1;" onclick="window.closeDayEditor()">キャンセル</button>
+                <button class="btn btn-primary" style="flex:1;" onclick="window.saveDayEditor()">適用</button>
+            </div>
+        </div>
+    </div>
+
     <style>
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
         .calendar-day-header { background: #f8fafc; padding: 0.8rem; text-align: center; font-weight: 700; font-size: 0.85rem; color: var(--text-secondary); }
@@ -118,6 +158,8 @@ let currentAdminState = {
     days: [] 
 };
 
+let editingDay = null;
+
 let currentViewState = {
     year: null,
     month: null,
@@ -136,7 +178,6 @@ export async function initCalendarAdminPage() {
     const monthSel = document.getElementById('cal-admin-month');
     const storeSel = document.getElementById('cal-admin-store');
     
-    // 現在の会計年度(7月〜6月)にあわせる
     const now = new Date();
     let initialFY = now.getFullYear();
     if (now.getMonth() < 6) initialFY--; 
@@ -157,31 +198,65 @@ export async function initCalendarAdminPage() {
 
     document.getElementById('cal-admin-save-btn').onclick = saveCalendar;
 
-    window.toggleDayStatus = (day) => {
-        const dayObj = currentAdminState.days.find(d => d.day === day);
-        if (!dayObj) return;
+    // --- エディタ関数をグローバル展開 ---
+    window.openDayEditor = (day) => {
+        const dObj = currentAdminState.days.find(d => d.day === day);
+        if (!dObj) return;
+        editingDay = day;
+
+        const modal = document.getElementById('day-editor-modal');
+        const title = document.getElementById('editor-day-title');
+        const cbHoliday = document.getElementById('opt-is-holiday');
+        const cbMarket = document.getElementById('opt-is-market');
+        const cbOff = document.getElementById('opt-is-off');
+        const inputLabel = document.getElementById('opt-day-label');
+
+        title.textContent = `${currentAdminState.month}月${day}日の設定`;
+        cbHoliday.checked = dObj.is_holiday || false;
+        cbMarket.checked = dObj.is_market_off || false;
+        cbOff.checked = dObj.type === 'off';
+        inputLabel.value = dObj.label || "";
+
+        // 全社共通設定ではない場合は、祝日・市場休の編集を制限
+        const isCommon = currentAdminState.storeId === 'common';
+        document.getElementById('editor-holiday-row').style.opacity = isCommon ? '1' : '0.4';
+        document.getElementById('editor-holiday-row').style.pointerEvents = isCommon ? 'auto' : 'none';
+        document.getElementById('editor-market-row').style.opacity = isCommon ? '1' : '0.4';
+        document.getElementById('editor-market-row').style.pointerEvents = isCommon ? 'auto' : 'none';
+        document.getElementById('editor-label-row').style.opacity = isCommon ? '1' : '0.4';
+        document.getElementById('editor-label-row').style.pointerEvents = isCommon ? 'auto' : 'none';
+
+        modal.style.display = 'flex';
+    };
+
+    window.closeDayEditor = () => {
+        document.getElementById('day-editor-modal').style.display = 'none';
+        editingDay = null;
+    };
+
+    window.saveDayEditor = () => {
+        if (editingDay === null) return;
+        const dObj = currentAdminState.days.find(d => d.day === editingDay);
         
-        if (currentAdminState.storeId === 'common') {
-            // 社長モード (全社): 営業(白) -> 祝日(文字赤) -> 市場休(青) -> 戻る
-            if (dayObj.type === 'work' && !dayObj.is_holiday && !dayObj.is_market_off) {
-                dayObj.type = 'off'; // 共通での祝日は基本的に休み
-                dayObj.is_holiday = true;
-            } else if (dayObj.is_holiday) {
-                dayObj.type = 'work'; // 市場休は営業
-                dayObj.is_holiday = false;
-                dayObj.is_market_off = true;
-            } else {
-                dayObj.type = 'work';
-                dayObj.is_holiday = false;
-                dayObj.is_market_off = false;
-            }
-        } else {
-            // 店長モード (個別): 営業(白) ↔ 店休(背景赤)
-            dayObj.type = (dayObj.type === 'work') ? 'off' : 'work';
+        const isCommon = currentAdminState.storeId === 'common';
+        const cbHoliday = document.getElementById('opt-is-holiday');
+        const cbMarket = document.getElementById('opt-is-market');
+        const cbOff = document.getElementById('opt-is-off');
+        const inputLabel = document.getElementById('opt-day-label');
+
+        // 共通設定モードの時のみ反映する項目
+        if (isCommon) {
+            dObj.is_holiday = cbHoliday.checked;
+            dObj.is_market_off = cbMarket.checked;
+            dObj.label = inputLabel.value;
         }
-        
+
+        // 店休日はどちらのモードでも設定可能（個別なら個別、共通なら一律店休）
+        dObj.type = cbOff.checked ? 'off' : 'work';
+
         renderCalendarGrid('calendar-admin-grid-container', currentAdminState.days, true, currentAdminState.year, currentAdminState.month);
         updateCounter('cal-admin-counter', currentAdminState.days);
+        window.closeDayEditor();
     };
 
     await refresh();
@@ -219,7 +294,7 @@ export async function initCalendarViewerPage() {
             const sDay = storeData.days?.find(i => i.day === d);
             days.push({
                 day: d,
-                type: sDay ? sDay.type : cDay.type, // 個別優先
+                type: sDay ? sDay.type : cDay.type, 
                 is_holiday: cDay.is_holiday || false,
                 is_market_off: cDay.is_market_off || false,
                 label: sDay?.label || cDay.label || ""
@@ -351,7 +426,7 @@ function renderCalendarGrid(containerId, days, editable, year, month) {
         if (d.is_holiday) classes.push('is-holiday'); // 文字赤
         
         html += `
-            <div class="${classes.join(' ')}" data-day="${d.day}" ${editable ? 'onclick="window.toggleDayStatus('+d.day+')"' : ''}>
+            <div class="${classes.join(' ')}" data-day="${d.day}" ${editable ? 'onclick="window.openDayEditor('+d.day+')"' : ''}>
                 <div class="day-num">${d.day}</div>
                 ${d.is_holiday ? `<span class="holiday-label">${d.label || '祝日'}</span>` : ''}
                 ${d.is_market_off ? `<span class="market-badge">市場休</span>` : ''}
