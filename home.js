@@ -102,13 +102,22 @@ export async function initHomePage() {
     // 店舗名と役職を表示
     const metaEl = document.getElementById('cockpit-user-meta');
     if (metaEl) {
-        let storeName = '店舗情報なし';
-        if (user.StoreId) {
+        // フォールバック付きの店舗名取得
+        let storeName = user.Store || '店舗情報なし'; 
+        const storeId = user.StoreID || user.StoreId;
+
+        if (storeId) {
             try {
-                const storeSnap = await getDoc(doc(db, "m_stores", user.StoreId));
-                if (storeSnap.exists()) storeName = storeSnap.data().name;
-                else if (user.StoreId === 'ALL') storeName = '統括・全店舗';
+                const storeSnap = await getDoc(doc(db, "m_stores", storeId));
+                if (storeSnap.exists()) {
+                    // store_name または name フィールドのいずれかを取得
+                    storeName = storeSnap.data().store_name || storeSnap.data().name || storeName;
+                } else if (storeId === 'ALL') {
+                    storeName = '統括・全店舗';
+                }
             } catch (e) { console.error("Store load error:", e); }
+        } else if (user.Role === 'Admin' || user.Role === '管理者') {
+            storeName = '管理者事務局';
         }
 
         const roleMap = {
