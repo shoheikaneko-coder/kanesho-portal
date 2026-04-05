@@ -88,7 +88,7 @@ export const calendarAdminPageHtml = `
         </div>
     </div>
 
-    <style>
+    <style id="calendar-common-style">
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
         .calendar-day-header { background: #f8fafc; padding: 0.8rem; text-align: center; font-weight: 700; font-size: 0.85rem; color: var(--text-secondary); }
         .calendar-day-cell { 
@@ -103,6 +103,8 @@ export const calendarAdminPageHtml = `
             border: 1px solid transparent;
         }
         .calendar-day-cell:hover { background: #f1f5f9; border-color: var(--primary); z-index: 1; }
+        .calendar-day-cell.readonly { cursor: default; }
+        .calendar-day-cell.readonly:hover { background: white; border-color: transparent; }
         .calendar-day-cell.is-off { background: #fee2e2; } /* 店休背景: 薄い赤 */
         .calendar-day-cell.is-holiday .day-num { color: #e53e3e; font-weight: 800; } /* 祝日文字赤 */
         .day-num { font-size: 1.1rem; font-weight: 600; color: var(--text-primary); }
@@ -121,35 +123,69 @@ export const calendarAdminPageHtml = `
 
 export const calendarViewerPageHtml = `
     <div class="animate-fade-in">
-        <div class="glass-panel" style="padding: 1.5rem; margin-bottom: 2rem; display: flex; gap: 1.5rem; align-items: flex-end; flex-wrap: wrap;">
+        <div class="glass-panel" style="padding: 1.5rem; margin-bottom: 2rem; display: flex; gap: 2rem; align-items: center; flex-wrap: wrap;">
             <div style="flex: 1; min-width: 250px;">
-                <label class="field-label">表示月</label>
+                <label class="field-label" style="margin-bottom: 0.5rem;">表示月</label>
                 <div style="display: flex; gap: 1rem; align-items: center;">
-                    <button class="btn btn-secondary" style="padding:0.4rem 0.8rem; height: 38px;" onclick="window.changeCalMonth(-1)"><i class="fas fa-chevron-left"></i> 前月</button>
-                    <span id="cal-view-ym-display" style="font-size: 1.3rem; font-weight: 800; min-width: 140px; text-align: center; color: var(--text-primary);">----年--月</span>
-                    <button class="btn btn-secondary" style="padding:0.4rem 0.8rem; height: 38px;" onclick="window.changeCalMonth(1)">次月 <i class="fas fa-chevron-right"></i></button>
+                    <button class="btn btn-secondary" style="padding:0.5rem 1rem; height: 42px; border-radius: 12px; display: flex; align-items: center; gap: 0.5rem;" onclick="window.changeCalMonth(-1)">
+                        <i class="fas fa-chevron-left"></i> 前月
+                    </button>
+                    <span id="cal-view-ym-display" style="font-size: 1.5rem; font-weight: 900; min-width: 160px; text-align: center; color: var(--text-primary); letter-spacing: 1px;">----年--月</span>
+                    <button class="btn btn-secondary" style="padding:0.5rem 1rem; height: 42px; border-radius: 12px; display: flex; align-items: center; gap: 0.5rem;" onclick="window.changeCalMonth(1)">
+                        次月 <i class="fas fa-chevron-right"></i>
+                    </button>
                 </div>
             </div>
-            <div style="flex: 1; min-width: 200px;">
-                <label class="field-label">店舗切り替え</label>
-                <select id="cal-view-store" class="form-input"></select>
+            <div style="flex: 1; min-width: 250px;">
+                <label class="field-label" style="margin-bottom: 0.5rem;">店舗切り替え</label>
+                <select id="cal-view-store" class="form-input" style="height: 42px; border-radius: 12px; font-weight: 600;"></select>
             </div>
-            <div style="flex: 1; min-width: 150px; text-align: right;">
-                <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">今月の営業日数</div>
-                <div id="cal-view-counter" style="font-size: 1.8rem; font-weight: 800; color: var(--primary);">-- 日</div>
+            <div style="flex: 0 0 150px; text-align: right;">
+                <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 700; margin-bottom: 0.2rem;">今月の営業日数</div>
+                <div id="cal-view-counter" style="font-size: 2.2rem; font-weight: 900; color: var(--primary);">-- 日</div>
             </div>
         </div>
 
         <div class="glass-panel" style="padding: 2rem;">
             <div id="calendar-viewer-grid-container"></div>
-            <div class="calendar-legend" style="margin-top: 1.5rem;">
-                <div class="legend-item"><span class="box-work"></span> 通常営業</div>
-                <div class="legend-item"><span class="box-holiday"></span> 祝日 (文字赤)</div>
-                <div class="legend-item"><span class="box-market"></span> 市場休 (青マーク)</div>
-                <div class="legend-item"><span class="box-off"></span> 店休 (背景赤)</div>
+            <div style="margin-top: 2rem; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 1.5rem;">
+                <div class="calendar-legend">
+                    <div class="legend-item"><span class="box-work"></span> 通常営業</div>
+                    <div class="legend-item"><span class="box-holiday"></span> 祝日 (文字赤)</div>
+                    <div class="legend-item"><span class="box-market"></span> 市場休 (青マーク)</div>
+                    <div class="legend-item"><span class="box-off"></span> 店休 (背景赤)</div>
+                </div>
             </div>
         </div>
     </div>
+    <!-- デザインを共通利用するためにstyleを再度含める -->
+    <style>
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+        .calendar-day-header { background: #f8fafc; padding: 0.8rem; text-align: center; font-weight: 700; font-size: 0.85rem; color: var(--text-secondary); }
+        .calendar-day-cell { 
+            background: white; 
+            min-height: 100px; 
+            padding: 0.5rem; 
+            transition: all 0.1s; 
+            position: relative; 
+            display: flex;
+            flex-direction: column;
+            border: 1px solid transparent;
+            cursor: default;
+        }
+        .calendar-day-cell.is-off { background: #fee2e2; }
+        .calendar-day-cell.is-holiday .day-num { color: #e53e3e; font-weight: 800; }
+        .day-num { font-size: 1.1rem; font-weight: 600; color: var(--text-primary); }
+        .market-badge { position: absolute; top: 0.5rem; right: 0.5rem; background: #3b82f6; color: white; font-size: 9px; padding: 2px 4px; border-radius: 4px; font-weight: bold; }
+        .holiday-label { font-size: 0.7rem; color: #e53e3e; margin-top: 0.3rem; display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 600; }
+        .calendar-legend { display: flex; gap: 1.5rem; font-size: 0.85rem; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-weight: 600; }
+        .box-work { width: 16px; height: 16px; background: white; border: 1px solid var(--border); border-radius: 3px; }
+        .box-off { width: 16px; height: 16px; background: #fee2e2; border: 1px solid #fecaca; border-radius: 3px; }
+        .box-holiday { width: 16px; height: 16px; color: #e53e3e; font-weight: 800; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: 3px; background: #fff; }
+        .box-holiday::after { content: "1"; font-size: 10px; }
+        .box-market { width: 16px; height: 16px; background: #3b82f6; border-radius: 3px; }
+    </style>
 `;
 
 // --- Logic ---
@@ -265,7 +301,8 @@ export async function initCalendarAdminPage() {
         // 店休日はどちらのモードでも設定可能（個別なら個別、共通なら一律店休）
         dObj.type = cbOff.checked ? 'off' : 'work';
 
-        renderCalendarGrid('calendar-admin-grid-container', currentAdminState.days, true, currentAdminState.year, currentAdminState.month);
+        const actualYear = getActualYear(currentAdminState.year, currentAdminState.month);
+        renderCalendarGrid('calendar-admin-grid-container', currentAdminState.days, true, actualYear, currentAdminState.month);
         updateCounter('cal-admin-counter', currentAdminState.days);
         window.closeDayEditor();
     };
@@ -420,18 +457,17 @@ async function refreshAdminCalendar() {
         display.textContent = `${actualYear}年 ${month}月`;
     }
 
-    renderCalendarGrid('calendar-admin-grid-container', days, true, year, month);
+    renderCalendarGrid('calendar-admin-grid-container', days, true, actualYear, month);
     updateCounter('cal-admin-counter', days);
 }
 
 /**
  * グリッド描画
  */
-function renderCalendarGrid(containerId, days, editable, fy, month) {
+function renderCalendarGrid(containerId, days, editable, actualYear, month) {
     const container = document.getElementById(containerId);
     if (!container) return;
     
-    const actualYear = getActualYear(fy, month);
     const firstDay = new Date(actualYear, month - 1, 1).getDay();
     
     let html = '<div class="calendar-grid">';
@@ -442,6 +478,7 @@ function renderCalendarGrid(containerId, days, editable, fy, month) {
     
     days.forEach(d => {
         const classes = ['calendar-day-cell'];
+        if (!editable) classes.push('readonly');
         if (d.type === 'off') classes.push('is-off'); // 背景赤
         if (d.is_holiday) classes.push('is-holiday'); // 文字赤
         

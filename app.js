@@ -21,7 +21,7 @@ import { menuOrderPageHtml, initMenuOrderPage } from './menu_order.js';
 import { csvImportPageHtml, initCsvImportPage } from './csv_import.js';
 import { productAnalysisPageHtml, initProductAnalysisPage } from './product_analysis.js?v=26';
 import { notificationsPageHtml, initNotificationsPage } from './notifications.js';
-import { calendarAdminPageHtml, initCalendarAdminPage, calendarViewerPageHtml, initCalendarViewerPage } from './calendar.js?v=1';
+import { calendarAdminPageHtml, initCalendarAdminPage, calendarViewerPageHtml, initCalendarViewerPage } from './calendar.js?v=2';
 import { getDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 console.log("AntiGravity Portal: app.js loaded successfully.");
