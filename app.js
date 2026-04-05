@@ -21,6 +21,7 @@ import { menuOrderPageHtml, initMenuOrderPage } from './menu_order.js';
 import { csvImportPageHtml, initCsvImportPage } from './csv_import.js';
 import { productAnalysisPageHtml, initProductAnalysisPage } from './product_analysis.js?v=26';
 import { notificationsPageHtml, initNotificationsPage } from './notifications.js';
+import { calendarAdminPageHtml, initCalendarAdminPage, calendarViewerPageHtml, initCalendarViewerPage } from './calendar.js';
 import { getDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 console.log("AntiGravity Portal: app.js loaded successfully.");
@@ -51,6 +52,7 @@ const defaultMenuItems = [
     { id: 'csv_export', name: 'CSV出力', icon: 'fa-file-csv', category: 'マスタ管理' },
     { id: 'csv_import', name: 'CSVインポート', icon: 'fa-file-import', category: 'マスタ管理' },
     { id: 'menu_order', name: 'メニュー並び順', icon: 'fa-sort-amount-down', category: 'マスタ管理' },
+    { id: 'calendar_admin', name: '営業カレンダー作成', icon: 'fa-calendar-plus', category: 'マスタ管理' },
     { id: 'line_share', name: 'アプリをLINE共有', icon: 'fa-share-alt', category: 'マスタ管理' }
 ];
 
@@ -361,6 +363,16 @@ function showPage(target) {
                 pageContent.innerHTML = notificationsPageHtml;
                 initNotificationsPage();
                 break;
+            case 'calendar_admin':
+                pageTitle.textContent = '営業カレンダー作成';
+                pageContent.innerHTML = calendarAdminPageHtml;
+                initCalendarAdminPage();
+                break;
+            case 'calendar_viewer':
+                pageTitle.textContent = '営業カレンダー';
+                pageContent.innerHTML = calendarViewerPageHtml;
+                initCalendarViewerPage();
+                break;
         }
     } catch (err) {
         console.error(err);
@@ -392,6 +404,12 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Auto-login error:", e);
             localStorage.removeItem('currentUser');
         }
+    }
+
+    // カレンダー閲覧アイコンのハンドラ
+    const btnCalendar = document.getElementById('btn-calendar-viewer');
+    if (btnCalendar) {
+        btnCalendar.onclick = () => showPage('calendar_viewer');
     }
 
     // 3. その他グローバルイベント
