@@ -24,6 +24,7 @@ import { notificationsPageHtml, initNotificationsPage } from './notifications.js
 import { calendarAdminPageHtml, initCalendarAdminPage, calendarViewerPageHtml, initCalendarViewerPage } from './calendar.js?v=2';
 import { goalsAdminPageHtml, initGoalsAdminPage, goalsStorePageHtml, initGoalsStorePage } from './goals.js';
 import { homePageHtml, initHomePage } from './home.js';
+import { shiftSubmissionPageHtml, initShiftSubmissionPage } from './shift.js';
 import { getDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 console.log("AntiGravity Portal: app.js loaded successfully.");
@@ -39,6 +40,8 @@ window.appState = state;
 const defaultMenuItems = [
     { id: 'home', name: 'ホーム', icon: 'fa-home', category: 'メインメニュー' },
     { id: 'dashboard', name: 'ダッシュボード', icon: 'fa-chart-line', category: 'メインメニュー' },
+    { id: 'shift_submission', name: 'シフト提出・確認', icon: 'fa-calendar-alt', category: '業務メニュー' },
+    { id: 'shift_admin', name: 'シフト作成・調整', icon: 'fa-user-edit', category: '業務メニュー' },
     { id: 'attendance_check', name: '勤怠状況確認', icon: 'fa-clipboard-check', category: '業務メニュー' },
     { id: 'recipe_viewer', name: 'レシピ閲覧', icon: 'fa-book-open', category: '業務メニュー' },
     { id: 'goals_store', name: '月次計画 (店長用)', icon: 'fa-tasks', category: '業務メニュー' },
@@ -127,12 +130,6 @@ async function handleLogin(e) {
         }
 
         if (user) {
-            // アルバイトスタッフのアクセス制限
-            if (user.Role === 'PartTimer' || user.Role === 'アルバイトスタッフ') {
-                alert('アルバイトスタッフ権限ではポータルにログインできません。打刻用端末をご利用ください。');
-                return;
-            }
-            
             console.log("Success. Transitioning...");
             await loginSuccess(user);
         } else {
@@ -182,7 +179,7 @@ async function renderSidebar(user) {
     if (role === 'Admin' || role === '管理者') {
         allowed = sortedMenu.map(m => m.id);
         // 管理者は、サイドバーにはないがホームに存在する項目も全て許可
-        ['sales','attendance','inventory','procurement','product_analysis','home_performance'].forEach(id => allowed.push(id));
+        ['sales','attendance','inventory','procurement','product_analysis','home_performance','shift_admin','shift_submission'].forEach(id => allowed.push(id));
     } else {
         try {
             const docSnap = await getDoc(doc(db, "m_role_permissions", role));
@@ -376,6 +373,16 @@ function showPage(target) {
                 pageTitle.textContent = '月次按分シミュレーション';
                 pageContent.innerHTML = goalsStorePageHtml;
                 initGoalsStorePage();
+                break;
+            case 'shift_submission':
+                pageTitle.textContent = 'シフト希望提出';
+                pageContent.innerHTML = shiftSubmissionPageHtml;
+                initShiftSubmissionPage();
+                break;
+            case 'shift_admin':
+                pageTitle.textContent = 'シフト作成・調整 (コックピット)';
+                pageContent.innerHTML = '<div style="padding:2rem;">シフト作成画面はPhase 2にて実装予定です。</div>';
+                // initShiftAdminPage();
                 break;
         }
     } catch (err) {

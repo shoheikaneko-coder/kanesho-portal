@@ -91,7 +91,9 @@ const menuItems = [
     { id: 'csv_export', name: 'CSV出力', icon: 'fa-file-csv' },
     { id: 'menu_order', name: 'メニュー並び順', icon: 'fa-sort-amount-down' },
     { id: 'line_share', name: 'アプリをLINE共有', icon: 'fa-share-alt' },
-    { id: 'home_performance', name: 'ホーム実績サマリー表示', icon: 'fa-eye-slash' }
+    { id: 'home_performance', name: 'ホーム実績サマリー表示', icon: 'fa-eye-slash' },
+    { id: 'shift_submission', name: 'シフト提出・確認', icon: 'fa-calendar-alt' },
+    { id: 'shift_admin', name: 'シフト作成・調整', icon: 'fa-user-edit' }
 ];
 
 let selectedRole = 'Admin';
