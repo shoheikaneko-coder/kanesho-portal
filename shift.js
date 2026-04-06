@@ -3,6 +3,15 @@ import { collection, getDocs, query, where, doc, getDoc, setDoc, updateDoc, dele
 import { showAlert, showConfirm, showLoader } from './ui_utils.js';
 
 /**
+ * --- Date Utilities ---
+ */
+const formatDateJST = (d) => {
+    if (!d) return "";
+    const jstDate = new Date(d.getTime() + (9 * 60 * 60 * 1000));
+    return jstDate.toISOString().split("T")[0];
+};
+
+/**
  * --- Shared State & Slots ---
  */
 let currentSlot = {
@@ -680,7 +689,7 @@ async function loadShiftsBatch(sid, uid = null) {
         }
         
         // 元の表示期間内のセルのみ描画
-        if (data.date >= currentSlot.startDate.toISOString().split('T')[0] && data.date <= currentSlot.endDate.toISOString().split('T')[0]) {
+        if (data.date >= formatDateJST(currentSlot.startDate) && data.date <= formatDateJST(currentSlot.endDate)) {
             renderCellUI(data.userId, data.date, data);
         }
     });
@@ -692,8 +701,8 @@ function getExtendedRange(start, end) {
     const e = new Date(end);
     e.setDate(e.getDate() + (6 - e.getDay()));
     return { 
-        start: s.toISOString().split('T')[0], 
-        end: e.toISOString().split('T')[0] 
+        start: formatDateJST(s), 
+        end: formatDateJST(e) 
     };
 }
 
@@ -712,7 +721,7 @@ async function loadDailyGoalData(sid) {
                 for (let i = 0; i < 35; i++) {
                     const t = new Date(currentSlot.startDate); t.setDate(t.getDate() + i);
                     if (t > currentSlot.endDate) break;
-                    dailyGoalSales[t.toISOString().split('T')[0]] = Math.round(unit);
+                    dailyGoalSales[formatDateJST(t)] = Math.round(unit);
                 }
             }
         });
@@ -726,7 +735,7 @@ async function loadDailyGoalData(sid) {
             for (let i = 0; i < 35; i++) {
                 const t = new Date(currentSlot.startDate); t.setDate(t.getDate() + i);
                 if (t > currentSlot.endDate) break;
-                dailyGoalSales[t.toISOString().split('T')[0]] = Math.round(unit);
+                dailyGoalSales[formatDateJST(t)] = Math.round(unit);
             }
         }
     } catch (e) { console.error("Goals load error:", e); }
@@ -742,7 +751,7 @@ function renderAdminGrid() {
         header.innerHTML = '<th class="staff-cell">スタッフ</th>';
         for (let i = 0; i < span; i++) {
             const d = new Date(currentSlot.startDate); d.setDate(d.getDate() + i);
-            const ymd = d.toISOString().split('T')[0];
+            const ymd = formatDateJST(d);
             const cal = calendarData[ymd] || {};
             const isHoliday = cal.is_holiday;
             const isOff = cal.type === 'off';
@@ -785,7 +794,7 @@ function renderAdminGrid() {
             </td>`;
             for (let i = 0; i < span; i++) {
                 const d = new Date(currentSlot.startDate); d.setDate(d.getDate() + i);
-                const ymd = d.toISOString().split('T')[0];
+                const ymd = formatDateJST(d);
                 const cal = calendarData[ymd] || {};
                 const isOff = cal.type === 'off';
                 tr.innerHTML += `<td class="shift-cell ${isOff ? 'is-off' : ''}" id="cell-${u.id}-${ymd}" onclick="window.openTimeInput('${ymd}', '${u.id}')"></td>`;
@@ -793,7 +802,7 @@ function renderAdminGrid() {
             body.appendChild(tr);
             for(let i=0; i<span; i++){
                 const d = new Date(currentSlot.startDate); d.setDate(d.getDate()+i);
-                const ymd = d.toISOString().split('T')[0];
+                const ymd = formatDateJST(d);
                 if(currentShifts[u.id]?.[ymd]) renderCellUI(u.id, ymd, currentShifts[u.id][ymd]);
             }
         });
@@ -808,7 +817,7 @@ async function renderSubmissionGrid() {
     header.innerHTML = '<th class="staff-cell">スタッフ</th>';
     for (let i = 0; i < span; i++) {
         const d = new Date(currentSlot.startDate); d.setDate(d.getDate() + i);
-        const ymd = d.toISOString().split('T')[0];
+        const ymd = formatDateJST(d);
         const cal = calendarData[ymd] || {};
         const isHoliday = cal.is_holiday;
         const isOff = cal.type === 'off';
@@ -831,7 +840,7 @@ async function renderSubmissionGrid() {
         </div>
     </td>${Array.from({length: span}).map((_, i) => {
         const d = new Date(currentSlot.startDate); d.setDate(d.getDate() + i);
-        const ymd = d.toISOString().split('T')[0];
+        const ymd = formatDateJST(d);
         const cal = calendarData[ymd] || {};
         const isOff = cal.type === 'off';
         return `<td class="shift-cell ${isOff ? 'is-off' : ''}" id="cell-${currentTargetUser.id}-${ymd}" onclick="window.openTimeInput('${ymd}', '${currentTargetUser.id}')"></td>`;
@@ -908,7 +917,7 @@ window.openTimeInput = (date, uid) => {
     const copyBtn = document.getElementById('btn-modal-prev-copy');
     if (copyBtn) {
         const prevD = new Date(d); prevD.setDate(prevD.getDate() - 1);
-        const prevYmd = prevD.toISOString().split('T')[0];
+        const prevYmd = formatDateJST(prevD);
         const prevS = currentShifts[uid]?.[prevYmd];
         if (prevS && prevS.start) {
             copyBtn.style.display = 'block';
@@ -997,8 +1006,8 @@ async function checkDoubleBooking(uid, date, s, e) {
 function updateOverallKPIs() {
     let hours = 0, target = 0;
     const users = [...allStoreUsers, ...helpUsers];
-    const startDateStr = currentSlot.startDate.toISOString().split('T')[0];
-    const endDateStr = currentSlot.endDate.toISOString().split('T')[0];
+    const startDateStr = formatDateJST(currentSlot.startDate);
+    const endDateStr = formatDateJST(currentSlot.endDate);
 
     // SPH計算 (表示期間内のみ)
     for (const ymd in dailyGoalSales) {
@@ -1037,7 +1046,7 @@ function updateOverallKPIs() {
             for (let j = 0; j < 7; j++) {
                 const checkD = new Date(weekStart);
                 checkD.setDate(checkD.getDate() + j);
-                const iso = checkD.toISOString().split('T')[0];
+                const iso = formatDateJST(checkD);
                 const s = currentShifts[u.id]?.[iso];
                 if (s && s.start) {
                     const sA = s.start.split(':').map(Number); const eA = s.end.split(':').map(Number);
@@ -1075,7 +1084,7 @@ function renderAdminFooter() {
     const span = Math.round((currentSlot.endDate - currentSlot.startDate) / (1000 * 60 * 60 * 24)) + 1;
     for (let i = 0; i < span; i++) {
         const d = new Date(currentSlot.startDate); d.setDate(d.getDate() + i);
-        const ymd = d.toISOString().split('T')[0];
+        const ymd = formatDateJST(d);
         let dayH = 0;
         [...allStoreUsers, ...helpUsers].forEach(u => {
             const s = currentShifts[u.id]?.[ymd];
@@ -1265,7 +1274,7 @@ function setupSubmissionEvents() {
         const span = Math.round((currentSlot.endDate - currentSlot.startDate) / (1000 * 60 * 60 * 24)) + 1;
         for(let i=0; i<span; i++){
             const d = new Date(currentSlot.startDate); d.setDate(d.getDate()+i);
-            const ymd = d.toISOString().split('T')[0];
+            const ymd = formatDateJST(d);
             const dow = d.getDay();
             if(temp[dow]) {
                 const s = { userId: currentTargetUser.id, userName: currentTargetUser.Name, date: ymd, start: temp[dow].start, end: temp[dow].end, status: 'applied', storeId: currentTargetUser.StoreID || 'UNKNOWN' };
@@ -1455,7 +1464,7 @@ async function applyFixedSchedules() {
     try {
         for (let i = 0; i < span; i++) {
             const d = new Date(currentSlot.startDate); d.setDate(d.getDate() + i);
-            const ymd = d.toISOString().split('T')[0];
+            const ymd = formatDateJST(d);
             const dayOfWeekMap = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             const dayKey = dayOfWeekMap[d.getDay()];
 
