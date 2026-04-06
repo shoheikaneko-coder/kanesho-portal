@@ -72,3 +72,19 @@ export function showConfirm(title, message, onConfirm) {
         if (onConfirm) onConfirm();
     };
 }
+
+export function showLoader() {
+    const loaderId = 'ui-global-loader';
+    let loader = document.getElementById(loaderId);
+    if (!loader) {
+        loader = document.createElement('div');
+        loader.id = loaderId;
+        loader.style.cssText = 'position:fixed; inset:0; BACKGROUND:rgba(255,255,255,0.7); z-index:11000; display:none; align-items:center; justify-content:center; backdrop-filter:blur(4px);';
+        loader.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:3rem; color:var(--primary);"></i>';
+        document.body.appendChild(loader);
+    }
+    loader.style.display = 'flex';
+    return {
+        remove: () => loader.style.display = 'none'
+    };
+}

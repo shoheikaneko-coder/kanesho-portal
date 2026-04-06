@@ -1,6 +1,6 @@
 import { db } from './firebase.js';
-import { collection, getDocs, query, where, doc, getDoc, setDoc, deleteDoc, writeBatch, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-import { showAlert, showConfirm } from './ui_utils.js';
+import { collection, getDocs, query, where, doc, getDoc, setDoc, updateDoc, deleteDoc, writeBatch, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { showAlert, showConfirm, showLoader } from './ui_utils.js';
 
 /**
  * --- Shared State & Slots ---
