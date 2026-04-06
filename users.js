@@ -124,6 +124,11 @@ function renderFormView(container) {
                             <label style="font-weight: 700; color: #475569;">お名前</label>
                             <input type="text" id="user-name" required placeholder="例: 山田 太郎" style="font-size: 1.1rem;">
                         </div>
+                        <div class="input-group">
+                            <label style="font-weight: 700; color: #475569;">シフト表示名 (ニックネーム)</label>
+                            <input type="text" id="user-display-name" placeholder="例: 太郎" style="font-size: 1.1rem; background: #fffdf0; border: 1px solid #fde68a;">
+                            <p style="font-size: 0.7rem; color: #b45309; margin-top: 0.2rem;">※シフト表に短く表示したい場合のみ入力</p>
+                        </div>
                     </div>
 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
@@ -213,6 +218,7 @@ function renderFormView(container) {
             document.getElementById('user-role').value = editingUserData.Role || 'Staff';
             document.getElementById('user-store-select').value = editingUserData.StoreID || '';
             document.getElementById('user-28h-limit').checked = !!editingUserData.Has28hLimit;
+            document.getElementById('user-display-name').value = editingUserData.DisplayName || '';
         }
     });
 
@@ -244,6 +250,7 @@ function setupFormLogic() {
             'Store': selectedOpt ? selectedOpt.text : '',
             'StoreID': storeSelect.value || '', // StoreID is now primary
             'Has28hLimit': document.getElementById('user-28h-limit').checked,
+            'DisplayName': document.getElementById('user-display-name').value,
             'UpdatedAt': new Date().toISOString()
         };
 
@@ -413,7 +420,10 @@ function renderTable(filter = "") {
             tr.style.transition = 'background 0.2s';
             tr.innerHTML = `
                 <td style="padding: 1rem; font-family: monospace;">${item['EmployeeCode'] || '-'}</td>
-                <td style="padding: 1rem; font-weight: 600;">${item['Name'] || '-'}</td>
+                <td style="padding: 1rem; font-weight: 600;">
+                    ${item['Name'] || '-'}
+                    ${item['DisplayName'] ? `<br><span style="font-size:0.7rem; color:var(--text-secondary); font-weight:400;">(${item['DisplayName']})</span>` : ''}
+                </td>
                 <td style="padding: 1rem; color: var(--text-secondary); font-size: 0.9rem;">${item['Store'] || '-'}</td>
                 <td style="padding: 1rem;"><span class="badge ${role.toLowerCase()}">${roleNameMap[role] || role}</span></td>
                 <td style="padding: 1rem; font-family: monospace; color: var(--text-secondary);">${item['ClockInPassword'] || '-'}</td>

@@ -1122,3 +1122,40 @@ p { color: var(--text-secondary); line-height: 1.5; }
     margin-bottom: 1.5rem;
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
+
+/* -----------------------------------------
+   Shift Cockpit & Submission Responsive
+----------------------------------------- */
+@media (max-width: 768px) {
+    .staff-cell {
+        padding: 0.5rem !important;
+        font-size: 0.75rem !important;
+        min-width: 80px !important;
+    }
+    .date-hdr {
+        font-size: 0.7rem !important;
+        min-width: 50px !important;
+        padding: 0.5rem 0.2rem !important;
+    }
+    .shift-cell {
+        height: 60px !important;
+        padding: 0.2rem !important;
+    }
+    .shift-box {
+        font-size: 0.6rem !important;
+        padding: 0.2rem !important;
+        border-radius: 4px !important;
+    }
+    .shift-box div {
+        line-height: 1.1;
+    }
+    /* モーダルの調整 */
+    #shift-input-modal .glass-panel {
+        padding: 1.5rem !important;
+        max-width: 90% !important;
+    }
+    #modal-date-title {
+        font-size: 1rem !important;
+        margin-bottom: 1rem !important;
+    }
+}

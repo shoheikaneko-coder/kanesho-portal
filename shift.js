@@ -181,7 +181,7 @@ const injectStyles = () => {
         .date-hdr { font-size: 0.8rem; font-weight: 800; min-width: 65px; padding: 0.8rem 0.2rem; cursor: pointer; }
         .shift-cell { height: 70px; cursor: pointer; padding: 0.4rem; }
         .shift-cell:hover { background: #f8fafc; }
-        .shift-box { background: var(--primary); color: white; border-radius: 6px; padding: 0.3rem; font-size: 0.7rem; font-weight: 800; display: flex; flex-direction: column; justify-content: center; height: 100%; }
+        .shift-box { background: var(--primary); color: white; border-radius: 6px; padding: 0.3rem; font-size: 0.7rem; font-weight: 800; display: flex; flex-direction: column; justify-content: center; height: 100%; pointer-events: none; }
         .shift-box.applied { background: #94a3b8; }
         .sph-badge { display: inline-block; padding: 0.2rem 0.4rem; border-radius: 4px; color: white; font-size: 0.65rem; font-weight: 800; }
         .sph-good { background: var(--secondary); }
@@ -233,6 +233,7 @@ export async function initShiftAdminPage() {
     adminMode = true; 
     const user = JSON.parse(localStorage.getItem('currentUser'));
     if (!user) return;
+    currentTargetUser = user;
     calculateSlot();
 
     const isAdmin = user.Role === 'Admin' || user.Role === '管理者';
@@ -456,7 +457,7 @@ function renderAdminGrid() {
 
         list.forEach(u => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td class="staff-cell"><div style="display:flex; align-items:center; gap:0.4rem;">${u.isHelp ? '<span class="badge" style="background:#f5f3ff; color:#7c3aed; font-size:0.6rem; padding:0.1rem 0.3rem;">ヘルプ</span>' : ''}<span style="font-weight:700;">${u.Name}</span></div></td>`;
+            tr.innerHTML = `<td class="staff-cell"><div style="display:flex; align-items:center; gap:0.4rem;">${u.isHelp ? '<span class="badge" style="background:#f5f3ff; color:#7c3aed; font-size:0.6rem; padding:0.1rem 0.3rem;">ヘルプ</span>' : ''}<span style="font-weight:700;">${u.DisplayName || u.Name}</span></div></td>`;
             for (let i = 0; i < span; i++) {
                 const d = new Date(currentSlot.startDate); d.setDate(d.getDate() + i);
                 const ymd = d.toISOString().split('T')[0];
@@ -483,7 +484,7 @@ async function renderSubmissionGrid() {
         header.innerHTML += `<th class="date-hdr">${d.getDate()}<br>${['日','月','火','水','木','金','土'][d.getDay()]}</th>`;
     }
 
-    body.innerHTML = `<tr><td class="staff-cell">${currentTargetUser.Name}</td>${Array.from({length: span}).map((_, i) => {
+    body.innerHTML = `<tr><td class="staff-cell">${currentTargetUser.DisplayName || currentTargetUser.Name}</td>${Array.from({length: span}).map((_, i) => {
         const d = new Date(currentSlot.startDate); d.setDate(d.getDate() + i);
         const ymd = d.toISOString().split('T')[0];
         return `<td class="shift-cell" id="cell-${currentTargetUser.id}-${ymd}" onclick="window.openTimeInput('${ymd}', '${currentTargetUser.id}')"></td>`;
@@ -505,7 +506,7 @@ window.openTimeInput = (date, uid) => {
     if (!user) return;
     const existing = (currentShifts[uid] && currentShifts[uid][date]) ? currentShifts[uid][date] : {};
     
-    document.getElementById('modal-date-title').textContent = `${user.Name} (${date})`;
+    document.getElementById('modal-date-title').textContent = `${user.DisplayName || user.Name} (${date})`;
     document.getElementById('modal-start').value = existing.start || "";
     document.getElementById('modal-end').value = existing.end || "";
     document.getElementById('modal-break').value = existing.breakMin || 0;
@@ -618,7 +619,7 @@ function updateOverallKPIs() {
             
             if (weekHours > 28) {
                 const weekLabel = `${weekStart.getMonth()+1}/${weekStart.getDate()}週`;
-                violations.push(`${u.Name} (${weekLabel}: ${weekHours.toFixed(1)}h)`);
+                violations.push(`${u.DisplayName || u.Name} (${weekLabel}: ${weekHours.toFixed(1)}h)`);
                 break; // 1つでもあればこの人は違反者
             }
             tempDate.setDate(tempDate.getDate() + 7);
@@ -692,7 +693,8 @@ window.copyShiftForLine = async (date) => {
             const s = currentShifts[u.id]?.[date];
             if (!s || !s.start) return null;
             const prefix = u.isHelp ? '🌀 [ヘルプ] ' : '👤 ';
-            return `${prefix}${u.Name.padEnd(6,' ')} │ ${s.start} 〜 ${s.end}`;
+            const displayName = u.DisplayName || u.Name;
+            return `${prefix}${displayName.padEnd(6,' ')} │ ${s.start} 〜 ${s.end}`;
         }).filter(x => x);
 
         if (list.length === 0) return showAlert('案内', 'この日のシフトはまだ登録されていません。');
