@@ -109,19 +109,35 @@ const sharedModalHtml = `
         </div>
     </div>
 
-    <!-- 固定シフト設定モーダル -->
-    <div id="fixed-shift-config-modal" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:10001; align-items:center; justify-content:center; backdrop-filter: blur(4px);">
-        <div class="glass-panel animate-scale-in" style="width:100%; max-width:600px; padding:0; overflow:hidden; display:flex; flex-direction:column; max-height:90vh;">
-            <div style="padding:1.5rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
-                <h4 style="margin:0;"><i class="fas fa-calendar-alt"></i> 固定シフトの管理 (店舗スタッフ)</h4>
-                <button onclick="document.getElementById('fixed-shift-config-modal').style.display='none'" class="btn" style="padding:0.2rem 0.5rem;"><i class="fas fa-times"></i></button>
-            </div>
-            <div id="fixed-shift-modal-body" style="padding:1.5rem; overflow-y:auto; flex:1; min-height:300px;">
-                <!-- ここにスタッフ一覧または個別設定フォームが書き込まれる -->
-            </div>
+    <!-- 引き出し型パネル (サイドドロワー) -->
+    <div id="drawer-overlay" class="drawer-overlay" onclick="closeSideDrawer()"></div>
+    <div id="fixed-shift-drawer" class="side-drawer">
+        <div style="padding:1.5rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; background: rgba(255,255,255,0.8);">
+            <h4 style="margin:0; font-weight:800; color:var(--primary);"><i class="fas fa-user-clock"></i> 定例シフト設定</h4>
+            <button onclick="closeSideDrawer()" class="btn" style="padding:0.5rem; line-height:1;"><i class="fas fa-times" style="font-size:1.2rem;"></i></button>
+        </div>
+        <div id="fixed-shift-drawer-body" style="padding:1.5rem; overflow-y:auto; flex:1;">
+            <!-- ここにスタッフ一覧または個別設定フォームが書き込まれる -->
         </div>
     </div>
 `;
+
+window.closeSideDrawer = () => {
+    document.getElementById('fixed-shift-drawer').classList.remove('show');
+    document.getElementById('drawer-overlay').classList.remove('show');
+    setTimeout(() => {
+        document.getElementById('drawer-overlay').style.display = 'none';
+    }, 300);
+};
+
+window.openSideDrawer = () => {
+    const overlay = document.getElementById('drawer-overlay');
+    overlay.style.display = 'block';
+    setTimeout(() => {
+        overlay.classList.add('show');
+        document.getElementById('fixed-shift-drawer').classList.add('show');
+    }, 10);
+};
 
 export const shiftSubmissionPageHtml = `
     <div class="animate-fade-in" id="shift-submission-container" style="max-width: 1400px; margin: 0 auto; padding-bottom: 3rem;">
@@ -446,15 +462,12 @@ export async function initShiftAdminPage() {
         await updateView(sid);
     }
 
-    // --- 固定シフト設定ボタンのバインド ---
-    const fsBtn = document.getElementById('btn-manage-fixed-shift');
-    if (fsBtn) {
-        fsBtn.onclick = () => {
-            const modal = document.getElementById('fixed-shift-config-modal');
-            if (modal) {
-                renderFixedShiftStaffList();
-                modal.style.display = 'flex';
-            }
+    // 固定シフト関連ボタンのバインド
+    const btnManageFS = document.getElementById('btn-manage-fixed-shift');
+    if (btnManageFS) {
+        btnManageFS.onclick = () => {
+            renderFixedShiftStaffList();
+            openSideDrawer();
         };
     }
     const applyBtn = document.getElementById('btn-apply-fixed-schedule');
@@ -1271,42 +1284,37 @@ function setupSubmissionEvents() {
 }
 
 /**
- * --- Fixed Shift Management ---
+ * --- Fixed Shift Management (Drawer Version) ---
  */
 
 function renderFixedShiftStaffList() {
-    const body = document.getElementById('fixed-shift-modal-body');
+    const body = document.getElementById('fixed-shift-drawer-body');
     if (!body) return;
     body.innerHTML = `
-        <div style="margin-bottom: 1.2rem; color: var(--text-secondary); font-size: 0.85rem; padding: 0.5rem; background: #f0f9ff; border-radius: 8px; border: 1px solid #bae6fd;">
-            <i class="fas fa-info-circle"></i> スタッフを選択して、曜日ごとの基本シフトパターン（出勤・休日・時間）を設定・管理できます。
+        <div style="margin-bottom: 1.5rem; color: var(--text-secondary); font-size: 0.85rem; padding: 1rem; background: #f8fafc; border-radius: 12px; border: 1px solid var(--border); line-height:1.5;">
+            <i class="fas fa-info-circle"></i> スタッフごとの基本パターンを設定します。<br>反映ボタンで空欄のシフトを一括で埋められます。
         </div>
-        <div class="glass-panel" style="padding: 0; border: 1px solid var(--border); max-height: 400px; overflow-y: auto;">
-            ${allStoreUsers.length === 0 ? '<div style="padding:2rem; text-align:center; color:var(--text-secondary);">スタッフが読み込まれていません</div>' : ''}
+        <div style="border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: white;">
+            ${allStoreUsers.length === 0 ? '<div style="padding:3rem; text-align:center; color:var(--text-secondary);">スタッフが読み込まれていません</div>' : ''}
             ${allStoreUsers.map(u => {
                 const fs = u.FixedSchedule || {};
                 const activeDays = Object.keys(fs).filter(k => fs[k].active);
                 const dayMap = { Mon:'月', Tue:'火', Wed:'水', Thu:'木', Fri:'金', Sat:'土', Sun:'日' };
-                const summary = activeDays.length > 0 ? activeDays.map(k => dayMap[k]).join(', ') : '未設定';
+                const summary = activeDays.length > 0 ? activeDays.map(k => dayMap[k]).join(', ') : '<span style="color:#94a3b8; font-weight:400;">未設定</span>';
                 
                 return `
-                    <div class="fixed-shift-staff-item">
-                        <div style="text-align: left;">
-                            <div style="font-weight: 800; font-size: 1rem; color: var(--text-primary); text-align: left;">${u.DisplayName || u.Name}</div>
-                            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.2rem; text-align: left;">
-                                <span class="badge" style="padding: 0.1rem 0.3rem; margin-right: 0.5rem;">${u.JobTitle || u.Role}</span>
-                                <span style="font-weight: 600;">出勤: ${summary}</span>
+                    <div class="fixed-shift-staff-item" onclick="window.editUserFixedShift('${u.id}')">
+                        <div style="flex:1;">
+                            <div style="font-weight: 800; font-size: 1.05rem; color: var(--text-primary); text-align: left;">${u.DisplayName || u.Name}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.3rem; text-align: left; display:flex; align-items:center; gap:0.5rem;">
+                                <span class="badge" style="background:#f1f5f9; color:#475569; padding: 0.1rem 0.4rem; border-radius:4px;">${u.JobTitle || u.Role}</span>
+                                <span style="font-weight: 700; color:var(--secondary);">出勤: ${summary}</span>
                             </div>
                         </div>
-                        <button onclick="window.editUserFixedShift('${u.id}')" class="btn btn-secondary btn-sm" style="font-weight: 700; border-radius: 8px; padding: 0.4rem 1rem;">
-                            設定 <i class="fas fa-chevron-right" style="font-size: 0.7rem; margin-left: 0.3rem;"></i>
-                        </button>
+                        <i class="fas fa-chevron-right" style="color: #cbd5e1; font-size: 0.8rem;"></i>
                     </div>
                 `;
             }).join('')}
-        </div>
-        <div style="margin-top: 1.5rem; text-align: center;">
-            <button onclick="document.getElementById('fixed-shift-config-modal').style.display='none'" class="btn btn-secondary" style="width: 100%; font-weight: 700;">閉じる</button>
         </div>
     `;
 }
@@ -1326,20 +1334,21 @@ window.editUserFixedShift = (uid) => {
         { key: 'Sun', label: '日曜日' }
     ];
 
-    const body = document.getElementById('fixed-shift-modal-body');
+    const body = document.getElementById('fixed-shift-drawer-body');
     body.innerHTML = `
-        <div style="margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--primary); padding-bottom: 0.5rem;">
-            <h5 style="margin:0; font-size: 1.1rem; color: var(--primary); font-weight: 800;">
-                <i class="fas fa-user-edit"></i> ${user.Name} 様の定例シフト
-            </h5>
-            <button onclick="renderFixedShiftStaffList()" class="btn btn-secondary btn-sm" style="font-size: 0.75rem;">
-                <i class="fas fa-arrow-left"></i> 一覧に戻る
+        <div style="margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between; padding-bottom: 0.8rem; border-bottom: 2px solid var(--secondary);">
+            <div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight:700;">STAFF SETTING</div>
+                <h5 style="margin:0; font-size: 1.25rem; color: var(--text-primary); font-weight: 900;">${user.Name} 様</h5>
+            </div>
+            <button onclick="renderFixedShiftStaffList()" class="btn btn-secondary btn-sm" style="border-radius:20px; padding:0.4rem 1rem;">
+                <i class="fas fa-arrow-left"></i> 戻る
             </button>
         </div>
         
-        <div style="background: #f8fafc; padding: 1rem; border-radius: 12px; border: 1px solid var(--border);">
-            <div style="display: grid; grid-template-columns: 80px 40px 1fr 80px; gap: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); font-size: 0.75rem; color: var(--text-secondary); font-weight: 700; text-align: center;">
-                <div>曜日</div><div>入</div><div>時間設定</div><div>休憩</div>
+        <div style="display: flex; flex-direction: column; gap: 0.2rem;">
+            <div style="display: grid; grid-template-columns: 85px 50px 1fr 70px; gap: 0.6rem; padding: 0.5rem; font-size: 0.7rem; color: var(--text-secondary); font-weight: 800; text-align: center; border-bottom: 1px solid var(--border);">
+                <div>曜日</div><div>出勤</div><div>勤務時間</div><div>休憩</div>
             </div>
             ${weekdays.map(wd => {
                 const config = fs[wd.key] || { active: false, start: '17:00', end: '23:00', breakMin: 0 };
@@ -1349,25 +1358,33 @@ window.editUserFixedShift = (uid) => {
                 return `
                     <div class="weekday-row" id="row-${wd.key}">
                         <div class="weekday-name">${wd.label}</div>
-                        <div style="text-align: center;"><input type="checkbox" class="weekday-active" ${config.active ? 'checked' : ''}></div>
-                        <div style="display:flex; align-items:center; justify-content: center; gap:4px;">
-                            <select class="form-input start-h" style="padding:2px; font-size:0.85rem; width: 45px;">${generateHOptions(sH)}</select>:
-                            <select class="form-input start-m" style="padding:2px; font-size:0.85rem; width: 45px;">${generateMOptions(sM)}</select>
-                            <span style="font-size: 0.7rem; font-weight: 800; color: #94a3b8;">〜</span>
-                            <select class="form-input end-h" style="padding:2px; font-size:0.85rem; width: 45px;">${generateHOptions(eH)}</select>:
-                            <select class="form-input end-m" style="padding:2px; font-size:0.85rem; width: 45px;">${generateMOptions(eM)}</select>
+                        <div style="display:flex; justify-content:center;">
+                            <label class="toggle-switch">
+                                <input type="checkbox" class="weekday-active" ${config.active ? 'checked' : ''}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div style="display:flex; align-items:center; justify-content: center; gap:3px;">
+                            <select class="form-input start-h" style="padding:2px; font-size:0.85rem; width: 44px; height:32px;">${generateHOptions(sH)}</select>
+                            <span style="font-weight:800;">:</span>
+                            <select class="form-input start-m" style="padding:2px; font-size:0.85rem; width: 44px; height:32px;">${generateMOptions(sM)}</select>
+                            <span style="font-size: 0.7rem; font-weight: 800; color: #94a3b8; margin:0 2px;">〜</span>
+                            <select class="form-input end-h" style="padding:2px; font-size:0.85rem; width: 44px; height:32px;">${generateHOptions(eH)}</select>
+                            <span style="font-weight:800;">:</span>
+                            <select class="form-input end-m" style="padding:2px; font-size:0.85rem; width: 44px; height:32px;">${generateMOptions(eM)}</select>
                         </div>
                         <div style="display:flex; align-items:center; justify-content: center; gap:2px;">
-                            <input type="number" class="form-input break-min" value="${config.breakMin || 0}" style="padding:2px; font-size:0.85rem; width:35px; min-height: unset; text-align: center;">分
+                            <input type="number" class="form-input break-min" value="${config.breakMin || 0}" style="padding:2px; font-size:0.85rem; width:40px; height:32px; text-align: center; border-radius:6px;">
+                            <span style="font-size:0.7rem; font-weight:700;">分</span>
                         </div>
                     </div>
                 `;
             }).join('')}
         </div>
         
-        <div style="margin-top: 2rem;">
-            <button onclick="window.saveUserFixedShift('${uid}')" id="btn-save-fixed-fs" class="btn btn-primary" style="width:100%; border-radius: 12px; padding: 1rem; font-weight: 800; font-size: 1rem; box-shadow: 0 4px 6px rgba(230, 57, 70, 0.2);">
-                <i class="fas fa-save" style="margin-right: 0.5rem;"></i> この定例シフトを保存する
+        <div style="margin-top: 2.5rem; position: sticky; bottom: 0; background: rgba(255,255,255,0.9); padding: 1rem 0; backdrop-filter: blur(5px);">
+            <button onclick="window.saveUserFixedShift('${uid}')" id="btn-save-fixed-fs" class="btn btn-primary" style="width:100%; border-radius: 14px; padding: 1.2rem; font-weight: 900; font-size: 1.1rem; box-shadow: 0 10px 15px -3px rgba(230, 57, 70, 0.3);">
+                <i class="fas fa-check-circle" style="margin-right: 0.5rem;"></i> この設定で確定する
             </button>
         </div>
     `;
