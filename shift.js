@@ -50,14 +50,37 @@ function calculateSlot() {
 const sharedModalHtml = `
     <!-- モーダル (共通) -->
     <div id="shift-input-modal" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:10000; align-items:center; justify-content:center; backdrop-filter: blur(4px);">
-        <div class="glass-panel animate-scale-in" style="width:100%; max-width:400px; padding:2rem;">
-            <h4 id="modal-date-title" style="margin:0 0 1.5rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem;">時刻入力</h4>
-            <div style="display: flex; flex-direction: column; gap: 1rem;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div><label class="field-label">開始</label><input type="time" id="modal-start" class="form-input"></div>
-                    <div><label class="field-label">終了</label><input type="time" id="modal-end" class="form-input"></div>
+        <div class="glass-panel animate-scale-in" style="width:100%; max-width:420px; padding:2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+                <h4 id="modal-date-title" style="margin:0;">時刻入力</h4>
+                <button id="btn-modal-prev-copy" class="btn btn-secondary btn-sm" style="font-size: 0.7rem; padding: 0.2rem 0.5rem;"><i class="fas fa-copy"></i> 前回分をコピー</button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 1.2rem;">
+                <!-- 開始時間 -->
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                        <label class="field-label" style="margin:0;">開始</label>
+                        <div style="display: flex; gap: 4px;">
+                            <button onclick="quickSetTime('start','16:30')" class="btn btn-secondary btn-sm" style="font-size:0.6rem; padding:2px 5px;">16:30</button>
+                            <button onclick="quickSetTime('start','17:00')" class="btn btn-secondary btn-sm" style="font-size:0.6rem; padding:2px 5px;">17:00</button>
+                            <button onclick="quickSetTime('start','18:00')" class="btn btn-secondary btn-sm" style="font-size:0.6rem; padding:2px 5px;">18:00</button>
+                        </div>
+                    </div>
+                    <input type="time" id="modal-start" class="form-input" step="900">
                 </div>
-                <div><label class="field-label">休憩(分)</label><input type="number" id="modal-break" class="form-input" value="0"></div>
+                <!-- 終了時間 -->
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                        <label class="field-label" style="margin:0;">終了</label>
+                        <div style="display: flex; gap: 4px;">
+                            <button onclick="quickSetTime('end','23:30')" class="btn btn-secondary btn-sm" style="font-size:0.6rem; padding:2px 5px;">23:30</button>
+                            <button onclick="quickSetTime('end','00:00')" class="btn btn-secondary btn-sm" style="font-size:0.6rem; padding:2px 5px;">24:00</button>
+                        </div>
+                    </div>
+                    <input type="time" id="modal-end" class="form-input" step="900">
+                </div>
+                
+                <div><label class="field-label">休憩(分)</label><input type="number" id="modal-break" class="form-input" value="0" step="15"></div>
                 <div><label class="field-label">備考</label><input type="text" id="modal-note" class="form-input"></div>
                 <div style="display: flex; gap: 1rem; margin-top: 1rem;">
                     <button id="btn-modal-clear" class="btn btn-secondary" style="flex:1;">削除</button>
@@ -135,6 +158,7 @@ export const shiftAdminPageHtml = `
                 <span id="admin-active-store-label" style="font-weight: 700; color: var(--text-primary);"></span>
             </div>
             <div style="display: flex; gap: 0.8rem;">
+                <button id="btn-bulk-mode" class="btn btn-secondary" style="font-size:0.85rem; border: 1px solid var(--border);"><i class="fas fa-check-double"></i> 一括入力</button>
                 <button id="btn-add-help-staff" class="btn btn-secondary" style="font-size:0.85rem;"><i class="fas fa-user-plus"></i> ヘルプ追加</button>
                 <button id="btn-publish-shifts" class="btn btn-primary" style="font-size:0.85rem; font-weight:800;">一括確定・公開</button>
             </div>
@@ -174,6 +198,10 @@ let currentShifts = {};
 let currentTargetUser = null;
 let allStoreUsers = [];
 let helpUsers = [];
+
+// 一括入力用
+let isBulkMode = false;
+let selectedCells = []; // [{uid, date}]
 let dailyGoalSales = {};
 let adminMode = false;
 
@@ -305,6 +333,91 @@ export async function initShiftAdminPage() {
     document.getElementById('btn-add-help-staff').onclick = openHelpStaffModal;
     document.getElementById('btn-publish-shifts').onclick = publishShifts;
     document.getElementById('btn-save-memo').onclick = saveShiftMemo;
+
+    // 一括入力ボタン
+    const bulkBtn = document.getElementById('btn-bulk-mode');
+    if (bulkBtn) {
+        bulkBtn.onclick = () => {
+            if (!isBulkMode) {
+                isBulkMode = true;
+                selectedCells = [];
+                bulkBtn.innerHTML = '<i class="fas fa-save"></i> 選択完了・設定';
+                bulkBtn.classList.add('btn-primary');
+                bulkBtn.classList.remove('btn-secondary');
+                document.getElementById('shift-admin-container').classList.add('bulk-mode-active');
+            } else {
+                if (selectedCells.length > 0) openBulkInputModal();
+                else exitBulkMode();
+            }
+        };
+    }
+}
+
+function exitBulkMode() {
+    isBulkMode = false;
+    selectedCells = [];
+    const bulkBtn = document.getElementById('btn-bulk-mode');
+    if (bulkBtn) {
+        bulkBtn.innerHTML = '<i class="fas fa-check-double"></i> 一括入力';
+        bulkBtn.classList.remove('btn-primary');
+        bulkBtn.classList.add('btn-secondary');
+    }
+    document.getElementById('shift-admin-container').classList.remove('bulk-mode-active');
+    document.querySelectorAll('.selected-shift-cell').forEach(el => el.classList.remove('selected-shift-cell'));
+}
+
+function openBulkInputModal() {
+    const first = selectedCells[0];
+    const prev = currentShifts[first.uid]?.[first.date] || {};
+    document.getElementById('modal-date-title').textContent = `一括設定 (${selectedCells.length}件)`;
+    document.getElementById('modal-start').value = prev.start || '';
+    document.getElementById('modal-end').value = prev.end || '';
+    document.getElementById('modal-break').value = prev.breakMin || 0;
+    document.getElementById('modal-note').value = prev.note || '';
+    document.getElementById('shift-input-modal').style.display = 'flex';
+    const saveBtn = document.getElementById('btn-modal-save');
+    const originalOnclick = saveBtn.onclick;
+    saveBtn.onclick = async () => {
+        await saveShiftsBulk();
+        saveBtn.onclick = originalOnclick;
+    };
+}
+
+async function saveShiftsBulk() {
+    const start = document.getElementById('modal-start').value;
+    const end = document.getElementById('modal-end').value;
+    const brk = parseInt(document.getElementById('modal-break').value) || 0;
+    const note = document.getElementById('modal-note').value;
+    if (!start || !end) return showAlert('警告', '開始時間と終了時間を入力してください。');
+    const loader = showLoader();
+    try {
+        const batch = [];
+        for (const cell of selectedCells) {
+            const user = allStoreUsers.find(x => x.id === cell.uid) || helpUsers.find(x => x.id === cell.uid);
+            if (!user) continue;
+            
+            const me = JSON.parse(localStorage.getItem('currentUser'));
+            const sid = window.currentAdminStoreId || me.StoreID || me.StoreId;
+            const sName = window.currentAdminStoreName || me.Store || '所属店舗';
+
+            const shiftData = {
+                userId: cell.uid, userName: user.Name, date: cell.date,
+                start, end, breakMin: brk, note, 
+                status: 'confirmed',
+                storeId: sid, storeName: sName,
+                updatedAt: new Date().toISOString()
+            };
+            batch.push(setDoc(doc(db, "t_shifts", `${cell.date}_${cell.uid}`), shiftData));
+            if (!currentShifts[cell.uid]) currentShifts[cell.uid] = {};
+            currentShifts[cell.uid][cell.date] = shiftData;
+        }
+        await Promise.all(batch);
+        selectedCells.forEach(cell => renderCellUI(cell.uid, cell.date, currentShifts[cell.uid][cell.date]));
+        document.getElementById('shift-input-modal').style.display = 'none';
+        exitBulkMode();
+        showAlert('成功', `${batch.length}件のシフトを一括設定しました。`);
+    } catch (e) { console.error(e); showAlert('エラー', '一括保存に失敗しました。'); }
+    finally { if(loader) loader.remove(); }
 }
 
 async function loadShiftMemo(sid) {
@@ -536,45 +649,54 @@ function renderCellUI(uid, date, data) {
  * --- Actions ---
  */
 window.openTimeInput = (date, uid) => {
+    if (isBulkMode) {
+        const cellId = `cell-${uid}-${date}`;
+        const el = document.getElementById(cellId);
+        const idx = selectedCells.findIndex(x => x.uid === uid && x.date === date);
+        if (idx > -1) {
+            selectedCells.splice(idx, 1);
+            el.classList.remove('selected-shift-cell');
+        } else {
+            selectedCells.push({ uid, date });
+            el.classList.add('selected-shift-cell');
+        }
+        const bulkBtn = document.getElementById('btn-bulk-mode');
+        bulkBtn.innerHTML = `<i class="fas fa-save"></i> 選択完了 (${selectedCells.length}件)`;
+        return;
+    }
+
     const user = allStoreUsers.find(u => u.id === uid) || helpUsers.find(u => u.id === uid) || (uid === currentTargetUser?.id ? currentTargetUser : null);
     if (!user) return;
-    const existing = (currentShifts[uid] && currentShifts[uid][date]) ? currentShifts[uid][date] : {};
     
+    const d = new Date(date);
     document.getElementById('modal-date-title').textContent = `${user.DisplayName || user.Name} (${date})`;
-    document.getElementById('modal-start').value = existing.start || "";
-    document.getElementById('modal-end').value = existing.end || "";
-    document.getElementById('modal-break').value = existing.breakMin || 0;
-    document.getElementById('modal-note').value = existing.note || "";
+    const s = currentShifts[uid]?.[date] || {};
+    document.getElementById('modal-start').value = s.start || '';
+    document.getElementById('modal-end').value = s.end || '';
+    document.getElementById('modal-break').value = s.breakMin || 0;
+    document.getElementById('modal-note').value = s.note || '';
+
+    // 前回コピーボタンの設定
+    const copyBtn = document.getElementById('btn-modal-prev-copy');
+    if (copyBtn) {
+        const prevD = new Date(d); prevD.setDate(prevD.getDate() - 1);
+        const prevYmd = prevD.toISOString().split('T')[0];
+        const prevS = currentShifts[uid]?.[prevYmd];
+        if (prevS && prevS.start) {
+            copyBtn.style.display = 'block';
+            copyBtn.onclick = () => {
+                document.getElementById('modal-start').value = prevS.start;
+                document.getElementById('modal-end').value = prevS.end;
+                document.getElementById('modal-break').value = prevS.breakMin || 0;
+                document.getElementById('modal-note').value = prevS.note || '';
+                showAlert('案内', '前日の内容をコピーしました。');
+            };
+        } else {
+            copyBtn.style.display = 'none';
+        }
+    }
+
     document.getElementById('shift-input-modal').style.display = 'flex';
-
-    document.getElementById('btn-modal-save').onclick = async () => {
-        const s = document.getElementById('modal-start').value;
-        const e = document.getElementById('modal-end').value;
-        if (!s || !e) return;
-
-        const me = JSON.parse(localStorage.getItem('currentUser'));
-        const sid = adminMode ? (window.currentAdminStoreId || me.StoreID || me.StoreId) : (user.StoreID || user.StoreId || 'UNKNOWN');
-        const sName = adminMode ? (window.currentAdminStoreName || '管理店舗') : (user.Store || '所属店舗');
-
-        const conflict = await checkDoubleBooking(uid, date, s, e);
-        if (conflict) return showAlert('⚠ 重複', `【${conflict.storeName}】ですでに確定済みのシフトと重なっています。`);
-
-        const news = {
-            userId: uid, userName: user.Name, date, start: s, end: e,
-            breakMin: parseInt(document.getElementById('modal-break').value) || 0,
-            note: document.getElementById('modal-note').value,
-            status: adminMode ? 'confirmed' : 'applied',
-            storeId: sid, storeName: sName, updatedAt: new Date().toISOString()
-        };
-
-        if (!currentShifts[uid]) currentShifts[uid] = {};
-        currentShifts[uid][date] = news;
-        renderCellUI(uid, date, news);
-        document.getElementById('shift-input-modal').style.display = 'none';
-        await setDoc(doc(db, "t_shifts", `${date}_${uid}`), news);
-        if (adminMode) updateOverallKPIs();
-    };
-
     document.getElementById('btn-modal-clear').onclick = async () => {
         if(currentShifts[uid]) delete currentShifts[uid][date];
         renderCellUI(uid, date, null);
@@ -582,6 +704,41 @@ window.openTimeInput = (date, uid) => {
         await deleteDoc(doc(db, "t_shifts", `${date}_${uid}`));
         if (adminMode) updateOverallKPIs();
     };
+    document.getElementById('btn-modal-save').onclick = async () => {
+        saveShift(uid, date, user.Name);
+    };
+};
+
+async function saveShift(uid, date, userName) {
+    const s = document.getElementById('modal-start').value;
+    const e = document.getElementById('modal-end').value;
+    if (!s || !e) return;
+
+    const me = JSON.parse(localStorage.getItem('currentUser'));
+    const sid = adminMode ? (window.currentAdminStoreId || me.StoreID || me.StoreId) : (me.StoreID || me.StoreId || 'UNKNOWN');
+    const sName = adminMode ? (window.currentAdminStoreName || '管理店舗') : (me.Store || '所属店舗');
+
+    const conflict = await checkDoubleBooking(uid, date, s, e);
+    if (conflict) return showAlert('⚠ 重複', `【${conflict.storeName}】ですでに確定済みのシフトと重なっています。`);
+
+    const news = {
+        userId: uid, userName, date, start: s, end: e,
+        breakMin: parseInt(document.getElementById('modal-break').value) || 0,
+        note: document.getElementById('modal-note').value,
+        status: adminMode ? 'confirmed' : 'applied',
+        storeId: sid, storeName: sName, updatedAt: new Date().toISOString()
+    };
+
+    if (!currentShifts[uid]) currentShifts[uid] = {};
+    currentShifts[uid][date] = news;
+    renderCellUI(uid, date, news);
+    document.getElementById('shift-input-modal').style.display = 'none';
+    await setDoc(doc(db, "t_shifts", `${date}_${uid}`), news);
+    if (adminMode) updateOverallKPIs();
+}
+
+window.quickSetTime = (type, val) => {
+    document.getElementById(`modal-${type}`).value = val;
 };
 
 async function checkDoubleBooking(uid, date, s, e) {

@@ -1159,3 +1159,33 @@ p { color: var(--text-secondary); line-height: 1.5; }
         margin-bottom: 1rem !important;
     }
 }
+
+/* 一括入力モード中の選択表現 */
+.selected-shift-cell {
+    background-color: rgba(230, 57, 70, 0.15) !important;
+    position: relative;
+    box-shadow: inset 0 0 0 2px var(--primary) !important;
+    cursor: cell !important;
+}
+
+.selected-shift-cell::after {
+    content: '\f058';
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    color: var(--primary);
+    font-size: 0.6rem;
+}
+
+.bulk-mode-active {
+    outline: 3px solid var(--primary);
+    animation: flash 2s infinite;
+}
+
+@keyframes flash {
+    0% { outline-color: rgba(230, 57, 70, 0.4); opacity: 1; }
+    50% { outline-color: rgba(230, 57, 70, 1); opacity: 0.8; }
+    100% { outline-color: rgba(230, 57, 70, 0.4); opacity: 1; }
+}
