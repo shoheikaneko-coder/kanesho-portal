@@ -66,7 +66,16 @@ const sharedModalHtml = `
                             <button onclick="quickSetTime('start','18:00')" class="btn btn-secondary btn-sm" style="font-size:0.6rem; padding:2px 5px;">18:00</button>
                         </div>
                     </div>
-                    <input type="time" id="modal-start" class="form-input" step="900">
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <select id="modal-start-h" class="form-input" style="flex:1; font-size: 1.1rem; font-weight: 600; text-align: center;"></select>
+                        <span style="font-weight: 800;">:</span>
+                        <select id="modal-start-m" class="form-input" style="flex:1; font-size: 1.1rem; font-weight: 600; text-align: center;">
+                            <option value="00">00</option>
+                            <option value="15">15</option>
+                            <option value="30">30</option>
+                            <option value="45">45</option>
+                        </select>
+                    </div>
                 </div>
                 <!-- 終了時間 -->
                 <div>
@@ -77,7 +86,16 @@ const sharedModalHtml = `
                             <button onclick="quickSetTime('end','00:00')" class="btn btn-secondary btn-sm" style="font-size:0.6rem; padding:2px 5px;">24:00</button>
                         </div>
                     </div>
-                    <input type="time" id="modal-end" class="form-input" step="900">
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <select id="modal-end-h" class="form-input" style="flex:1; font-size: 1.1rem; font-weight: 600; text-align: center;"></select>
+                        <span style="font-weight: 800;">:</span>
+                        <select id="modal-end-m" class="form-input" style="flex:1; font-size: 1.1rem; font-weight: 600; text-align: center;">
+                            <option value="00">00</option>
+                            <option value="15">15</option>
+                            <option value="30">30</option>
+                            <option value="45">45</option>
+                        </select>
+                    </div>
                 </div>
                 
                 <div><label class="field-label">休憩(分)</label><input type="number" id="modal-break" class="form-input" value="0" step="15"></div>
@@ -432,11 +450,16 @@ function openBulkInputModal() {
 }
 
 async function saveShiftsBulk() {
-    const start = document.getElementById('modal-start').value;
-    const end = document.getElementById('modal-end').value;
+    const sH = document.getElementById('modal-start-h').value;
+    const sM = document.getElementById('modal-start-m').value;
+    const eH = document.getElementById('modal-end-h').value;
+    const eM = document.getElementById('modal-end-m').value;
+    
+    const start = `${sH}:${sM}`;
+    const end = `${eH}:${eM}`;
     const brk = parseInt(document.getElementById('modal-break').value) || 0;
     const note = document.getElementById('modal-note').value;
-    if (!start || !end) return showAlert('警告', '開始時間と終了時間を入力してください。');
+    if (start === end) return showAlert('警告', '開始時間と終了時間が同じです。');
     const loader = showLoader();
     try {
         const batch = [];
@@ -719,11 +742,35 @@ window.openTimeInput = (date, uid) => {
     
     const d = new Date(date);
     document.getElementById('modal-date-title').textContent = `${user.DisplayName || user.Name} (${date})`;
-    const s = currentShifts[uid]?.[date] || {};
-    document.getElementById('modal-start').value = s.start || '';
-    document.getElementById('modal-end').value = s.end || '';
-    document.getElementById('modal-break').value = s.breakMin || 0;
-    document.getElementById('modal-note').value = s.note || '';
+    const sData = currentShifts[uid]?.[date] || {};
+    
+    // 時間プルダウンの初期化（未初期化の場合のみ）
+    const hSelects = [document.getElementById('modal-start-h'), document.getElementById('modal-end-h')];
+    hSelects.forEach(sel => {
+        if (sel && sel.options.length === 0) {
+            for (let i = 0; i <= 28; i++) {
+                const val = i.toString().padStart(2, '0');
+                const opt = new Date().getHours() === i ? `<option value="${val}" selected>${val}</option>` : `<option value="${val}">${val}</option>`;
+                sel.innerHTML += opt;
+            }
+        }
+    });
+
+    const setTimeSelects = (prefix, val) => {
+        if (!val) {
+            document.getElementById(`${prefix}-h`).value = '00';
+            document.getElementById(`${prefix}-m`).value = '00';
+            return;
+        }
+        const [h, m] = val.split(':');
+        document.getElementById(`${prefix}-h`).value = h.padStart(2, '0');
+        document.getElementById(`${prefix}-m`).value = m.padStart(2, '0');
+    };
+
+    setTimeSelects('modal-start', sData.start);
+    setTimeSelects('modal-end', sData.end);
+    document.getElementById('modal-break').value = sData.breakMin || 0;
+    document.getElementById('modal-note').value = sData.note || '';
 
     // 前回コピーボタンの設定
     const copyBtn = document.getElementById('btn-modal-prev-copy');
@@ -734,8 +781,8 @@ window.openTimeInput = (date, uid) => {
         if (prevS && prevS.start) {
             copyBtn.style.display = 'block';
             copyBtn.onclick = () => {
-                document.getElementById('modal-start').value = prevS.start;
-                document.getElementById('modal-end').value = prevS.end;
+                setTimeSelects('modal-start', prevS.start);
+                setTimeSelects('modal-end', prevS.end);
                 document.getElementById('modal-break').value = prevS.breakMin || 0;
                 document.getElementById('modal-note').value = prevS.note || '';
                 showAlert('案内', '前日の内容をコピーしました。');
@@ -759,9 +806,15 @@ window.openTimeInput = (date, uid) => {
 };
 
 async function saveShift(uid, date, userName) {
-    const s = document.getElementById('modal-start').value;
-    const e = document.getElementById('modal-end').value;
-    if (!s || !e) return;
+    const sH = document.getElementById('modal-start-h').value;
+    const sM = document.getElementById('modal-start-m').value;
+    const eH = document.getElementById('modal-end-h').value;
+    const eM = document.getElementById('modal-end-m').value;
+    
+    const s = `${sH}:${sM}`;
+    const e = `${eH}:${eM}`;
+    
+    if (s === e) return showAlert('エラー', '開始時間と終了時間が同じです');
 
     const me = JSON.parse(localStorage.getItem('currentUser'));
     const sid = adminMode ? (window.currentAdminStoreId || me.StoreID || me.StoreId) : (me.StoreID || me.StoreId || 'UNKNOWN');
@@ -787,7 +840,11 @@ async function saveShift(uid, date, userName) {
 }
 
 window.quickSetTime = (type, val) => {
-    document.getElementById(`modal-${type}`).value = val;
+    const [h, m] = val.split(':');
+    const hEl = document.getElementById(`modal-${type}-h`);
+    const mEl = document.getElementById(`modal-${type}-m`);
+    if (hEl) hEl.value = h.padStart(2, '0');
+    if (mEl) mEl.value = m.padStart(2, '0');
 };
 
 async function checkDoubleBooking(uid, date, s, e) {
