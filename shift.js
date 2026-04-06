@@ -748,11 +748,14 @@ window.openTimeInput = (date, uid) => {
     const hSelects = [document.getElementById('modal-start-h'), document.getElementById('modal-end-h')];
     hSelects.forEach(sel => {
         if (sel && sel.options.length === 0) {
-            for (let i = 0; i <= 28; i++) {
-                const val = i.toString().padStart(2, '0');
-                const opt = new Date().getHours() === i ? `<option value="${val}" selected>${val}</option>` : `<option value="${val}">${val}</option>`;
+            const hourOrder = [];
+            for (let i = 16; i <= 28; i++) hourOrder.push(i.toString().padStart(2, '0'));
+            for (let i = 6; i <= 15; i++) hourOrder.push(i.toString().padStart(2, '0'));
+            
+            hourOrder.forEach(val => {
+                const opt = `<option value="${val}">${val}</option>`;
                 sel.innerHTML += opt;
-            }
+            });
         }
     });
 
