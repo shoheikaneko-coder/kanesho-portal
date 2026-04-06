@@ -711,34 +711,66 @@ async function loadDailyGoalData(sid) {
     dailyGoalSales = {};
     const ym = `${currentSlot.year}-${String(currentSlot.month).padStart(2, '0')}`;
     try {
-        const q = query(collection(db, "monthly_goals"), where("month", "==", ym));
-        const snap = await getDocs(q);
-        snap.forEach(d => {
-            const g = d.data();
-            if (g.store_id == sid) {
-                const lastD = new Date(currentSlot.year, currentSlot.month, 0).getDate();
-                const unit = (g.sales_target || 0) / 30;
-                for (let i = 0; i < 35; i++) {
-                    const t = new Date(currentSlot.startDate); t.setDate(t.getDate() + i);
-                    if (t > currentSlot.endDate) break;
-                    dailyGoalSales[formatDateJST(t)] = Math.round(unit);
-                }
-            }
-        });
-        
-        // 互換性チェック
         const gSnap = await getDoc(doc(db, "t_monthly_goals", `${ym}_${sid}`));
         if (gSnap.exists()) {
             const g = gSnap.data();
-            const unit = (g.sales_target || 0) / 30;
-            const lastD = new Date(currentSlot.year, currentSlot.month, 0).getDate();
-            for (let i = 0; i < 35; i++) {
+            const monthlyTarget = g.sales_target || 0;
+            const weights = g.weights || { mon_thu: 1.0, fri: 1.2, sat: 1.5, sun: 1.4, holiday: 1.5, day_before_holiday: 1.6 };
+
+            // その月の全日数を取得して総ポイントを計算
+            const daysInMonth = new Date(currentSlot.year, currentSlot.month, 0).getDate();
+            let totalMonthPoints = 0;
+            const pointsByDay = {}; // 1〜月末までの各日のポイントを一時保持
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                const date = new Date(currentSlot.year, currentSlot.month - 1, d);
+                const ymd = formatDateJST(date);
+                const cal = calendarData[ymd] || { type: 'work' };
+
+                // 店休日はポイント0
+                if (cal.type === 'off') {
+                    pointsByDay[ymd] = 0;
+                    continue;
+                }
+
+                const dow = date.getDay();
+                // 祝前日判定
+                const nextDate = new Date(currentSlot.year, currentSlot.month - 1, d + 1);
+                const nextYmd = formatDateJST(nextDate);
+                const nextCal = calendarData[nextYmd] || {};
+                const isDayBeforeH = nextCal.is_holiday || false;
+
+                const indices = [];
+                // 曜日の基本指数
+                if (dow >= 1 && dow <= 4) indices.push(weights.mon_thu);
+                else if (dow === 5) indices.push(weights.fri);
+                else if (dow === 6) indices.push(weights.sat);
+                else if (dow === 0) indices.push(weights.sun);
+
+                // 祝日・祝前日の加算/上書き判定（最高の数値を採用するロジック）
+                if (cal.is_holiday) indices.push(weights.holiday);
+                if (isDayBeforeH) indices.push(weights.day_before_holiday || 1.0);
+
+                const dayPoint = Math.max(...indices);
+                pointsByDay[ymd] = dayPoint;
+                totalMonthPoints += dayPoint;
+            }
+
+            // 1ポイントあたりの単価
+            const unitValue = totalMonthPoints > 0 ? (monthlyTarget / totalMonthPoints) : 0;
+            
+            // 表示期間（currentSlot）の範囲でdailyGoalSalesを確定
+            const span = Math.round((currentSlot.endDate - currentSlot.startDate) / (1000 * 60 * 60 * 24)) + 1;
+            for (let i = 0; i < span; i++) {
                 const t = new Date(currentSlot.startDate); t.setDate(t.getDate() + i);
-                if (t > currentSlot.endDate) break;
-                dailyGoalSales[formatDateJST(t)] = Math.round(unit);
+                const ymd = formatDateJST(t);
+                const dp = pointsByDay[ymd] || 0;
+                dailyGoalSales[ymd] = Math.round(unitValue * dp);
             }
         }
-    } catch (e) { console.error("Goals load error:", e); }
+    } catch (e) { 
+        console.error("Goals load error:", e); 
+    }
 }
 
 function renderAdminGrid() {
