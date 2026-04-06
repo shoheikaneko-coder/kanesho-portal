@@ -142,6 +142,19 @@ export const shiftSubmissionPageHtml = `
     </div>
 
     ${sharedModalHtml}
+
+    <!-- 固定シフト設定モーダル -->
+    <div id="fixed-shift-config-modal" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:10001; align-items:center; justify-content:center; backdrop-filter: blur(4px);">
+        <div class="glass-panel animate-scale-in" style="width:100%; max-width:600px; padding:0; overflow:hidden; display:flex; flex-direction:column; max-height:90vh;">
+            <div style="padding:1.5rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+                <h4 style="margin:0;"><i class="fas fa-calendar-alt"></i> 固定シフトの管理 (店舗スタッフ)</h4>
+                <button onclick="document.getElementById('fixed-shift-config-modal').style.display='none'" class="btn" style="padding:0.2rem 0.5rem;"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="fixed-shift-modal-body" style="padding:1.5rem; overflow-y:auto; flex:1; min-height:300px;">
+                <!-- ここにスタッフ一覧または個別設定フォームが書き込まれる -->
+            </div>
+        </div>
+    </div>
 `;
 
 export const shiftAdminPageHtml = `
@@ -174,10 +187,12 @@ export const shiftAdminPageHtml = `
                 <select id="admin-store-select" class="form-input" style="width: auto; min-width: 200px; margin: 0; padding: 0.4rem 0.8rem; font-weight: 700; height: 38px; display: none;">
                     <option value="">店舗を選択してください</option>
                 </select>
+                <button id="btn-manage-fixed-shift" class="btn btn-secondary btn-sm" style="font-size: 11px; white-space: nowrap; height: 32px;"><i class="fas fa-user-clock"></i> 固定シフト管理</button>
                 <span id="admin-active-store-label" style="font-weight: 700; color: var(--text-primary);"></span>
             </div>
             <div style="display: flex; gap: 0.8rem;">
                 <button id="btn-bulk-mode" class="btn btn-secondary" style="font-size:0.85rem; border: 1px solid var(--border);"><i class="fas fa-check-double"></i> 一括入力</button>
+                <button id="btn-apply-fixed-schedule" class="btn btn-secondary" style="font-size:0.85rem; border: 1px solid var(--secondary); color: var(--secondary); background: rgba(0,0,0,0);"><i class="fas fa-magic"></i> 固定反映</button>
                 <button id="btn-add-help-staff" class="btn btn-secondary" style="font-size:0.85rem;"><i class="fas fa-user-plus"></i> ヘルプ追加</button>
                 <button id="btn-publish-shifts" class="btn btn-primary" style="font-size:0.85rem; font-weight:800;">一括確定・公開</button>
             </div>
@@ -429,6 +444,26 @@ export async function initShiftAdminPage() {
     } else {
         const sid = user.StoreID || user.StoreId || 'UNKNOWN';
         await updateView(sid);
+    }
+
+    // --- 固定シフト設定ボタンのバインド ---
+    const fsBtn = document.getElementById('btn-manage-fixed-shift');
+    if (fsBtn) {
+        fsBtn.onclick = () => {
+            const modal = document.getElementById('fixed-shift-config-modal');
+            if (modal) {
+                renderFixedShiftStaffList();
+                modal.style.display = 'flex';
+            }
+        };
+    }
+    const applyBtn = document.getElementById('btn-apply-fixed-schedule');
+    if (applyBtn) {
+        applyBtn.onclick = () => {
+            showConfirm('定例シフトの反映', '設定済みの定例週間シフトを空欄の日付に一括反映します。よろしいですか？', async () => {
+                await applyFixedSchedules();
+            });
+        };
     }
 
     document.getElementById('btn-add-help-staff').onclick = openHelpStaffModal;
@@ -1233,4 +1268,210 @@ function setupSubmissionEvents() {
         await setDoc(doc(db, "m_shift_templates", currentTargetUser.id), { patterns });
         showAlert('成功', '保存しました');
     };
+}
+
+/**
+ * --- Fixed Shift Management ---
+ */
+
+function renderFixedShiftStaffList() {
+    const body = document.getElementById('fixed-shift-modal-body');
+    if (!body) return;
+    body.innerHTML = `
+        <div style="margin-bottom: 1.2rem; color: var(--text-secondary); font-size: 0.85rem; padding: 0.5rem; background: #f0f9ff; border-radius: 8px; border: 1px solid #bae6fd;">
+            <i class="fas fa-info-circle"></i> スタッフを選択して、曜日ごとの基本シフトパターン（出勤・休日・時間）を設定・管理できます。
+        </div>
+        <div class="glass-panel" style="padding: 0; border: 1px solid var(--border); max-height: 400px; overflow-y: auto;">
+            ${allStoreUsers.length === 0 ? '<div style="padding:2rem; text-align:center; color:var(--text-secondary);">スタッフが読み込まれていません</div>' : ''}
+            ${allStoreUsers.map(u => {
+                const fs = u.FixedSchedule || {};
+                const activeDays = Object.keys(fs).filter(k => fs[k].active);
+                const dayMap = { Mon:'月', Tue:'火', Wed:'水', Thu:'木', Fri:'金', Sat:'土', Sun:'日' };
+                const summary = activeDays.length > 0 ? activeDays.map(k => dayMap[k]).join(', ') : '未設定';
+                
+                return `
+                    <div class="fixed-shift-staff-item">
+                        <div style="text-align: left;">
+                            <div style="font-weight: 800; font-size: 1rem; color: var(--text-primary); text-align: left;">${u.DisplayName || u.Name}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.2rem; text-align: left;">
+                                <span class="badge" style="padding: 0.1rem 0.3rem; margin-right: 0.5rem;">${u.JobTitle || u.Role}</span>
+                                <span style="font-weight: 600;">出勤: ${summary}</span>
+                            </div>
+                        </div>
+                        <button onclick="window.editUserFixedShift('${u.id}')" class="btn btn-secondary btn-sm" style="font-weight: 700; border-radius: 8px; padding: 0.4rem 1rem;">
+                            設定 <i class="fas fa-chevron-right" style="font-size: 0.7rem; margin-left: 0.3rem;"></i>
+                        </button>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+        <div style="margin-top: 1.5rem; text-align: center;">
+            <button onclick="document.getElementById('fixed-shift-config-modal').style.display='none'" class="btn btn-secondary" style="width: 100%; font-weight: 700;">閉じる</button>
+        </div>
+    `;
+}
+
+window.editUserFixedShift = (uid) => {
+    const user = allStoreUsers.find(u => u.id === uid);
+    if (!user) return;
+
+    const fs = user.FixedSchedule || {};
+    const weekdays = [
+        { key: 'Mon', label: '月曜日' },
+        { key: 'Tue', label: '火曜日' },
+        { key: 'Wed', label: '水曜日' },
+        { key: 'Thu', label: '木曜日' },
+        { key: 'Fri', label: '金曜日' },
+        { key: 'Sat', label: '土曜日' },
+        { key: 'Sun', label: '日曜日' }
+    ];
+
+    const body = document.getElementById('fixed-shift-modal-body');
+    body.innerHTML = `
+        <div style="margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--primary); padding-bottom: 0.5rem;">
+            <h5 style="margin:0; font-size: 1.1rem; color: var(--primary); font-weight: 800;">
+                <i class="fas fa-user-edit"></i> ${user.Name} 様の定例シフト
+            </h5>
+            <button onclick="renderFixedShiftStaffList()" class="btn btn-secondary btn-sm" style="font-size: 0.75rem;">
+                <i class="fas fa-arrow-left"></i> 一覧に戻る
+            </button>
+        </div>
+        
+        <div style="background: #f8fafc; padding: 1rem; border-radius: 12px; border: 1px solid var(--border);">
+            <div style="display: grid; grid-template-columns: 80px 40px 1fr 80px; gap: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); font-size: 0.75rem; color: var(--text-secondary); font-weight: 700; text-align: center;">
+                <div>曜日</div><div>入</div><div>時間設定</div><div>休憩</div>
+            </div>
+            ${weekdays.map(wd => {
+                const config = fs[wd.key] || { active: false, start: '17:00', end: '23:00', breakMin: 0 };
+                const [sH, sM] = (config.start || '17:00').split(':');
+                const [eH, eM] = (config.end || '23:00').split(':');
+
+                return `
+                    <div class="weekday-row" id="row-${wd.key}">
+                        <div class="weekday-name">${wd.label}</div>
+                        <div style="text-align: center;"><input type="checkbox" class="weekday-active" ${config.active ? 'checked' : ''}></div>
+                        <div style="display:flex; align-items:center; justify-content: center; gap:4px;">
+                            <select class="form-input start-h" style="padding:2px; font-size:0.85rem; width: 45px;">${generateHOptions(sH)}</select>:
+                            <select class="form-input start-m" style="padding:2px; font-size:0.85rem; width: 45px;">${generateMOptions(sM)}</select>
+                            <span style="font-size: 0.7rem; font-weight: 800; color: #94a3b8;">〜</span>
+                            <select class="form-input end-h" style="padding:2px; font-size:0.85rem; width: 45px;">${generateHOptions(eH)}</select>:
+                            <select class="form-input end-m" style="padding:2px; font-size:0.85rem; width: 45px;">${generateMOptions(eM)}</select>
+                        </div>
+                        <div style="display:flex; align-items:center; justify-content: center; gap:2px;">
+                            <input type="number" class="form-input break-min" value="${config.breakMin || 0}" style="padding:2px; font-size:0.85rem; width:35px; min-height: unset; text-align: center;">分
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+        
+        <div style="margin-top: 2rem;">
+            <button onclick="window.saveUserFixedShift('${uid}')" id="btn-save-fixed-fs" class="btn btn-primary" style="width:100%; border-radius: 12px; padding: 1rem; font-weight: 800; font-size: 1rem; box-shadow: 0 4px 6px rgba(230, 57, 70, 0.2);">
+                <i class="fas fa-save" style="margin-right: 0.5rem;"></i> この定例シフトを保存する
+            </button>
+        </div>
+    `;
+};
+
+function generateHOptions(selected) {
+    let res = '';
+    const preferredOrder = [];
+    for (let i = 16; i <= 28; i++) preferredOrder.push(String(i).padStart(2, '0'));
+    for (let i = 6; i <= 15; i++) preferredOrder.push(String(i).padStart(2, '0'));
+    
+    preferredOrder.forEach(v => {
+        res += `<option value="${v}" ${v === String(selected).padStart(2, '0') ? 'selected' : ''}>${v}</option>`;
+    });
+    return res;
+}
+
+function generateMOptions(selected) {
+    return ['00', '15', '30', '45'].map(v => `<option value="${v}" ${v === String(selected).padStart(2, '0') ? 'selected' : ''}>${v}</option>`).join('');
+}
+
+window.saveUserFixedShift = async (uid) => {
+    const user = allStoreUsers.find(u => u.id === uid);
+    if (!user) return;
+
+    const btn = document.getElementById('btn-save-fixed-fs');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
+
+    const fs = {};
+    const keys = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    keys.forEach(key => {
+        const row = document.getElementById(`row-${key}`);
+        fs[key] = {
+            active: row.querySelector('.weekday-active').checked,
+            start: `${row.querySelector('.start-h').value}:${row.querySelector('.start-m').value}`,
+            end: `${row.querySelector('.end-h').value}:${row.querySelector('.end-m').value}`,
+            breakMin: parseInt(row.querySelector('.break-min').value) || 0
+        };
+    });
+
+    try {
+        await updateDoc(doc(db, "m_users", uid), { FixedSchedule: fs });
+        user.FixedSchedule = fs; 
+        showAlert('成功', `${user.Name} 様の定例シフト設定を更新しました。`);
+        renderFixedShiftStaffList();
+    } catch (e) {
+        console.error(e);
+        showAlert('エラー', 'データの保存に失敗しました。');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
+};
+
+async function applyFixedSchedules() {
+    const span = Math.round((currentSlot.endDate - currentSlot.startDate) / (1000 * 60 * 60 * 24)) + 1;
+    const batchOps = [];
+    let count = 0;
+
+    const loader = showLoader();
+    try {
+        for (let i = 0; i < span; i++) {
+            const d = new Date(currentSlot.startDate); d.setDate(d.getDate() + i);
+            const ymd = d.toISOString().split('T')[0];
+            const dayOfWeekMap = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const dayKey = dayOfWeekMap[d.getDay()];
+
+            allStoreUsers.forEach(u => {
+                // すでにシフトがある場合はスキップ
+                if (currentShifts[u.id]?.[ymd]) return;
+
+                const fs = u.FixedSchedule?.[dayKey];
+                if (fs && fs.active) {
+                    const sid = window.currentAdminStoreId;
+                    const sName = window.currentAdminStoreName;
+                    const shiftData = {
+                        userId: u.id, userName: u.Name, date: ymd,
+                        start: fs.start, end: fs.end, breakMin: fs.breakMin,
+                        status: 'confirmed',
+                        storeId: sid, storeName: sName,
+                        updatedAt: new Date().toISOString()
+                    };
+                    batchOps.push(setDoc(doc(db, "t_shifts", `${ymd}_${u.id}`), shiftData));
+                    if (!currentShifts[u.id]) currentShifts[u.id] = {};
+                    currentShifts[u.id][ymd] = shiftData;
+                    count++;
+                }
+            });
+        }
+
+        if (batchOps.length > 0) {
+            await Promise.all(batchOps);
+            renderAdminGrid();
+            updateOverallKPIs();
+            showAlert('成功', `${count}件の定例シフトを未入力枠に反映しました！`);
+        } else {
+            showAlert('完了', '反映が必要な（空欄の）定例枠は残っていませんでした。');
+        }
+    } catch (e) {
+        console.error(e);
+        showAlert('エラー', '定例シフトの一括反映に失敗しました。');
+    } finally {
+        if (loader) loader.remove();
+    }
 }

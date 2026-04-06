@@ -1221,6 +1221,30 @@ p { color: var(--text-secondary); line-height: 1.5; }
     margin-right: auto;
 }
 
+/* 固定シフト設定用 */
+.fixed-shift-staff-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem 1rem;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.2s;
+}
+.fixed-shift-staff-item:hover {
+    background: #f8fafc;
+}
+.weekday-row {
+    display: grid;
+    grid-template-columns: 80px 40px 1fr 60px;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px dotted var(--border);
+}
+.weekday-row:last-child { border-bottom: none; }
+.weekday-name { font-weight: 700; font-size: 0.9rem; }
+.weekday-active { width: 18px; height: 18px; cursor: pointer; }
+
 @keyframes flash {
     0% { outline-color: rgba(230, 57, 70, 0.4); opacity: 1; }
     50% { outline-color: rgba(230, 57, 70, 1); opacity: 0.8; }
