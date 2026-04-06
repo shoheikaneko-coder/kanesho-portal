@@ -47,6 +47,28 @@ function calculateSlot() {
 /**
  * --- HTML Templates ---
  */
+const sharedModalHtml = `
+    <!-- モーダル (共通) -->
+    <div id="shift-input-modal" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:10000; align-items:center; justify-content:center; backdrop-filter: blur(4px);">
+        <div class="glass-panel animate-scale-in" style="width:100%; max-width:400px; padding:2rem;">
+            <h4 id="modal-date-title" style="margin:0 0 1.5rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem;">時刻入力</h4>
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div><label class="field-label">開始</label><input type="time" id="modal-start" class="form-input"></div>
+                    <div><label class="field-label">終了</label><input type="time" id="modal-end" class="form-input"></div>
+                </div>
+                <div><label class="field-label">休憩(分)</label><input type="number" id="modal-break" class="form-input" value="0"></div>
+                <div><label class="field-label">備考</label><input type="text" id="modal-note" class="form-input"></div>
+                <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                    <button id="btn-modal-clear" class="btn btn-secondary" style="flex:1;">削除</button>
+                    <button id="btn-modal-save" class="btn btn-primary" style="flex:2;">保存</button>
+                </div>
+                <button onclick="document.getElementById('shift-input-modal').style.display='none'" class="btn" style="width:100%; font-size:0.8rem; margin-top:0.5rem;">キャンセル</button>
+            </div>
+        </div>
+    </div>
+`;
+
 export const shiftSubmissionPageHtml = `
     <div class="animate-fade-in" style="max-width: 1400px; margin: 0 auto; padding-bottom: 3rem;">
         <div class="glass-panel" style="padding: 1.5rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid var(--primary);">
@@ -77,25 +99,7 @@ export const shiftSubmissionPageHtml = `
         </div>
     </div>
 
-    <!-- モーダル (共通) -->
-    <div id="shift-input-modal" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:10000; align-items:center; justify-content:center; backdrop-filter: blur(4px);">
-        <div class="glass-panel animate-scale-in" style="width:100%; max-width:400px; padding:2rem;">
-            <h4 id="modal-date-title" style="margin:0 0 1.5rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem;">時刻入力</h4>
-            <div style="display: flex; flex-direction: column; gap: 1rem;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div><label class="field-label">開始</label><input type="time" id="modal-start" class="form-input"></div>
-                    <div><label class="field-label">終了</label><input type="time" id="modal-end" class="form-input"></div>
-                </div>
-                <div><label class="field-label">休憩(分)</label><input type="number" id="modal-break" class="form-input" value="0"></div>
-                <div><label class="field-label">備考</label><input type="text" id="modal-note" class="form-input"></div>
-                <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-                    <button id="btn-modal-clear" class="btn btn-secondary" style="flex:1;">削除</button>
-                    <button id="btn-modal-save" class="btn btn-primary" style="flex:2;">保存</button>
-                </div>
-                <button onclick="document.getElementById('shift-input-modal').style.display='none'" class="btn" style="width:100%; font-size:0.8rem; margin-top:0.5rem;">キャンセル</button>
-            </div>
-        </div>
-    </div>
+    ${sharedModalHtml}
 `;
 
 export const shiftAdminPageHtml = `
@@ -159,6 +163,8 @@ export const shiftAdminPageHtml = `
             </div>
         </div>
     </div>
+
+    ${sharedModalHtml}
 `;
 
 /**
