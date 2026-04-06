@@ -223,6 +223,7 @@ let isBulkMode = false;
 let selectedCells = []; // [{uid, date}]
 let dailyGoalSales = {};
 let adminMode = false;
+let calendarData = {}; // { YYYY-MM-DD: { type, is_holiday, label } }
 
 const injectStyles = () => {
     if (document.getElementById('shift-styles')) return;
@@ -247,6 +248,55 @@ const injectStyles = () => {
 /**
  * --- Initialization ---
  */
+async function fetchCalendarData(sid) {
+    if (!sid) return;
+    calendarData = {};
+    const startDate = currentSlot.startDate;
+    const endDate = currentSlot.endDate;
+    
+    // 表示期間に含まれる年月を抽出
+    const months = [];
+    let curr = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+    while (curr <= endDate) {
+        months.push(`${curr.getFullYear()}-${String(curr.getMonth() + 1).padStart(2, '0')}`);
+        curr.setMonth(curr.getMonth() + 1);
+    }
+
+    try {
+        for (const ym of months) {
+            // 共通設定
+            const commonSnap = await getDoc(doc(db, "m_calendars", `${ym}_common`));
+            if (commonSnap.exists()) {
+                const data = commonSnap.data();
+                data.days?.forEach(d => {
+                    const ymd = `${ym}-${String(d.day).padStart(2, '0')}`;
+                    calendarData[ymd] = {
+                        type: d.type || 'work',
+                        is_holiday: d.is_holiday || false,
+                        label: d.label || ""
+                    };
+                });
+            }
+            // 店舗個別設定 (店休日で上書き)
+            const storeSnap = await getDoc(doc(db, "m_calendars", `${ym}_${sid}`));
+            if (storeSnap.exists()) {
+                const data = storeSnap.data();
+                data.days?.forEach(d => {
+                    const ymd = `${ym}-${String(d.day).padStart(2, '0')}`;
+                    if (!calendarData[ymd]) {
+                        calendarData[ymd] = { type: d.type, is_holiday: false, label: "" };
+                    } else {
+                        calendarData[ymd].type = d.type;
+                        if (d.label) calendarData[ymd].label = d.label;
+                    }
+                });
+            }
+        }
+    } catch (e) {
+        console.error("Calendar fetch error:", e);
+    }
+}
+
 export async function initShiftSubmissionPage() {
     console.log("Initializing Shift Submission Page...");
     injectStyles();
@@ -260,6 +310,7 @@ export async function initShiftSubmissionPage() {
     document.getElementById('shift-deadline-info').textContent = `提出締切: ${currentSlot.deadLine}`;
     
     const sid = user.StoreID || user.StoreId || 'UNKNOWN';
+    await fetchCalendarData(sid);
     await loadShiftMemoForStaff(sid);
     await renderSubmissionGrid();
     setupSubmissionEvents();
@@ -365,10 +416,14 @@ export async function initShiftAdminPage() {
             const mySid = user.StoreID || user.StoreId;
             if (mySid) {
                 storeSelect.value = mySid;
+                await fetchCalendarData(mySid);
                 await updateView(mySid);
             }
-            storeSelect.onchange = (e) => {
-                if (e.target.value) updateView(e.target.value);
+            storeSelect.onchange = async (e) => {
+                if (e.target.value) {
+                    await fetchCalendarData(e.target.value);
+                    updateView(e.target.value);
+                }
             };
         }
     } else {
@@ -635,7 +690,15 @@ function renderAdminGrid() {
         for (let i = 0; i < span; i++) {
             const d = new Date(currentSlot.startDate); d.setDate(d.getDate() + i);
             const ymd = d.toISOString().split('T')[0];
-            header.innerHTML += `<th class="date-hdr" onclick="window.showHourlyGraph('${ymd}')">${d.getDate()}<br>${['日','月','火','水','木','金','土'][d.getDay()]}</th>`;
+            const cal = calendarData[ymd] || {};
+            const isHoliday = cal.is_holiday;
+            const isOff = cal.type === 'off';
+            
+            header.innerHTML += `
+                <th class="date-hdr ${isHoliday ? 'is-holiday' : ''} ${isOff ? 'is-off' : ''}" onclick="window.showHourlyGraph('${ymd}')">
+                    ${d.getDate()}<br>${['日','月','火','水','木','金','土'][d.getDay()]}
+                    ${isHoliday ? `<div class="holiday-name">${cal.label || '祝日'}</div>` : ''}
+                </th>`;
         }
 
         body.innerHTML = '';
@@ -670,7 +733,9 @@ function renderAdminGrid() {
             for (let i = 0; i < span; i++) {
                 const d = new Date(currentSlot.startDate); d.setDate(d.getDate() + i);
                 const ymd = d.toISOString().split('T')[0];
-                tr.innerHTML += `<td class="shift-cell" id="cell-${u.id}-${ymd}" onclick="window.openTimeInput('${ymd}', '${u.id}')"></td>`;
+                const cal = calendarData[ymd] || {};
+                const isOff = cal.type === 'off';
+                tr.innerHTML += `<td class="shift-cell ${isOff ? 'is-off' : ''}" id="cell-${u.id}-${ymd}" onclick="window.openTimeInput('${ymd}', '${u.id}')"></td>`;
             }
             body.appendChild(tr);
             for(let i=0; i<span; i++){
@@ -690,7 +755,16 @@ async function renderSubmissionGrid() {
     header.innerHTML = '<th class="staff-cell">スタッフ</th>';
     for (let i = 0; i < span; i++) {
         const d = new Date(currentSlot.startDate); d.setDate(d.getDate() + i);
-        header.innerHTML += `<th class="date-hdr">${d.getDate()}<br>${['日','月','火','水','木','金','土'][d.getDay()]}</th>`;
+        const ymd = d.toISOString().split('T')[0];
+        const cal = calendarData[ymd] || {};
+        const isHoliday = cal.is_holiday;
+        const isOff = cal.type === 'off';
+
+        header.innerHTML += `
+            <th class="date-hdr ${isHoliday ? 'is-holiday' : ''} ${isOff ? 'is-off' : ''}">
+                ${d.getDate()}<br>${['日','月','火','水','木','金','土'][d.getDay()]}
+                ${isHoliday ? `<div class="holiday-name">${cal.label || '祝日'}</div>` : ''}
+            </th>`;
     }
 
     const roleMap = { 'Manager': '店長', 'Admin': '管理者', 'Staff': '一般社員', 'PartTimer': 'アルバイト' };
@@ -705,7 +779,9 @@ async function renderSubmissionGrid() {
     </td>${Array.from({length: span}).map((_, i) => {
         const d = new Date(currentSlot.startDate); d.setDate(d.getDate() + i);
         const ymd = d.toISOString().split('T')[0];
-        return `<td class="shift-cell" id="cell-${currentTargetUser.id}-${ymd}" onclick="window.openTimeInput('${ymd}', '${currentTargetUser.id}')"></td>`;
+        const cal = calendarData[ymd] || {};
+        const isOff = cal.type === 'off';
+        return `<td class="shift-cell ${isOff ? 'is-off' : ''}" id="cell-${currentTargetUser.id}-${ymd}" onclick="window.openTimeInput('${ymd}', '${currentTargetUser.id}')"></td>`;
     }).join('')}</tr>`;
 }
 
