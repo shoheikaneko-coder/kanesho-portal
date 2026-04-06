@@ -123,19 +123,23 @@ const sharedModalHtml = `
 `;
 
 window.closeSideDrawer = () => {
-    document.getElementById('fixed-shift-drawer').classList.remove('show');
-    document.getElementById('drawer-overlay').classList.remove('show');
+    const drawer = document.getElementById('fixed-shift-drawer');
+    const overlay = document.getElementById('drawer-overlay');
+    if(drawer) drawer.classList.remove('show');
+    if(overlay) overlay.classList.remove('show');
     setTimeout(() => {
-        document.getElementById('drawer-overlay').style.display = 'none';
+        if(overlay) overlay.style.display = 'none';
     }, 300);
 };
 
 window.openSideDrawer = () => {
     const overlay = document.getElementById('drawer-overlay');
+    const drawer = document.getElementById('fixed-shift-drawer');
+    if(!overlay || !drawer) return;
     overlay.style.display = 'block';
     setTimeout(() => {
         overlay.classList.add('show');
-        document.getElementById('fixed-shift-drawer').classList.add('show');
+        drawer.classList.add('show');
     }, 10);
 };
 
@@ -398,6 +402,24 @@ export async function initShiftAdminPage() {
     currentTargetUser = user;
     calculateSlot();
 
+    // --- [最優先] 固定シフト関連ボタンのバインド ---
+    // データの読み込み待ち(await)によるボタンの不感化を防ぐため、最初に行います。
+    const btnManageFS = document.getElementById('btn-manage-fixed-shift');
+    if (btnManageFS) {
+        btnManageFS.onclick = () => {
+            if(window.renderFixedShiftStaffList) window.renderFixedShiftStaffList();
+            if(window.openSideDrawer) window.openSideDrawer();
+        };
+    }
+    const applyBtn = document.getElementById('btn-apply-fixed-schedule');
+    if (applyBtn) {
+        applyBtn.onclick = () => {
+            showConfirm('定例シフトの反映', '設定済みの定例週間シフトを空欄の日付に一括反映します。よろしいですか？', async () => {
+                await applyFixedSchedules();
+            });
+        };
+    }
+
     const isAdmin = user.Role === 'Admin' || user.Role === '管理者';
     const storeSelect = document.getElementById('admin-store-select');
     const storeLabel = document.getElementById('admin-active-store-label');
@@ -460,23 +482,6 @@ export async function initShiftAdminPage() {
     } else {
         const sid = user.StoreID || user.StoreId || 'UNKNOWN';
         await updateView(sid);
-    }
-
-    // 固定シフト関連ボタンのバインド
-    const btnManageFS = document.getElementById('btn-manage-fixed-shift');
-    if (btnManageFS) {
-        btnManageFS.onclick = () => {
-            renderFixedShiftStaffList();
-            openSideDrawer();
-        };
-    }
-    const applyBtn = document.getElementById('btn-apply-fixed-schedule');
-    if (applyBtn) {
-        applyBtn.onclick = () => {
-            showConfirm('定例シフトの反映', '設定済みの定例週間シフトを空欄の日付に一括反映します。よろしいですか？', async () => {
-                await applyFixedSchedules();
-            });
-        };
     }
 
     document.getElementById('btn-add-help-staff').onclick = openHelpStaffModal;
@@ -1287,7 +1292,7 @@ function setupSubmissionEvents() {
  * --- Fixed Shift Management (Drawer Version) ---
  */
 
-function renderFixedShiftStaffList() {
+window.renderFixedShiftStaffList = function() {
     const body = document.getElementById('fixed-shift-drawer-body');
     if (!body) return;
     body.innerHTML = `
@@ -1341,7 +1346,7 @@ window.editUserFixedShift = (uid) => {
                 <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight:700;">STAFF SETTING</div>
                 <h5 style="margin:0; font-size: 1.25rem; color: var(--text-primary); font-weight: 900;">${user.Name} 様</h5>
             </div>
-            <button onclick="renderFixedShiftStaffList()" class="btn btn-secondary btn-sm" style="border-radius:20px; padding:0.4rem 1rem;">
+            <button onclick="window.renderFixedShiftStaffList()" class="btn btn-secondary btn-sm" style="border-radius:20px; padding:0.4rem 1rem;">
                 <i class="fas fa-arrow-left"></i> 戻る
             </button>
         </div>
