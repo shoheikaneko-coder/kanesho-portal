@@ -108,6 +108,19 @@ const sharedModalHtml = `
             </div>
         </div>
     </div>
+
+    <!-- 固定シフト設定モーダル -->
+    <div id="fixed-shift-config-modal" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:10001; align-items:center; justify-content:center; backdrop-filter: blur(4px);">
+        <div class="glass-panel animate-scale-in" style="width:100%; max-width:600px; padding:0; overflow:hidden; display:flex; flex-direction:column; max-height:90vh;">
+            <div style="padding:1.5rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+                <h4 style="margin:0;"><i class="fas fa-calendar-alt"></i> 固定シフトの管理 (店舗スタッフ)</h4>
+                <button onclick="document.getElementById('fixed-shift-config-modal').style.display='none'" class="btn" style="padding:0.2rem 0.5rem;"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="fixed-shift-modal-body" style="padding:1.5rem; overflow-y:auto; flex:1; min-height:300px;">
+                <!-- ここにスタッフ一覧または個別設定フォームが書き込まれる -->
+            </div>
+        </div>
+    </div>
 `;
 
 export const shiftSubmissionPageHtml = `
@@ -142,19 +155,6 @@ export const shiftSubmissionPageHtml = `
     </div>
 
     ${sharedModalHtml}
-
-    <!-- 固定シフト設定モーダル -->
-    <div id="fixed-shift-config-modal" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:10001; align-items:center; justify-content:center; backdrop-filter: blur(4px);">
-        <div class="glass-panel animate-scale-in" style="width:100%; max-width:600px; padding:0; overflow:hidden; display:flex; flex-direction:column; max-height:90vh;">
-            <div style="padding:1.5rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
-                <h4 style="margin:0;"><i class="fas fa-calendar-alt"></i> 固定シフトの管理 (店舗スタッフ)</h4>
-                <button onclick="document.getElementById('fixed-shift-config-modal').style.display='none'" class="btn" style="padding:0.2rem 0.5rem;"><i class="fas fa-times"></i></button>
-            </div>
-            <div id="fixed-shift-modal-body" style="padding:1.5rem; overflow-y:auto; flex:1; min-height:300px;">
-                <!-- ここにスタッフ一覧または個別設定フォームが書き込まれる -->
-            </div>
-        </div>
-    </div>
 `;
 
 export const shiftAdminPageHtml = `
@@ -187,14 +187,14 @@ export const shiftAdminPageHtml = `
                 <select id="admin-store-select" class="form-input" style="width: auto; min-width: 200px; margin: 0; padding: 0.4rem 0.8rem; font-weight: 700; height: 38px; display: none;">
                     <option value="">店舗を選択してください</option>
                 </select>
-                <button id="btn-manage-fixed-shift" class="btn btn-secondary btn-sm" style="font-size: 11px; white-space: nowrap; height: 32px;"><i class="fas fa-user-clock"></i> 固定シフト管理</button>
                 <span id="admin-active-store-label" style="font-weight: 700; color: var(--text-primary);"></span>
             </div>
-            <div style="display: flex; gap: 0.8rem;">
+            <div style="display: flex; gap: 0.8rem; justify-content: flex-end; flex: 1;">
+                <button id="btn-manage-fixed-shift" class="btn btn-secondary" style="font-size:0.85rem; border: 1px solid var(--border);"><i class="fas fa-user-clock"></i> 固定設定</button>
                 <button id="btn-bulk-mode" class="btn btn-secondary" style="font-size:0.85rem; border: 1px solid var(--border);"><i class="fas fa-check-double"></i> 一括入力</button>
                 <button id="btn-apply-fixed-schedule" class="btn btn-secondary" style="font-size:0.85rem; border: 1px solid var(--secondary); color: var(--secondary); background: rgba(0,0,0,0);"><i class="fas fa-magic"></i> 固定反映</button>
                 <button id="btn-add-help-staff" class="btn btn-secondary" style="font-size:0.85rem;"><i class="fas fa-user-plus"></i> ヘルプ追加</button>
-                <button id="btn-publish-shifts" class="btn btn-primary" style="font-size:0.85rem; font-weight:800;">一括確定・公開</button>
+                <button id="btn-publish-shifts" class="btn btn-primary" style="font-size:0.85rem; font-weight:800; padding: 0.6rem 1.2rem;">一括確定・公開</button>
             </div>
         </div>
 
