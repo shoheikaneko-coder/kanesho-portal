@@ -145,6 +145,16 @@ function renderFormView(container) {
                         </div>
                     </div>
 
+                    <div class="glass-panel" style="padding: 1rem 1.5rem; background: #fffcf0; border: 1px solid #fde68a; display: flex; align-items: center; gap: 1rem;">
+                        <div style="flex: 1;">
+                            <label style="font-weight: 800; color: #92400e; display: block; margin-bottom: 0.2rem;">週28時間制限 (留学生など)</label>
+                            <p style="font-size: 0.75rem; color: #b45309; margin: 0;">チェックを入れるとシフト管理画面で28h超過アラートが有効になります</p>
+                        </div>
+                        <div class="switch-container">
+                            <input type="checkbox" id="user-28h-limit" style="width: 20px; height: 20px; cursor: pointer;">
+                        </div>
+                    </div>
+
                     <div class="input-group">
                         <label style="font-weight: 700; color: #475569;">メールアドレス (ログイン用ID)</label>
                         <input type="email" id="user-email" placeholder="example@kaneshow.jp">
@@ -202,6 +212,7 @@ function renderFormView(container) {
             document.getElementById('user-email').value = editingUserData.Email || '';
             document.getElementById('user-role').value = editingUserData.Role || 'Staff';
             document.getElementById('user-store-select').value = editingUserData.StoreID || '';
+            document.getElementById('user-28h-limit').checked = !!editingUserData.Has28hLimit;
         }
     });
 
@@ -232,6 +243,7 @@ function setupFormLogic() {
             'Role': document.getElementById('user-role').value,
             'Store': selectedOpt ? selectedOpt.text : '',
             'StoreID': storeSelect.value || '', // StoreID is now primary
+            'Has28hLimit': document.getElementById('user-28h-limit').checked,
             'UpdatedAt': new Date().toISOString()
         };
 

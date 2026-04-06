@@ -24,7 +24,7 @@ import { notificationsPageHtml, initNotificationsPage } from './notifications.js
 import { calendarAdminPageHtml, initCalendarAdminPage, calendarViewerPageHtml, initCalendarViewerPage } from './calendar.js?v=2';
 import { goalsAdminPageHtml, initGoalsAdminPage, goalsStorePageHtml, initGoalsStorePage } from './goals.js';
 import { homePageHtml, initHomePage } from './home.js';
-import { shiftSubmissionPageHtml, initShiftSubmissionPage } from './shift.js';
+import { shiftSubmissionPageHtml, initShiftSubmissionPage, shiftAdminPageHtml, initShiftAdminPage } from './shift.js?v=55';
 import { getDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 console.log("AntiGravity Portal: app.js loaded successfully.");
@@ -381,8 +381,8 @@ function showPage(target) {
                 break;
             case 'shift_admin':
                 pageTitle.textContent = 'シフト作成・調整 (コックピット)';
-                pageContent.innerHTML = '<div style="padding:2rem;">シフト作成画面はPhase 2にて実装予定です。</div>';
-                // initShiftAdminPage();
+                pageContent.innerHTML = shiftAdminPageHtml;
+                initShiftAdminPage();
                 break;
         }
     } catch (err) {

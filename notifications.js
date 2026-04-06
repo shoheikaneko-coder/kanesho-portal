@@ -20,16 +20,16 @@ export const notificationsPageHtml = `
                 </div>
             </div>
 
-            <div class="notification-category-card info-card disabled">
+            <div class="notification-category-card info-card" id="cat-shift-published">
                 <div class="category-icon">
-                    <i class="fas fa-user-tie"></i>
+                    <i class="fas fa-calendar-alt"></i>
                 </div>
                 <div class="category-info">
-                    <h3>人事通達</h3>
-                    <p>（将来の拡張：スタッフへの連絡事項など）</p>
+                    <h3>シフト公開</h3>
+                    <p>店長によって確定・公開された最新のシフト情報です</p>
                     <div class="category-status">
-                        <span class="count-badge gray">0件</span>
-                        <i class="fas fa-lock" style="font-size: 0.8rem;"></i>
+                        <span class="count-badge" id="count-shift-published" style="background:var(--secondary);">0件</span>
+                        <i class="fas fa-arrow-right"></i>
                     </div>
                 </div>
             </div>
@@ -177,15 +177,27 @@ let unsubscribeNotifs = null;
 
 export function initNotificationsPage() {
     const catRecipe = document.getElementById('cat-recipe-missing');
+    const catShift = document.getElementById('cat-shift-published');
     const btnBack = document.getElementById('btn-notif-back');
     const panelCategories = document.getElementById('notifications-categories');
     const panelDetail = document.getElementById('notifications-detail');
+    const user = JSON.parse(localStorage.getItem('currentUser'));
 
     if (catRecipe) {
         catRecipe.onclick = () => {
             panelCategories.style.display = 'none';
             panelDetail.style.display = 'block';
-            loadMissingRecipeDetails();
+            document.getElementById('detail-title').textContent = 'レシピ未登録リスト';
+            loadDetails('recipe_missing');
+        };
+    }
+
+    if (catShift) {
+        catShift.onclick = () => {
+            panelCategories.style.display = 'none';
+            panelDetail.style.display = 'block';
+            document.getElementById('detail-title').textContent = 'シフト公開通知';
+            loadDetails('shift_published');
         };
     }
 
@@ -203,24 +215,38 @@ export function initNotificationsPage() {
     const q = query(collection(db, "notifications"), where("status", "==", "pending"));
     unsubscribeNotifs = onSnapshot(q, (snapshot) => {
         const notifs = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
-        const recipeMissingCount = notifs.filter(n => n.type === 'recipe_missing').length;
         
-        const countEl = document.getElementById('count-recipe-missing');
-        if (countEl) countEl.textContent = `${recipeMissingCount}件`;
+        // 店舗フィルタリング (ユーザーが管理者の場合は全件、スタッフなら自店舗のみ)
+        const mySid = user?.StoreID || user?.StoreId;
+        const visibleNotifs = notifs.filter(n => {
+            if (!mySid || user.Role === 'Admin' || user.Role === '管理者') return true;
+            return n.store_id == mySid;
+        });
+
+        const recipeMissingCount = visibleNotifs.filter(n => n.type === 'recipe_missing').length;
+        const shiftPublishedCount = visibleNotifs.filter(n => n.type === 'shift_published').length;
+        
+        const rEl = document.getElementById('count-recipe-missing');
+        if (rEl) rEl.textContent = `${recipeMissingCount}件`;
+        
+        const sEl = document.getElementById('count-shift-published');
+        if (sEl) sEl.textContent = `${shiftPublishedCount}件`;
         
         // 詳細ビューが開いている場合はリストも更新
+        window.__currentVisibleNotifs = visibleNotifs; // キャッシュ
         if (panelDetail.style.display === 'block') {
-            renderNotifDetails(notifs.filter(n => n.type === 'recipe_missing'));
+            const currentTitle = document.getElementById('detail-title').textContent;
+            const type = currentTitle.includes('レシピ') ? 'recipe_missing' : 'shift_published';
+            renderNotifDetails(visibleNotifs.filter(n => n.type === type));
         }
     });
 }
 
-async function loadMissingRecipeDetails() {
+async function loadDetails(type) {
     const listBody = document.getElementById('notif-list-body');
-    if (listBody) {
-        listBody.innerHTML = '<div style="padding: 3rem; text-align: center; color: #94a3b8;"><i class="fas fa-spinner fa-spin"></i> 読み込み中...</div>';
+    if (listBody && window.__currentVisibleNotifs) {
+        renderNotifDetails(window.__currentVisibleNotifs.filter(n => n.type === type));
     }
-    // Snapshot が自動的に renderNotifDetails を呼ぶので、ここでは明示的に呼ばなくても良いが、初期化用。
 }
 
 function renderNotifDetails(items) {
@@ -235,22 +261,32 @@ function renderNotifDetails(items) {
     // 日付順
     items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-    listBody.innerHTML = items.map(item => `
-        <div class="notif-item">
-            <div class="notif-main-info">
-                <div class="notif-menu-name">${item.menu_name || '名称不明'}</div>
-                <div class="notif-meta">
-                    <span><i class="fas fa-store"></i> ${item.store_name || '店舗情報なし'}</span>
-                    <span><i class="fas fa-calendar"></i> ${new Date(item.created_at).toLocaleDateString()}</span>
+    listBody.innerHTML = items.map(item => {
+        const isShift = item.type === 'shift_published';
+        return `
+            <div class="notif-item">
+                <div class="notif-main-info">
+                    <div class="notif-menu-name">${isShift ? item.title : (item.menu_name || '名称不明')}</div>
+                    <div class="notif-meta">
+                        <span><i class="fas fa-store"></i> ${item.store_name || '店舗情報なし'}</span>
+                        <span><i class="fas fa-calendar"></i> ${new Date(item.created_at).toLocaleDateString()}</span>
+                        ${isShift ? `<span><i class="fas fa-bullhorn"></i> ${item.message}</span>` : ''}
+                    </div>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    ${isShift ? `
+                        <button class="btn btn-register-notif" style="background:var(--secondary);" onclick="window.navigateTo('shift')">
+                            <i class="fas fa-eye"></i> シフトを確認
+                        </button>
+                    ` : `
+                        <button class="btn btn-register-notif" onclick="goToMenuRecipe('${item.menu_id}')">
+                            <i class="fas fa-edit"></i> レシピを登録
+                        </button>
+                    `}
                 </div>
             </div>
-            <div style="display: flex; gap: 0.5rem;">
-                <button class="btn btn-register-notif" onclick="goToMenuRecipe('${item.menu_id}')">
-                    <i class="fas fa-edit"></i> レシピを登録
-                </button>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 // グローバルに公開（HTML文字列内のonclickから呼ぶ用）

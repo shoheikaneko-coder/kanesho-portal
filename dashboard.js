@@ -2,7 +2,22 @@ import { db } from './firebase.js';
 import { collection, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 export const dashboardPageHtml = `
-    <div class="animate-fade-in" id="dashboard-root">
+        <!-- パーソナライズ・クイック情報 -->
+        <div id="dash-personal-section" style="margin-bottom: 1.5rem; display: none;">
+            <div class="glass-panel" style="padding: 1.2rem 1.5rem; border-left: 5px solid var(--secondary); display: flex; justify-content: space-between; align-items: center; background: linear-gradient(to right, #ffffff, #f0fdf4);">
+                <div style="display: flex; align-items: center; gap: 1.2rem;">
+                    <div style="width: 50px; height: 50px; background: var(--secondary); color: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700;" id="personal-info-label">次回の出勤予定</div>
+                        <div style="font-size: 1.3rem; font-weight: 900; color: var(--text-primary);" id="personal-info-value">読み込み中...</div>
+                    </div>
+                </div>
+                <button class="btn btn-secondary" onclick="window.navigateTo('shift')" style="font-size: 0.85rem; font-weight: 800;">詳細を確認</button>
+            </div>
+        </div>
+
         <!-- フィルターバー -->
         <div class="glass-panel" style="padding: 1.2rem 1.5rem; margin-bottom: 1.5rem;">
             <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
@@ -172,7 +187,73 @@ export async function initDashboardPage() {
 
     await loadFilterOptions();
     await refreshDashboard();
+    await loadPersonalDashboard(); // 追加
     document.getElementById('dash-apply-btn').onclick = refreshDashboard;
+}
+
+async function loadPersonalDashboard() {
+    const section = document.getElementById('dash-personal-section');
+    const label = document.getElementById('personal-info-label');
+    const value = document.getElementById('personal-info-value');
+    const user = JSON.parse(localStorage.getItem('currentUser'));
+    if (!user || !section) return;
+
+    section.style.display = 'block';
+    const isAdmin = user.Role === 'Admin' || user.Role === '管理者';
+
+    try {
+        if (isAdmin) {
+            label.textContent = "本日の店舗状況";
+            const today = new Date().toISOString().split('T')[0];
+            const sid = user.StoreID || user.StoreId;
+            // 本日のシフト人数をカウント
+            const { collection, query, where, getDocs } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+            let q = query(collection(db, "t_shifts"), where("date", "==", today), where("status", "==", "confirmed"));
+            const snap = await getDocs(q);
+            let count = 0;
+            snap.forEach(d => {
+                if (!sid || d.data().storeId == sid) count++;
+            });
+            value.textContent = `本日(${today}) は ${count} 名が出勤予定です`;
+        } else {
+            label.textContent = "次回の出勤予定";
+            const today = new Date().toISOString().split('T')[0];
+            const nextMonth = new Date();
+            nextMonth.setDate(nextMonth.getDate() + 35);
+            const eDate = nextMonth.toISOString().split('T')[0];
+
+            const { collection, query, where, getDocs } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+            // インデックス不要の検索 (日付範囲のみで取得)
+            const q = query(
+                collection(db, "t_shifts"), 
+                where("date", ">=", today), 
+                where("date", "<=", eDate)
+            );
+            const snap = await getDocs(q);
+            
+            let matchedShifts = [];
+            snap.forEach(d => {
+                const s = d.data();
+                if (s.userId === user.id && s.status === 'confirmed') {
+                    matchedShifts.push(s);
+                }
+            });
+
+            if (matchedShifts.length > 0) {
+                // 日付順にソートして一番近いものを取得
+                matchedShifts.sort((a,b) => a.date.localeCompare(b.date));
+                const s = matchedShifts[0];
+                const d = new Date(s.date);
+                const dow = ['日','月','火','水','木','金','土'][d.getDay()];
+                value.textContent = `${s.date}(${dow})  ${s.start} 〜 ${s.end}`;
+            } else {
+                value.textContent = "確定済みの出勤予定はありません";
+            }
+        }
+    } catch (e) {
+        console.error("Personal dashboard load error:", e);
+        value.textContent = "情報の取得に失敗しました";
+    }
 }
 
 async function loadFilterOptions() {
