@@ -473,13 +473,14 @@ function renderAdminGrid() {
         list.forEach(u => {
             const tr = document.createElement('tr');
             const roleName = roleMap[u.Role] || u.Role || '';
+            const displayRole = u.JobTitle || roleName;
             tr.innerHTML = `<td class="staff-cell">
                 <div style="display:flex; flex-direction:column; justify-content:center; text-align:left; line-height:1.2;">
                     <div style="display:flex; align-items:center; gap:0.3rem;">
                         ${u.isHelp ? '<span class="badge" style="background:#f5f3ff; color:#7c3aed; font-size:0.55rem; padding:0.1rem 0.2rem;">ヘルプ</span>' : ''}
                         <span style="font-weight:700;">${u.DisplayName || u.Name}</span>
                     </div>
-                    ${roleName ? `<div style="font-size:0.6rem; color:var(--text-secondary); font-weight:500; margin-top:0.1rem;">${roleName}</div>` : ''}
+                    ${displayRole ? `<div style="font-size:0.6rem; color:var(--text-secondary); font-weight:500; margin-top:0.1rem;">${displayRole}</div>` : ''}
                 </div>
             </td>`;
             for (let i = 0; i < span; i++) {
@@ -510,11 +511,12 @@ async function renderSubmissionGrid() {
 
     const roleMap = { 'Manager': '店長', 'Admin': '管理者', 'Staff': '一般社員', 'PartTimer': 'アルバイト' };
     const roleName = roleMap[currentTargetUser.Role] || currentTargetUser.Role || '';
+    const displayRole = currentTargetUser.JobTitle || roleName;
 
     body.innerHTML = `<tr><td class="staff-cell">
         <div style="display:flex; flex-direction:column; justify-content:center; text-align:left; line-height:1.2;">
             <span style="font-weight:700;">${currentTargetUser.DisplayName || currentTargetUser.Name}</span>
-            ${roleName ? `<div style="font-size:0.6rem; color:var(--text-secondary); font-weight:500; margin-top:0.1rem;">${roleName}</div>` : ''}
+            ${displayRole ? `<div style="font-size:0.6rem; color:var(--text-secondary); font-weight:500; margin-top:0.1rem;">${displayRole}</div>` : ''}
         </div>
     </td>${Array.from({length: span}).map((_, i) => {
         const d = new Date(currentSlot.startDate); d.setDate(d.getDate() + i);

@@ -131,7 +131,7 @@ function renderFormView(container) {
                         </div>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem;">
                         <div class="input-group">
                             <label style="font-weight: 700; color: #475569;">所属店舗</label>
                             <select id="user-store-select" required style="background: white; font-weight: 600;">
@@ -147,6 +147,11 @@ function renderFormView(container) {
                                 <option value="Manager">店長</option>
                                 <option value="Admin">管理者</option>
                             </select>
+                        </div>
+                        <div class="input-group">
+                            <label style="font-weight: 700; color: #475569;">表示役職 (自由入力)</label>
+                            <input type="text" id="user-job-title" placeholder="例: 副店長, バイトリーダー" style="background: #f0fdf4; border: 1px solid #bbf7d0;">
+                            <p style="font-size: 0.7rem; color: #166534; margin-top: 0.2rem;">※シフト表に表示されます（空欄なら権限名を表示）</p>
                         </div>
                     </div>
 
@@ -219,6 +224,7 @@ function renderFormView(container) {
             document.getElementById('user-store-select').value = editingUserData.StoreID || '';
             document.getElementById('user-28h-limit').checked = !!editingUserData.Has28hLimit;
             document.getElementById('user-display-name').value = editingUserData.DisplayName || '';
+            document.getElementById('user-job-title').value = editingUserData.JobTitle || '';
         }
     });
 
@@ -251,6 +257,7 @@ function setupFormLogic() {
             'StoreID': storeSelect.value || '', // StoreID is now primary
             'Has28hLimit': document.getElementById('user-28h-limit').checked,
             'DisplayName': document.getElementById('user-display-name').value,
+            'JobTitle': document.getElementById('user-job-title').value,
             'UpdatedAt': new Date().toISOString()
         };
 
