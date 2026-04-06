@@ -93,7 +93,7 @@ const sharedModalHtml = `
 `;
 
 export const shiftSubmissionPageHtml = `
-    <div class="animate-fade-in" style="max-width: 1400px; margin: 0 auto; padding-bottom: 3rem;">
+    <div class="animate-fade-in" id="shift-submission-container" style="max-width: 1400px; margin: 0 auto; padding-bottom: 3rem;">
         <div class="glass-panel" style="padding: 1.5rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid var(--primary);">
             <div>
                 <h2 style="margin:0; font-size: 1.3rem; display: flex; align-items: center; gap: 0.8rem;">
@@ -102,7 +102,8 @@ export const shiftSubmissionPageHtml = `
                 </h2>
                 <p style="margin: 0.4rem 0 0; font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;" id="shift-deadline-info"></p>
             </div>
-            <div style="display: flex; gap: 1rem;">
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <button id="btn-bulk-mode-staff" class="btn btn-secondary" style="font-size: 0.85rem;"><i class="fas fa-check-double"></i> 一括入力</button>
                 <button id="btn-save-as-template" class="btn btn-secondary" style="font-size: 0.85rem;"><i class="fas fa-save"></i> 基本型に保存</button>
                 <button id="btn-apply-template" class="btn btn-secondary" style="font-size: 0.85rem;"><i class="fas fa-magic"></i> いつものパターン</button>
                 <button id="btn-submit-shifts" class="btn btn-primary" style="font-size: 0.9rem; padding: 0.6rem 2rem; font-weight: 800;">提出する</button>
@@ -245,6 +246,33 @@ export async function initShiftSubmissionPage() {
     await renderSubmissionGrid();
     setupSubmissionEvents();
     await loadShiftsBatch(null, user.id);
+
+    // 一括入力ボタン (スタッフ用)
+    const bulkBtnStaff = document.getElementById('btn-bulk-mode-staff');
+    if (bulkBtnStaff) {
+        bulkBtnStaff.onclick = () => {
+            if (!isBulkMode) {
+                isBulkMode = true;
+                selectedCells = [];
+                bulkBtnStaff.innerHTML = '<i class="fas fa-save"></i> 選択完了・設定';
+                bulkBtnStaff.classList.add('btn-primary');
+                bulkBtnStaff.classList.remove('btn-secondary');
+                
+                const cancelBtn = document.createElement('button');
+                cancelBtn.id = 'btn-bulk-cancel-staff';
+                cancelBtn.className = 'btn btn-secondary';
+                cancelBtn.style = 'font-size:0.85rem;';
+                cancelBtn.innerHTML = '<i class="fas fa-times"></i> 解除';
+                cancelBtn.onclick = (e) => { e.stopPropagation(); exitBulkMode(); };
+                bulkBtnStaff.parentNode.insertBefore(cancelBtn, bulkBtnStaff);
+
+                document.getElementById('shift-submission-container').classList.add('bulk-mode-active');
+            } else {
+                if (selectedCells.length > 0) openBulkInputModal();
+                else exitBulkMode();
+            }
+        };
+    }
 }
 
 async function loadShiftMemoForStaff(sid) {
@@ -344,7 +372,17 @@ export async function initShiftAdminPage() {
                 bulkBtn.innerHTML = '<i class="fas fa-save"></i> 選択完了・設定';
                 bulkBtn.classList.add('btn-primary');
                 bulkBtn.classList.remove('btn-secondary');
-                document.getElementById('shift-admin-container').classList.add('bulk-mode-active');
+                // キャンセル用ボタンを一時的に生成
+                const cancelBtn = document.createElement('button');
+                cancelBtn.id = 'btn-bulk-cancel';
+                cancelBtn.className = 'btn btn-secondary';
+                cancelBtn.style = 'font-size:0.85rem;';
+                cancelBtn.innerHTML = '<i class="fas fa-times"></i> 解除';
+                cancelBtn.onclick = (e) => { e.stopPropagation(); exitBulkMode(); };
+                bulkBtn.parentNode.insertBefore(cancelBtn, bulkBtn);
+
+                const cont = document.getElementById('shift-admin-container') || document.getElementById('shift-submission-container');
+                if (cont) cont.classList.add('bulk-mode-active');
             } else {
                 if (selectedCells.length > 0) openBulkInputModal();
                 else exitBulkMode();
@@ -356,13 +394,18 @@ export async function initShiftAdminPage() {
 function exitBulkMode() {
     isBulkMode = false;
     selectedCells = [];
-    const bulkBtn = document.getElementById('btn-bulk-mode');
+    const bulkBtn = document.getElementById('btn-bulk-mode') || document.getElementById('btn-bulk-mode-staff');
     if (bulkBtn) {
         bulkBtn.innerHTML = '<i class="fas fa-check-double"></i> 一括入力';
         bulkBtn.classList.remove('btn-primary');
         bulkBtn.classList.add('btn-secondary');
     }
-    document.getElementById('shift-admin-container').classList.remove('bulk-mode-active');
+    // キャンセルボタンを削除
+    const cancelBtn = document.getElementById('btn-bulk-cancel') || document.getElementById('btn-bulk-cancel-staff');
+    if (cancelBtn) cancelBtn.remove();
+
+    const cont = document.getElementById('shift-admin-container') || document.getElementById('shift-submission-container');
+    if (cont) cont.classList.remove('bulk-mode-active');
     document.querySelectorAll('.selected-shift-cell').forEach(el => el.classList.remove('selected-shift-cell'));
 }
 
@@ -376,11 +419,16 @@ function openBulkInputModal() {
     document.getElementById('modal-note').value = prev.note || '';
     document.getElementById('shift-input-modal').style.display = 'flex';
     const saveBtn = document.getElementById('btn-modal-save');
+    const cancelBtn = document.querySelector('#shift-input-modal .btn-secondary') || document.querySelector('#shift-input-modal button:last-child');
+    
     const originalOnclick = saveBtn.onclick;
     saveBtn.onclick = async () => {
         await saveShiftsBulk();
         saveBtn.onclick = originalOnclick;
     };
+
+    // キャンセル時も一括モードを維持するか、あるいは明示的に解除するための導線を確保
+    // 今回は「キャンセルしても選択は維持」し、画面上のボタンで解除できるようにする
 }
 
 async function saveShiftsBulk() {
@@ -403,7 +451,7 @@ async function saveShiftsBulk() {
             const shiftData = {
                 userId: cell.uid, userName: user.Name, date: cell.date,
                 start, end, breakMin: brk, note, 
-                status: 'confirmed',
+                status: adminMode ? 'confirmed' : 'applied',
                 storeId: sid, storeName: sName,
                 updatedAt: new Date().toISOString()
             };
@@ -660,8 +708,9 @@ window.openTimeInput = (date, uid) => {
             selectedCells.push({ uid, date });
             el.classList.add('selected-shift-cell');
         }
-        const bulkBtn = document.getElementById('btn-bulk-mode');
-        bulkBtn.innerHTML = `<i class="fas fa-save"></i> 選択完了 (${selectedCells.length}件)`;
+        
+        const bulkBtn = document.getElementById('btn-bulk-mode') || document.getElementById('btn-bulk-mode-staff');
+        if (bulkBtn) bulkBtn.innerHTML = `<i class="fas fa-save"></i> 選択完了 (${selectedCells.length}件)`;
         return;
     }
 

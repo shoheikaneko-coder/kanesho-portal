@@ -1162,10 +1162,17 @@ p { color: var(--text-secondary); line-height: 1.5; }
 
 /* 一括入力モード中の選択表現 */
 .selected-shift-cell {
-    background-color: rgba(230, 57, 70, 0.15) !important;
+    background-color: rgba(230, 57, 70, 0.2) !important;
     position: relative;
-    box-shadow: inset 0 0 0 2px var(--primary) !important;
+    box-shadow: inset 0 0 0 3px var(--primary) !important;
     cursor: cell !important;
+    z-index: 10;
+}
+
+/* 選択されたセル内のシフトボックスも強調 */
+.selected-shift-cell .shift-box {
+    opacity: 0.6;
+    border: 2px solid white;
 }
 
 .selected-shift-cell::after {
@@ -1173,10 +1180,19 @@ p { color: var(--text-secondary); line-height: 1.5; }
     font-family: 'Font Awesome 5 Free';
     font-weight: 900;
     position: absolute;
-    top: 2px;
-    right: 2px;
+    top: 5px;
+    right: 5px;
     color: var(--primary);
-    font-size: 0.6rem;
+    font-size: 0.8rem;
+    background: white;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    z-index: 11;
 }
 
 .bulk-mode-active {
