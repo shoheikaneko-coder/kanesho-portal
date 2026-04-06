@@ -492,7 +492,10 @@ export async function initGoalsStorePage() {
                 const ym = `${actualY}-${String(m).padStart(2, '0')}`;
                 
                 // カレンダーから営業日数取得
-                const calSnap = await getDoc(doc(db, "m_calendars", `${ym}_common`));
+                let calSnap = await getDoc(doc(db, "m_calendars", `${ym}_${sid}`));
+                if (!calSnap.exists()) {
+                    calSnap = await getDoc(doc(db, "m_calendars", `${ym}_common`));
+                }
                 const calData = calSnap.exists() ? calSnap.data() : { days: [] };
                 const opDays = calData.days?.filter(d => d.type === 'work').length || 0;
 

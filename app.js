@@ -22,9 +22,9 @@ import { csvImportPageHtml, initCsvImportPage } from './csv_import.js';
 import { productAnalysisPageHtml, initProductAnalysisPage } from './product_analysis.js?v=26';
 import { notificationsPageHtml, initNotificationsPage } from './notifications.js';
 import { calendarAdminPageHtml, initCalendarAdminPage, calendarViewerPageHtml, initCalendarViewerPage } from './calendar.js?v=2';
-import { goalsAdminPageHtml, initGoalsAdminPage, goalsStorePageHtml, initGoalsStorePage } from './goals.js';
+import { goalsAdminPageHtml, initGoalsAdminPage, goalsStorePageHtml, initGoalsStorePage } from './goals.js?v=2';
 import { homePageHtml, initHomePage } from './home.js';
-import { shiftSubmissionPageHtml, initShiftSubmissionPage, shiftAdminPageHtml, initShiftAdminPage } from './shift.js?v=58';
+import { shiftSubmissionPageHtml, initShiftSubmissionPage, shiftAdminPageHtml, initShiftAdminPage } from './shift.js?v=59';
 import { getDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 console.log("AntiGravity Portal: app.js loaded successfully.");
