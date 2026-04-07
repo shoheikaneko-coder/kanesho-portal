@@ -281,6 +281,7 @@ const injectStyles = () => {
         .shift-cell:hover { background: #f8fafc; }
         .shift-box { background: var(--primary); color: white; border-radius: 6px; padding: 0.3rem; font-size: 0.7rem; font-weight: 800; display: flex; flex-direction: column; justify-content: center; height: 100%; pointer-events: none; }
         .shift-box.applied { background: #94a3b8; }
+        .shift-cell.selected-shift-cell { background: rgba(253, 224, 71, 0.2); border: 2px solid #eab308 !important; position: relative; z-index: 2; }
         .sph-badge { display: inline-block; padding: 0.2rem 0.4rem; border-radius: 4px; color: white; font-size: 0.65rem; font-weight: 800; }
         .sph-good { background: var(--secondary); }
         .sph-warn { background: var(--warning); }
@@ -545,25 +546,55 @@ function exitBulkMode() {
 }
 
 function openBulkInputModal() {
+    initModalTimeOptions();
     const first = selectedCells[0];
     const prev = currentShifts[first.uid]?.[first.date] || {};
     document.getElementById('modal-date-title').textContent = `一括設定 (${selectedCells.length}件)`;
-    document.getElementById('modal-start').value = prev.start || '';
-    document.getElementById('modal-end').value = prev.end || '';
+    
+    setTimeSelects('modal-start', prev.start || '17:00');
+    setTimeSelects('modal-end', prev.end || '23:00');
     document.getElementById('modal-break').value = prev.breakMin || 0;
     document.getElementById('modal-note').value = prev.note || '';
     document.getElementById('shift-input-modal').style.display = 'flex';
-    const saveBtn = document.getElementById('btn-modal-save');
-    const cancelBtn = document.querySelector('#shift-input-modal .btn-secondary') || document.querySelector('#shift-input-modal button:last-child');
     
-    const originalOnclick = saveBtn.onclick;
+    const saveBtn = document.getElementById('btn-modal-save');
+    const clearBtn = document.getElementById('btn-modal-clear');
+    if (clearBtn) clearBtn.style.display = 'none'; // 一括の時は削除ボタンは一旦隠す（または一括削除として機能させるかが検討事項）
+
     saveBtn.onclick = async () => {
         await saveShiftsBulk();
-        saveBtn.onclick = originalOnclick;
     };
+}
 
-    // キャンセル時も一括モードを維持するか、あるいは明示的に解除するための導線を確保
-    // 今回は「キャンセルしても選択は維持」し、画面上のボタンで解除できるようにする
+function initModalTimeOptions() {
+    const hSelects = [document.getElementById('modal-start-h'), document.getElementById('modal-end-h')];
+    hSelects.forEach(sel => {
+        if (sel && sel.options.length === 0) {
+            const hourOrder = [];
+            for (let i = 16; i <= 28; i++) hourOrder.push(i.toString().padStart(2, '0'));
+            for (let i = 6; i <= 15; i++) hourOrder.push(i.toString().padStart(2, '0'));
+            
+            hourOrder.forEach(val => {
+                const opt = `<option value="${val}">${val}</option>`;
+                sel.innerHTML += opt;
+            });
+        }
+    });
+}
+
+function setTimeSelects(prefix, val) {
+    if (!val) {
+        const hEl = document.getElementById(`${prefix}-h`);
+        const mEl = document.getElementById(`${prefix}-m`);
+        if (hEl) hEl.value = '17';
+        if (mEl) mEl.value = '00';
+        return;
+    }
+    const [h, m] = val.split(':');
+    const hEl = document.getElementById(`${prefix}-h`);
+    const mEl = document.getElementById(`${prefix}-m`);
+    if (hEl) hEl.value = h.padStart(2, '0');
+    if (mEl) mEl.value = m.padStart(2, '0');
 }
 
 async function saveShiftsBulk() {
@@ -581,7 +612,9 @@ async function saveShiftsBulk() {
     try {
         const batch = [];
         for (const cell of selectedCells) {
-            const user = allStoreUsers.find(x => x.id === cell.uid) || helpUsers.find(x => x.id === cell.uid);
+            const user = allStoreUsers.find(x => x.id === cell.uid) || 
+                         helpUsers.find(x => x.id === cell.uid) || 
+                         (cell.uid === currentTargetUser?.id ? currentTargetUser : null);
             if (!user) continue;
             
             const me = JSON.parse(localStorage.getItem('currentUser'));
@@ -913,32 +946,9 @@ window.openTimeInput = (date, uid) => {
     const d = new Date(date);
     document.getElementById('modal-date-title').textContent = `${user.DisplayName || user.Name} (${date})`;
     const sData = currentShifts[uid]?.[date] || {};
-    
-    // 時間プルダウンの初期化（未初期化の場合のみ）
-    const hSelects = [document.getElementById('modal-start-h'), document.getElementById('modal-end-h')];
-    hSelects.forEach(sel => {
-        if (sel && sel.options.length === 0) {
-            const hourOrder = [];
-            for (let i = 16; i <= 28; i++) hourOrder.push(i.toString().padStart(2, '0'));
-            for (let i = 6; i <= 15; i++) hourOrder.push(i.toString().padStart(2, '0'));
-            
-            hourOrder.forEach(val => {
-                const opt = `<option value="${val}">${val}</option>`;
-                sel.innerHTML += opt;
-            });
-        }
-    });
-
-    const setTimeSelects = (prefix, val) => {
-        if (!val) {
-            document.getElementById(`${prefix}-h`).value = '00';
-            document.getElementById(`${prefix}-m`).value = '00';
-            return;
-        }
-        const [h, m] = val.split(':');
-        document.getElementById(`${prefix}-h`).value = h.padStart(2, '0');
-        document.getElementById(`${prefix}-m`).value = m.padStart(2, '0');
-    };
+    initModalTimeOptions();
+    const clearBtn = document.getElementById('btn-modal-clear');
+    if (clearBtn) clearBtn.style.display = 'block';
 
     setTimeSelects('modal-start', sData.start);
     setTimeSelects('modal-end', sData.end);
