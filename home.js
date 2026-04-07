@@ -1,3 +1,4 @@
+import { db } from './firebase.js';
 import { collection, getDocs, query, where, doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { showAlert, showConfirm } from './ui_utils.js';
 
