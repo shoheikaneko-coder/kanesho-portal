@@ -707,7 +707,7 @@ async function loadShiftsBatch(sid, uid = null) {
     
     currentShifts = {};
     if (sid) helpUsers = [];
-
+    const helpIds = [];
     snap.forEach(d => {
         const data = d.data();
         if (!data || !data.userId) return;
@@ -718,6 +718,7 @@ async function loadShiftsBatch(sid, uid = null) {
         currentShifts[data.userId][data.date] = data;
 
         if (sid && !allStoreUsers.some(u => u.id === data.userId) && !helpUsers.some(u => u.id === data.userId)) {
+            if (!helpIds.includes(data.userId)) helpIds.push(data.userId);
             helpUsers.push({ id: data.userId, Name: data.userName, isHelp: true });
         }
         
@@ -726,6 +727,29 @@ async function loadShiftsBatch(sid, uid = null) {
             renderCellUI(data.userId, data.date, data);
         }
     });
+
+    // ヘルプスタッフの詳細プロフィールを補完
+    if (helpIds.length > 0) {
+        try {
+            const fetchOps = helpIds.map(id => getDoc(doc(db, "m_users", id)));
+            const userSnaps = await Promise.all(fetchOps);
+            userSnaps.forEach(s => {
+                if (s.exists()) {
+                    const u = s.data();
+                    const target = helpUsers.find(h => h.id === s.id);
+                    if (target) {
+                        target.DisplayName = u.DisplayName;
+                        target.Role = u.Role;
+                        target.JobTitle = u.JobTitle;
+                        target.Store = u.Store;
+                    }
+                }
+            });
+            // プロフィール取得後に再描画が必要な場合（この時点では renderAdminGrid の前なので、ここではデータの更新のみ）
+        } catch (e) {
+            console.error("Help profiles fetch error:", e);
+        }
+    }
 }
 
 function getExtendedRange(start, end) {
@@ -847,12 +871,13 @@ function renderAdminGrid() {
         list.forEach(u => {
             const tr = document.createElement('tr');
             const roleName = roleMap[u.Role] || u.Role || '';
-            const displayRole = u.JobTitle || roleName;
+            let displayRole = u.JobTitle || roleName;
+            if (u.isHelp && u.Store) displayRole += ` (${u.Store})`;
+
             tr.innerHTML = `<td class="staff-cell">
                 <div style="display:flex; flex-direction:column; justify-content:center; text-align:left; line-height:1.2;">
                     <div style="display:flex; align-items:center; gap:0.3rem;">
-                        ${u.isHelp ? '<span class="badge" style="background:#f5f3ff; color:#7c3aed; font-size:0.55rem; padding:0.1rem 0.2rem;">ヘルプ</span>' : ''}
-                        <span style="font-weight:700;">${u.DisplayName || u.Name}</span>
+                        <span style="font-weight:700; color: ${u.isHelp ? '#7c3aed' : 'inherit'};">${u.DisplayName || u.Name}</span>
                     </div>
                     ${displayRole ? `<div style="font-size:0.6rem; color:var(--text-secondary); font-weight:500; margin-top:0.1rem;">${displayRole}</div>` : ''}
                 </div>
@@ -1265,7 +1290,19 @@ async function openHelpStaffModal() {
         const item = document.createElement('div');
         item.style = "padding:0.8rem; border-bottom:1px solid #eee; cursor:pointer;";
         item.innerHTML = `${u.Name} (${u.Store || '他'})`;
-        item.onclick = () => { helpUsers.push({id: d.id, Name: u.Name, isHelp: true}); renderAdminGrid(); document.body.removeChild(modal); };
+        item.onclick = () => { 
+            helpUsers.push({
+                id: d.id, 
+                Name: u.Name, 
+                DisplayName: u.DisplayName, 
+                Role: u.Role, 
+                JobTitle: u.JobTitle, 
+                Store: u.Store,
+                isHelp: true
+            }); 
+            renderAdminGrid(); 
+            document.body.removeChild(modal); 
+        };
         cont.appendChild(item);
     });
     modal.querySelector('button').onclick = () => document.body.removeChild(modal);
