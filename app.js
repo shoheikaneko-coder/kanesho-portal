@@ -149,10 +149,9 @@ async function renderSidebar(user) {
         adminPerms.forEach(id => { if (!allowed.includes(id)) allowed.push(id); });
     } else {
         try {
-            const q = query(collection(db, "t_role_permissions"), where("Role", "==", role));
-            const snap = await getDocs(q);
-            if (!snap.empty) {
-                allowed = snap.docs[0].data().Permissions || [];
+            const docSnap = await getDoc(doc(db, "m_role_permissions", role));
+            if (docSnap.exists()) {
+                allowed = docSnap.data().permissions || [];
             }
         } catch (e) {
             console.error("Permission check failed:", e);
