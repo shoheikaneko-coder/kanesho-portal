@@ -1,6 +1,10 @@
 import { db } from './firebase.js';
 import { collection, getDocs, query, where, doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { showAlert, showConfirm } from './ui_utils.js';
+import { 
+    initAttendancePage, refreshData, startClock, renderUnclockedDropdown, 
+    renderGallery, renderTodayHistory, setupEventListeners 
+} from './attendance.js';
 
 export const homePageHtml = `
     <div class="animate-fade-in" style="max-width: 1200px; margin: 0 auto; padding-bottom: 3rem;">
@@ -38,6 +42,52 @@ export const homePageHtml = `
             </h3>
             <div class="ops-grid" id="home-ops-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
                 <!-- 業務カードがここに動的に生成される -->
+            </div>
+        </div>
+
+        <!-- 【店舗タブレット専用】勤怠打刻セクション -->
+        <div id="tablet-attendance-section" style="display: none; margin-top: 3.5rem;">
+            <!-- 時計表示 -->
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <div id="tablet-clock-display" style="font-size: 4rem; font-weight: 900; font-family: monospace; color: var(--text-primary); letter-spacing: 2px; text-shadow: 0 4px 12px rgba(0,0,0,0.1);">00:00:00</div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr; gap: 2rem;">
+                <!-- 打刻入力エリア -->
+                <div class="glass-panel" style="padding: 2rem;">
+                    <h3 style="margin: 0 0 1.5rem; font-size: 1.1rem; font-weight: 800; display: flex; align-items: center; gap: 0.8rem;">
+                        <i class="fas fa-fingerprint" style="color: var(--primary);"></i> スタッフ打刻
+                    </h3>
+                    <div id="current-store-label" style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem; font-weight: 600;"></div>
+                    <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                        <select id="staff-select" style="flex: 1; min-width: 200px; padding: 1rem; border: 1px solid var(--border); border-radius: 16px; background: white; font-size: 1.1rem; font-weight: 600;">
+                            <option value="">スタッフを選択してください</option>
+                        </select>
+                        <button id="btn-checkin" class="btn" style="padding: 1rem 2.5rem; background: var(--secondary); color: white; font-weight: 800; border-radius: 16px; font-size: 1.1rem; white-space: nowrap; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);">
+                            <i class="fas fa-sign-in-alt"></i> 出勤
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 勤務中スタッフ一覧 -->
+                <div class="glass-panel" style="padding: 2rem;">
+                    <h3 style="margin: 0 0 1.5rem; font-size: 1.1rem; font-weight: 800; color: var(--text-secondary); display: flex; align-items: center; gap: 0.8rem;">
+                        <i class="fas fa-users" style="color: #3b82f6;"></i> 現在勤務中のスタッフ
+                    </h3>
+                    <div id="active-staff-gallery" style="display: flex; flex-wrap: wrap; gap: 1rem;">
+                        <div style="color: var(--text-secondary); font-size: 0.9rem; padding: 0.5rem;">読み込み中...</div>
+                    </div>
+                </div>
+
+                <!-- 本日の打刻履歴 -->
+                <div class="glass-panel" style="padding: 2rem;">
+                    <h3 style="margin: 0 0 1.5rem; font-size: 1.1rem; font-weight: 800; color: var(--text-secondary); display: flex; align-items: center; gap: 0.8rem;">
+                        <i class="fas fa-history" style="color: #64748b;"></i> 本日の打刻履歴
+                    </h3>
+                    <div id="attendance-history" style="display: flex; flex-direction: column; gap: 0.8rem; max-height: 400px; overflow-y: auto; padding-right: 0.5rem;">
+                        <!-- 履歴がここに動的に生成される -->
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -180,14 +230,43 @@ export async function initHomePage() {
         await renderPerformanceSummary(user);
     }
  
-    // 本日のシフトの描画 (共通)
-    await renderTodayShifts(user);
-
-    // 業務カードの描画
-    renderOperationCards(permissions);
+    if (user.Role === 'Tablet') {
+        // 店舗タブレット専用レイアウト
+        renderOperationCards(permissions); // 業務コックピットを先に描画
+        await initTabletHomeAttendance(user); // その下に勤怠埋め込み
+    } else {
+        // 一般ユーザーレイアウト
+        await renderTodayShifts(user); // 本日の出勤メンバー（予定）
+        renderOperationCards(permissions); // 業務コックピット
+    }
 
     // スタッフ用マイアセットと棚卸しアラート
     await renderPersonalAssets(user);
+}
+
+/**
+ * 店舗タブレットのホーム画面に勤怠機能をセットアップ
+ */
+async function initTabletHomeAttendance(user) {
+    const shiftContainer = document.getElementById('today-shifts-container');
+    const attendanceSection = document.getElementById('tablet-attendance-section');
+    if (!attendanceSection) return;
+
+    // 1. レイアウト調整: 「本日の出勤メンバー（予定）」を非表示にし、打刻セクションを表示
+    if (shiftContainer) shiftContainer.style.display = 'none';
+    attendanceSection.style.display = 'block';
+
+    // 2. 勤怠ロジックの初期化 (attendance.js のリソースを再利用)
+    await initAttendancePage(user);
+    
+    // 3. 時計の起動 (ホーム専用IDを指定)
+    startClock('tablet-clock-display');
+
+    // 4. イベントリスナーの再登録 ( attendance.js で定義されたボタンIDと一致するためそのまま動作する)
+    setupEventListeners();
+
+    // 5. データの初期描画
+    await refreshData();
 }
 
 /**

@@ -130,14 +130,14 @@ export const attendancePageHtml = `
 `;
 
 // ─── 状態 ────────────────────────────────────────────────────
-let currentUser = null;
-let tabletStore = '';       // タブレットの所属店舗名
-let tabletStoreID = '';     // タブレットの所属店舗ID [NEW]
-let tabletGroup = '';       // タブレットの所属グループ名 [NEW]
-let allStaff = [];          // m_users全件
-let cachedStoresData = [];  // 店舗マスタ全件 [NEW]
-let recentPunches = [];     // 直近24時間の打刻レコード（{id, ...data}[]）
-let clockTimer = null;
+export let currentUser = null;
+export let tabletStore = '';       // タブレットの所属店舗名
+export let tabletStoreID = '';     // タブレットの所属店舗ID
+export let tabletGroup = '';       // タブレットの所属グループ名
+export let allStaff = [];          // m_users全件
+export let cachedStoresData = [];  // 店舗マスタ全件
+export let recentPunches = [];     // 直近24時間の打刻レコード（{id, ...data}[]）
+export let clockTimer = null;
 
 // ─── 初期化 ──────────────────────────────────────────────────
 export async function initAttendancePage(user) {
@@ -190,10 +190,10 @@ export async function initAttendancePage(user) {
 
 
 // ─── 時計 ────────────────────────────────────────────────────
-function startClock() {
+export function startClock(targetId = 'clock-display') {
     if (clockTimer) clearInterval(clockTimer);
     const tick = () => {
-        const el = document.getElementById('clock-display');
+        const el = document.getElementById(targetId);
         if (!el) { clearInterval(clockTimer); return; }
         el.textContent = new Date().toTimeString().split(' ')[0];
     };
@@ -217,7 +217,7 @@ function todayStr() {
 }
 
 // ─── データ読み込み＆UI更新 ─────────────────────────────────
-async function refreshData() {
+export async function refreshData() {
     await Promise.all([loadAllStaff(), loadRecentPunches()]);
     renderUnclockedDropdown();
     renderGallery();
@@ -284,7 +284,7 @@ function calcStaffStatuses() {
 }
 
 // ─── 未出勤者プルダウン ──────────────────────────────────────
-function renderUnclockedDropdown(extraStoreFilter = null) {
+export function renderUnclockedDropdown(extraStoreFilter = null) {
     const sel = document.getElementById('staff-select');
     const label = document.getElementById('current-store-label');
     if (!sel) return;
@@ -351,7 +351,7 @@ function renderUnclockedDropdown(extraStoreFilter = null) {
 }
 
 // ─── 出勤中ギャラリー ────────────────────────────────────────
-function renderGallery() {
+export function renderGallery() {
     const gallery = document.getElementById('active-staff-gallery');
     if (!gallery) return;
 
@@ -392,7 +392,7 @@ function renderGallery() {
 }
 
 // ─── 本日の打刻履歴 ──────────────────────────────────────────
-function renderTodayHistory() {
+export function renderTodayHistory() {
     const list = document.getElementById('attendance-history');
     if (!list) return;
 
@@ -426,7 +426,7 @@ function renderTodayHistory() {
 }
 
 // ─── イベントリスナー ────────────────────────────────────────
-function setupEventListeners() {
+export function setupEventListeners() {
     // 出勤ボタン
     document.getElementById('btn-checkin')?.addEventListener('click', handleCheckIn);
 
@@ -443,7 +443,8 @@ function setupEventListeners() {
     // 打刻修正（Admin）
     document.getElementById('btn-load-correction')?.addEventListener('click', loadCorrectionList);
     document.getElementById('close-correction-modal')?.addEventListener('click', () => {
-        document.getElementById('correction-modal').style.display = 'none';
+        const modal = document.getElementById('correction-modal');
+        if (modal) modal.style.display = 'none';
     });
     document.getElementById('btn-correction-save')?.addEventListener('click', saveCorrectionRecord);
     document.getElementById('btn-correction-delete')?.addEventListener('click', deleteCorrectionRecord);

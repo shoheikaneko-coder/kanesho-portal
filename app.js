@@ -393,6 +393,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnCalendar = document.getElementById('btn-calendar-viewer');
     if (btnCalendar) btnCalendar.onclick = () => window.navigateTo('calendar_viewer');
 
+    const btnHeaderShift = document.getElementById('btn-header-shift');
+    if (btnHeaderShift) {
+        btnHeaderShift.onclick = () => {
+            const role = state.currentUser?.Role;
+            const target = (role === 'Admin' || role === '管理者') ? 'shift_admin' : 'shift_submission';
+            window.navigateTo(target);
+        };
+    }
+
     document.getElementById('logout-btn')?.addEventListener('click', (e) => {
         e.preventDefault();
         localStorage.removeItem('currentUser');
