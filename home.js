@@ -46,13 +46,8 @@ export const homePageHtml = `
         </div>
 
         <!-- 【店舗タブレット専用】勤怠打刻セクション -->
-        <div id="tablet-attendance-section" style="display: none; margin-top: 3.5rem;">
-            <!-- 時計表示 -->
-            <div style="text-align: center; margin-bottom: 2rem;">
-                <div id="tablet-clock-display" style="font-size: 4rem; font-weight: 900; font-family: monospace; color: var(--text-primary); letter-spacing: 2px; text-shadow: 0 4px 12px rgba(0,0,0,0.1);">00:00:00</div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr; gap: 2rem;">
+        <div id="tablet-attendance-section" style="display: none; margin-top: 1rem;">
+            <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
                 <!-- 打刻入力エリア -->
                 <div class="glass-panel" style="padding: 2rem;">
                     <h3 style="margin: 0 0 1.5rem; font-size: 1.1rem; font-weight: 800; display: flex; align-items: center; gap: 0.8rem;">
@@ -220,7 +215,11 @@ export async function initHomePage() {
             'Tablet': '店舗タブレット'
         };
         const roleName = roleMap[user.Role] || user.Role || '一般';
-        metaEl.textContent = `${storeName} ｜ ${roleName}`;
+        if (user.Role === 'Tablet') {
+            metaEl.innerHTML = `${storeName} ｜ ${roleName} <span id="tablet-clock-header" style="margin-left: 1.5rem; font-family: monospace; font-weight: 900; color: var(--text-primary); background: #f1f5f9; padding: 0.2rem 0.8rem; border-radius: 8px; border: 1px solid var(--border);">00:00:00</span>`;
+        } else {
+            metaEl.textContent = `${storeName} ｜ ${roleName}`;
+        }
     }
 
     const permissions = window.appState ? window.appState.permissions : [];
@@ -259,8 +258,8 @@ async function initTabletHomeAttendance(user) {
     // 2. 勤怠ロジックの初期化 (attendance.js のリソースを再利用)
     await initAttendancePage(user);
     
-    // 3. 時計の起動 (ホーム専用IDを指定)
-    startClock('tablet-clock-display');
+    // 3. 時計の起動 (ヘッダーの控えめな位置を指定)
+    startClock('tablet-clock-header');
 
     // 4. イベントリスナーの再登録 ( attendance.js で定義されたボタンIDと一致するためそのまま動作する)
     setupEventListeners();
@@ -503,6 +502,7 @@ function renderOperationCards(permissions) {
         { id: 'attendance', name: '勤怠入力', icon: 'fa-clock', desc: 'スタッフの出勤・退勤打刻、シフトの確認。' },
         { id: 'inventory', name: '在庫管理', icon: 'fa-warehouse', desc: '現在の在庫数確認、棚卸登録を行います。' },
         { id: 'procurement', name: '仕入れ', icon: 'fa-shopping-cart', desc: '発注・入荷管理、仕入先への注文登録。' },
+        { id: 'recipe_viewer', name: 'レシピ閲覧', icon: 'fa-book-open', desc: '料理やドリンクの作り方、盛り付けを確認します。' },
         { id: 'loans', name: '貸与物管理', icon: 'fa-key', desc: '従業員への制服、鍵、端末等の貸与状況を管理。' },
         { id: 'product_analysis', name: '商品分析(4つの窓)', icon: 'fa-chart-pie', desc: 'ABC分析等を行い、メニューの改善に繋げます。' }
     ];
