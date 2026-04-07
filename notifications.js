@@ -34,16 +34,16 @@ export const notificationsPageHtml = `
                 </div>
             </div>
 
-            <div class="notification-category-card task-card disabled">
+            <div class="notification-category-card task-card" id="cat-asset-check">
                 <div class="category-icon">
-                    <i class="fas fa-calendar-check"></i>
+                    <i class="fas fa-key"></i>
                 </div>
                 <div class="category-info">
-                    <h3>今月のタスク</h3>
-                    <p>（将来の拡張：棚卸しリマインドなど）</p>
+                    <h3>貸与物確認アラート</h3>
+                    <p>スタッフへの貸与物棚卸し、または未返却アイテムの確認が必要です</p>
                     <div class="category-status">
-                        <span class="count-badge gray">0件</span>
-                        <i class="fas fa-lock" style="font-size: 0.8rem;"></i>
+                        <span class="count-badge" id="count-asset-check" style="background:#8b5cf6;">0件</span>
+                        <i class="fas fa-arrow-right"></i>
                     </div>
                 </div>
             </div>
@@ -201,6 +201,13 @@ export function initNotificationsPage() {
         };
     }
 
+    const catAsset = document.getElementById('cat-asset-check');
+    if (catAsset) {
+        catAsset.onclick = () => {
+            window.navigateTo('loans'); // 貸与物管理ページへ直接遷移
+        };
+    }
+
     if (btnBack) {
         btnBack.onclick = () => {
             panelDetail.style.display = 'none';
@@ -231,6 +238,9 @@ export function initNotificationsPage() {
         
         const sEl = document.getElementById('count-shift-published');
         if (sEl) sEl.textContent = `${shiftPublishedCount}件`;
+
+        // 貸与物確認（30日以上未確認の件数）を簡易取得（リアルタイム監視は一旦無しで初期表示時に出すか、別クエリが必要）
+        updateAssetCheckCount();
         
         // 詳細ビューが開いている場合はリストも更新
         window.__currentVisibleNotifs = visibleNotifs; // キャッシュ
@@ -297,3 +307,25 @@ window.goToMenuRecipe = (menuId) => {
         window.navigateTo('products');
     }
 };
+
+async function updateAssetCheckCount() {
+    const el = document.getElementById('count-asset-check');
+    if (!el) return;
+    try {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        // 貸与中の全件を取得してフィルタリング（小規模ならこれでOK）
+        const q = query(collection(db, "t_staff_loans"), where("status", "==", "loaned"));
+        const snap = await getDocs(q);
+        let count = 0;
+        snap.forEach(d => {
+            const data = d.data();
+            const lastCheck = data.lastVerifiedAt ? new Date(data.lastVerifiedAt.seconds * 1000) : null;
+            if (!lastCheck || lastCheck < thirtyDaysAgo) {
+                count++;
+            }
+        });
+        el.textContent = `${count}件`;
+    } catch (e) { console.error(e); }
+}

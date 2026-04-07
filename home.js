@@ -1,5 +1,5 @@
-import { db } from './firebase.js';
-import { collection, getDocs, query, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, getDocs, query, where, doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { showAlert, showConfirm } from './ui_utils.js';
 
 export const homePageHtml = `
     <div class="animate-fade-in" style="max-width: 1200px; margin: 0 auto; padding-bottom: 3rem;">
@@ -37,6 +37,38 @@ export const homePageHtml = `
             </h3>
             <div class="ops-grid" id="home-ops-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
                 <!-- 業務カードがここに動的に生成される -->
+            </div>
+        </div>
+
+        <!-- 個人の貸与物管理 (スタッフ用) -->
+        <div id="personal-assets-container" style="display: none; margin-top: 3.5rem;">
+            <h3 style="display: flex; align-items: center; gap: 0.8rem; margin-bottom: 1.5rem; color: var(--text-primary); font-weight: 800;">
+                <i class="fas fa-hand-holding-heart" style="color: #ed3ef2;"></i> マイ・アセット (貸与物)
+            </h3>
+            <div id="home-assets-list" class="glass-panel" style="padding: 1.5rem;">
+                <!-- 貸与物リストがここに動的に生成される -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Inventory Alert Modal -->
+    <div id="inventory-alert-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:99999; backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:20px;">
+        <div style="background:white; width:100%; max-width:500px; border-radius:24px; padding:2rem; box-shadow:0 20px 40px rgba(0,0,0,0.3);">
+            <div style="text-align:center; margin-bottom:1.5rem;">
+                <div style="width:70px; height:70px; background:#fff1f2; color:#e11d48; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:2rem; margin:0 auto 1rem;">
+                    <i class="fas fa-box-open"></i>
+                </div>
+                <h2 style="margin:0; font-size:1.5rem; color:#1e293b;">貸与物の確認をお願いします</h2>
+                <p style="color:#64748b; font-size:0.9rem; margin-top:0.5rem;">半期に一度の棚卸し確認期間です。<br>手元に以下のアイテムがあるか確認してください。</p>
+            </div>
+            <div id="alert-items-list" style="margin-bottom:2rem; max-height:250px; overflow-y:auto; background:#f8fafc; border-radius:16px; padding:1rem;">
+                <!-- Items to check -->
+            </div>
+            <div style="display:flex; flex-direction:column; gap:0.8rem;">
+                <button id="btn-confirm-assets" class="btn btn-primary" style="padding:1rem; font-weight:800; font-size:1.1rem; width:100%;">
+                    <i class="fas fa-check-circle"></i> 全て手元にあることを確認しました
+                </button>
+                <button onclick="document.getElementById('inventory-alert-modal').style.display='none'" style="background:none; border:none; color:#94a3b8; font-size:0.85rem; cursor:pointer; font-weight:600;">後で確認する</button>
             </div>
         </div>
     </div>
@@ -152,6 +184,113 @@ export async function initHomePage() {
 
     // 業務カードの描画
     renderOperationCards(permissions);
+
+    // スタッフ用マイアセットと棚卸しアラート
+    await renderPersonalAssets(user);
+}
+
+/**
+ * スタッフ自身の貸与物を表示し、必要なら棚卸しアラートを出す
+ */
+async function renderPersonalAssets(user) {
+    const container = document.getElementById('personal-assets-container');
+    const grid = document.getElementById('home-assets-list');
+    if (!container || !grid) return;
+
+    try {
+        const q = query(collection(db, "t_staff_loans"), 
+            where("userId", "==", user.id),
+            where("status", "==", "loaned"));
+        
+        const snap = await getDocs(q);
+        if (snap.empty) {
+            container.style.display = 'none';
+            return;
+        }
+
+        container.style.display = 'block';
+        
+        // マスターデータのキャッシュ用
+        const masterSnap = await getDocs(collection(db, "m_loan_items"));
+        const masterMap = {};
+        masterSnap.forEach(d => masterMap[d.id] = d.data());
+
+        let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">';
+        let needsVerification = false;
+        let itemsForAlert = [];
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        snap.forEach(doc => {
+            const loan = doc.data();
+            const item = masterMap[loan.itemId] || { name: '不明' };
+            const lastCheck = loan.lastVerifiedAt ? new Date(loan.lastVerifiedAt.seconds * 1000) : null;
+            
+            if (!lastCheck || lastCheck < thirtyDaysAgo) {
+                needsVerification = true;
+                itemsForAlert.push({ id: doc.id, name: item.name });
+            }
+
+            html += `
+                <div style="background: #f8fafc; padding: 1.2rem; border-radius: 18px; border: 1px solid #e2e8f0; display:flex; align-items:center; gap: 1rem;">
+                    <div style="width:48px; height:48px; background:white; border-radius:12px; display:flex; align-items:center; justify-content:center; color:#ed3ef2; font-size:1.2rem; border:1px solid #eee;">
+                        <i class="fas ${item.category === 'rank_a' ? 'fa-key' : 'fa-tshirt'}"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight:800; font-size:0.95rem;">${item.name}</div>
+                        <div style="font-size:0.75rem; color:#64748b;">${loan.quantity}個 ${loan.serialNo ? `/ No: ${loan.serialNo}` : ''}</div>
+                        <div style="font-size:0.7rem; color:${lastCheck ? '#10b981' : '#f59e0b'}; font-weight:700; margin-top:0.2rem;">
+                            <i class="fas fa-check-circle"></i> 確認日: ${lastCheck ? lastCheck.toLocaleDateString() : '未確認'}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        grid.innerHTML = html;
+
+        // 棚卸しアラートの表示 (前回のポップアップから1日経過している場合のみなど、簡易的にlocalStorageで制御)
+        const lastPopupDate = localStorage.getItem('last_inventory_popup');
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        if (needsVerification && lastPopupDate !== todayStr) {
+            const modal = document.getElementById('inventory-alert-modal');
+            const alertList = document.getElementById('alert-items-list');
+            modal.style.display = 'flex';
+            alertList.innerHTML = itemsForAlert.map(i => `
+                <div style="display:flex; align-items:center; gap:0.8rem; padding:0.6rem 0; border-bottom:1px solid #eee;">
+                    <i class="fas fa-check-square" style="color:#e11d48;"></i>
+                    <span style="font-weight:700; font-size:1rem;">${i.name}</span>
+                </div>
+            `).join('');
+
+            document.getElementById('btn-confirm-assets').onclick = async () => {
+                const btn = document.getElementById('btn-confirm-assets');
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 確認を送信中...';
+                
+                try {
+                    for (const item of itemsForAlert) {
+                        await updateDoc(doc(db, "t_staff_loans", item.id), {
+                            lastVerifiedAt: serverTimestamp()
+                        });
+                    }
+                    modal.style.display = 'none';
+                    localStorage.setItem('last_inventory_popup', todayStr);
+                    showAlert('確認完了', '貸与物の所在を確認しました。ご協力ありがとうございます。');
+                    renderPersonalAssets(user); // 再描画
+                } catch (e) {
+                    console.error(e);
+                    showAlert('エラー', '通信に失敗しました。');
+                } finally {
+                    btn.disabled = false;
+                }
+            };
+        }
+
+    } catch (e) {
+        console.error("Personal Assets Error:", e);
+    }
 }
 
 /**
@@ -284,6 +423,7 @@ function renderOperationCards(permissions) {
         { id: 'attendance', name: '勤怠入力', icon: 'fa-clock', desc: 'スタッフの出勤・退勤打刻、シフトの確認。' },
         { id: 'inventory', name: '在庫管理', icon: 'fa-warehouse', desc: '現在の在庫数確認、棚卸登録を行います。' },
         { id: 'procurement', name: '仕入れ', icon: 'fa-shopping-cart', desc: '発注・入荷管理、仕入先への注文登録。' },
+        { id: 'loans', name: '貸与物管理', icon: 'fa-key', desc: '従業員への制服、鍵、端末等の貸与状況を管理。' },
         { id: 'product_analysis', name: '商品分析(4つの窓)', icon: 'fa-chart-pie', desc: 'ABC分析等を行い、メニューの改善に繋げます。' }
     ];
 

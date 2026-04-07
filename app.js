@@ -25,6 +25,7 @@ import { calendarAdminPageHtml, initCalendarAdminPage, calendarViewerPageHtml, i
 import { goalsAdminPageHtml, initGoalsAdminPage, goalsStorePageHtml, initGoalsStorePage } from './goals.js?v=2';
 import { homePageHtml, initHomePage } from './home.js';
 import { shiftSubmissionPageHtml, initShiftSubmissionPage, shiftAdminPageHtml, initShiftAdminPage } from './shift.js?v=60';
+import { loansPageHtml, initLoansPage } from './loans.js';
 import { getDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 console.log("AntiGravity Portal: app.js loaded successfully.");
@@ -42,15 +43,16 @@ const defaultMenuItems = [
     { id: 'dashboard', name: 'ダッシュボード', icon: 'fa-chart-line', category: 'メインメニュー' },
     { id: 'shift_submission', name: 'シフト提出・確認', icon: 'fa-calendar-alt', category: '業務メニュー' },
     { id: 'shift_admin', name: 'シフト作成・調整', icon: 'fa-user-edit', category: '業務メニュー' },
-    { id: 'attendance_check', name: '勤怠状況確認', icon: 'fa-clipboard-check', category: '業務メニュー' },
     { id: 'recipe_viewer', name: 'レシピ閲覧', icon: 'fa-book-open', category: '業務メニュー' },
     { id: 'goals_store', name: '月次計画 (店長用)', icon: 'fa-tasks', category: '業務メニュー' },
-    { id: 'users', name: 'ユーザー登録/変更', icon: 'fa-users-cog', category: 'マスタ管理' },
+    { id: 'attendance_check', name: '勤怠状況確認', icon: 'fa-clipboard-check', category: '人事労務管理' },
+    { id: 'users', name: 'ユーザー・従業員管理', icon: 'fa-users-cog', category: '人事労務管理' },
+    { id: 'loans', name: '貸与物管理(アセット)', icon: 'fa-key', category: '人事労務管理' },
+    { id: 'role_permissions', name: '権限振り分け設定', icon: 'fa-user-shield', category: '人事労務管理' },
     { id: 'stores', name: '店舗マスタ', icon: 'fa-store-alt', category: 'マスタ管理' },
     { id: 'store_items', name: '店舗別在庫設定', icon: 'fa-tasks', category: 'マスタ管理' },
     { id: 'products', name: '商品・レシピマスタ', icon: 'fa-mortar-pestle', category: 'マスタ管理' },
     { id: 'suppliers', name: '業者マスタ', icon: 'fa-truck', category: 'マスタ管理' },
-    { id: 'role_permissions', name: '権限振り分け', icon: 'fa-user-shield', category: 'マスタ管理' },
     { id: 'sales_correction', name: '営業実績修正', icon: 'fa-edit', category: 'マスタ管理' },
     { id: 'csv_export', name: 'CSV出力', icon: 'fa-file-csv', category: 'マスタ管理' },
     { id: 'csv_import', name: 'CSVインポート', icon: 'fa-file-import', category: 'マスタ管理' },
@@ -383,6 +385,11 @@ function showPage(target) {
                 pageTitle.textContent = 'シフト作成・調整 (コックピット)';
                 pageContent.innerHTML = shiftAdminPageHtml;
                 initShiftAdminPage();
+                break;
+            case 'loans':
+                pageTitle.textContent = '貸与物管理(アセット)';
+                pageContent.innerHTML = loansPageHtml;
+                initLoansPage();
                 break;
         }
     } catch (err) {

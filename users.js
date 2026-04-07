@@ -18,6 +18,9 @@ export const usersPageHtml = `
         .badge.staff { background: rgba(37, 99, 235, 0.1); color: #2563eb; }
         .badge.manager { background: rgba(245, 158, 11, 0.1); color: #d97706; }
         .badge.admin { background: rgba(220, 38, 38, 0.1); color: #dc2626; }
+        .badge.status-active { background: rgba(16, 185, 129, 0.1); color: #059669; }
+        .badge.status-resigning { background: rgba(245, 158, 11, 0.1); color: #d97706; }
+        .badge.status-retired { background: rgba(100, 116, 139, 0.1); color: #64748b; }
     </style>
 `;
 
@@ -64,8 +67,9 @@ function renderListView(container) {
                         <tr style="background: white; border-bottom: 2px solid var(--border); color: var(--text-secondary); font-size: 0.8rem; text-transform: uppercase;">
                             <th style="padding: 1rem; font-weight: 600;">従業員コード</th>
                             <th style="padding: 1rem; font-weight: 600;">お名前</th>
-                            <th style="padding: 1rem; font-weight: 600;">所属店舗</th>
+                            <th style="padding: 1rem; font-weight: 600;">所属性</th>
                             <th style="padding: 1rem; font-weight: 600;">権限</th>
+                            <th style="padding: 1rem; font-weight: 600;">ステータス</th>
                             <th style="padding: 1rem; font-weight: 600;">打刻PW</th>
                             <th style="padding: 1rem; font-weight: 600;">ログインPW</th>
                             <th style="padding: 1rem; text-align: right; font-weight: 600;">操作</th>
@@ -131,11 +135,19 @@ function renderFormView(container) {
                         </div>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem;">
                         <div class="input-group">
                             <label style="font-weight: 700; color: #475569;">所属店舗</label>
                             <select id="user-store-select" required style="background: white; font-weight: 600;">
                                 <option value="">店舗を選択...</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label style="font-weight: 700; color: #475569;">在職状況</label>
+                            <select id="user-status" required style="background: white; font-weight: 600;">
+                                <option value="active">在職中</option>
+                                <option value="resigning">退職手続き中</option>
+                                <option value="retired">退職済</option>
                             </select>
                         </div>
                         <div class="input-group">
@@ -149,9 +161,8 @@ function renderFormView(container) {
                             </select>
                         </div>
                         <div class="input-group">
-                            <label style="font-weight: 700; color: #475569;">表示役職 (自由入力)</label>
-                            <input type="text" id="user-job-title" placeholder="例: 副店長, バイトリーダー" style="background: #f0fdf4; border: 1px solid #bbf7d0;">
-                            <p style="font-size: 0.7rem; color: #166534; margin-top: 0.2rem;">※シフト表に表示されます（空欄なら権限名を表示）</p>
+                            <label style="font-weight: 700; color: #475569;">表示役職</label>
+                            <input type="text" id="user-job-title" placeholder="副店長等" style="background: #f0fdf4; border: 1px solid #bbf7d0;">
                         </div>
                     </div>
 
@@ -221,6 +232,7 @@ function renderFormView(container) {
             document.getElementById('user-login-password').value = editingUserData.LoginPassword || '';
             document.getElementById('user-email').value = editingUserData.Email || '';
             document.getElementById('user-role').value = editingUserData.Role || 'Staff';
+            document.getElementById('user-status').value = editingUserData.Status || 'active';
             document.getElementById('user-store-select').value = editingUserData.StoreID || '';
             document.getElementById('user-28h-limit').checked = !!editingUserData.Has28hLimit;
             document.getElementById('user-display-name').value = editingUserData.DisplayName || '';
@@ -258,6 +270,7 @@ function setupFormLogic() {
             'Has28hLimit': document.getElementById('user-28h-limit').checked,
             'DisplayName': document.getElementById('user-display-name').value,
             'JobTitle': document.getElementById('user-job-title').value,
+            'Status': document.getElementById('user-status').value,
             'UpdatedAt': new Date().toISOString()
         };
 
@@ -421,6 +434,8 @@ function renderTable(filter = "") {
                 'Admin': '管理者', 'Manager': '店長', 'Staff': '一般社員', 'PartTimer': 'アルバイト', 'Tablet': '店舗タブレット'
             };
             const role = item['Role'] || 'Staff';
+            const status = item['Status'] || 'active';
+            const statusMap = { 'active': '在職', 'resigning': '退職手続中', 'retired': '退職' };
 
             const tr = document.createElement('tr');
             tr.style.borderBottom = '1px solid var(--border)';
@@ -431,8 +446,9 @@ function renderTable(filter = "") {
                     ${item['Name'] || '-'}
                     ${item['DisplayName'] ? `<br><span style="font-size:0.7rem; color:var(--text-secondary); font-weight:400;">(${item['DisplayName']})</span>` : ''}
                 </td>
-                <td style="padding: 1rem; color: var(--text-secondary); font-size: 0.9rem;">${item['Store'] || '-'}</td>
+                <td style="padding: 1rem; color: var(--text-secondary); font-size: 0.85rem;">${item['Store'] || '-'}</td>
                 <td style="padding: 1rem;"><span class="badge ${role.toLowerCase()}">${roleNameMap[role] || role}</span></td>
+                <td style="padding: 1rem;"><span class="badge status-${status}">${statusMap[status]}</span></td>
                 <td style="padding: 1rem; font-family: monospace; color: var(--text-secondary);">${item['ClockInPassword'] || '-'}</td>
                 <td style="padding: 1rem; font-family: monospace; color: var(--text-secondary);">${item['LoginPassword'] ? '********' : '-'}</td>
                 <td style="padding: 1rem; text-align: right;">
