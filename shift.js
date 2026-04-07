@@ -872,7 +872,6 @@ function renderAdminGrid() {
             const tr = document.createElement('tr');
             const roleName = roleMap[u.Role] || u.Role || '';
             let displayRole = u.JobTitle || roleName;
-            if (u.isHelp && u.Store) displayRole += ` (${u.Store})`;
 
             tr.innerHTML = `<td class="staff-cell">
                 <div style="display:flex; flex-direction:column; justify-content:center; text-align:left; line-height:1.2;">
