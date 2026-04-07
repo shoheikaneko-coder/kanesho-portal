@@ -1,5 +1,5 @@
 import { db } from './firebase.js';
-import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, getDocs, query, where, getDoc, doc, updateDoc, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 // 各ページのインポート
 import { dashboardPageHtml, initDashboardPage } from './dashboard.js';
@@ -26,7 +26,7 @@ import { goalsAdminPageHtml, initGoalsAdminPage, goalsStorePageHtml, initGoalsSt
 import { homePageHtml, initHomePage } from './home.js';
 import { shiftSubmissionPageHtml, initShiftSubmissionPage, shiftAdminPageHtml, initShiftAdminPage } from './shift.js?v=60';
 import { loansPageHtml, initLoansPage } from './loans.js';
-import { getDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { hubPageHtml, initHubPage } from './hubs.js';
 
 console.log("AntiGravity Portal: app.js loaded successfully.");
 
@@ -39,27 +39,17 @@ const state = {
 window.appState = state;
 
 const defaultMenuItems = [
-    { id: 'home', name: 'ホーム', icon: 'fa-home', category: 'メインメニュー' },
-    { id: 'dashboard', name: 'ダッシュボード', icon: 'fa-chart-line', category: 'メインメニュー' },
-    { id: 'shift_submission', name: 'シフト提出・確認', icon: 'fa-calendar-alt', category: '業務メニュー' },
-    { id: 'shift_admin', name: 'シフト作成・調整', icon: 'fa-user-edit', category: '業務メニュー' },
-    { id: 'recipe_viewer', name: 'レシピ閲覧', icon: 'fa-book-open', category: '業務メニュー' },
-    { id: 'goals_store', name: '月次計画 (店長用)', icon: 'fa-tasks', category: '業務メニュー' },
-    { id: 'attendance_check', name: '勤怠状況確認', icon: 'fa-clipboard-check', category: '人事労務管理' },
-    { id: 'users', name: 'ユーザー・従業員管理', icon: 'fa-users-cog', category: '人事労務管理' },
-    { id: 'loans', name: '貸与物管理(アセット)', icon: 'fa-key', category: '人事労務管理' },
-    { id: 'role_permissions', name: '権限振り分け設定', icon: 'fa-user-shield', category: '人事労務管理' },
-    { id: 'stores', name: '店舗マスタ', icon: 'fa-store-alt', category: 'マスタ管理' },
-    { id: 'store_items', name: '店舗別在庫設定', icon: 'fa-tasks', category: 'マスタ管理' },
-    { id: 'products', name: '商品・レシピマスタ', icon: 'fa-mortar-pestle', category: 'マスタ管理' },
-    { id: 'suppliers', name: '業者マスタ', icon: 'fa-truck', category: 'マスタ管理' },
-    { id: 'sales_correction', name: '営業実績修正', icon: 'fa-edit', category: 'マスタ管理' },
-    { id: 'csv_export', name: 'CSV出力', icon: 'fa-file-csv', category: 'マスタ管理' },
-    { id: 'csv_import', name: 'CSVインポート', icon: 'fa-file-import', category: 'マスタ管理' },
-    { id: 'menu_order', name: 'メニュー並び順', icon: 'fa-sort-amount-down', category: 'マスタ管理' },
-    { id: 'calendar_admin', name: '営業カレンダー作成', icon: 'fa-calendar-plus', category: 'マスタ管理' },
-    { id: 'goals_admin', name: '目標設定 (社長用)', icon: 'fa-bullseye', category: 'マスタ管理' },
-    { id: 'line_share', name: 'アプリをLINE共有', icon: 'fa-share-alt', category: 'マスタ管理' }
+    { id: 'home', name: 'メインホーム', icon: 'fa-home', category: 'ハブ' },
+    { id: 'ops_hub', name: '店舗業務', icon: 'fa-store', category: 'ハブ' },
+    { id: 'hr_hub', name: '人事総務業務', icon: 'fa-user-friends', category: 'ハブ' },
+    { id: 'master_hub', name: '設定', icon: 'fa-cog', category: 'ハブ' },
+    
+    { id: 'dashboard', name: '分析ダッシュボード', icon: 'fa-chart-line', category: 'サブ機能' },
+    { id: 'shift_submission', name: 'シフト提出・確認', icon: 'fa-calendar-alt', category: 'サブ機能' },
+    { id: 'shift_admin', name: 'シフト作成・調整', icon: 'fa-user-edit', category: 'サブ機能' },
+    { id: 'recipe_viewer', name: 'レシピ閲覧', icon: 'fa-book-open', category: 'サブ機能' },
+    { id: 'attendance_check', name: '勤怠照会', icon: 'fa-clipboard-check', category: 'サブ機能', hidden: true },
+    { id: 'users', name: '従業員管理', icon: 'fa-users-cog', category: 'サブ機能', hidden: true }
 ];
 
 /**
@@ -67,11 +57,8 @@ const defaultMenuItems = [
  */
 async function loginSuccess(user) {
     state.currentUser = user;
-    
-    // ログイン情報を保存（セッション維持）
     localStorage.setItem('currentUser', JSON.stringify(user));
 
-    // 権限に応じたメニューの出し分けと並び順反映
     await renderSidebar(user);
     
     const appContainer = document.getElementById('app-container');
@@ -92,7 +79,6 @@ async function loginSuccess(user) {
     if (roleEl) roleEl.textContent = user.Role || '一般';
     if (avatarEl) avatarEl.textContent = (user.Name || 'U').substring(0, 1).toUpperCase();
 
-    // 初期表示ページの分岐
     const urlParams = new URLSearchParams(window.location.search);
     const targetPage = urlParams.get('page');
 
@@ -102,7 +88,6 @@ async function loginSuccess(user) {
         showPage('home');
     }
 
-    // 通知バッジの初期化
     initNotificationBadge();
 }
 
@@ -132,7 +117,6 @@ async function handleLogin(e) {
         }
 
         if (user) {
-            console.log("Success. Transitioning...");
             await loginSuccess(user);
         } else {
             alert('ログイン失敗: IDまたはパスワードが正しくありません。');
@@ -148,102 +132,86 @@ async function handleLogin(e) {
     }
 }
 
+/**
+ * サイドバーのメニューを描画（権限考慮）
+ */
 async function renderSidebar(user) {
-    const role = user.Role;
     const sidebarMenu = document.querySelector('.sidebar-menu');
     if (!sidebarMenu) return;
 
-    // 並び順の取得
-    let order = [];
-    try {
-        const docSnap = await getDoc(doc(db, "m_settings", "sidebar_order"));
-        if (docSnap.exists()) {
-            order = docSnap.data().order || [];
-        }
-    } catch (e) { console.error("Order load error:", e); }
-
-    // 並び順に基づいたメニュー配列の作成
-    let sortedMenu = [];
-    if (order.length > 0) {
-        order.forEach(id => {
-            const item = defaultMenuItems.find(m => m.id === id);
-            if (item) sortedMenu.push(item);
-        });
-        defaultMenuItems.forEach(item => {
-            if (!order.includes(item.id)) sortedMenu.push(item);
-        });
-    } else {
-        sortedMenu = [...defaultMenuItems];
-    }
-
-    // 権限の取得
+    const role = user.Role || 'Staff';
     let allowed = [];
+
     if (role === 'Admin' || role === '管理者') {
-        allowed = sortedMenu.map(m => m.id);
-        // 管理者は、サイドバーにはないがホームに存在する項目も全て許可
-        ['sales','attendance','inventory','procurement','product_analysis','home_performance','shift_admin','shift_submission'].forEach(id => allowed.push(id));
+        allowed = defaultMenuItems.map(m => m.id);
+        // 全般的な権限を付与
+        const adminPerms = ['sales','attendance','inventory','procurement','product_analysis','home_performance','shift_admin','shift_submission','attendance_check','users','loans','role_permissions','stores','products','suppliers','sales_correction','csv_export','csv_import','calendar_admin','goals_admin','line_share'];
+        adminPerms.forEach(id => { if (!allowed.includes(id)) allowed.push(id); });
     } else {
         try {
-            const docSnap = await getDoc(doc(db, "m_role_permissions", role));
-            if (docSnap.exists()) {
-                allowed = docSnap.data().permissions || [];
-                allowed.push('home'); // ホームは常に許可
-            } else {
-                allowed = ['home', 'inventory']; // デフォルト
+            const q = query(collection(db, "t_role_permissions"), where("Role", "==", role));
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+                allowed = snap.docs[0].data().Permissions || [];
             }
-        } catch (err) {
-            console.error("RBAC Error:", err);
-            allowed = ['home'];
+        } catch (e) {
+            console.error("Permission check failed:", e);
         }
     }
+    
+    ['home', 'ops_hub', 'hr_hub', 'master_hub'].forEach(id => {
+        if (!allowed.includes(id)) allowed.push(id);
+    });
+
     state.permissions = allowed;
 
-    // HTML生成
+    const hrNav = document.getElementById('nav-item-hr');
+    if (hrNav) {
+        hrNav.style.display = (role === 'Admin' || role === '管理者' || allowed.includes('hr_hub')) ? 'flex' : 'none';
+    }
+
     let html = '';
-    let currentCategory = '';
-    sortedMenu.forEach(item => {
-        if (!allowed.includes(item.id)) return;
-
-        if (item.category && item.category !== currentCategory) {
-            currentCategory = item.category;
-            html += `<div class="menu-category">${currentCategory}</div>`;
-        }
-
-        html += `
-            <a href="#" class="menu-item ${state.currentPage === item.id ? 'active' : ''}" data-target="${item.id}" id="menu-item-${item.id}">
-                <i class="fas ${item.icon}"></i> ${item.name}
-            </a>
-        `;
-    });
+    const categories = [...new Set(defaultMenuItems.map(item => item.category))];
     
-    // デバッグログ: サイドバーHTMLが正しく生成されているか確認
-    // console.log("Generated Sidebar HTML:", html);
+    categories.forEach(cat => {
+        const items = defaultMenuItems.filter(item => item.category === cat && !item.hidden);
+        const allowedItems = items.filter(item => allowed.includes(item.id));
+        
+        if (allowedItems.length > 0) {
+            html += `<div class="menu-category">${cat}</div>`;
+            allowedItems.forEach(item => {
+                html += `
+                    <a href="#" class="menu-item ${state.currentPage === item.id ? 'active' : ''}" data-target="${item.id}">
+                        <i class="fas ${item.icon}"></i> ${item.name}
+                    </a>
+                `;
+            });
+        }
+    });
+
     sidebarMenu.innerHTML = html;
 
-    // イベントリスナーの再設定
     document.querySelectorAll('.menu-item').forEach(item => {
         item.onclick = (e) => {
             e.preventDefault();
-            const target = e.currentTarget.dataset.target;
-            if (target === 'line_share') {
-                handleLineShare();
-            } else {
-                showPage(target);
-            }
-            document.querySelector('.sidebar')?.classList.remove('show');
+            window.navigateTo(e.currentTarget.dataset.target);
         };
     });
 }
 
-function handleLineShare() {
-    const text = `かね将ポータル
-https://kaneshow-portal.web.app/
-※自身のメールアドレスでログインしてください`;
-    const url = `line://msg/text/?${encodeURIComponent(text)}`;
-    window.open(url, '_blank');
-}
+window.navigateTo = (target) => {
+    showPage(target);
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    sidebar?.classList.remove('show');
+    overlay?.classList.remove('show');
+    
+    document.querySelectorAll('.bottom-nav-item').forEach(el => {
+        el.classList.toggle('active', el.dataset.target === target);
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
 
-window.navigateTo = showPage;
 function showPage(target) {
     state.currentPage = target;
     const pageContent = document.getElementById('page-content');
@@ -252,14 +220,27 @@ function showPage(target) {
 
     document.querySelectorAll('.menu-item').forEach(el => el.classList.toggle('active', el.dataset.target === target));
 
-    const userName = state.currentUser ? (state.currentUser.Name || state.currentUser.name || 'User') : 'User';
-
     try {
         switch (target) {
             case 'home':
-                pageTitle.textContent = 'ホーム';
+                pageTitle.textContent = 'メインホーム';
                 pageContent.innerHTML = homePageHtml;
                 initHomePage();
+                break;
+            case 'ops_hub':
+                pageTitle.textContent = '店舗業務';
+                pageContent.innerHTML = hubPageHtml('店舗業務', '店舗運営に必要な日次業務。');
+                initHubPage('ops_hub');
+                break;
+            case 'hr_hub':
+                pageTitle.textContent = '人事総務業務';
+                pageContent.innerHTML = hubPageHtml('人事総務業務', '従業員管理、貸与物、勤怠チェック。');
+                initHubPage('hr_hub');
+                break;
+            case 'master_hub':
+                pageTitle.textContent = '設定・マスタ';
+                pageContent.innerHTML = hubPageHtml('設定・マスタ', 'システム基盤情報の管理。');
+                initHubPage('master_hub');
                 break;
             case 'dashboard':
                 pageTitle.textContent = 'ダッシュボード';
@@ -399,180 +380,112 @@ function showPage(target) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("DOM Content Loaded. Initializing app...");
-
-    // 1. ログインフォームの初期化 (最優先)
     const form = document.getElementById('login-form');
-    if (form) {
-        form.onsubmit = (e) => {
-            console.log("Login submitted.");
-            handleLogin(e);
-        };
-        console.log("Login form handler attached.");
-    }
+    if (form) form.onsubmit = handleLogin;
 
-    // 2. 自動ログインチェック
     const savedUser = localStorage.getItem('currentUser');
     if (savedUser) {
         try {
-            const user = JSON.parse(savedUser);
-            console.log("Auto-login for:", user.Email);
-            loginSuccess(user);
-        } catch (e) {
-            console.error("Auto-login error:", e);
-            localStorage.removeItem('currentUser');
-        }
+            loginSuccess(JSON.parse(savedUser));
+        } catch (e) { localStorage.removeItem('currentUser'); }
     }
 
-    // カレンダー閲覧アイコンのハンドラ
     const btnCalendar = document.getElementById('btn-calendar-viewer');
-    if (btnCalendar) {
-        btnCalendar.onclick = () => showPage('calendar_viewer');
-    }
+    if (btnCalendar) btnCalendar.onclick = () => window.navigateTo('calendar_viewer');
 
-    // 3. その他グローバルイベント
     document.getElementById('logout-btn')?.addEventListener('click', (e) => {
         e.preventDefault();
-        console.log("Logging out...");
         localStorage.removeItem('currentUser');
         location.reload();
     });
 
     const sidebar = document.querySelector('.sidebar');
-    const closeSidebar = () => sidebar?.classList.remove('show');
-
-    document.querySelectorAll('.menu-item').forEach(item => {
+    const overlay = document.querySelector('.sidebar-overlay');
+    
+    document.querySelectorAll('.bottom-nav-item').forEach(item => {
         item.onclick = (e) => {
-            e.preventDefault();
-            showPage(e.currentTarget.dataset.target);
-            closeSidebar(); // モバイルでメニュー選択後にサイドバーを閉じる
+            if (e.currentTarget.id === 'btn-mobile-menu') {
+                sidebar?.classList.toggle('show');
+                overlay?.classList.toggle('show');
+            } else {
+                window.navigateTo(e.currentTarget.dataset.target);
+            }
         };
     });
 
-    const mobileBtn = document.getElementById('mobile-menu-btn');
-    if (mobileBtn) {
-        mobileBtn.onclick = () => sidebar?.classList.toggle('show');
+    const fabBtn = document.getElementById('fab-main-btn');
+    const fabMenu = document.getElementById('fab-menu');
+    if (fabBtn) {
+        fabBtn.onclick = (e) => {
+            e.stopPropagation();
+            fabMenu.classList.toggle('show');
+            fabBtn.querySelector('i').classList.toggle('fa-plus');
+            fabBtn.querySelector('i').classList.toggle('fa-times');
+        };
     }
-
-    // サイドバー外（オーバーレイ）タップで閉じる
-    document.addEventListener('click', (e) => {
-        if (!sidebar) return;
-        if (sidebar.classList.contains('show') &&
-            !sidebar.contains(e.target) &&
-            e.target !== mobileBtn &&
-            !mobileBtn?.contains(e.target)) {
-            closeSidebar();
+    document.addEventListener('click', () => {
+        fabMenu?.classList.remove('show');
+        if (fabBtn) {
+            fabBtn.querySelector('i').classList.add('fa-plus');
+            fabBtn.querySelector('i').classList.remove('fa-times');
         }
     });
 
-    // ── 管理者連絡モーダル ──────────────────────────────
-    const adminModal = document.getElementById('admin-contact-modal');
-    const btnContactAdmin = document.getElementById('btn-contact-admin');
-    const btnCloseAdminModal = document.getElementById('close-admin-modal');
-    const btnLineContact = document.getElementById('btn-line-contact');
+    const mobileBtn = document.getElementById('mobile-menu-btn');
+    if (mobileBtn) mobileBtn.onclick = () => {
+        sidebar?.classList.toggle('show');
+        overlay?.classList.toggle('show');
+    };
 
-    async function openAdminModal() {
+    overlay?.addEventListener('click', () => {
+        sidebar?.classList.remove('show');
+        overlay?.classList.remove('show');
+    });
+
+    // 管理者連絡モーダル
+    const adminModal = document.getElementById('admin-contact-modal');
+    document.getElementById('btn-contact-admin')?.addEventListener('click', async () => {
         if (!adminModal) return;
         adminModal.style.display = 'flex';
-
-        // 管理者一覧を取得して表示
         const container = document.getElementById('admin-list-container');
         try {
             const snap = await getDocs(collection(db, 'm_users'));
             const admins = [];
-            snap.forEach(d => {
-                const data = d.data();
-                if (data.Role === 'Admin') {
-                    admins.push(data);
-                }
-            });
-            if (admins.length === 0) {
-                container.innerHTML = '<div style="padding:1rem; text-align:center; color:#94a3b8; font-size:0.9rem;">管理者が登録されていません</div>';
-            } else {
-                container.innerHTML = admins.map((a, i) => `
-                    <div style="padding:0.9rem 1rem; ${i < admins.length - 1 ? 'border-bottom:1px solid #e2e8f0;' : ''} display:flex; align-items:center; gap:0.8rem;">
-                        <div style="width:36px; height:36px; border-radius:50%; background:#fee2e2; color:#e53e3e; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:1rem; flex-shrink:0;">
-                            ${(a.Name || 'A').substring(0, 1).toUpperCase()}
-                        </div>
-                        <div>
-                            <div style="font-weight:600; font-size:0.9rem; color:#1e293b;">${a.Name || '名前未設定'}</div>
-                            <div style="font-size:0.78rem; color:#64748b;">${a.Store || ''} ／ ${a.Role === 'Admin' ? '管理者' : '店長'}</div>
-                        </div>
+            snap.forEach(d => { if (d.data().Role === 'Admin') admins.push(d.data()); });
+            container.innerHTML = admins.map(a => `
+                <div style="padding:0.9rem 1rem; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; gap:0.8rem;">
+                    <div style="width:36px; height:36px; border-radius:50%; background:#fee2e2; color:#e53e3e; display:flex; align-items:center; justify-content:center; font-weight:700;">
+                        ${(a.Name || 'A').substring(0, 1).toUpperCase()}
                     </div>
-                `).join('');
-            }
-        } catch(e) {
-            container.innerHTML = '<div style="padding:1rem; color:#e53e3e; font-size:0.85rem;">読み込みエラー</div>';
-        }
-
-        // m_stores から店舗一覧をセレクトに読み込む（初回のみ）
-        const storeSelect = document.getElementById('contact-store');
-        if (storeSelect && storeSelect.options.length <= 1) {
-            try {
-                const storeSnap = await getDocs(collection(db, 'm_stores'));
-                const opts = [];
-                storeSnap.forEach(d => {
-                    const data = d.data();
-                    if (data.store_name) opts.push(data.store_name);
-                });
-                opts.sort();
-                opts.forEach(name => {
-                    const opt = document.createElement('option');
-                    opt.value = name;
-                    opt.textContent = name;
-                    storeSelect.appendChild(opt);
-                });
-            } catch(e) { console.error('店舗読み込みエラー:', e); }
-        }
-    }
-
-    if (btnContactAdmin) btnContactAdmin.onclick = openAdminModal;
-    if (btnCloseAdminModal) btnCloseAdminModal.onclick = () => adminModal.style.display = 'none';
-    if (adminModal) adminModal.onclick = (e) => { if (e.target === adminModal) adminModal.style.display = 'none'; };
-
-    if (btnLineContact) {
-        btnLineContact.onclick = () => {
-            const store = document.getElementById('contact-store')?.value || '';
-            const name = document.getElementById('contact-name')?.value.trim() || '';
-            if (!store) return alert('店舗名を選択してください。');
-            if (!name) return alert('お名前を入力してください。');
-            const text = `店舗名：${store}\n名前：${name}\nパスワードを忘れました。\n再設定の手続きをお願いいたします。`;
-            const encoded = encodeURIComponent(text);
-            window.open(`https://line.me/R/share?text=${encoded}`, '_blank');
-        };
-    }
-    // ─────────────────────────────────────────────────────
+                    <div>
+                        <div style="font-weight:600; font-size:0.9rem;">${a.Name || '管理者'}</div>
+                        <div style="font-size:0.78rem; color:#64748b;">${a.Store || ''}</div>
+                    </div>
+                </div>
+            `).join('');
+        } catch(e) { container.innerHTML = '読み込みエラー'; }
+    });
+    document.getElementById('close-admin-modal')?.addEventListener('click', () => adminModal.style.display = 'none');
 });
-
-import { onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 function initNotificationBadge() {
     const btnNotify = document.getElementById('btn-notifications');
     if (!btnNotify) return;
-
-    btnNotify.onclick = () => showPage('notifications');
-
-    // 管理者のみバッジを表示（または全ユーザーで自分の申請状況を見る場合は共通）
-    // 今回は「管理者への申請」がメインなので、管理者にバッジを表示する
-    const isAdmin = state.currentUser?.Role === 'Admin' || state.currentUser?.Role === '管理者';
-    if (!isAdmin) return;
-
+    btnNotify.onclick = () => window.navigateTo('notifications');
+    if (state.currentUser?.Role !== 'Admin') return;
     const q = query(collection(db, "notifications"), where("status", "==", "pending"));
     onSnapshot(q, (snapshot) => {
-        const count = snapshot.size;
         let badge = document.getElementById('notification-badge');
-        if (count > 0) {
+        if (snapshot.size > 0) {
             if (!badge) {
                 badge = document.createElement('span');
                 badge.id = 'notification-badge';
-                badge.style.cssText = 'position:absolute; top:-5px; right:-5px; background:var(--danger); color:white; border-radius:10px; padding:2px 6px; font-size:10px; font-weight:bold; border:2px solid white;';
+                badge.style.cssText = 'position:absolute; top:-5px; right:-5px; background:var(--danger); color:white; border-radius:10px; padding:2px 6px; font-size:10px; border:2px solid white;';
                 btnNotify.style.position = 'relative';
                 btnNotify.appendChild(badge);
             }
-            badge.textContent = count;
+            badge.textContent = snapshot.size;
             badge.style.display = 'block';
-        } else {
-            if (badge) badge.style.display = 'none';
-        }
+        } else if (badge) badge.style.display = 'none';
     });
 }

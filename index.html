@@ -153,8 +153,50 @@
             <div class="page-content" id="page-content">
                 <!-- Content injected by JS -->
             </div>
+
+            <!-- Bottom Navigation (Mobile Only) -->
+            <nav class="bottom-nav">
+                <div class="bottom-nav-item active" data-target="home">
+                    <i class="fas fa-home"></i>
+                    <span>ホーム</span>
+                </div>
+                <div class="bottom-nav-item" data-target="ops_hub">
+                    <i class="fas fa-store"></i>
+                    <span>店舗業務</span>
+                </div>
+                <div class="bottom-nav-item" data-target="hr_hub" id="nav-item-hr" style="display:none;">
+                    <i class="fas fa-user-friends"></i>
+                    <span>人事総務</span>
+                </div>
+                <div class="bottom-nav-item" id="btn-mobile-menu">
+                    <i class="fas fa-bars"></i>
+                    <span>メニュー</span>
+                </div>
+            </nav>
+
+            <!-- Quick Action FAB (Mobile Only) -->
+            <div class="fab-container">
+                <div class="fab-menu" id="fab-menu">
+                    <div class="fab-item" onclick="window.navigateTo('attendance')">
+                        <span class="fab-label">出退勤打刻</span>
+                        <div class="fab-icon"><i class="fas fa-fingerprint"></i></div>
+                    </div>
+                    <div class="fab-item" onclick="window.navigateTo('sales')">
+                        <span class="fab-label">営業実績報告</span>
+                        <div class="fab-icon"><i class="fas fa-calculator"></i></div>
+                    </div>
+                    <div class="fab-item" onclick="window.navigateTo('inventory')">
+                        <span class="fab-label">棚卸・在庫登録</span>
+                        <div class="fab-icon"><i class="fas fa-box-open"></i></div>
+                    </div>
+                </div>
+                <div class="fab-main" id="fab-main-btn">
+                    <i class="fas fa-plus"></i>
+                </div>
+            </div>
         </main>
     </div>
+    <div class="sidebar-overlay"></div>
 
     <!-- 管理者連絡モーダル -->
     <div id="admin-contact-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:9999; align-items:center; justify-content:center; padding:1rem;">
