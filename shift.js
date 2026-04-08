@@ -1360,6 +1360,13 @@ async function publishShifts() {
             }
 
             showAlert('成功', `${count}件のシフトを確定・公開しました！\nスタッフの画面からも編集できなくなります。`);
+
+            // --- 重要: LINE共有フローの起動 ---
+            setTimeout(() => {
+                showConfirm('LINE周知', '確定したシフト表を画像にして、スタッフにLINEで共有しますか？', () => {
+                    shareShiftToLine(sid, sName);
+                });
+            }, 1500);
         } else {
             console.log("No applied shifts found.");
             showAlert('案内', '新しく確定が必要な未処理の希望はありませんでした。');
@@ -1378,6 +1385,97 @@ async function publishShifts() {
             btn.innerHTML = '一括確定・公開';
         }
         console.log("--- publishShifts End ---");
+    }
+}
+
+/**
+ * --- 周知・共有機能 ---
+ */
+async function shareShiftToLine(sid, sName) {
+    showLoader();
+    try {
+        console.log("Preparing shift image for sharing...");
+        
+        // html2canvas の動的読み込み
+        if (typeof html2canvas === 'undefined') {
+            await new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        const table = document.getElementById('shift-admin-table');
+        if (!table) throw new Error("シフト表が見つかりません。");
+
+        // キャプチャ用に一時的にスタイルを調整（スクロールで見切れないようにする）
+        const originalStyle = table.style.cssText;
+        table.style.width = 'auto'; // 全幅を確保
+        table.style.minWidth = '1200px';
+
+        // 画像化の実行 (背景透過設定やスケールを調整)
+        const canvas = await html2canvas(table, {
+            backgroundColor: '#ffffff',
+            scale: 2, // 高解像度
+            useCORS: true,
+            logging: false,
+            allowTaint: true
+        });
+
+        // スタイルを元に戻す
+        table.style.cssText = originalStyle;
+
+        const dataUrl = canvas.toDataURL("image/png");
+        const blob = await (await fetch(dataUrl)).blob();
+        const file = new File([blob], `shift_${sid}_${new Date().getTime()}.png`, { type: "image/png" });
+
+        // 周知テキストの生成
+        const ymText = `${currentSlot.year}/${currentSlot.month} ${currentSlot.slot === 1 ? '前半' : '後半'}`;
+        const portalUrl = `${window.location.origin}${window.location.pathname}?page=shift_viewer`;
+        
+        const text = `【シフト確定連絡】
+店舗：${sName}
+期間：${ymText}
+
+上記のシフトを確定・公開しました！
+画像を添付しますので、各自の出勤日を確認してください。
+
+個人別の詳しい時間確認や、スマホカレンダーへの保存はこちらから！
+${portalUrl}
+
+※かね将ポータルにログインして「シフト表」アイコンをタップしてください。`;
+
+        // Web Share API による共有
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+                title: 'シフト表の共有',
+                text: text,
+                files: [file]
+            });
+            console.log("Sharing success via Web Share API.");
+        } else {
+            // PC等のフォールバック: 画像ダウンロードとテキストコピー
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = `shift_${ymText.replace(/\//g,'-')}.png`;
+            link.click();
+            
+            if (navigator.clipboard) {
+                await navigator.clipboard.writeText(text);
+                showAlert('案内', 'ご使用の端末では自動共有が利用できなかったため、画像を保存し、メッセージをクリップボードにコピーしました。LINEに貼り付けて送信してください。');
+            } else {
+                showAlert('案内', '画像を保存しました。LINEに貼り付けて送信してください。');
+            }
+        }
+
+    } catch (e) {
+        console.error("Sharing failed:", e);
+        showAlert('エラー', `画像の生成または共有に失敗しました: ${e.message}`);
+    } finally {
+        const loader = document.getElementById('ui-global-loader');
+        if (loader) loader.style.display = 'none';
     }
 }
 
