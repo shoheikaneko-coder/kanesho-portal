@@ -302,21 +302,21 @@ p { color: var(--text-secondary); line-height: 1.5; }
 }
 
 .top-header {
-  min-height: 90px;
-  padding: 1.2rem 2rem; /* 余白を多めに取って、中身が絶対に見切れないようにする */
+  min-height: 85px;
+  padding: 1rem 2rem;
   display: flex;
-  flex-direction: column; /* 常にパンくずとタイトルを縦に並べる */
-  justify-content: center; /* 縦方向の中央に配置 */
-  align-items: flex-start; /* 左寄せ */
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
   gap: 0.4rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(15, 23, 42, 0.85); /* 視認性を上げるため、わずかに濃度をアップ */
-  backdrop-filter: blur(16px); /* ぼかしを強調して高級感を出す */
-  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.9); /* 白背景に寄せて、より確実な表示を優先 */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   position: sticky;
   top: 0;
   z-index: 1000;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
 }
 
 .page-content {
@@ -1601,7 +1601,7 @@ input:checked + .toggle-slider:before {
 /* Back Button Styles Removed - Using Browser History */
 
 #page-title {
-  color: white; /* ガラスヘッダーに合わせて白に */
+  color: var(--text-primary); /* 背景に合わせて濃い色に */
   font-size: 1.3rem;
   font-weight: 800;
   letter-spacing: -0.02em;
@@ -1612,7 +1612,7 @@ input:checked + .toggle-slider:before {
   align-items: center;
   gap: 0.6rem;
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-secondary); /* 背景に合わせて調整 */
   font-weight: 700;
   margin: 0;
   padding: 0.2rem 0;
