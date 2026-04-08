@@ -538,10 +538,17 @@ async function handleCheckIn() {
     console.log("handleCheckIn triggered. Context:", { tabletStoreID, tabletStore });
     
     if (!tabletStoreID) {
-        return showAlert('エラー', '店舗コンテキストが不明です。一度ログアウトして再ログインしてください。\n(StoreID is missing)');
+        // カスタムUIが出るか怪しいため、ブラウザ標準のアラートを併用
+        window.alert("エラー: ログイン店舗が特定できませんでした。\nStoreID: " + tabletStoreID);
+        return;
     }
 
-    const staffDocId = document.getElementById('staff-select').value;
+    const selectEl = document.getElementById('staff-select');
+    if (!selectEl) {
+        window.alert("エラー: スタッフ選択欄が見つかりません(ID collision?)");
+        return;
+    }
+    const staffDocId = selectEl.value;
     if (!staffDocId) {
         return showAlert('お知らせ', '打刻するスタッフを選択してください。');
     }
@@ -585,12 +592,24 @@ function openPunchModal(staffId, info) {
         actionsDiv.appendChild(btn);
     });
 
-    document.getElementById('punch-modal').style.display = 'flex';
-    setTimeout(() => document.getElementById('punch-modal-pw')?.focus(), 100);
+    const modal = document.getElementById('punch-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.add('show');
+        const pwInput = document.getElementById('punch-modal-pw');
+        if (pwInput) {
+            pwInput.value = '';
+            pwInput.focus();
+        }
+    }
 }
 
 function closePunchModal() {
-    document.getElementById('punch-modal').style.display = 'none';
+    const modal = document.getElementById('punch-modal');
+    if (modal) {
+        modal.classList.remove('show');
+        setTimeout(() => { modal.style.display = 'none'; }, 150);
+    }
     pendingPunchTarget = null;
 }
 
