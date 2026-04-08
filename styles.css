@@ -305,10 +305,10 @@ p { color: var(--text-secondary); line-height: 1.5; }
   min-height: 85px;
   padding: 1rem 2rem;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: flex-start;
-  gap: 0.4rem;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
   border-bottom: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.9); /* 白背景に寄せて、より確実な表示を優先 */
   backdrop-filter: blur(12px);
