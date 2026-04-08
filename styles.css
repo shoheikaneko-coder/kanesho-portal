@@ -302,13 +302,21 @@ p { color: var(--text-secondary); line-height: 1.5; }
 }
 
 .top-header {
-  height: 70px;
-  padding: 0 2rem;
+  min-height: 90px;
+  padding: 1.2rem 2rem; /* 余白を多めに取って、中身が絶対に見切れないようにする */
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface-dark);
+  flex-direction: column; /* 常にパンくずとタイトルを縦に並べる */
+  justify-content: center; /* 縦方向の中央に配置 */
+  align-items: flex-start; /* 左寄せ */
+  gap: 0.4rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(15, 23, 42, 0.85); /* 視認性を上げるため、わずかに濃度をアップ */
+  backdrop-filter: blur(16px); /* ぼかしを強調して高級感を出す */
+  -webkit-backdrop-filter: blur(16px);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
 }
 
 .page-content {
@@ -1572,36 +1580,27 @@ input:checked + .toggle-slider:before {
   gap: 0.7rem;
 }
 
-.back-btn {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: white;
-  border: 1px solid var(--border);
+/* Back Button Styles Removed - Using Browser History */
+
+#page-title {
+  color: white; /* ガラスヘッダーに合わせて白に */
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.breadcrumb {
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: var(--text-primary);
+  gap: 0.6rem;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 700;
+  margin: 0;
+  padding: 0.2rem 0;
+}
+
+.breadcrumb span:hover {
+  color: white;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-  flex-shrink: 0;
-}
-
-.back-btn:hover {
-  background: var(--primary-light);
-  color: var(--primary);
-  transform: translateX(-3px);
-  border-color: var(--primary);
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-}
-
-.back-btn i {
-  font-size: 1rem;
-}
-
-/* Global Transitions */
-.page-content.loading {
-  opacity: 0;
-  transform: translateY(5px);
 }

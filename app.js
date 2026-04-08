@@ -443,7 +443,7 @@ function showPage(target) {
         }
 
         // ページ読み込み完了後にナビゲーションUIを確定
-        renderNavigationUI(target, pageTitle, breadcrumbArea, backSlot);
+        renderNavigationUI(target, pageTitle, breadcrumbArea);
         
     } catch (err) {
         console.error(err);
@@ -581,12 +581,11 @@ function initNotificationBadge() {
 /**
  * 画面に応じたナビゲーションUI（戻るボタン・パンくず）を描画する
  */
-function renderNavigationUI(target, titleEl, breadcrumbEl, backEl) {
-    if (!breadcrumbEl || !backEl) return;
+function renderNavigationUI(target, titleEl, breadcrumbEl) {
+    if (!breadcrumbEl) return;
     
     // リセット
     breadcrumbEl.innerHTML = '';
-    backEl.innerHTML = '';
 
     if (target === 'home') {
         // ホーム画面は何も表示しない
@@ -610,18 +609,4 @@ function renderNavigationUI(target, titleEl, breadcrumbEl, backEl) {
     }
     
     breadcrumbEl.innerHTML = breadcrumbHTML;
-
-    // 2. 戻るボタンの生成
-    const backBtn = document.createElement('div');
-    backBtn.className = 'back-btn';
-    backBtn.innerHTML = '<i class="fas fa-arrow-left"></i>';
-    
-    // 戻り先の決定 (ハブページならホームへ、サブ機能ならハブへ)
-    const backTarget = isHubPage ? 'home' : (parentHubId || 'home');
-    backBtn.onclick = (e) => {
-        e.preventDefault();
-        window.navigateTo(backTarget);
-    };
-    
-    backEl.appendChild(backBtn);
 }

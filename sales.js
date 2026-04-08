@@ -5,11 +5,7 @@ import { processFile } from './import-logic.js';
 
 export const salesPageHtml = `
     <div class="animate-fade-in">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-            <h2 style="margin: 0; display: flex; align-items: center; gap: 0.8rem;">
-                <i class="fas fa-file-invoice-dollar" style="color: var(--primary);"></i>
-                営業実績報告
-            </h2>
+        <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 2rem;">
             <div class="glass" style="padding: 0.3rem; border-radius: 12px; display: flex; gap: 0.2rem;">
                 <button id="view-import-btn" class="btn" style="padding: 0.5rem 1rem; font-size: 0.85rem;">インポート</button>
             </div>

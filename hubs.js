@@ -5,11 +5,7 @@ import { collection, getDocs, query, where, orderBy, getDoc, doc } from "https:/
  * HubページのHTMLテンプレートを生成する
  */
 export const hubPageHtml = (title, description) => `
-    <div class="hub-page animate-fade-in" style="max-width: 1200px; margin: 0 auto; padding-bottom: 5rem;">
-        <div class="hub-header" style="margin-bottom: 2.5rem; padding-top: 1rem;">
-            <h1 style="font-size: 2.2rem; font-weight: 800; color: var(--text-primary); margin: 0;">${title}</h1>
-            <p style="color: var(--text-secondary); font-size: 1rem; margin-top: 0.4rem; font-weight: 500;">${description}</p>
-        </div>
+    <div class="hub-page animate-fade-in" style="max-width: 1200px; margin: 0 auto; padding-bottom: 5rem; padding-top: 1.5rem;">
         
         <div id="hub-content-grid" class="menu-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.5rem;">
             <!-- Hubカードがここに動的に生成される -->

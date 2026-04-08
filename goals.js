@@ -27,10 +27,6 @@ export const goalsAdminPageHtml = `
         </div>
 
         <div id="goal-admin-form-container" class="glass-panel" style="padding: 2.5rem; display: none; max-width: 1000px; margin: 0 auto;">
-            <h3 style="margin-top: 0; margin-bottom: 2.5rem; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 0.8rem; display: flex; align-items: center; gap: 0.8rem;">
-                <i class="fas fa-flag-checkered" style="font-size: 1.4rem;"></i> 
-                <span>年間ターゲット設定 (<span id="goal-admin-display-fy" style="font-weight: 800;">----</span>年度)</span>
-            </h3>
             
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 3rem;">
                 <!-- 基本目標 -->
@@ -185,8 +181,7 @@ export const goalsStorePageHtml = `
 
             <!-- メインテーブル -->
             <div class="glass-panel" style="padding: 2rem; margin-bottom: 2rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <h4 style="margin:0; font-weight: 800; color: var(--text-primary);">12ヶ月売上按分シミュレーター</h4>
+                <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 1.5rem;">
                     <button id="btn-open-weight-modal" class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 1rem; border-radius: 20px;">
                         <i class="fas fa-sliders-h"></i> 売上傾斜（指数）設定
                     </button>
@@ -318,7 +313,10 @@ export async function initGoalsAdminPage() {
             const snap = await getDoc(doc(db, "m_annual_budgets", docId));
             
             document.getElementById('goal-admin-form-container').style.display = 'block';
-            document.getElementById('goal-admin-display-fy').textContent = fy;
+            
+            const pageTitle = document.getElementById('page-title');
+            if (pageTitle) pageTitle.textContent = `年間ターゲット設定 (${fy}年度)`;
+            
             document.getElementById('goal-admin-save-btn').textContent = `${fy}年度 年間マスタを保存`;
             
             if (snap.exists()) {
@@ -512,6 +510,10 @@ export async function initGoalsStorePage() {
             }
 
             document.getElementById('goal-store-container').style.display = 'block';
+            
+            const pageTitle = document.getElementById('page-title');
+            if (pageTitle) pageTitle.textContent = `売上按分シミュレーター (${fy}年度)`;
+            
             refreshSimulator();
 
         } catch (e) {

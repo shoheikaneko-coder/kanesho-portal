@@ -13,7 +13,6 @@ export const attendancePageHtml = `
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
         <div style="display:flex; align-items:center; gap:0.8rem;">
             <i class="fas fa-clock" style="color:var(--primary); font-size:1.4rem;"></i>
-            <h2 style="margin:0; font-size:1.4rem;">勤怠・打刻</h2>
         </div>
         <div id="clock-display" style="font-size:2rem; font-weight:800; font-family:monospace; color:var(--text-primary);">00:00:00</div>
         <button id="btn-help-mode" class="btn" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding:0.6rem 1.2rem; font-size:0.9rem; border-radius:10px;">

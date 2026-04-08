@@ -7,12 +7,8 @@ export const inventoryPageHtml = `
         <!-- New Sticky Header -->
         <div class="glass-panel" style="position: sticky; top: 1rem; z-index: 100; padding: 1rem; margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="display: flex; align-items: baseline; gap: 1rem;">
-                    <h2 id="inv-title" style="margin: 0; font-size: 1.25rem; display: flex; align-items: center; gap: 0.5rem;">
-                        <i class="fas fa-warehouse" style="color: var(--primary);"></i>
-                        在庫管理
-                    </h2>
-                    <a href="javascript:void(0)" onclick="window.navigateTo('products')" style="font-size: 0.75rem; color: var(--primary); text-decoration: none; border-bottom: 1px solid var(--primary); padding-bottom: 2px;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <a href="javascript:void(0)" onclick="window.navigateTo('products')" style="font-size: 0.75rem; color: var(--primary); text-decoration: none; border-bottom: 1px solid var(--primary); padding-bottom: 2px; font-weight: 700;">
                         <i class="fas fa-mortar-pestle" style="font-size: 0.7rem;"></i> 商品・レシピマスタ 🔗
                     </a>
                 </div>
@@ -289,13 +285,13 @@ function render() {
 
     const btnSettings = document.getElementById('btn-inv-settings');
     const btnBack = document.getElementById('btn-inv-back-from-settings');
-    const titleText = document.querySelector('#inv-title').lastChild;
+    const pageTitle = document.getElementById('page-title');
 
     if (currentTab === 'settings') {
         tabs.style.display = 'none';
         btnSettings.style.display = 'none';
         btnBack.style.display = 'flex';
-        titleText.textContent = ' 在庫設定';
+        if (pageTitle) pageTitle.textContent = '在庫設定';
         renderSettingsView(main);
         
         btnBack.onclick = () => {
@@ -306,7 +302,7 @@ function render() {
         tabs.style.display = 'flex';
         btnSettings.style.display = (currentUser?.Role === 'Admin' || currentUser?.Role === '管理者' || currentUser?.Role === 'Manager' || currentUser?.Role === '店長') ? 'flex' : 'none';
         btnBack.style.display = 'none';
-        titleText.textContent = ' 在庫管理';
+        if (pageTitle) pageTitle.textContent = '在庫管理';
 
         tabs.querySelectorAll('.tab-item').forEach(tab => {
             tab.onclick = () => {

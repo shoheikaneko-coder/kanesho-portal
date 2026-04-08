@@ -154,13 +154,9 @@ window.openSideDrawer = () => {
 
 export const shiftSubmissionPageHtml = `
     <div class="animate-fade-in" id="shift-submission-container" style="max-width: 1400px; margin: 0 auto; padding-bottom: 3rem;">
-        <div class="glass-panel" style="padding: 1.5rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid var(--primary);">
+        <div class="glass-panel" style="padding: 1.2rem 1.5rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid var(--primary);">
             <div>
-                <h2 style="margin:0; font-size: 1.3rem; display: flex; align-items: center; gap: 0.8rem;">
-                    <i class="fas fa-paper-plane" style="color: var(--primary);"></i>
-                    シフト希望提出：<span id="shift-slot-title">----</span>
-                </h2>
-                <p style="margin: 0.4rem 0 0; font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;" id="shift-deadline-info"></p>
+                <p style="margin: 0; font-size: 0.85rem; color: var(--text-secondary); font-weight: 700;" id="shift-deadline-info"></p>
             </div>
             <div style="display: flex; gap: 1rem; align-items: center;">
                 <button id="btn-bulk-mode-staff" class="btn btn-secondary" style="font-size: 0.85rem;"><i class="fas fa-check-double"></i> 一括入力</button>
@@ -212,11 +208,10 @@ export const shiftAdminPageHtml = `
 
         <div class="glass-panel" style="padding: 1rem 1.5rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
             <div style="display: flex; align-items: center; gap: 1rem;">
-                <h3 style="margin:0; font-size: 1.1rem; white-space: nowrap;"><span id="admin-slot-title">----</span></h3>
                 <select id="admin-store-select" class="form-input" style="width: auto; min-width: 200px; margin: 0; padding: 0.4rem 0.8rem; font-weight: 700; height: 38px; display: none;">
                     <option value="">店舗を選択してください</option>
                 </select>
-                <span id="admin-active-store-label" style="font-weight: 700; color: var(--text-primary);"></span>
+                <span id="admin-active-store-label" style="font-weight: 700; color: var(--text-primary); font-size: 1rem;"></span>
             </div>
             <div style="display: flex; gap: 0.8rem; justify-content: flex-end; flex: 1;">
                 <button id="btn-manage-fixed-shift" class="btn btn-secondary" style="font-size:0.85rem; border: 1px solid var(--border);"><i class="fas fa-user-clock"></i> 固定設定</button>
@@ -351,7 +346,9 @@ export async function initShiftSubmissionPage() {
     currentTargetUser = user;
     calculateSlot();
     
-    document.getElementById('shift-slot-title').textContent = `${currentSlot.year}/${currentSlot.month} ${currentSlot.slot === 1 ? '前半' : '後半'}`;
+    const pageTitle = document.getElementById('page-title');
+    if (pageTitle) pageTitle.textContent = `シフト希望提出 (${currentSlot.year}/${currentSlot.month} ${currentSlot.slot === 1 ? '前半' : '後半'})`;
+    
     document.getElementById('shift-deadline-info').textContent = `提出締切: ${currentSlot.deadLine}`;
     
     const sid = user.StoreID || user.StoreId || 'UNKNOWN';
@@ -434,7 +431,8 @@ export async function initShiftAdminPage() {
     const storeSelect = document.getElementById('admin-store-select');
     const storeLabel = document.getElementById('admin-active-store-label');
     
-    document.getElementById('admin-slot-title').textContent = `${currentSlot.year}/${currentSlot.month} ${currentSlot.slot === 1 ? '前半' : '後半'}`;
+    const pageTitle = document.getElementById('page-title');
+    if (pageTitle) pageTitle.textContent = `シフト作成 (${currentSlot.year}/${currentSlot.month} ${currentSlot.slot === 1 ? '前半' : '後半'})`;
 
     async function updateView(sid) {
         if (!sid) return;

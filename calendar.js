@@ -29,9 +29,6 @@ export const calendarAdminPageHtml = `
         </div>
 
         <div class="glass-panel" style="padding: 2rem;">
-            <div id="cal-admin-actual-date-header" style="margin-bottom: 1.5rem; text-align: center; border-bottom: 2px solid var(--primary); display: inline-block; padding: 0 1rem 0.5rem;">
-                <h3 id="cal-admin-actual-date-display" style="margin:0; font-size: 1.5rem; color: var(--text-primary); font-weight: 800;">----年 --月</h3>
-            </div>
             <div id="calendar-admin-grid-container"></div>
             
             <div style="margin-top: 2rem; display: flex; justify-content: space-between; align-items: center;">
@@ -130,7 +127,7 @@ export const calendarViewerPageHtml = `
                     <button class="btn btn-secondary" style="padding:0.5rem 1rem; height: 42px; border-radius: 12px; display: flex; align-items: center; gap: 0.5rem;" onclick="window.changeCalMonth(-1)">
                         <i class="fas fa-chevron-left"></i> 前月
                     </button>
-                    <span id="cal-view-ym-display" style="font-size: 1.5rem; font-weight: 900; min-width: 160px; text-align: center; color: var(--text-primary); letter-spacing: 1px;">----年--月</span>
+                    <span id="cal-view-ym-display" style="font-size: 1.1rem; font-weight: 800; min-width: 140px; text-align: center; color: var(--text-secondary); letter-spacing: 0.5px;">----年--月</span>
                     <button class="btn btn-secondary" style="padding:0.5rem 1rem; height: 42px; border-radius: 12px; display: flex; align-items: center; gap: 0.5rem;" onclick="window.changeCalMonth(1)">
                         次月 <i class="fas fa-chevron-right"></i>
                     </button>
@@ -326,7 +323,11 @@ export async function initCalendarViewerPage() {
     }
 
     currentViewState.refresh = async () => {
-        document.getElementById('cal-view-ym-display').textContent = `${currentViewState.year}年${currentViewState.month}月`;
+        const ymText = `${currentViewState.year}年${currentViewState.month}月`;
+        document.getElementById('cal-view-ym-display').textContent = ymText;
+        
+        const pageTitle = document.getElementById('page-title');
+        if (pageTitle) pageTitle.textContent = `営業カレンダー (${ymText})`;
         const ym = `${currentViewState.year}-${String(currentViewState.month).padStart(2, '0')}`;
         
         const commonSnap = await getDoc(doc(db, "m_calendars", `${ym}_common`));
@@ -452,9 +453,9 @@ async function refreshAdminCalendar() {
     currentAdminState.days = days;
     
     // UI上の実際の年月表示を更新
-    const display = document.getElementById('cal-admin-actual-date-display');
-    if (display) {
-        display.textContent = `${actualYear}年 ${month}月`;
+    const pageTitle = document.getElementById('page-title');
+    if (pageTitle) {
+        pageTitle.textContent = `営業カレンダー設定 (${actualYear}年${month}月)`;
     }
 
     renderCalendarGrid('calendar-admin-grid-container', days, true, actualYear, month);
