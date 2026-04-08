@@ -1264,11 +1264,23 @@ async function publishShifts() {
 
     const batch = writeBatch(db);
     let count = 0;
+    const me = JSON.parse(localStorage.getItem('currentUser'));
+    const defaultSid = window.currentAdminStoreId || me.StoreID || me.StoreId;
+    const defaultSName = window.currentAdminStoreName || '管理店舗';
+
     for(const uid in currentShifts){
         for(const ymd in currentShifts[uid]){
             const s = currentShifts[uid][ymd];
-            if(s.status === 'applied'){
+            // 確定（confirmed）以外で、時間が入っているものはすべて対象にする
+            if(s && s.start && s.status !== 'confirmed'){
                 s.status = 'confirmed';
+                
+                // データ正規化: IDや店舗名が欠落している場合に補完
+                s.storeId = String(s.storeId || s.StoreID || defaultSid);
+                s.StoreID = s.storeId;
+                s.storeName = s.storeName || s.StoreName || defaultSName;
+                s.updatedAt = new Date().toISOString();
+
                 batch.set(doc(db, "t_shifts", `${ymd}_${uid}`), s);
                 count++;
             }
