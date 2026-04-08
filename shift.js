@@ -1780,114 +1780,127 @@ export async function initShiftViewerPage() {
     const container = document.getElementById('viewer-timeline-container');
     if (!container) return;
 
-    // 1. ローリング6スロットを取得
-    const slots = getRollingSlots();
-    
-    // 2. 店舗リストを取得 (他店舗名の解決用)
-    const storeMap = {};
     try {
-        const storeSnap = await getDocs(collection(db, "m_stores"));
-        storeSnap.forEach(doc => {
-            const d = doc.data();
-            storeMap[String(d.store_id || d.id)] = d.store_name || d.name || '不明な店舗';
-        });
-    } catch (e) { console.warn(e); }
-
-    // 3. 全期間の自分の確定シフトを一括取得 (または範囲指定)
-    const overallStart = formatDateJST(slots[0].startDate);
-    const overallEnd = formatDateJST(slots[slots.length-1].endDate);
-    
-    const q = query(collection(db, "t_shifts"), 
-        where("userId", "==", me.id),
-        where("date", ">=", overallStart),
-        where("date", "<=", overallEnd),
-        where("status", "==", "confirmed")
-    );
-    const snap = await getDocs(q);
-    const shiftData = snap.docs.map(d => d.data());
-
-    // 4. 各スロットの描画
-    container.innerHTML = slots.map(slot => {
-        const slotShifts = shiftData.filter(s => s.date >= formatDateJST(slot.startDate) && s.date <= formatDateJST(slot.endDate));
-        slotShifts.sort((a,b) => a.date.localeCompare(b.date));
-
-        const isFuture = !slot.isPast && !slot.isCurrent;
-        const isConfirmed = slotShifts.length > 0;
+        // 1. ローリング6スロットを取得
+        const slots = getRollingSlots();
         
-        let statusBadge = `<span class="slot-badge badge-past">終了</span>`;
-        if (slot.isCurrent) statusBadge = `<span class="slot-badge badge-current">現在</span>`;
-        if (isFuture) statusBadge = `<span class="slot-badge badge-future">予定</span>`;
+        // 2. 店舗リストを取得 (他店舗名の解決用)
+        const storeMap = {};
+        try {
+            const storeSnap = await getDocs(collection(db, "m_stores"));
+            storeSnap.forEach(doc => {
+                const d = doc.data();
+                storeMap[String(d.store_id || d.id)] = d.store_name || d.name || '不明な店舗';
+            });
+        } catch (e) { console.warn("Store map fetch error:", e); }
 
-        let contentHtml = "";
-        if (isConfirmed) {
-            contentHtml = slotShifts.map(s => {
-                const dateObj = new Date(s.date);
-                const dayOfWeek = ['日','月','火','水','木','金','土'][dateObj.getDay()];
-                const dateColor = dateObj.getDay() === 0 ? '#ef4444' : (dateObj.getDay() === 6 ? '#2563eb' : 'var(--text-primary)');
+        // 3. 全期間の自分のシフトを一括取得
+        // ※ 複合インデックス制限を避けるため、userIdのみで取得し、メモリ内で日付・ステータスをフィルタリングします
+        const q = query(collection(db, "t_shifts"), 
+            where("userId", "==", me.id)
+        );
+        const snap = await getDocs(q);
+        const allUserShifts = snap.docs.map(d => d.data());
+        
+        // メモリ内で絞り込み
+        const overallStart = formatDateJST(slots[0].startDate);
+        const overallEnd = formatDateJST(slots[slots.length-1].endDate);
+        const shiftData = allUserShifts.filter(s => 
+            s.status === "confirmed" && 
+            s.date >= overallStart && 
+            s.date <= overallEnd
+        );
+
+        // 4. 各スロットの描画
+        container.innerHTML = slots.map(slot => {
+            const slotShifts = shiftData.filter(s => s.date >= formatDateJST(slot.startDate) && s.date <= formatDateJST(slot.endDate));
+            slotShifts.sort((a,b) => a.date.localeCompare(b.date));
+
+            const isFuture = !slot.isPast && !slot.isCurrent;
+            const isConfirmed = slotShifts.length > 0;
+            
+            let statusBadge = `<span class="slot-badge badge-past">終了</span>`;
+            if (slot.isCurrent) statusBadge = `<span class="slot-badge badge-current">現在</span>`;
+            if (isFuture) statusBadge = `<span class="slot-badge badge-future">予定</span>`;
+
+            let contentHtml = "";
+            if (isConfirmed) {
+                contentHtml = slotShifts.map(s => {
+                    const dateObj = new Date(s.date);
+                    const dayOfWeek = ['日','月','火','水','木','金','土'][dateObj.getDay()];
+                    const dateColor = dateObj.getDay() === 0 ? '#ef4444' : (dateObj.getDay() === 6 ? '#2563eb' : 'var(--text-primary)');
+                    
+                    const shiftStoreId = String(s.storeId || s.StoreID || '');
+                    const isHelp = shiftStoreId !== '' && shiftStoreId !== String(me.StoreID || me.StoreId);
+
+                    return `
+                        <div class="personal-shift-row ${isHelp ? 'help' : ''}">
+                            <div style="flex: 0 0 45px; text-align: center; border-right: 1px solid var(--border); color: ${dateColor};">
+                                <div style="font-size: 0.65rem; font-weight: 700;">${s.date.split('-')[2]}</div>
+                                <div style="font-size: 0.8rem; font-weight: 900;">(${dayOfWeek})</div>
+                            </div>
+                            <div style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.4rem; font-weight: 800; font-size: 1rem;">
+                                <span>${s.start}</span>
+                                <span style="opacity:0.2;">-</span>
+                                <span>${s.end}</span>
+                            </div>
+                            <div style="flex: 1; font-size: 0.75rem; font-weight: 700; color: ${isHelp ? '#7c3aed' : 'var(--text-secondary)'}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                ${isHelp ? `<i class="fas fa-map-marker-alt"></i> ${s.storeName || storeMap[shiftStoreId] || '他店舗'}` : '<i class="fas fa-home"></i> 本店'}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
                 
-                const shiftStoreId = String(s.storeId || s.StoreID || '');
-                const isHelp = shiftStoreId !== '' && shiftStoreId !== String(me.StoreID || me.StoreId);
-
-                return `
-                    <div class="personal-shift-row ${isHelp ? 'help' : ''}">
-                        <div style="flex: 0 0 45px; text-align: center; border-right: 1px solid var(--border); color: ${dateColor};">
-                            <div style="font-size: 0.65rem; font-weight: 700;">${s.date.split('-')[2]}</div>
-                            <div style="font-size: 0.8rem; font-weight: 900;">(${dayOfWeek})</div>
-                        </div>
-                        <div style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.4rem; font-weight: 800; font-size: 1rem;">
-                            <span>${s.start}</span>
-                            <span style="opacity:0.2;">-</span>
-                            <span>${s.end}</span>
-                        </div>
-                        <div style="flex: 1; font-size: 0.75rem; font-weight: 700; color: ${isHelp ? '#7c3aed' : 'var(--text-secondary)'}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                            ${isHelp ? `<i class="fas fa-map-marker-alt"></i> ${s.storeName || storeMap[shiftStoreId] || '他店舗'}` : '<i class="fas fa-home"></i> 本店'}
-                        </div>
+                contentHtml += `
+                    <div class="official-stamp">
+                        <div style="font-size: 0.5rem; letter-spacing: 1px; opacity: 0.8;">KANESHO</div>
+                        <div style="font-size: 1.1rem; line-height: 1; margin: 2px 0;">かね将</div>
+                        <div style="font-size: 0.5rem; letter-spacing: 1px; opacity: 0.8;">OFFICIAL</div>
                     </div>
                 `;
-            }).join('');
-            
-            // 赤色の公式スタンプ
-            contentHtml += `
-                <div class="official-stamp">
-                    <div style="font-size: 0.5rem; letter-spacing: 1px; opacity: 0.8;">KANESHO</div>
-                    <div style="font-size: 1.1rem; line-height: 1; margin: 2px 0;">かね将</div>
-                    <div style="font-size: 0.5rem; letter-spacing: 1px; opacity: 0.8;">OFFICIAL</div>
+            } else {
+                if (isFuture) {
+                    contentHtml = `<div style="text-align:center; padding:1.5rem; color:var(--text-secondary); background:#f8fafc; border-radius:12px; border:2px dashed var(--border); font-size: 0.85rem;">
+                        <i class="fas fa-tools" style="margin-right:5px;"></i> 調整中...
+                    </div>`;
+                } else {
+                    contentHtml = `<div style="text-align:center; padding:1rem; color:var(--text-secondary); font-size:0.8rem; opacity: 0.6;">予定はありませんでした</div>`;
+                }
+            }
+
+            return `
+                <div class="slot-section ${slot.isPast ? 'past' : ''} ${slot.isCurrent ? 'current' : ''}" id="slot-${slot.id}">
+                    <div class="slot-header">
+                        <div style="display: flex; align-items: center; gap: 0.6rem;">
+                            <span class="slot-label">${slot.label}</span>
+                            ${statusBadge}
+                        </div>
+                        ${isConfirmed ? `<button class="btn-ics" onclick="window.downloadShiftIcs('${slot.id}')"><i class="fas fa-file-export"></i> カレンダー追加</button>` : ''}
+                    </div>
+                    <div class="slot-content" style="position: relative;">
+                        ${contentHtml}
+                    </div>
                 </div>
             `;
-        } else {
-            if (isFuture) {
-                contentHtml = `<div style="text-align:center; padding:1.5rem; color:var(--text-secondary); background:#f8fafc; border-radius:12px; border:2px dashed var(--border); font-size: 0.85rem;">
-                    <i class="fas fa-tools" style="margin-right:5px;"></i> 調整中...
-                </div>`;
-            } else {
-                contentHtml = `<div style="text-align:center; padding:1rem; color:var(--text-secondary); font-size:0.8rem; opacity: 0.6;">予定はありませんでした</div>`;
-            }
-        }
+        }).join('');
 
-        return `
-            <div class="slot-section ${slot.isPast ? 'past' : ''} ${slot.isCurrent ? 'current' : ''}" id="slot-${slot.id}">
-                <div class="slot-header">
-                    <div style="display: flex; align-items: center; gap: 0.6rem;">
-                        <span class="slot-label">${slot.label}</span>
-                        ${statusBadge}
-                    </div>
-                    ${isConfirmed ? `<button class="btn-ics" onclick="window.downloadShiftIcs('${slot.id}')"><i class="fas fa-file-export"></i> カレンダー追加</button>` : ''}
-                </div>
-                <div class="slot-content" style="position: relative;">
-                    ${contentHtml}
-                </div>
-            </div>
-        `;
-    }).join('');
+        // ICSダウンロード用に関数をグローバル公開
+        window.downloadShiftIcs = (slotId) => {
+            const slot = slots.find(s => s.id === slotId);
+            if (!slot) return;
+            const targetShifts = shiftData.filter(s => s.date >= formatDateJST(slot.startDate) && s.date <= formatDateJST(slot.endDate));
+            if (targetShifts.length === 0) return;
+            generateAndDownloadIcs(targetShifts, slot.label);
+        };
 
-    // ICSダウンロード用に関数をグローバル公開
-    window.downloadShiftIcs = (slotId) => {
-        const slot = slots.find(s => s.id === slotId);
-        if (!slot) return;
-        const targetShifts = shiftData.filter(s => s.date >= formatDateJST(slot.startDate) && s.date <= formatDateJST(slot.endDate));
-        if (targetShifts.length === 0) return;
-        generateAndDownloadIcs(targetShifts, slot.label);
-    };
+    } catch (error) {
+        console.error("Shift Viewer Loading Error:", error);
+        container.innerHTML = `<div style="text-align:center; padding:3rem; color:#ef4444;">
+            <i class="fas fa-exclamation-triangle fa-2x"></i><br><br>
+            データの読み込み中にエラーが発生しました。<br>
+            <span style="font-size:0.8rem; opacity:0.8;">${error.message}</span>
+        </div>`;
+    }
 }
 
 /**
@@ -1908,6 +1921,7 @@ function generateAndDownloadIcs(shifts, label) {
         const eTime = s.end.replace(':', '') + '00';
         
         let endDateStr = dateStr;
+        // 24時またぎなどの簡易判定
         if (parseInt(eTime.substring(0,4)) < parseInt(sTime.substring(0,4))) {
             const d = new Date(s.date);
             d.setDate(d.getDate() + 1);
@@ -1937,6 +1951,6 @@ function generateAndDownloadIcs(shifts, label) {
  * 公開状況チェック（他画面からの遷移制御用）
  */
 export async function checkIfShiftPublished() {
-    return true; // シフト閲覧ページは常に閲覧可能（調整中も表示）とするため常にtrue
+    return true; // 閲覧画面は常にアクセス可能とする
 }
 
