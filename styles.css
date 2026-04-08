@@ -216,6 +216,8 @@ p { color: var(--text-secondary); line-height: 1.5; }
 /* サイドバー折りたたみ状態（デスクトップ/タブレット用） */
 .dashboard-layout.sidebar-collapsed .sidebar {
   margin-left: -280px;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .sidebar-header {
@@ -460,6 +462,30 @@ p { color: var(--text-secondary); line-height: 1.5; }
 }
 .sidebar-overlay.show {
   display: block;
+}
+
+/* Modal Backdrop (Global) */
+.modal-overlay {
+  position: fixed !important;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 2000 !important; /* Always on top of everything */
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal-content {
+  background: var(--surface-dark);
+  border-radius: 16px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+  width: 100%;
+  max-width: 500px;
+  position: relative;
+  overflow: hidden;
 }
 
 /* Inventory & Procurement Specifics */

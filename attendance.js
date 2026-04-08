@@ -150,16 +150,22 @@ export async function initAttendancePage(user) {
         const storeSnap = await getDocs(collection(db, "m_stores"));
         cachedStoresData = storeSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        // タブレット店舗の特定（IDまたは名前で検索）
+        // タブレット店舗の特定（ID / 名前 / ユーザーマスタのStoreフィールド等で多角的に検索）
         let myStore = cachedStoresData.find(s => s.id === tabletStoreID);
         if (!myStore && tabletStore) {
             myStore = cachedStoresData.find(s => s.store_name === tabletStore);
+        }
+        // さらに、所属グループ内の店舗である可能性も考慮してマッピングを強化
+        if (!myStore && currentUser.Store) {
+             myStore = cachedStoresData.find(s => s.store_name === currentUser.Store);
         }
 
         if (myStore) {
             tabletStore = myStore.store_name || '';
             tabletStoreID = myStore.id;
             tabletGroup = myStore.group_name || '';
+        } else {
+            console.warn("Could not determine store for current user:", currentUser);
         }
 
         // Admin用：店舗が未設定の場合は、最初の店舗をデフォルトにする
@@ -322,7 +328,9 @@ export function renderUnclockedDropdown(extraStoreFilter = null) {
             const sName = s.Store || '';
             if (sName === extraStoreFilter) return true;
         } else {
-            if (s.StoreID === tabletStoreID) return true;
+            // ID または店舗名での一致を許容（強固なフィルタリング）
+            if (tabletStoreID && s.StoreID === tabletStoreID) return true;
+            if (tabletStore && s.Store === tabletStore) return true;
         }
 
         // CK共有の判定

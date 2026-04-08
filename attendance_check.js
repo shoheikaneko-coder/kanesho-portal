@@ -47,28 +47,6 @@ export const attendanceCheckPageHtml = `
         </div>
     </div>
 
-    <!-- 詳細モーダル -->
-    <div id="check-detail-modal" class="sidebar-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1100; align-items: center; justify-content: center;">
-        <div class="glass-panel" style="width: 90%; max-width: 700px; padding: 2rem; max-height: 85vh; overflow-y: auto; position: relative;">
-            <button id="close-check-modal" style="position: absolute; right: 1.5rem; top: 1.5rem; background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-secondary);"><i class="fas fa-times"></i></button>
-            <h3 id="detail-staff-name" style="margin-bottom: 0.5rem;">---</h3>
-            <p id="detail-period" style="margin-bottom: 1.5rem; font-size: 0.9rem; color: var(--text-secondary);">---</p>
-            
-            <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
-                <thead>
-                    <tr style="border-bottom: 2px solid var(--border); text-align: left;">
-                        <th style="padding: 0.75rem 0.5rem;">日付</th>
-                        <th style="padding: 0.75rem 0.5rem;">店舗</th>
-                        <th style="padding: 0.75rem 0.5rem;">出勤</th>
-                        <th style="padding: 0.75rem 0.5rem;">退勤</th>
-                        <th style="padding: 0.75rem 0.5rem; text-align: right;">休憩</th>
-                        <th style="padding: 0.75rem 0.5rem; text-align: right;">労働時間</th>
-                    </tr>
-                </thead>
-                <tbody id="detail-table-body"></tbody>
-            </table>
-        </div>
-    </div>
 `;
 
 export async function initAttendanceCheckPage() {
@@ -217,7 +195,12 @@ export async function initAttendanceCheckPage() {
     // モーダル制御
     const modal = document.getElementById('check-detail-modal');
     const btnClose = document.getElementById('close-check-modal');
-    if (btnClose) btnClose.onclick = () => modal.style.display = 'none';
+    if (btnClose) {
+        btnClose.onclick = () => {
+            modal.style.display = 'none';
+            modal.classList.remove('show');
+        };
+    }
 }
 
 function safeGetDate(val) {
@@ -263,6 +246,7 @@ function showDetail(staff, month) {
         if (!staff.records || staff.records.length === 0) {
             tbody.innerHTML = '<tr><td colspan="6" style="padding: 2rem; text-align: center;">記録がありません</td></tr>';
             modal.style.display = 'flex';
+            modal.classList.add('show');
             return;
         }
 
@@ -363,9 +347,11 @@ function showDetail(staff, month) {
             });
         }
         modal.style.display = 'flex';
+        modal.classList.add('show');
     } catch (err) {
         console.error("Error in showDetail:", err);
-        showAlert('エラー', '詳細データの表示中にエラーが発生しました。データ形式が正しくない可能性があります。');
+        showAlert('エラー', '詳細データの表示中にエラーが発生しました。');
         modal.style.display = 'none';
+        modal.classList.remove('show');
     }
 }
