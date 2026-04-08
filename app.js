@@ -68,6 +68,14 @@ async function loginSuccess(user) {
     if (layout) {
         layout.style.display = 'flex';
         layout.style.opacity = '1';
+        
+        // 店舗タブレットの場合はサイドバーをデフォルトで折りたたむ
+        if (user.Role === 'Tablet') {
+            layout.classList.add('sidebar-collapsed');
+        } else {
+            layout.classList.remove('sidebar-collapsed');
+        }
+        
         window.scrollTo(0, 0);
     }
 
@@ -202,8 +210,12 @@ window.navigateTo = (target) => {
     showPage(target);
     const sidebar = document.querySelector('.sidebar');
     const overlay = document.querySelector('.sidebar-overlay');
-    sidebar?.classList.remove('show');
-    overlay?.classList.remove('show');
+    
+    // モバイルDrawer表示（1024px以下）の時のみ、ページ遷移後にサイドバーを閉じる
+    if (window.innerWidth <= 1024) {
+        sidebar?.classList.remove('show');
+        overlay?.classList.remove('show');
+    }
     
     document.querySelectorAll('.bottom-nav-item').forEach(el => {
         el.classList.toggle('active', el.dataset.target === target);
@@ -441,8 +453,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const mobileBtn = document.getElementById('mobile-menu-btn');
     if (mobileBtn) mobileBtn.onclick = () => {
-        sidebar?.classList.toggle('show');
-        overlay?.classList.toggle('show');
+        const layout = document.getElementById('dashboard-layout');
+        if (window.innerWidth <= 1024) {
+            // モバイル：サイドバーのオーバーレイ表示をトグル
+            sidebar?.classList.toggle('show');
+            overlay?.classList.toggle('show');
+        } else {
+            // デスクトップ/タブレット：サイドバーの折りたたみをトグル
+            layout?.classList.toggle('sidebar-collapsed');
+        }
     };
 
     overlay?.addEventListener('click', () => {

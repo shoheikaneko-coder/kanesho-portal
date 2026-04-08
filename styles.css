@@ -208,7 +208,14 @@ p { color: var(--text-secondary); line-height: 1.5; }
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  transition: var(--transition);
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s ease;
+  flex-shrink: 0;
+  z-index: 100;
+}
+
+/* サイドバー折りたたみ状態（デスクトップ/タブレット用） */
+.dashboard-layout.sidebar-collapsed .sidebar {
+  margin-left: -280px;
 }
 
 .sidebar-header {
@@ -397,15 +404,14 @@ p { color: var(--text-secondary); line-height: 1.5; }
 /* -----------------------------------------
    Responsive Media Queries
 ----------------------------------------- */
-/* 画面幅が1024px以下（タブレット・スマホ等）の場合の調整 */
+/* 画面幅が1024px以下（スマホ等）の場合の調整 */
 @media (max-width: 1024px) {
-  /* サイドバーの見え方を調整 */
+  /* サイドバーの見え方を調整（モバイルでは従来通りオーバーレイ） */
   .sidebar {
     position: fixed;
-    z-index: 100;
     left: -280px;
+    margin-left: 0 !important; /* サイドバー自体のマージンをリセット */
     height: 100%;
-    transition: transform 0.3s ease;
   }
   
   .sidebar.show {
@@ -414,7 +420,7 @@ p { color: var(--text-secondary); line-height: 1.5; }
   
   /* メインコンテンツ表示時、ヘッダーにハンバーガーメニューを表示 */
   #mobile-menu-btn {
-    display: block !important;
+    display: flex !important;
   }
   
   .page-content {
@@ -422,17 +428,22 @@ p { color: var(--text-secondary); line-height: 1.5; }
   }
 
   .grid-cards {
-    grid-template-columns: 1fr; /* スマホ・タブレットでは縦並びに */
+    grid-template-columns: 1fr;
   }
 
   .menu-grid {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); /* アイコンをやや小さめに並べる */
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   }
   
   .login-card {
     margin: 1rem;
     padding: 1.5rem;
   }
+}
+
+/* デスクトップ表示でも折りたたみボタンを常に表示 */
+#mobile-menu-btn {
+  display: flex !important;
 }
 
 /* サイドバーを開いている時に背景を暗くするためのオーバーレイ */
