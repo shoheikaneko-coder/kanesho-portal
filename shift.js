@@ -974,13 +974,31 @@ async function renderSubmissionGrid() {
         const isOff = cal.type === 'off';
         return `<td class="shift-cell ${isOff ? 'is-off' : ''}" id="cell-${currentTargetUser.id}-${ymd}" onclick="window.openTimeInput('${ymd}', '${currentTargetUser.id}')"></td>`;
     }).join('')}</tr>`;
+
+    // 既存シフトの描画 (追加)
+    for (let i = 0; i < span; i++) {
+        const d = new Date(currentSlot.startDate); d.setDate(d.getDate() + i);
+        const ymd = formatDateJST(d);
+        if (currentShifts[currentTargetUser.id]?.[ymd]) {
+            renderCellUI(currentTargetUser.id, ymd, currentShifts[currentTargetUser.id][ymd]);
+        }
+    }
 }
 
 function renderCellUI(uid, date, data) {
     const cell = document.getElementById(`cell-${uid}-${date}`);
     if (!cell) return;
     if (!data || !data.start) { cell.innerHTML = ''; return; }
-    cell.innerHTML = `<div class="shift-box ${data.status === 'confirmed' ? '' : 'applied'}"><div>${data.start}-${data.end}</div></div>`;
+    
+    const isConfirmed = data.status === 'confirmed';
+    const stampHtml = isConfirmed ? `<div class="official-stamp"><i class="fas fa-check-circle"></i> かね将公式</div>` : '';
+    
+    cell.innerHTML = `
+        <div class="shift-box ${isConfirmed ? '' : 'applied'}">
+            ${stampHtml}
+            <div>${data.start}-${data.end}</div>
+        </div>
+    `;
 }
 
 /**
@@ -1007,9 +1025,15 @@ window.openTimeInput = (date, uid) => {
     const user = allStoreUsers.find(u => u.id === uid) || helpUsers.find(u => u.id === uid) || (uid === currentTargetUser?.id ? currentTargetUser : null);
     if (!user) return;
     
+    const sData = currentShifts[uid]?.[date] || {};
+    // スタッフ（非管理者）かつ確定済みの場合は、編集不可のアラートを出して終了
+    if (!adminMode && sData.status === 'confirmed') {
+        showAlert('案内', 'すでに確定済みのシフトです。変更できません。');
+        return;
+    }
+
     const d = new Date(date);
     document.getElementById('modal-date-title').textContent = `${user.DisplayName || user.Name} (${date})`;
-    const sData = currentShifts[uid]?.[date] || {};
     initModalTimeOptions();
     const clearBtn = document.getElementById('btn-modal-clear');
     if (clearBtn) clearBtn.style.display = 'block';
