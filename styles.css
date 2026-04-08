@@ -502,8 +502,6 @@ p { color: var(--text-secondary); line-height: 1.5; }
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
-  opacity: 0;
-  transition: opacity 0.15s ease;
 }
 
 .modal-overlay.show {
