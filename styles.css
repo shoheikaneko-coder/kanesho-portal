@@ -1535,3 +1535,73 @@ input:checked + .toggle-slider:before {
     display: block;
     opacity: 1;
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Navigation Header Components (Omni-Navigation)
+   ───────────────────────────────────────────────────────────── */
+.header-nav-group {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  font-weight: 700;
+  margin-bottom: 0.15rem;
+  opacity: 0.7;
+}
+
+.breadcrumb i {
+  font-size: 0.55rem;
+  opacity: 0.4;
+}
+
+.breadcrumb span:hover {
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.header-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.back-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: white;
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  flex-shrink: 0;
+}
+
+.back-btn:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+  transform: translateX(-3px);
+  border-color: var(--primary);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.back-btn i {
+  font-size: 1rem;
+}
+
+/* Global Transitions */
+.page-content.loading {
+  opacity: 0;
+  transform: translateY(5px);
+}

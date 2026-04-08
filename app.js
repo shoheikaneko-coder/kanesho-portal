@@ -53,6 +53,46 @@ const defaultMenuItems = [
 ];
 
 /**
+ * ハブの省略名称マッピング (パンくず用)
+ */
+const hubLabels = {
+    'home': 'ホーム',
+    'ops_hub': '業務',
+    'hr_hub': '人事',
+    'master_hub': '設定'
+};
+
+/**
+ * ページIDと親ハブの紐付けマッピング
+ */
+const pageParentMap = {
+    'dashboard': 'ops_hub',
+    'attendance': 'ops_hub',
+    'sales': 'ops_hub',
+    'inventory': 'ops_hub',
+    'procurement': 'ops_hub',
+    'recipe_viewer': 'ops_hub',
+    'menu_order': 'ops_hub',
+    'calendar_viewer': 'ops_hub',
+    'attendance_check': 'hr_hub',
+    'shift_submission': 'hr_hub',
+    'users': 'hr_hub',
+    'loans': 'hr_hub',
+    'notifications': 'hr_hub',
+    'role_permissions': 'master_hub',
+    'stores': 'master_hub',
+    'products': 'master_hub',
+    'suppliers': 'master_hub',
+    'store_items': 'master_hub',
+    'csv_export': 'master_hub',
+    'csv_import': 'master_hub',
+    'sales_correction': 'master_hub',
+    'product_analysis': 'master_hub',
+    'calendar_admin': 'master_hub',
+    'goals_admin': 'master_hub'
+};
+
+/**
  * ログイン成功時の処理（初期化・画面遷移）
  */
 async function loginSuccess(user) {
@@ -202,12 +242,17 @@ async function renderSidebar(user) {
     });
 }
 
-window.navigateTo = (target) => {
+window.navigateTo = (target, pushToHistory = true) => {
     showPage(target);
+    
+    // ブラウザ履歴への追加
+    if (pushToHistory) {
+        history.pushState({ page: target }, "", `?page=${target}`);
+    }
+
     const sidebar = document.querySelector('.sidebar');
     const overlay = document.querySelector('.sidebar-overlay');
     
-    // モバイルDrawer表示（1024px以下）の時のみ、ページ遷移後にサイドバーを閉じる
     if (window.innerWidth <= 1024) {
         sidebar?.classList.remove('show');
         overlay?.classList.remove('show');
@@ -219,11 +264,27 @@ window.navigateTo = (target) => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
+// ブラウザの「戻る・進む」ボタンへの対応
+window.onpopstate = (event) => {
+    if (event.state && event.state.page) {
+        showPage(event.state.page);
+    } else {
+        const urlParams = new URLSearchParams(window.location.search);
+        const page = urlParams.get('page') || 'home';
+        showPage(page);
+    }
+};
+
 function showPage(target) {
     state.currentPage = target;
     const pageContent = document.getElementById('page-content');
     const pageTitle = document.getElementById('page-title');
+    const breadcrumbArea = document.getElementById('breadcrumb-area');
+    const backSlot = document.getElementById('header-back-slot');
     if (!pageContent || !pageTitle) return;
+
+    // ナビゲーションUIの生成 (パンくず & 戻るボタン)
+    renderNavigationUI(target, pageTitle, breadcrumbArea, backSlot);
 
     document.querySelectorAll('.menu-item').forEach(el => el.classList.toggle('active', el.dataset.target === target));
 
@@ -380,6 +441,10 @@ function showPage(target) {
                 initLoansPage();
                 break;
         }
+
+        // ページ読み込み完了後にナビゲーションUIを確定
+        renderNavigationUI(target, pageTitle, breadcrumbArea, backSlot);
+        
     } catch (err) {
         console.error(err);
         pageContent.innerHTML = '<div style="padding:2rem;color:red;">Error loading page</div>';
@@ -511,4 +576,52 @@ function initNotificationBadge() {
             badge.style.display = 'block';
         } else if (badge) badge.style.display = 'none';
     });
+}
+
+/**
+ * 画面に応じたナビゲーションUI（戻るボタン・パンくず）を描画する
+ */
+function renderNavigationUI(target, titleEl, breadcrumbEl, backEl) {
+    if (!breadcrumbEl || !backEl) return;
+    
+    // リセット
+    breadcrumbEl.innerHTML = '';
+    backEl.innerHTML = '';
+
+    if (target === 'home') {
+        // ホーム画面は何も表示しない
+        return;
+    }
+
+    const parentHubId = pageParentMap[target];
+    const hubLabel = hubLabels[parentHubId] || 'メニュー';
+    const isHubPage = target === 'ops_hub' || target === 'hr_hub' || target === 'master_hub';
+
+    // 1. パンくずリストの生成
+    let breadcrumbHTML = `<span onclick="window.navigateTo('home')">ホーム</span>`;
+    
+    if (isHubPage) {
+        // ハブページ自身の場合は「ホーム > 現在のハブ」
+        breadcrumbHTML += ` <i class="fas fa-chevron-right"></i> <span>${hubLabels[target] || titleEl.textContent}</span>`;
+    } else if (parentHubId) {
+        // サブ機能の場合は「ホーム > ハブ > 現在の機能」
+        breadcrumbHTML += ` <i class="fas fa-chevron-right"></i> <span onclick="window.navigateTo('${parentHubId}')">${hubLabel}</span>`;
+        breadcrumbHTML += ` <i class="fas fa-chevron-right"></i> <span>${titleEl.textContent}</span>`;
+    }
+    
+    breadcrumbEl.innerHTML = breadcrumbHTML;
+
+    // 2. 戻るボタンの生成
+    const backBtn = document.createElement('div');
+    backBtn.className = 'back-btn';
+    backBtn.innerHTML = '<i class="fas fa-arrow-left"></i>';
+    
+    // 戻り先の決定 (ハブページならホームへ、サブ機能ならハブへ)
+    const backTarget = isHubPage ? 'home' : (parentHubId || 'home');
+    backBtn.onclick = (e) => {
+        e.preventDefault();
+        window.navigateTo(backTarget);
+    };
+    
+    backEl.appendChild(backBtn);
 }

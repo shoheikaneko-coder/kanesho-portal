@@ -134,11 +134,18 @@
         <!-- Main Content Area -->
         <main class="main-content">
             <header class="top-header">
-                <div style="display: flex; align-items: center; gap: 1rem;">
+                <div style="display: flex; align-items: center; gap: 0.8rem;">
                     <button id="mobile-menu-btn" class="btn" style="background: transparent; color: var(--text-primary); padding: 0.5rem; display: none;">
                         <i class="fas fa-bars" style="font-size: 1.2rem;"></i>
                     </button>
-                    <h2 id="page-title" style="margin: 0;">ホーム</h2>
+                    <!-- 動的ナビゲーションエリア -->
+                    <div id="dynamic-nav-container" class="header-nav-group">
+                        <div id="breadcrumb-area" class="breadcrumb"></div>
+                        <div class="header-title-row">
+                            <div id="header-back-slot"></div>
+                            <h2 id="page-title" style="margin: 0;">ホーム</h2>
+                        </div>
+                    </div>
                 </div>
                 <div style="display: flex; gap: 1rem;">
                     <button id="btn-header-shift" class="btn" style="background: transparent; color: var(--text-secondary);" title="シフト表を表示">
