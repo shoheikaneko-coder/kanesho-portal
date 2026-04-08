@@ -60,10 +60,15 @@ export const homePageHtml = `
             <div style="display: grid; grid-template-columns: 1fr; gap: 1rem;">
                 <!-- 打刻入力エリア -->
                 <div class="glass-panel" style="padding: 1.2rem;">
-                    <h3 style="margin: 0 0 1rem; font-size: 1rem; font-weight: 800; display: flex; align-items: center; gap: 0.6rem;">
+                    <h3 style="margin: 0; font-size: 1rem; font-weight: 800; display: flex; align-items: center; gap: 0.6rem;">
                         <i class="fas fa-fingerprint" style="color: var(--primary);"></i> スタッフ打刻
                     </h3>
-                    <div id="current-store-label" style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem; font-weight: 600;"></div>
+                    <div style="display: flex; align-items: center; gap: 0.8rem; margin-top: 0.5rem; margin-bottom: 1rem;">
+                        <div id="current-store-label" style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;"></div>
+                        <button id="btn-help-mode" class="btn" style="background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 10px; font-weight: 700;">
+                            <i class="fas fa-hands-helping"></i> ヘルプ出勤
+                        </button>
+                    </div>
                     <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
                         <select id="staff-select" style="flex: 1; min-width: 200px; padding: 1rem; border: 1px solid var(--border); border-radius: 16px; background: white; font-size: 1.1rem; font-weight: 600;">
                             <option value="">スタッフを選択してください</option>

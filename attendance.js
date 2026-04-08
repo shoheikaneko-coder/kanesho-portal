@@ -71,33 +71,8 @@ export const attendancePageHtml = `
     </div>
 </div>
 
-<!-- パスワード確認モーダル（休憩/退勤用） -->
-<div id="punch-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center; padding:1rem;">
-    <div style="background:#fff; border-radius:16px; width:100%; max-width:360px; padding:2rem; position:relative;">
-        <h3 id="punch-modal-title" style="margin:0 0 0.3rem; font-size:1.1rem; color:#1e293b;"></h3>
-        <p id="punch-modal-name" style="font-size:0.85rem; color:#64748b; margin:0 0 1.2rem;"></p>
-        <label style="font-size:0.8rem; color:#64748b; display:block; margin-bottom:0.4rem; font-weight:600;">打刻パスワード</label>
-        <input type="password" id="punch-modal-pw" placeholder="••••" style="width:100%; padding:0.8rem 1rem; border:1px solid #cbd5e1; border-radius:10px; font-size:1.2rem; letter-spacing:0.3rem; text-align:center; box-sizing:border-box;" maxlength="8">
-        <div id="punch-modal-actions" style="display:flex; flex-direction:column; gap:0.7rem; margin-top:1.2rem;"></div>
-        <button id="punch-modal-cancel" style="margin-top:0.5rem; width:100%; padding:0.7rem; background:none; border:none; color:#94a3b8; cursor:pointer; font-size:0.9rem;">キャンセル</button>
-    </div>
-</div>
-
-<!-- ヘルプ出勤モーダル -->
-<div id="help-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center; padding:1rem;">
-    <div style="background:#fff; border-radius:16px; width:100%; max-width:380px; padding:2rem; position:relative;">
-        <button id="close-help-modal" style="position:absolute; right:1.2rem; top:1.2rem; background:none; border:none; font-size:1.3rem; cursor:pointer; color:#94a3b8;"><i class="fas fa-times"></i></button>
-        <h3 style="margin:0 0 0.5rem; font-size:1.1rem; color:#1e293b;"><i class="fas fa-hands-helping" style="color:var(--secondary);"></i> ヘルプ出勤</h3>
-        <p style="font-size:0.8rem; color:#64748b; margin:0 0 1.2rem;">他店舗を選択すると、その店舗のスタッフをプルダウンに追加します。</p>
-        <select id="help-store-select" style="width:100%; padding:0.8rem 1rem; border:1px solid #cbd5e1; border-radius:10px; font-size:1rem; margin-bottom:1rem;">
-            <option value="">店舗を選択してください</option>
-        </select>
-        <button id="btn-apply-help" class="btn btn-primary" style="width:100%; padding:0.8rem;">適用する</button>
-    </div>
-</div>
-
-<!-- 打刻修正 編集モーダル -->
-<div id="correction-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center; padding:1rem;">
+    <!-- 打刻修正 編集モーダル -->
+    <div id="correction-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center; padding:1rem;">
     <div style="background:#fff; border-radius:16px; width:100%; max-width:380px; padding:2rem; position:relative;">
         <button id="close-correction-modal" style="position:absolute; right:1.2rem; top:1.2rem; background:none; border:none; font-size:1.3rem; cursor:pointer; color:#94a3b8;"><i class="fas fa-times"></i></button>
         <h3 style="margin:0 0 1.2rem; font-size:1.1rem; color:#1e293b;"><i class="fas fa-edit" style="color:var(--primary);"></i> 打刻修正</h3>

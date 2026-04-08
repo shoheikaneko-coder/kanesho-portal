@@ -231,6 +231,43 @@
         </div>
     </div>
 
+    <!-- 勤怠パスワード入力モーダル (グローバル) -->
+    <div id="punch-modal" class="modal-overlay">
+        <div class="modal-content-box" style="max-width: 400px;">
+            <div style="padding: 1.5rem; text-align: center; border-bottom: 1px solid #f1f5f9;">
+                <h3 id="punch-modal-title" style="margin: 0; font-size: 1.2rem; font-weight: 800; color: var(--primary);">スタッフ名</h3>
+                <p id="punch-modal-name" style="margin: 0.3rem 0 0; font-size: 0.9rem; color: var(--text-secondary); font-weight: 600;">出勤・休憩・退勤</p>
+            </div>
+            <div style="padding: 2rem;">
+                <label style="font-size: 0.8rem; color: var(--text-secondary); display: block; margin-bottom: 0.5rem; font-weight: 700; text-align: center;">打刻パスワード (4〜8桁)</label>
+                <input type="password" id="punch-modal-pw" placeholder="••••" maxlength="8" style="width: 100%; padding: 1rem; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1.8rem; letter-spacing: 0.5rem; text-align: center; box-sizing: border-box; background: #f8fafc; color: var(--text-primary); transition: 0.2s;">
+                <div id="punch-modal-actions" style="display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1.5rem;">
+                    <!-- ボタンが動的に生成される -->
+                </div>
+            </div>
+            <div style="padding: 1rem; text-align: center; background: #f8fafc; border-top: 1px solid #f1f5f9;">
+                <button id="punch-modal-cancel" style="background: none; border: none; color: #94a3b8; font-weight: 700; font-size: 0.9rem; cursor: pointer; padding: 0.5rem 1rem;">キャンセル</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ヘルプ出勤選択モーダル (グローバル) -->
+    <div id="help-modal" class="modal-overlay">
+        <div class="modal-content-box" style="max-width: 420px;">
+            <div style="padding: 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-size: 1.1rem; font-weight: 800;"><i class="fas fa-hands-helping" style="color: var(--secondary);"></i> ヘルプ出勤選択</h3>
+                <button id="close-help-modal" style="background: none; border: none; font-size: 1.2rem; color: #94a3b8; cursor: pointer;"><i class="fas fa-times"></i></button>
+            </div>
+            <div style="padding: 2rem;">
+                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.2rem; line-height: 1.6;">応援先の店舗を選択してください。その店舗のスタッフリストが一時的に追加されます。</p>
+                <select id="help-store-select" style="width: 100%; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 1rem; background: #f8fafc; font-weight: 600;">
+                    <option value="">店舗を選択してください</option>
+                </select>
+                <button id="btn-apply-help" class="btn" style="width: 100%; margin-top: 1.5rem; padding: 1rem; background: var(--secondary); color: white; font-weight: 800; border-radius: 12px;">選択した店舗を適用</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 勤怠詳細モーダル (グローバル) -->
     <div id="check-detail-modal" class="modal-overlay">
         <div class="modal-content-box" style="max-width: 800px;">
