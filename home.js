@@ -311,8 +311,9 @@ async function initTabletHomeAttendance(user) {
     if (shiftContainer) shiftContainer.style.display = 'none';
     attendanceSection.style.display = 'block';
 
-    // 2. 勤怠ロジックの初期化 (attendance.js のリソースを再利用)
-    await initAttendancePage(user);
+    // 2. 勤怠ロジックの初期化 (店舗IDを明示的にバトンパス)
+    const storeId = user.StoreID || user.StoreId || user.store_id || '';
+    await initAttendancePage(user, storeId);
     
     // 3. 時計の起動 (ヘッダーの控えめな位置を指定)
     startClock('tablet-clock-header');

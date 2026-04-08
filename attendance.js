@@ -140,11 +140,17 @@ export let recentPunches = [];     // 直近24時間の打刻レコード（{id,
 export let clockTimer = null;
 
 // ─── 初期化 ──────────────────────────────────────────────────
-export async function initAttendancePage(user) {
+export async function initAttendancePage(user, forcedStoreID = null) {
     currentUser = user || {};
-    // 多彩なフィールド名（StoreID, StoreId, store_id）に対応
-    tabletStoreID = currentUser.StoreID || currentUser.StoreId || currentUser.store_id || '';
+    // 引数でStoreIDが強制指定されている場合はそれを使用し、そうでなければユーザーマスタから取得
+    tabletStoreID = forcedStoreID || currentUser.StoreID || currentUser.StoreId || currentUser.store_id || '';
     tabletStore = currentUser.Store || currentUser.store_name || '';
+
+    // 診断用：画面にStore IDを小さく表示（Tabletモード時のみ）
+    const debugEl = document.getElementById('current-store-label');
+    if (debugEl) {
+        debugEl.innerHTML = `<span style="opacity:0.6; font-size:0.75rem;">Store Context: ${tabletStoreID || 'UNKNOWN'}</span>`;
+    }
     
     // 店舗マスタを先に取得して、タブレット店舗の詳細（ID, グループ）を特定する
     try {
@@ -529,13 +535,11 @@ export function setupEventListeners() {
 
 // ─── 出勤処理 ────────────────────────────────────────────────
 async function handleCheckIn() {
-    console.log("handleCheckIn triggered");
+    console.log("handleCheckIn triggered. Context:", { tabletStoreID, tabletStore });
     
-    // 診断用：現在のコンテキストを画面に強制表示
-    const contextInfo = `Store: ${tabletStore}\nID: ${tabletStoreID}\nRole: ${currentUser?.Role}`;
-    console.log("Attendance Context:", contextInfo);
-    // 開発初期の検証のため、あえてalertを使用（確実にユーザーに届けるため）
-    // alert("診断情報:\n" + contextInfo);
+    if (!tabletStoreID) {
+        return showAlert('エラー', '店舗コンテキストが不明です。一度ログアウトして再ログインしてください。\n(StoreID is missing)');
+    }
 
     const staffDocId = document.getElementById('staff-select').value;
     if (!staffDocId) {
