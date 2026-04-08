@@ -166,10 +166,6 @@ async function renderSidebar(user) {
         }
     }
     
-    ['home', 'ops_hub', 'hr_hub', 'master_hub'].forEach(id => {
-        if (!allowed.includes(id)) allowed.push(id);
-    });
-
     state.permissions = allowed;
 
     const hrNav = document.getElementById('nav-item-hr');

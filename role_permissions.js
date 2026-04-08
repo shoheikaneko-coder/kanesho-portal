@@ -93,7 +93,12 @@ const menuItems = [
     { id: 'line_share', name: 'アプリをLINE共有', icon: 'fa-share-alt' },
     { id: 'home_performance', name: 'ホーム実績サマリー表示', icon: 'fa-eye-slash' },
     { id: 'shift_submission', name: 'シフト提出・確認', icon: 'fa-calendar-alt' },
-    { id: 'shift_admin', name: 'シフト作成・調整', icon: 'fa-user-edit' }
+    { id: 'shift_admin', name: 'シフト作成・調整', icon: 'fa-user-edit' },
+    // サイドバーのナビゲーションハブ
+    { id: 'home', name: '[ナビ領域] メインホーム', icon: 'fa-home' },
+    { id: 'ops_hub', name: '[ナビ領域] 店舗業務Hub', icon: 'fa-store' },
+    { id: 'hr_hub', name: '[ナビ領域] 人事総務業務Hub', icon: 'fa-user-friends' },
+    { id: 'master_hub', name: '[ナビ領域] 設定Hub', icon: 'fa-cog' }
 ];
 
 let selectedRole = 'Admin';
