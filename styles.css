@@ -459,12 +459,9 @@ p { color: var(--text-secondary); line-height: 1.5; }
   backdrop-filter: blur(2px);
   z-index: 90;
   display: none;
-  border: 4px solid rgba(255, 0, 0, 0.3); /* 【診断用】赤いフチを付けて可視化 */
-  pointer-events: none; /* デフォルトではクリック無視 */
 }
 .sidebar-overlay.show {
   display: block;
-  pointer-events: auto; /* 表示時のみクリック防止幕として機能 */
 }
 
 /* Modal Backdrop (Global) */
@@ -481,14 +478,11 @@ p { color: var(--text-secondary); line-height: 1.5; }
   padding: 1.5rem;
   opacity: 0;
   transition: opacity 0.3s ease;
-  pointer-events: none;
-  border: 4px dashed rgba(0, 0, 255, 0.3); /* 【診断用】青い点線フチを付けて可視化 */
 }
 
 .modal-overlay.show {
   display: flex !important;
   opacity: 1;
-  pointer-events: auto;
 }
 
 .modal-content-box {

@@ -458,52 +458,70 @@ export function renderTodayHistory() {
 
 // ─── イベントリスナー ────────────────────────────────────────
 export function setupEventListeners() {
-    console.log("Setting up attendance event listeners (Delegation Mode)...");
+    console.log("Setting up attendance event listeners (Clean Slate Mode)...");
 
-    // 【堅牢化】documentレベルでのイベント委譲
-    // ボタンのIDやクラス名で判定して実行。これによりHTMLが動的に差し替えられても動作可能。
-    document.addEventListener('click', (e) => {
-        const checkinBtn = e.target.closest('#btn-checkin');
-        if (checkinBtn) {
-            console.log("Delegated Event: Check-in clicked");
-            handleCheckIn();
-        }
+    const rebind = (id, handler) => {
+        const oldEl = document.getElementById(id);
+        if (!oldEl) return null;
+        const newEl = oldEl.cloneNode(true); // 全ての既存リスナーを物理的に消去
+        oldEl.parentNode.replaceChild(newEl, oldEl);
+        newEl.addEventListener('click', handler);
+        return newEl;
+    };
 
-        const helpBtn = e.target.closest('#btn-help-mode');
-        if (helpBtn) {
-            console.log("Delegated Event: Help mode clicked");
-            openHelpModal();
-        }
+    // 出勤ボタン（最も汚染されやすい箇所をクリーンアップ）
+    rebind('btn-checkin', handleCheckIn);
 
-        const closeDetailBtn = e.target.closest('#close-check-modal');
-        if (closeDetailBtn) {
+    // ヘルプ出勤関連
+    rebind('btn-help-mode', openHelpModal);
+    rebind('close-help-modal', closeHelpModal);
+    rebind('btn-apply-help', applyHelpMode);
+    
+    // 背景クリックで閉じる処理
+    const helpModal = document.getElementById('help-modal');
+    if (helpModal) {
+        const newHelpModal = helpModal.cloneNode(true);
+        helpModal.parentNode.replaceChild(newHelpModal, helpModal);
+        newHelpModal.addEventListener('click', e => { if (e.target.id === 'help-modal') closeHelpModal(); });
+    }
+
+    // パスワードモーダル
+    rebind('punch-modal-cancel', closePunchModal);
+    const punchModal = document.getElementById('punch-modal');
+    if (punchModal) {
+        const newPunchModal = punchModal.cloneNode(true);
+        punchModal.parentNode.replaceChild(newPunchModal, punchModal);
+        newPunchModal.addEventListener('click', e => { if (e.target.id === 'punch-modal') closePunchModal(); });
+    }
+
+    // 詳細モーダルの閉じるボタン
+    const closeDetailBtn = document.getElementById('close-check-modal');
+    if (closeDetailBtn) {
+        closeDetailBtn.onclick = null; // インラインを削除
+        const newCloseBtn = closeDetailBtn.cloneNode(true);
+        closeDetailBtn.parentNode.replaceChild(newCloseBtn, closeDetailBtn);
+        newCloseBtn.addEventListener('click', () => {
             const modal = document.getElementById('check-detail-modal');
             if (modal) {
                 modal.classList.remove('show');
                 setTimeout(() => { modal.style.display = 'none'; }, 300);
             }
-        }
-    });
-
-    // 従来の個別紐付け（念のため残す）
-    const closeHelpBtn = document.getElementById('close-help-modal');
-    if (closeHelpBtn) closeHelpBtn.onclick = closeHelpModal;
-    
-    const applyHelpBtn = document.getElementById('btn-apply-help');
-    if (applyHelpBtn) applyHelpBtn.onclick = applyHelpMode;
-
-    // パスワードモーダル
-    document.getElementById('punch-modal-cancel')?.addEventListener('click', closePunchModal);
-    document.getElementById('punch-modal')?.addEventListener('click', e => { if (e.target.id === 'punch-modal') closePunchModal(); });
+        });
+    }
 
     // 打刻修正（Admin）
-    document.getElementById('btn-load-correction')?.addEventListener('click', loadCorrectionList);
-    document.getElementById('close-correction-modal')?.addEventListener('click', () => {
-        const modal = document.getElementById('correction-modal');
-        if (modal) modal.style.display = 'none';
-    });
-    document.getElementById('btn-correction-save')?.addEventListener('click', saveCorrectionRecord);
-    document.getElementById('btn-correction-delete')?.addEventListener('click', deleteCorrectionRecord);
+    rebind('btn-load-correction', loadCorrectionList);
+    const closeCorrectionBtn = document.getElementById('close-correction-modal');
+    if (closeCorrectionBtn) {
+        const newBtn = closeCorrectionBtn.cloneNode(true);
+        closeCorrectionBtn.parentNode.replaceChild(newBtn, closeCorrectionBtn);
+        newBtn.addEventListener('click', () => {
+            const modal = document.getElementById('correction-modal');
+            if (modal) modal.style.display = 'none';
+        });
+    }
+    rebind('btn-correction-save', saveCorrectionRecord);
+    rebind('btn-correction-delete', deleteCorrectionRecord);
 
     // ヘルプ出勤：店舗選択モーダルをロード
     loadHelpStores();
@@ -511,6 +529,14 @@ export function setupEventListeners() {
 
 // ─── 出勤処理 ────────────────────────────────────────────────
 async function handleCheckIn() {
+    console.log("handleCheckIn triggered");
+    
+    // 診断用：現在のコンテキストを画面に強制表示
+    const contextInfo = `Store: ${tabletStore}\nID: ${tabletStoreID}\nRole: ${currentUser?.Role}`;
+    console.log("Attendance Context:", contextInfo);
+    // 開発初期の検証のため、あえてalertを使用（確実にユーザーに届けるため）
+    // alert("診断情報:\n" + contextInfo);
+
     const staffDocId = document.getElementById('staff-select').value;
     if (!staffDocId) {
         return showAlert('お知らせ', '打刻するスタッフを選択してください。');
@@ -519,7 +545,7 @@ async function handleCheckIn() {
     const staff = allStaff.find(s => s.id === staffDocId);
     if (!staff) {
         console.error("Staff not found in allStaff list:", staffDocId);
-        return showAlert('エラー', '選択されたスタッフのデータが見つかりません。');
+        return showAlert('エラー', '選択されたスタッフのデータが見つかりません。店舗IDが一致しているか確認してください。');
     }
 
     // パスワードモーダルを表示
