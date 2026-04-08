@@ -301,16 +301,16 @@ p { color: var(--text-secondary); line-height: 1.5; }
   overflow: hidden;
 }
 
-.top-header {
+.top-header-v2 {
   min-height: 85px;
   padding: 1rem 2rem;
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between !important;
+  align-items: center !important;
   gap: 1rem;
   border-bottom: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.9); /* 白背景に寄せて、より確実な表示を優先 */
+  background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   position: sticky;
