@@ -116,11 +116,11 @@ export const dashboardPageHtml = `
         </div>
 
         <!-- モーダル -->
-        <div id="drilldown-modal" class="modal-overlay" style="display: none; position: fixed !important; inset: 0 !important; background: rgba(0,0,0,0.5) !important; z-index: 10000 !important; align-items: center; justify-content: center;">
-            <div class="glass-panel animate-scale-in" style="width: 100%; max-width: 800px; padding: 0;">
+        <div id="drilldown-modal" class="modal-overlay">
+            <div class="modal-content-box animate-scale-in" style="max-width: 800px;">
                 <div style="padding: 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
                     <h4 id="drilldown-modal-title" style="margin: 0; color: var(--text-primary); font-size: 1.1rem;"></h4>
-                    <button class="btn btn-close" onclick="document.getElementById('drilldown-modal').style.display='none'"><i class="fas fa-times"></i></button>
+                    <button class="btn btn-close" onclick="closeDrilldown()"><i class="fas fa-times"></i></button>
                 </div>
                 <div style="padding: 1.5rem; overflow-y: auto; flex: 1;">
                     <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
@@ -140,6 +140,12 @@ export const dashboardPageHtml = `
         </div>
     </div>
 `;
+
+window.closeDrilldown = () => {
+    const modal = document.getElementById('drilldown-modal');
+    modal.classList.remove('show');
+    setTimeout(() => { modal.style.display = 'none'; }, 300);
+};
 
 function injectStyles() {
     if (document.getElementById('dash-fix-styles')) return;
@@ -651,9 +657,10 @@ function showDrilldown(ym, sid, sname, daily) {
             <td>${r.day_of_week || '-'}</td>
             <td style="text-align:right;">¥${r.amount.toLocaleString()}</td>
             <td style="text-align:right;">${r.customer_count}</td>
-            <td style="text-align:right; color:${r.cash_diff>=0?'var(--secondary)':'var(--danger)'}">${r.cash_diff}</td>
+            <td style="text-align:right; color:${r.cash_diff>=0?'#059669':'var(--danger)'}">${r.cash_diff}</td>
         `;
         tbody.appendChild(tr);
     });
     modal.style.display = 'flex';
+    setTimeout(() => { modal.classList.add('show'); }, 10);
 }
