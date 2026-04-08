@@ -458,14 +458,39 @@ export function renderTodayHistory() {
 
 // ─── イベントリスナー ────────────────────────────────────────
 export function setupEventListeners() {
-    // 出勤ボタン
-    document.getElementById('btn-checkin')?.addEventListener('click', handleCheckIn);
+    console.log("Setting up attendance event listeners (Delegation Mode)...");
 
-    // ヘルプ出勤
-    document.getElementById('btn-help-mode')?.addEventListener('click', openHelpModal);
-    document.getElementById('close-help-modal')?.addEventListener('click', closeHelpModal);
-    document.getElementById('help-modal')?.addEventListener('click', e => { if (e.target.id === 'help-modal') closeHelpModal(); });
-    document.getElementById('btn-apply-help')?.addEventListener('click', applyHelpMode);
+    // 【堅牢化】documentレベルでのイベント委譲
+    // ボタンのIDやクラス名で判定して実行。これによりHTMLが動的に差し替えられても動作可能。
+    document.addEventListener('click', (e) => {
+        const checkinBtn = e.target.closest('#btn-checkin');
+        if (checkinBtn) {
+            console.log("Delegated Event: Check-in clicked");
+            handleCheckIn();
+        }
+
+        const helpBtn = e.target.closest('#btn-help-mode');
+        if (helpBtn) {
+            console.log("Delegated Event: Help mode clicked");
+            openHelpModal();
+        }
+
+        const closeDetailBtn = e.target.closest('#close-check-modal');
+        if (closeDetailBtn) {
+            const modal = document.getElementById('check-detail-modal');
+            if (modal) {
+                modal.classList.remove('show');
+                setTimeout(() => { modal.style.display = 'none'; }, 300);
+            }
+        }
+    });
+
+    // 従来の個別紐付け（念のため残す）
+    const closeHelpBtn = document.getElementById('close-help-modal');
+    if (closeHelpBtn) closeHelpBtn.onclick = closeHelpModal;
+    
+    const applyHelpBtn = document.getElementById('btn-apply-help');
+    if (applyHelpBtn) applyHelpBtn.onclick = applyHelpMode;
 
     // パスワードモーダル
     document.getElementById('punch-modal-cancel')?.addEventListener('click', closePunchModal);
