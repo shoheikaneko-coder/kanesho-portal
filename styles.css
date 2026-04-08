@@ -468,24 +468,36 @@ p { color: var(--text-secondary); line-height: 1.5; }
 .modal-overlay {
   position: fixed !important;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  z-index: 2000 !important; /* Always on top of everything */
+  background: rgba(0, 0, 0, 0.55); /* 深みのある透過グレー */
+  backdrop-filter: blur(8px);      /* ぼかしを少し強めて高級感を出す */
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 5000 !important;        /* 最前面を保証 */
   display: none;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  padding: 1.5rem;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;            /* 非表示時はクリックを透過 */
 }
 
-.modal-content {
-  background: var(--surface-dark);
-  border-radius: 16px;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+.modal-overlay.show {
+  display: flex !important;
+  opacity: 1;
+  pointer-events: auto;           /* 表示時はクリックをキャッチ */
+}
+
+/* モーダル内コンテンツ - glass-panelをベースにする */
+.modal-content-box {
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   width: 100%;
-  max-width: 500px;
   position: relative;
   overflow: hidden;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Inventory & Procurement Specifics */
@@ -612,31 +624,6 @@ p { color: var(--text-secondary); line-height: 1.5; }
 .badge-orange { background: rgba(245, 158, 11, 0.1); color: #D97706; }
 .badge-red { background: rgba(239, 68, 68, 0.1); color: #DC2626; }
 
-/* Global Modal Overlay & Centering */
-.modal-overlay {
-    position: fixed !important;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    z-index: 10000 !important; /* Always on top */
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-}
-
-.modal-overlay .glass-panel {
-    position: fixed !important;
-    left: 50% !important;
-    top: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    max-height: 85vh !important;
-    overflow-y: auto !important;
-    width: 95%;
-    max-width: 500px; /* Default, overridden in JS if needed */
-    box-shadow: 0 20px 50px rgba(0,0,0,0.3);
-}
 
 .animate-scale-in {
     animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);

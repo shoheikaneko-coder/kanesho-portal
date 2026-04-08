@@ -347,11 +347,12 @@ function showDetail(staff, month) {
             });
         }
         modal.style.display = 'flex';
-        modal.classList.add('show');
+        // わずかに遅延させてアニメーション（opacity 1）を効かせる
+        setTimeout(() => modal.classList.add('show'), 10);
     } catch (err) {
         console.error("Error in showDetail:", err);
         showAlert('エラー', '詳細データの表示中にエラーが発生しました。');
-        modal.style.display = 'none';
         modal.classList.remove('show');
+        setTimeout(() => { modal.style.display = 'none'; }, 300);
     }
 }

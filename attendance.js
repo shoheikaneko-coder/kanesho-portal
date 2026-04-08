@@ -142,7 +142,8 @@ export let clockTimer = null;
 // ─── 初期化 ──────────────────────────────────────────────────
 export async function initAttendancePage(user) {
     currentUser = user || {};
-    tabletStoreID = currentUser.StoreID || '';
+    // 多彩なフィールド名（StoreID, StoreId, store_id）に対応
+    tabletStoreID = currentUser.StoreID || currentUser.StoreId || currentUser.store_id || '';
     tabletStore = currentUser.Store || currentUser.store_name || '';
     
     // 店舗マスタを先に取得して、タブレット店舗の詳細（ID, グループ）を特定する
@@ -322,14 +323,16 @@ export function renderUnclockedDropdown(extraStoreFilter = null) {
         const sid = String(s.EmployeeCode || s.id);
         if (activeSids.has(sid)) return false;
 
-        // IDベースでの店舗一致
+        // IDベースでの店舗一致（casing variants: StoreID, StoreId, store_id）
+        const staffStoreID = s.StoreID || s.StoreId || s.store_id;
+        
         if (extraStoreFilter) {
             // ヘルプモード時は店舗名での後方互換マッチ
             const sName = s.Store || '';
             if (sName === extraStoreFilter) return true;
         } else {
             // ID または店舗名での一致を許容（強固なフィルタリング）
-            if (tabletStoreID && s.StoreID === tabletStoreID) return true;
+            if (tabletStoreID && staffStoreID === tabletStoreID) return true;
             if (tabletStore && s.Store === tabletStore) return true;
         }
 
@@ -484,13 +487,18 @@ export function setupEventListeners() {
 // ─── 出勤処理 ────────────────────────────────────────────────
 async function handleCheckIn() {
     const staffDocId = document.getElementById('staff-select').value;
-    if (!staffDocId) return showAlert('エラー', 'スタッフを選択してください。');
+    if (!staffDocId) {
+        return showAlert('お知らせ', '打刻するスタッフを選択してください。');
+    }
 
     const staff = allStaff.find(s => s.id === staffDocId);
-    if (!staff) return;
+    if (!staff) {
+        console.error("Staff not found in allStaff list:", staffDocId);
+        return showAlert('エラー', '選択されたスタッフのデータが見つかりません。');
+    }
 
-    // prompt() の代わりにモーダルを表示
-    openPunchModal(staff.id, { name: staff.Name, status: 'off' });
+    // パスワードモーダルを表示
+    openPunchModal(staff.id, { name: staff.Name || staff.userName || 'スタッフ', status: 'off' });
 }
 
 // ─── ギャラリーカードタップ → パスワードモーダル ────────────

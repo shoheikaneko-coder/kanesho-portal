@@ -231,26 +231,41 @@
         </div>
     </div>
 
+    <!-- 勤怠詳細モーダル (グローバル) -->
     <div id="check-detail-modal" class="modal-overlay">
-        <div class="modal-content" style="max-width: 700px; padding: 2rem;">
-            <button id="close-check-modal" style="position: absolute; right: 1.5rem; top: 1.5rem; background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-secondary);"><i class="fas fa-times"></i></button>
-            <h3 id="detail-staff-name" style="margin-bottom: 0.5rem;">---</h3>
-            <p id="detail-period" style="margin-bottom: 1.5rem; font-size: 0.9rem; color: var(--text-secondary);">---</p>
+        <div class="modal-content-box" style="max-width: 800px;">
+            <div style="padding: 1.5rem 2rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h3 id="detail-staff-name" style="margin: 0; font-size: 1.2rem; font-weight: 800; color: var(--text-primary);">---</h3>
+                    <p id="detail-period" style="margin: 0.2rem 0 0; font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;">---</p>
+                </div>
+                <button id="close-check-modal" class="btn" style="background: #f8fafc; color: #94a3b8; border: 1px solid #e2e8f0; width: 40px; height: 40px; border-radius: 12px; padding: 0;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
             
-            <div style="overflow-x: auto;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem; min-width: 500px;">
-                    <thead>
-                        <tr style="border-bottom: 2px solid var(--border); text-align: left;">
-                            <th style="padding: 0.75rem 0.5rem;">日付</th>
-                            <th style="padding: 0.75rem 0.5rem;">店舗</th>
-                            <th style="padding: 0.75rem 0.5rem;">出勤</th>
-                            <th style="padding: 0.75rem 0.5rem;">退勤</th>
-                            <th style="padding: 0.75rem 0.5rem; text-align: right;">休憩</th>
-                            <th style="padding: 0.75rem 0.5rem; text-align: right;">労働時間</th>
-                        </tr>
-                    </thead>
-                    <tbody id="detail-table-body"></tbody>
-                </table>
+            <div style="padding: 2rem; overflow-y: auto;">
+                <div style="overflow-x: auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem; min-width: 600px;">
+                        <thead>
+                            <tr style="background: #f8fafc; text-align: left;">
+                                <th style="padding: 1rem; border-bottom: 2px solid #e2e8f0; color: var(--text-secondary); font-weight: 700;">日付</th>
+                                <th style="padding: 1rem; border-bottom: 2px solid #e2e8f0; color: var(--text-secondary); font-weight: 700;">店舗</th>
+                                <th style="padding: 1rem; border-bottom: 2px solid #e2e8f0; color: var(--text-secondary); font-weight: 700;">出勤</th>
+                                <th style="padding: 1rem; border-bottom: 2px solid #e2e8f0; color: var(--text-secondary); font-weight: 700;">退勤</th>
+                                <th style="padding: 1rem; border-bottom: 2px solid #e2e8f0; color: var(--text-secondary); font-weight: 700; text-align: right;">休憩</th>
+                                <th style="padding: 1rem; border-bottom: 2px solid #e2e8f0; color: var(--text-secondary); font-weight: 700; text-align: right;">労働時間</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detail-table-body">
+                            <!-- JS injections -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div style="padding: 1.2rem 2rem; background: #f8fafc; border-top: 1px solid #f1f5f9; text-align: right;">
+                <button onclick="document.getElementById('check-detail-modal').classList.remove('show'); setTimeout(() => { document.getElementById('check-detail-modal').style.display='none'; }, 300)" class="btn" style="background: white; border: 1px solid #cbd5e1; color: var(--text-secondary); padding: 0.6rem 1.5rem; font-weight: 700;">閉じる</button>
             </div>
         </div>
     </div>
