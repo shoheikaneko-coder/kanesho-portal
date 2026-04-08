@@ -257,6 +257,7 @@ export const shiftAdminPageHtml = `
                 <button id="btn-bulk-mode" class="btn btn-secondary" style="font-size:0.85rem; border: 1px solid var(--border);"><i class="fas fa-check-double"></i> 一括入力</button>
                 <button id="btn-apply-fixed-schedule" class="btn btn-secondary" style="font-size:0.85rem; border: 1px solid var(--secondary); color: var(--secondary); background: rgba(0,0,0,0);"><i class="fas fa-magic"></i> 固定反映</button>
                 <button id="btn-add-help-staff" class="btn btn-secondary" style="font-size:0.85rem;"><i class="fas fa-user-plus"></i> ヘルプ追加</button>
+                <button id="btn-share-line" class="btn btn-line" style="font-size:0.85rem; font-weight:800; padding: 0.6rem 1.2rem; background:#06C755; color:white; border:none;"><i class="fab fa-line"></i> LINE周知</button>
                 <button id="btn-publish-shifts" class="btn btn-primary" style="font-size:0.85rem; font-weight:800; padding: 0.6rem 1.2rem;">一括確定・公開</button>
             </div>
         </div>
@@ -532,7 +533,19 @@ export async function initShiftAdminPage() {
     }
 
     document.getElementById('btn-add-help-staff').onclick = openHelpStaffModal;
-    document.getElementById('btn-publish-shifts').onclick = publishShifts;
+    const btnPublish = document.getElementById('btn-publish-shifts');
+    if (btnPublish) btnPublish.onclick = publishShifts;
+
+    const btnShareLine = document.getElementById('btn-share-line');
+    if (btnShareLine) {
+        btnShareLine.onclick = async () => {
+            const me = JSON.parse(localStorage.getItem('currentUser'));
+            if (!me) { showAlert('エラー', 'セッションがありません'); return; }
+            const sid = window.currentAdminStoreId || me.StoreID || me.StoreId;
+            const sName = window.currentAdminStoreName || '管理店舗';
+            shareShiftToLine(sid, sName);
+        };
+    }
     document.getElementById('btn-save-memo').onclick = saveShiftMemo;
 
     // 一括入力ボタン
