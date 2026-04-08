@@ -18,6 +18,7 @@ export const rolePermissionsPageHtml = `
                     <button class="role-item active" data-role="Admin">管理者 (Admin)</button>
                     <button class="role-item" data-role="Manager">店長 (Manager)</button>
                     <button class="role-item" data-role="Staff">一般社員 (Staff)</button>
+                    <button class="role-item" data-role="PartTimer">アルバイトスタッフ (PartTimer)</button>
                     <button class="role-item" data-role="Tablet">店舗タブレット (Tablet)</button>
                 </div>
             </div>
