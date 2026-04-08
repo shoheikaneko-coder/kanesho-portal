@@ -1255,49 +1255,71 @@ window.copyShiftForLine = async (date) => {
 };
 
 async function publishShifts() {
-    const ok = await showConfirm('一括確定', 'この店舗の全ての未提出希望（グレー表示）を確定（赤表示）させ、公開しますか？');
-    if (!ok) return;
-
     const btn = document.getElementById('btn-publish-shifts');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 処理中...';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 処理中...';
+    }
 
-    const batch = writeBatch(db);
-    let count = 0;
-    const me = JSON.parse(localStorage.getItem('currentUser'));
-    const defaultSid = window.currentAdminStoreId || me.StoreID || me.StoreId;
-    const defaultSName = window.currentAdminStoreName || '管理店舗';
+    console.log("--- publishShifts Start ---");
+    try {
+        const ok = await showConfirm('一括確定', 'この店舗の全ての未提出希望（グレー表示）を確定（赤表示）させ、公開しますか？');
+        if (!ok) {
+            console.log("User cancelled confirmation.");
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '一括確定・公開';
+            }
+            return;
+        }
 
-    for(const uid in currentShifts){
-        for(const ymd in currentShifts[uid]){
-            const s = currentShifts[uid][ymd];
-            // 確定（confirmed）以外で、時間が入っているものはすべて対象にする
-            if(s && s.start && s.status !== 'confirmed'){
-                s.status = 'confirmed';
-                
-                // データ正規化: IDや店舗名が欠落している場合に補完
-                s.storeId = String(s.storeId || s.StoreID || defaultSid);
-                s.StoreID = s.storeId;
-                s.storeName = s.storeName || s.StoreName || defaultSName;
-                s.updatedAt = new Date().toISOString();
+        const me = JSON.parse(localStorage.getItem('currentUser'));
+        if (!me) throw new Error("ユーザーセッションが見つかりません。再ログインしてください。");
 
-                batch.set(doc(db, "t_shifts", `${ymd}_${uid}`), s);
-                count++;
+        const sid = String(window.currentAdminStoreId || me.StoreID || me.StoreId || "");
+        const sName = window.currentAdminStoreName || '管理店舗';
+        if (!sid) throw new Error("管理店舗のIDが特定できません。");
+
+        console.log("Processing store:", sName, "(ID:", sid, ")");
+
+        const batch = writeBatch(db);
+        let count = 0;
+
+        for (const uid in currentShifts) {
+            const userShifts = currentShifts[uid];
+            for (const ymd in userShifts) {
+                const s = userShifts[ymd];
+                // 確定（confirmed）以外で、時間が入っているものはすべて対象にする
+                if (s && s.start && s.status !== 'confirmed') {
+                    console.log(`Matching shift: User=${uid}, Date=${ymd}, Status=${s.status}`);
+                    s.status = 'confirmed';
+                    
+                    // データ正規化
+                    s.storeId = String(s.storeId || s.StoreID || sid);
+                    s.StoreID = s.storeId;
+                    s.storeName = s.storeName || s.StoreName || sName;
+                    s.updatedAt = new Date().toISOString();
+
+                    batch.set(doc(db, "t_shifts", `${ymd}_${uid}`), s);
+                    count++;
+                }
             }
         }
-    }
-    
-    try {
-        if(count > 0) {
+
+        console.log(`Prepared ${count} shifts for commit.`);
+
+        if (count > 0) {
             await batch.commit();
-            
-            // --- Phase 3: 自動通知の生成 ---
+            console.log("Firestore Batch Commit Success.");
+
+            // --- 重要: DBから最新状態を再取得してローカルステートとUIを同期させる ---
+            console.log("Re-fetching updated shifts from Firestore...");
+            await loadShiftsBatch(sid); 
+            console.log("Data sync complete.");
+
+            // --- 通知の生成 (失敗してもシフト確定は成功扱いとする) ---
             try {
-                const me = JSON.parse(localStorage.getItem('currentUser'));
-                const sid = window.currentAdminStoreId || me.StoreID || me.StoreId;
-                const sName = window.currentAdminStoreName || '所属店舗';
                 const ymText = `${currentSlot.year}/${currentSlot.month} ${currentSlot.slot === 1 ? '前半' : '後半'}`;
-                
                 await setDoc(doc(collection(db, "notifications")), {
                     type: 'shift_published',
                     status: 'pending',
@@ -1308,23 +1330,30 @@ async function publishShifts() {
                     created_at: new Date().toISOString(),
                     created_by_name: me.Name
                 });
+                console.log("Notification created.");
             } catch (notifErr) {
-                console.error("Failed to create notification:", notifErr);
-                // 通知生成に失敗しても元のシフト確定は成功しているので続行
+                console.warn("Notification creation failed:", notifErr);
             }
 
-            showAlert('成功', `${count}件のシフトを確定・公開し、スタッフへ通知を送信しました。`);
+            showAlert('成功', `${count}件のシフトを確定・公開しました！\nスタッフの画面からも編集できなくなります。`);
         } else {
+            console.log("No applied shifts found.");
             showAlert('案内', '新しく確定が必要な未処理の希望はありませんでした。');
         }
+
+        // 全体描画とKPI更新
         renderAdminGrid();
         updateOverallKPIs();
+
     } catch (e) {
-        console.error(e);
-        showAlert('エラー', '一括確定中にエラーが発生しました。');
+        console.error("Critical error in publishShifts:", e);
+        showAlert('エラー', `一括確定に失敗しました: ${e.message}`);
     } finally {
-        btn.disabled = false;
-        btn.innerHTML = '一括確定・公開';
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '一括確定・公開';
+        }
+        console.log("--- publishShifts End ---");
     }
 }
 
