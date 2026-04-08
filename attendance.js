@@ -369,25 +369,45 @@ export function renderGallery() {
     gallery.innerHTML = '';
     active.forEach(([sid, info]) => {
         const isBreak = info.status === 'break';
-        const bgColor = isBreak ? '#f97316' : '#3b82f6';
-        const statusLabel = isBreak ? '休憩中' : '出勤中';
+        // 従業員マスタから「シフト表示名」を取得
+        const staff = allStaff.find(s => (s.EmployeeCode || s.id) === sid || s.id === sid);
+        const displayName = staff?.DisplayName || info.name;
 
-        const card = document.createElement('div');
-        card.style.cssText = `
-            cursor:pointer; background:${bgColor}; color:white;
-            border-radius:14px; padding:1rem 1.2rem; min-width:90px;
-            text-align:center; box-shadow:0 2px 8px rgba(0,0,0,0.15);
-            transition:transform 0.15s, box-shadow 0.15s; user-select:none;
+        const badge = document.createElement('div');
+        badge.style.cssText = `
+            cursor:pointer; 
+            background: ${isBreak ? 'linear-gradient(135deg, #f97316, #fb923c)' : 'linear-gradient(135deg, #3b82f6, #60a5fa)'};
+            color:white;
+            border-radius:12px; 
+            padding: 0.7rem 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select:none;
         `;
-        card.innerHTML = `
-            <div style="font-size:1.6rem; font-weight:800; line-height:1;">${(info.name || '?').substring(0,1)}</div>
-            <div style="font-size:0.85rem; font-weight:700; margin-top:0.4rem; white-space:nowrap;">${info.name}</div>
-            <div style="font-size:0.7rem; opacity:0.85; margin-top:0.2rem;">${statusLabel}</div>
+        
+        const statusIcon = isBreak ? '<i class="fas fa-coffee" style="font-size:0.8rem;"></i>' : '<i class="fas fa-circle" style="font-size:0.5rem; color:#bfffcb;"></i>';
+        const statusLabel = isBreak ? '<span style="font-size:0.7rem; font-weight:800; background:rgba(0,0,0,0.15); padding:0.1rem 0.4rem; border-radius:6px; margin-left:2px;">休憩</span>' : '';
+
+        badge.innerHTML = `
+            ${statusIcon}
+            <div style="font-size:1.05rem; font-weight:800; letter-spacing:0.02em;">${displayName}</div>
+            ${statusLabel}
         `;
-        card.onmouseenter = () => { card.style.transform = 'scale(1.04)'; card.style.boxShadow = '0 4px 16px rgba(0,0,0,0.25)'; };
-        card.onmouseleave = () => { card.style.transform = ''; card.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)'; };
-        card.onclick = () => openPunchModal(sid, info);
-        gallery.appendChild(card);
+
+        badge.onmouseenter = () => { 
+            badge.style.transform = 'translateY(-2px) scale(1.02)'; 
+            badge.style.boxShadow = '0 6px 15px rgba(0,0,0,0.15)'; 
+        };
+        badge.onmouseleave = () => { 
+            badge.style.transform = ''; 
+            badge.style.boxShadow = '0 4px 10px rgba(0,0,0,0.1)'; 
+        };
+        
+        badge.onclick = () => openPunchModal(sid, info);
+        gallery.appendChild(badge);
     });
 }
 
