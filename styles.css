@@ -454,6 +454,24 @@ p { color: var(--text-secondary); line-height: 1.5; }
 /* デスクトップ表示でも折りたたみボタンを常に表示 */
 #mobile-menu-btn {
   display: flex !important;
+  color: rgba(255, 255, 255, 0.85); /* ダークガラスに映える白 */
+  background: transparent;
+  border: none;
+  padding: 0.6rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  align-items: center;
+  justify-content: center;
+}
+
+#mobile-menu-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+#mobile-menu-btn i {
+  font-size: 1.3rem;
 }
 
 /* サイドバーを開いている時に背景を暗くするためのオーバーレイ */
