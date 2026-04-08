@@ -24,7 +24,7 @@ import { notificationsPageHtml, initNotificationsPage } from './notifications.js
 import { calendarAdminPageHtml, initCalendarAdminPage, calendarViewerPageHtml, initCalendarViewerPage } from './calendar.js?v=2';
 import { goalsAdminPageHtml, initGoalsAdminPage, goalsStorePageHtml, initGoalsStorePage } from './goals.js?v=2';
 import { homePageHtml, initHomePage } from './home.js';
-import { shiftSubmissionPageHtml, initShiftSubmissionPage, shiftAdminPageHtml, initShiftAdminPage } from './shift.js?v=60';
+import { shiftSubmissionPageHtml, initShiftSubmissionPage, shiftAdminPageHtml, initShiftAdminPage, shiftViewerPageHtml, initShiftViewerPage, checkIfShiftPublished } from './shift.js?v=60';
 import { loansPageHtml, initLoansPage } from './loans.js';
 import { hubPageHtml, initHubPage } from './hubs.js';
 
@@ -430,6 +430,11 @@ function showPage(target) {
                 pageContent.innerHTML = shiftSubmissionPageHtml;
                 initShiftSubmissionPage();
                 break;
+            case 'shift_viewer':
+                pageTitle.textContent = '確定シフト閲覧';
+                pageContent.innerHTML = shiftViewerPageHtml;
+                initShiftViewerPage();
+                break;
             case 'shift_admin':
                 pageTitle.textContent = 'シフト作成・調整 (コックピット)';
                 pageContent.innerHTML = shiftAdminPageHtml;
@@ -467,10 +472,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const btnHeaderShift = document.getElementById('btn-header-shift');
     if (btnHeaderShift) {
-        btnHeaderShift.onclick = () => {
+        btnHeaderShift.onclick = async () => {
             const role = state.currentUser?.Role;
-            const target = (role === 'Admin' || role === '管理者') ? 'shift_admin' : 'shift_submission';
-            window.navigateTo(target);
+            if (role === 'Admin' || role === '管理者' || role === 'Manager' || role === '店長') {
+                window.navigateTo('shift_admin');
+                return;
+            }
+
+            // スタッフ・アルバイトの場合：確定済みデータがあるかチェック
+            try {
+                const isPublished = await checkIfShiftPublished();
+                window.navigateTo(isPublished ? 'shift_viewer' : 'shift_submission');
+            } catch (e) {
+                console.error("Navigation error:", e);
+                window.navigateTo('shift_submission');
+            }
         };
     }
 

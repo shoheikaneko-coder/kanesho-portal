@@ -1,5 +1,5 @@
 import { db } from './firebase.js';
-import { collection, getDocs, query, where, doc, getDoc, setDoc, updateDoc, deleteDoc, writeBatch, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, getDocs, query, where, doc, getDoc, setDoc, updateDoc, deleteDoc, writeBatch, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { showAlert, showConfirm, showLoader } from './ui_utils.js';
 
 /**
@@ -20,7 +20,7 @@ let currentSlot = {
     deadLine: null
 };
 
-function calculateSlot() {
+export function calculateSlot() {
     const now = new Date();
     const day = now.getDate();
     let targetYear = now.getFullYear();
@@ -1580,5 +1580,317 @@ async function applyFixedSchedules() {
         showAlert('エラー', '定例シフトの一括反映に失敗しました。');
     } finally {
         if (loader) loader.remove();
+    }
+}
+
+/**
+ * --- Shift Viewer (Step 4) ---
+ */
+
+export const shiftViewerPageHtml = `
+    <div class="animate-fade-in" id="shift-viewer-container" style="max-width: 800px; margin: 0 auto; padding-bottom: 5rem;">
+        <!-- パーソナル・ヘッダー -->
+        <div class="glass-panel" style="padding: 1.5rem; margin-bottom: 2rem; border-left: 5px solid var(--primary); display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h3 id="viewer-user-name" style="margin: 0; font-size: 1.4rem; font-weight: 900;">読み込み中...</h3>
+                <p id="viewer-period-label" style="margin: 0.3rem 0 0 0; font-size: 0.9rem; color: var(--text-secondary); font-weight: 700;"></p>
+            </div>
+            <div id="viewer-total-hours" style="text-align: right;">
+                <div style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 800; text-transform: uppercase;">予定合計</div>
+                <div id="viewer-total-val" style="font-size: 1.5rem; font-weight: 900; color: var(--primary);">0h</div>
+            </div>
+        </div>
+
+        <!-- 自分のシフトリスト (案A) -->
+        <div class="glass-panel" style="padding: 1.5rem; margin-bottom: 2rem;">
+            <h4 style="margin: 0 0 1.2rem 0; font-size: 1rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-list-ul" style="color: var(--primary);"></i> 確定シフト一覧
+            </h4>
+            <div id="viewer-personal-list" style="display: flex; flex-direction: column; gap: 0.8rem;">
+                <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">読込中...</div>
+            </div>
+        </div>
+
+        <!-- チームカレンダー (案C) -->
+        <div class="glass-panel" style="padding: 1.5rem;">
+            <h4 style="margin: 0 0 1.2rem 0; font-size: 1rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-calendar-alt" style="color: var(--secondary);"></i> チーム・カレンダー
+                <span style="font-size: 0.75rem; font-weight: 400; color: var(--text-secondary); margin-left: auto;">日付タップでメンバーを表示</span>
+            </h4>
+            <div id="viewer-calendar-grid" class="calendar-mini-grid"></div>
+            
+            <div id="viewer-day-details" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border); display: none;">
+                <div style="font-size: 0.85rem; font-weight: 800; color: var(--primary); margin-bottom: 1rem;" id="viewer-detail-date"></div>
+                <div id="viewer-member-tags" style="display: flex; flex-wrap: wrap; gap: 0.6rem;"></div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .calendar-mini-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+            background: var(--border);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .cal-day-hdr { background: #f8fafc; padding: 0.5rem; text-align: center; font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); }
+        .cal-day-cell { 
+            background: white; 
+            aspect-ratio: 1; 
+            padding: 0.3rem; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+        }
+        .cal-day-cell:hover { background: #f1f5f9; }
+        .cal-day-cell.active-day { background: #eff6ff; }
+        .cal-day-cell .day-num { font-size: 0.9rem; font-weight: 700; }
+        .cal-day-cell .my-dot { 
+            width: 6px; height: 6px; background: var(--primary); border-radius: 50%; 
+            position: absolute; bottom: 6px; 
+        }
+        .cal-day-cell.today { border: 2px solid var(--primary); z-index: 1; }
+        .confirmed-badge {
+            background: #ecfdf5; color: #059669; font-size: 0.65rem; padding: 0.2rem 0.5rem; 
+            border-radius: 12px; font-weight: 800; border: 1px solid #d1fae5;
+        }
+        .member-tag {
+            padding: 0.4rem 0.8rem; border-radius: 20px; background: #f1f5f9; 
+            font-size: 0.85rem; font-weight: 700; color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+        .member-tag.help {
+            background: #f5f3ff; color: #8b5cf6; border-color: #ddd6fe;
+        }
+    </style>
+`;
+
+export async function initShiftViewerPage() {
+    console.log("Initializing Shift Viewer...");
+    const me = JSON.parse(localStorage.getItem('currentUser'));
+    if (!me) return;
+
+    calculateSlot();
+    
+    document.getElementById('viewer-user-name').textContent = me.Name;
+    document.getElementById('viewer-period-label').textContent = `${currentSlot.year}年${currentSlot.month}月 ${currentSlot.slot === 1 ? '前半' : '後半'}`;
+    
+    const sid = me.StoreID || me.StoreId || 'UNKNOWN';
+    const sName = me.Store || '所属店舗';
+
+    // 1. データの読み込み
+    const range = {
+        start: formatDateJST(currentSlot.startDate),
+        end: formatDateJST(currentSlot.endDate)
+    };
+    
+    const q = query(collection(db, "t_shifts"), 
+        where("date", ">=", range.start), 
+        where("date", "<=", range.end),
+        where("status", "==", "confirmed")
+    );
+    const snap = await getDocs(q);
+    
+    const myShifts = [];
+    const allConfirmed = []; // { date, userId, DisplayName, isHelp }
+
+    // メンバーの表示名(DisplayName)を解決するためのキャッシュ
+    const userDisplayNames = new Map();
+
+    for (const d of snap.docs) {
+        const data = d.data();
+        // 自分に関連する全店舗の確定シフトを収集（他店舗でのヘルプ出勤を含むため storeId 制限を外す）
+        if (data.userId === me.id) {
+            myShifts.push(data);
+        }
+        // カレンダー表示用：この店舗（ホーム店舗）の全確定シフトを収集
+        if (data.storeId == sid) {
+            allConfirmed.push(data);
+        }
+    }
+
+    // 2. 個人リストの描画
+    myShifts.sort((a,b) => a.date.localeCompare(b.date));
+    const listCont = document.getElementById('viewer-personal-list');
+    if (myShifts.length === 0) {
+        listCont.innerHTML = `<div style="text-align:center; padding:2rem; color:var(--text-secondary); background:#f8fafc; border-radius:12px;">この期間の確定した予定はありません。</div>`;
+    } else {
+        let totalMin = 0;
+        listCont.innerHTML = myShifts.map(s => {
+            const dateObj = new Date(s.date);
+            const dayOfWeek = ['日','月','火','水','木','金','土'][dateObj.getDay()];
+            const [sh, sm] = s.start.split(':');
+            const [eh, em] = s.end.split(':');
+            const startMin = parseInt(sh) * 60 + parseInt(sm);
+            const endMin = parseInt(eh) * 60 + parseInt(em);
+            const diff = (endMin < startMin ? endMin + 1440 : endMin) - startMin - (s.breakMin || 0);
+            totalMin += diff;
+
+            const dateColor = dateObj.getDay() === 0 ? '#ef4444' : (dateObj.getDay() === 6 ? '#2563eb' : 'var(--text-primary)');
+            
+            // ヘルプ判定
+            const isHelp = s.storeId != sid;
+            const cardBg = isHelp ? '#f5f3ff' : 'white';
+            const cardBorder = isHelp ? '1px solid #ddd6fe' : '1px solid var(--border)';
+            const timeColor = isHelp ? '#8b5cf6' : 'inherit';
+
+            return `
+                <div style="display: flex; align-items: center; padding: 1rem; background: ${cardBg}; border: ${cardBorder}; border-radius: 12px; gap: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02); position: relative;">
+                    <div style="flex: 0 0 70px; border-right: 1px solid var(--border); color: ${dateColor};">
+                        <div style="font-size: 0.75rem; font-weight: 800;">${s.date.split('-')[1]}/${s.date.split('-')[2]}</div>
+                        <div style="font-size: 1rem; font-weight: 900;">(${dayOfWeek})</div>
+                    </div>
+                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        <div style="display: flex; align-items: center; gap: 0.8rem; font-size: 1.1rem; font-weight: 800; color: ${timeColor};">
+                            <span>${s.start}</span>
+                            <i class="fas fa-long-arrow-alt-right" style="color: var(--text-secondary); font-size: 0.8rem;"></i>
+                            <span>${s.end}</span>
+                        </div>
+                        ${isHelp ? `<div style="font-size: 0.65rem; color: #8b5cf6; font-weight: 700; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;">
+                            <i class="fas fa-map-marker-alt" style="margin-right:2px;"></i> ${s.storeName || '他店舗'}
+                        </div>` : ''}
+                    </div>
+                    <div style="flex: 0 0 60px; text-align: right;">
+                        <span class="confirmed-badge" style="${isHelp ? 'background:#ddd6fe; border-color:#c4b5fd;' : ''}">確定</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        document.getElementById('viewer-total-val').textContent = `${(totalMin/60).toFixed(1)}h`;
+    }
+
+    // 3. カレンダーの描画
+    renderViewerCalendar(allConfirmed, myShifts);
+}
+
+function renderViewerCalendar(allConfirmed, myShifts) {
+    const grid = document.getElementById('viewer-calendar-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    // 曜日ヘッダー
+    ['月','火','水','木','金','土','日'].forEach(w => {
+        grid.innerHTML += `<div class="cal-day-hdr">${w}</div>`;
+    });
+
+    const start = new Date(currentSlot.startDate);
+    const end = new Date(currentSlot.endDate);
+    
+    // 月・火...日の順にするために月曜始まりに調整
+    const firstDay = new Date(start);
+    const offset = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
+    
+    // 空白埋め
+    for (let i = 0; i < offset; i++) grid.innerHTML += `<div class="cal-day-cell" style="background:#f8fafc; cursor:default;"></div>`;
+
+    const todayStr = formatDateJST(new Date());
+
+    const daysCount = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+    for (let i = 0; i < daysCount; i++) {
+        const d = new Date(start); d.setDate(d.getDate() + i);
+        const ymd = formatDateJST(d);
+        const isMyDay = myShifts.some(s => s.date === ymd);
+        const isToday = ymd === todayStr;
+
+        const cell = document.createElement('div');
+        cell.className = `cal-day-cell ${isToday ? 'today' : ''}`;
+        cell.innerHTML = `
+            <div class="day-num">${d.getDate()}</div>
+            ${isMyDay ? '<div class="my-dot"></div>' : ''}
+        `;
+        cell.onclick = () => showDayMembers(ymd, allConfirmed);
+        grid.appendChild(cell);
+    }
+}
+
+async function showDayMembers(dateStr, allConfirmed) {
+    const detailArea = document.getElementById('viewer-day-details');
+    const title = document.getElementById('viewer-detail-date');
+    const tags = document.getElementById('viewer-member-tags');
+    if (!detailArea || !tags) return;
+
+    const dateObj = new Date(dateStr);
+    const dayOfWeek = ['日','月','火','水','木','金','土'][dateObj.getDay()];
+    title.textContent = `${dateStr.replace(/-/g, '/')} (${dayOfWeek}) の出勤メンバー`;
+    
+    const members = allConfirmed.filter(s => s.date === dateStr);
+    
+    if (members.length === 0) {
+        tags.innerHTML = '<div style="font-size: 0.8rem; color: var(--text-secondary);">出勤予定のスタッフはいません。</div>';
+    } else {
+        // 表示名(DisplayName)を取得するためにユーザーマスタを参照
+        // ※キャッシュして効率化
+        const uids = [...new Set(members.map(m => m.userId))];
+        const userMap = new Map();
+        
+        try {
+            const snaps = await Promise.all(uids.map(id => getDoc(doc(db, "m_users", id))));
+            snaps.forEach(s => {
+                if (s.exists()) userMap.set(s.id, s.data());
+            });
+        } catch (e) {
+            console.error("User fetch error:", e);
+        }
+
+        // 現場の要望通り「シフト表示名」を優先して表示
+        tags.innerHTML = members.map(m => {
+            const uData = userMap.get(m.userId);
+            const displayName = uData?.DisplayName || m.userName || 'スタッフ';
+            
+            // ヘルプスタッフ判定（現在の所属店舗と異なる場合）
+            // ※ここでのsid判定は、現在閲覧している店舗IDと比較
+            const me = JSON.parse(localStorage.getItem('currentUser'));
+            const currentViewerStoreId = me.StoreID || me.StoreId;
+            const isHelp = uData ? (uData.StoreID != currentViewerStoreId && uData.StoreId != currentViewerStoreId) : false;
+
+            return `<div class="member-tag ${isHelp ? 'help' : ''}">
+                ${isHelp ? '<i class="fas fa-exchange-alt" style="font-size:0.7rem; margin-right:4px;"></i>' : ''}
+                ${displayName}
+                <span style="font-size:0.6rem; font-weight:400; opacity:0.8; margin-left:4px;">${m.start}</span>
+            </div>`;
+        }).join('');
+    }
+
+    detailArea.style.display = 'block';
+    
+    // スムーズにスクロール
+    detailArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/**
+ * 現在の期間でこの店舗の確定シフトが既に存在するか（＝公開済みか）をチェックする
+ */
+export async function checkIfShiftPublished() {
+    const me = JSON.parse(localStorage.getItem('currentUser'));
+    if (!me) return false;
+
+    calculateSlot();
+    const sid = me.StoreID || me.StoreId || 'UNKNOWN';
+    const range = {
+        start: formatDateJST(currentSlot.startDate),
+        end: formatDateJST(currentSlot.endDate)
+    };
+
+    try {
+        // 自分の店舗で、この期間に一つでも 'confirmed' があれば公開済みとみなす
+        const q = query(collection(db, "t_shifts"), 
+            where("storeId", "==", sid),
+            where("date", ">=", range.start),
+            where("date", "<=", range.end),
+            where("status", "==", "confirmed"),
+            limit(1)
+        );
+        const snap = await getDocs(q);
+        return !snap.empty;
+    } catch (e) {
+        console.error("Shift publish check error:", e);
+        return false;
     }
 }
