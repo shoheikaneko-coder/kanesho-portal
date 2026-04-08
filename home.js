@@ -37,20 +37,30 @@ export const homePageHtml = `
 
         <!-- 業務オペレーション (ハブ) -->
         <div id="operations-hub">
-            <h3 style="display: flex; align-items: center; gap: 0.8rem; margin-bottom: 1.5rem; color: var(--text-primary); font-weight: 800;">
-                <i class="fas fa-rocket" style="color: var(--warning);"></i> 業務コックピット
-            </h3>
-            <div class="ops-grid" id="home-ops-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
-                <!-- 業務カードがここに動的に生成される -->
+            <div id="tablet-cockpit-container" style="display: none; margin-bottom: 1.5rem;">
+                <h3 style="margin: 0 0 0.8rem; font-size: 0.85rem; font-weight: 800; display: flex; align-items: center; gap: 0.6rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">
+                    <i class="fas fa-rocket" style="color: var(--primary); font-size: 0.8rem;"></i> クイックアクション
+                </h3>
+                <div id="home-ops-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.8rem;"></div>
+            </div>
+
+            <!-- 通常用コックピット（管理者・一般社員） -->
+            <div id="standard-cockpit-section">
+                <h3 style="display: flex; align-items: center; gap: 0.8rem; margin-bottom: 1.5rem; color: var(--text-primary); font-weight: 800;">
+                    <i class="fas fa-rocket" style="color: var(--warning);"></i> 業務コックピット
+                </h3>
+                <div id="standard-ops-grid" class="ops-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+                    <!-- 業務カードがここに動的に生成される -->
+                </div>
             </div>
         </div>
 
         <!-- 【店舗タブレット専用】勤怠打刻セクション -->
-        <div id="tablet-attendance-section" style="display: none; margin-top: 1rem;">
-            <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
+        <div id="tablet-attendance-section" style="display: none; margin-top: 0.5rem;">
+            <div style="display: grid; grid-template-columns: 1fr; gap: 1rem;">
                 <!-- 打刻入力エリア -->
-                <div class="glass-panel" style="padding: 2rem;">
-                    <h3 style="margin: 0 0 1.5rem; font-size: 1.1rem; font-weight: 800; display: flex; align-items: center; gap: 0.8rem;">
+                <div class="glass-panel" style="padding: 1.2rem;">
+                    <h3 style="margin: 0 0 1rem; font-size: 1rem; font-weight: 800; display: flex; align-items: center; gap: 0.6rem;">
                         <i class="fas fa-fingerprint" style="color: var(--primary);"></i> スタッフ打刻
                     </h3>
                     <div id="current-store-label" style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem; font-weight: 600;"></div>
@@ -65,21 +75,21 @@ export const homePageHtml = `
                 </div>
 
                 <!-- 勤務中スタッフ一覧 -->
-                <div class="glass-panel" style="padding: 2rem;">
-                    <h3 style="margin: 0 0 1.5rem; font-size: 1.1rem; font-weight: 800; color: var(--text-secondary); display: flex; align-items: center; gap: 0.8rem;">
+                <div class="glass-panel" style="padding: 1.2rem;">
+                    <h3 style="margin: 0 0 1rem; font-size: 1rem; font-weight: 800; color: var(--text-secondary); display: flex; align-items: center; gap: 0.6rem;">
                         <i class="fas fa-users" style="color: #3b82f6;"></i> 現在勤務中のスタッフ
                     </h3>
-                    <div id="active-staff-gallery" style="display: flex; flex-wrap: wrap; gap: 1rem;">
-                        <div style="color: var(--text-secondary); font-size: 0.9rem; padding: 0.5rem;">読み込み中...</div>
+                    <div id="active-staff-gallery" style="display: flex; flex-wrap: wrap; gap: 0.8rem;">
+                        <div style="color: var(--text-secondary); font-size: 0.85rem; padding: 0.5rem;">読み込み中...</div>
                     </div>
                 </div>
 
                 <!-- 本日の打刻履歴 -->
-                <div class="glass-panel" style="padding: 2rem;">
-                    <h3 style="margin: 0 0 1.5rem; font-size: 1.1rem; font-weight: 800; color: var(--text-secondary); display: flex; align-items: center; gap: 0.8rem;">
+                <div class="glass-panel" style="padding: 1.2rem;">
+                    <h3 style="margin: 0 0 1rem; font-size: 1rem; font-weight: 800; color: var(--text-secondary); display: flex; align-items: center; gap: 0.6rem;">
                         <i class="fas fa-history" style="color: #64748b;"></i> 本日の打刻履歴
                     </h3>
-                    <div id="attendance-history" style="display: flex; flex-direction: column; gap: 0.8rem; max-height: 400px; overflow-y: auto; padding-right: 0.5rem;">
+                    <div id="attendance-history" style="display: flex; flex-direction: column; gap: 0.6rem; max-height: 250px; overflow-y: auto; padding-right: 0.5rem;">
                         <!-- 履歴がここに動的に生成される -->
                     </div>
                 </div>
@@ -176,6 +186,49 @@ export const homePageHtml = `
         
         .status-success { color: #10b981; }
         .status-danger { color: #ef4444; }
+
+        /* タブレット用スリムアクションボタン: より高密度で洗練されたデザインに */
+        .ops-action-btn {
+            background: white;
+            border: 1px solid var(--border);
+            padding: 0.7rem 1rem;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+            position: relative;
+            overflow: hidden;
+        }
+        .ops-action-btn:hover {
+            border-color: var(--primary);
+            background: #fffafa;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(230, 57, 70, 0.1);
+        }
+        .ops-action-btn i {
+            font-size: 1.05rem;
+            color: var(--primary);
+            width: 32px;
+            height: 32px;
+            background: rgba(230, 57, 70, 0.06);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+        }
+        .ops-action-btn:hover i {
+            background: var(--primary);
+            color: white;
+        }
+        .ops-action-btn span {
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+        }
     </style>
 `;
 
@@ -231,12 +284,15 @@ export async function initHomePage() {
  
     if (user.Role === 'Tablet') {
         // 店舗タブレット専用レイアウト
-        renderOperationCards(permissions); // 業務コックピットを先に描画
-        await initTabletHomeAttendance(user); // その下に勤怠埋め込み
+        document.getElementById('standard-cockpit-section').style.display = 'none';
+        document.getElementById('tablet-cockpit-container').style.display = 'block';
+        renderOperationCards(permissions, 'Tablet'); 
+        await initTabletHomeAttendance(user); 
     } else {
-        // 一般ユーザーレイアウト
-        await renderTodayShifts(user); // 本日の出勤メンバー（予定）
-        renderOperationCards(permissions); // 業務コックピット
+        // 通常レイアウト
+        document.getElementById('tablet-cockpit-container').style.display = 'none';
+        await renderTodayShifts(user); 
+        renderOperationCards(permissions, user.Role); 
     }
 
     // スタッフ用マイアセットと棚卸しアラート
@@ -493,29 +549,47 @@ async function renderPerformanceSummary(user) {
     }
 }
 
-function renderOperationCards(permissions) {
-    const grid = document.getElementById('home-ops-grid');
+function renderOperationCards(permissions, role) {
+    const isTablet = role === 'Tablet';
+    const gridId = isTablet ? 'home-ops-grid' : 'standard-ops-grid';
+    const grid = document.getElementById(gridId);
     if (!grid) return;
 
-    const cards = [
+    let cards = [
         { id: 'sales', name: '営業実績報告', icon: 'fa-calculator', desc: '売上・客数・各種経費の入力報告を行います。' },
         { id: 'attendance', name: '勤怠入力', icon: 'fa-clock', desc: 'スタッフの出勤・退勤打刻、シフトの確認。' },
         { id: 'inventory', name: '在庫管理', icon: 'fa-warehouse', desc: '現在の在庫数確認、棚卸登録を行います。' },
         { id: 'procurement', name: '仕入れ', icon: 'fa-shopping-cart', desc: '発注・入荷管理、仕入先への注文登録。' },
         { id: 'recipe_viewer', name: 'レシピ閲覧', icon: 'fa-book-open', desc: '料理やドリンクの作り方、盛り付けを確認します。' },
         { id: 'loans', name: '貸与物管理', icon: 'fa-key', desc: '従業員への制服、鍵、端末等の貸与状況を管理。' },
-        { id: 'product_analysis', name: '商品分析(4つの窓)', icon: 'fa-chart-pie', desc: 'ABC分析等を行い、メニューの改善に繋げます。' }
+        { id: 'product_analysis', name: '商品分析', icon: 'fa-chart-pie', desc: 'ABC分析等を行い、メニューの改善に繋げます。' }
     ];
+
+    // タブレット時は勤怠入力を除外（埋め込み済みのため）
+    if (isTablet) {
+        cards = cards.filter(c => c.id !== 'attendance');
+    }
 
     grid.innerHTML = cards
         .filter(c => permissions.includes(c.id))
-        .map(c => `
-            <div class="ops-card" onclick="window.navigateTo('${c.id}')">
-                <i class="fas ${c.icon}"></i>
-                <div>
-                    <h4>${c.name}</h4>
-                    <p>${c.desc}</p>
-                </div>
-            </div>
-        `).join('');
+        .map(c => {
+            if (isTablet) {
+                return `
+                    <div class="ops-action-btn" onclick="window.navigateTo('${c.id}')">
+                        <i class="fas ${c.icon}"></i>
+                        <span>${c.name}</span>
+                    </div>
+                `;
+            } else {
+                return `
+                    <div class="ops-card" onclick="window.navigateTo('${c.id}')">
+                        <i class="fas ${c.icon}"></i>
+                        <div>
+                            <h4>${c.name}</h4>
+                            <p>${c.desc}</p>
+                        </div>
+                    </div>
+                `;
+            }
+        }).join('');
 }
