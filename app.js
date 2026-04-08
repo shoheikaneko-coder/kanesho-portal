@@ -472,21 +472,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const btnHeaderShift = document.getElementById('btn-header-shift');
     if (btnHeaderShift) {
-        btnHeaderShift.onclick = async () => {
+        btnHeaderShift.onclick = () => {
             const role = state.currentUser?.Role;
-            if (role === 'Admin' || role === '管理者' || role === 'Manager' || role === '店長') {
-                window.navigateTo('shift_admin');
-                return;
-            }
-
-            // スタッフ・アルバイトの場合：確定済みデータがあるかチェック
-            try {
-                const isPublished = await checkIfShiftPublished();
-                window.navigateTo(isPublished ? 'shift_viewer' : 'shift_submission');
-            } catch (e) {
-                console.error("Navigation error:", e);
-                window.navigateTo('shift_submission');
-            }
+            // 店舗タブレット以外は「自分のシフト表」へ直接遷移
+            if (role === 'Tablet' || role === '店舗タブレット') return;
+            window.navigateTo('shift_viewer');
         };
     }
 

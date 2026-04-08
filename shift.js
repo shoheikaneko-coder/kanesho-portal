@@ -29,8 +29,6 @@ export function calculateSlot() {
 
     if (day <= 10) {
         slot = 2; // 今月後半
-        targetYear = now.getFullYear();
-        targetMonth = now.getMonth() + 1;
     } else if (day <= 25) {
         targetMonth++; // 翌月前半
         if (targetMonth > 12) { targetMonth = 1; targetYear++; }
@@ -51,6 +49,47 @@ export function calculateSlot() {
     
     const deadlineText = (slot === 2) ? `${targetYear}/${targetMonth}/10` : (day > 25 ? `${targetYear}/${targetMonth}/25` : `${now.getFullYear()}/${now.getMonth()+1}/25`);
     currentSlot.deadLine = deadlineText;
+}
+
+/**
+ * 閲覧用のローリング6スロット（前月・今月・翌月 × 前半・後半）を取得する
+ */
+export function getRollingSlots() {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+
+    const months = [
+        { y: currentMonth === 1 ? currentYear - 1 : currentYear, m: currentMonth === 1 ? 12 : currentMonth - 1 },
+        { y: currentYear, m: currentMonth },
+        { y: currentMonth === 12 ? currentYear + 1 : currentYear, m: currentMonth === 12 ? 1 : currentMonth + 1 }
+    ];
+
+    const slots = [];
+    months.forEach(item => {
+        [1, 2].forEach(s => {
+            const lastDay = new Date(item.y, item.m, 0).getDate();
+            const start = new Date(item.y, item.m - 1, s === 1 ? 1 : 16);
+            const end = new Date(item.y, item.m - 1, s === 1 ? 15 : lastDay);
+            
+            // 現在の時刻と比較
+            const isPast = now > end;
+            const isTodayInSlot = now >= start && now <= end;
+            
+            slots.push({
+                id: `${item.y}-${item.m}-${s}`,
+                year: item.y,
+                month: item.m,
+                slot: s,
+                startDate: start,
+                endDate: end,
+                isPast,
+                isCurrent: isTodayInSlot,
+                label: `${item.m}月 ${s === 1 ? '前半' : '後半'}`
+            });
+        });
+    });
+    return slots;
 }
 
 /**
@@ -623,7 +662,10 @@ async function saveShiftsBulk() {
                 userId: cell.uid, userName: user.Name, date: cell.date,
                 start, end, breakMin: brk, note, 
                 status: adminMode ? 'confirmed' : 'applied',
-                storeId: sid, storeName: sName,
+                storeId: String(sid),
+                StoreID: String(sid),
+                storeName: sName,
+                StoreName: sName,
                 updatedAt: new Date().toISOString()
             };
             batch.push(setDoc(doc(db, "t_shifts", `${cell.date}_${cell.uid}`), shiftData));
@@ -1353,7 +1395,20 @@ function setupSubmissionEvents() {
             const ymd = formatDateJST(d);
             const dow = d.getDay();
             if(temp[dow]) {
-                const s = { userId: currentTargetUser.id, userName: currentTargetUser.Name, date: ymd, start: temp[dow].start, end: temp[dow].end, status: 'applied', storeId: currentTargetUser.StoreID || 'UNKNOWN' };
+                const sid = currentTargetUser.StoreID || currentTargetUser.StoreId || 'UNKNOWN';
+                const sName = currentTargetUser.Store || '所属店舗';
+                const s = { 
+                    userId: currentTargetUser.id, 
+                    userName: currentTargetUser.Name, 
+                    date: ymd, 
+                    start: temp[dow].start, 
+                    end: temp[dow].end, 
+                    status: 'applied', 
+                    storeId: String(sid),
+                    StoreID: String(sid),
+                    storeName: sName,
+                    StoreName: sName
+                };
                 if(!currentShifts[currentTargetUser.id]) currentShifts[currentTargetUser.id] = {};
                 currentShifts[currentTargetUser.id][ymd] = s;
                 renderCellUI(currentTargetUser.id, ymd, s);
@@ -1556,7 +1611,10 @@ async function applyFixedSchedules() {
                         userId: u.id, userName: u.Name, date: ymd,
                         start: fs.start, end: fs.end, breakMin: fs.breakMin,
                         status: 'confirmed',
-                        storeId: sid, storeName: sName,
+                        storeId: String(sid),
+                        StoreID: String(sid),
+                        storeName: sName,
+                        StoreName: sName,
                         updatedAt: new Date().toISOString()
                     };
                     batchOps.push(setDoc(doc(db, "t_shifts", `${ymd}_${u.id}`), shiftData));
@@ -1588,309 +1646,297 @@ async function applyFixedSchedules() {
  */
 
 export const shiftViewerPageHtml = `
-    <div class="animate-fade-in" id="shift-viewer-container" style="max-width: 800px; margin: 0 auto; padding-bottom: 5rem;">
+    <div class="animate-fade-in" id="shift-viewer-container" style="max-width: 900px; margin: 0 auto; padding-bottom: 5rem;">
         <!-- パーソナル・ヘッダー -->
-        <div class="glass-panel" style="padding: 1.5rem; margin-bottom: 2rem; border-left: 5px solid var(--primary); display: flex; justify-content: space-between; align-items: center;">
+        <div class="glass-panel" style="padding: 1.5rem; margin-bottom: 2rem; border-left: 5px solid var(--primary); display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, white 0%, #fff5f5 100%);">
             <div>
-                <h3 id="viewer-user-name" style="margin: 0; font-size: 1.4rem; font-weight: 900;">読み込み中...</h3>
-                <p id="viewer-period-label" style="margin: 0.3rem 0 0 0; font-size: 0.9rem; color: var(--text-secondary); font-weight: 700;"></p>
+                <h3 id="viewer-user-name" style="margin: 0; font-size: 1.4rem; font-weight: 900; color: var(--primary);">読み込み中...</h3>
+                <p id="viewer-period-label" style="margin: 0.3rem 0 0 0; font-size: 0.9rem; color: var(--text-secondary); font-weight: 700;">確定シフト・ダッシュボード</p>
             </div>
-            <div id="viewer-total-hours" style="text-align: right;">
-                <div style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 800; text-transform: uppercase;">予定合計</div>
-                <div id="viewer-total-val" style="font-size: 1.5rem; font-weight: 900; color: var(--primary);">0h</div>
-            </div>
-        </div>
-
-        <!-- 自分のシフトリスト (案A) -->
-        <div class="glass-panel" style="padding: 1.5rem; margin-bottom: 2rem;">
-            <h4 style="margin: 0 0 1.2rem 0; font-size: 1rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
-                <i class="fas fa-list-ul" style="color: var(--primary);"></i> 確定シフト一覧
-            </h4>
-            <div id="viewer-personal-list" style="display: flex; flex-direction: column; gap: 0.8rem;">
-                <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">読込中...</div>
+            <div style="text-align: right; display: flex; align-items: center; gap: 1rem;">
+                <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 900;">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
             </div>
         </div>
 
-        <!-- チームカレンダー (案C) -->
-        <div class="glass-panel" style="padding: 1.5rem;">
-            <h4 style="margin: 0 0 1.2rem 0; font-size: 1rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
-                <i class="fas fa-calendar-alt" style="color: var(--secondary);"></i> チーム・カレンダー
-                <span style="font-size: 0.75rem; font-weight: 400; color: var(--text-secondary); margin-left: auto;">日付タップでメンバーを表示</span>
-            </h4>
-            <div id="viewer-calendar-grid" class="calendar-mini-grid"></div>
-            
-            <div id="viewer-day-details" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border); display: none;">
-                <div style="font-size: 0.85rem; font-weight: 800; color: var(--primary); margin-bottom: 1rem;" id="viewer-detail-date"></div>
-                <div id="viewer-member-tags" style="display: flex; flex-wrap: wrap; gap: 0.6rem;"></div>
+        <div id="viewer-timeline-container" style="display: flex; flex-direction: column; gap: 2rem;">
+            <!-- 各スロット（前半・後半）がここに生成される -->
+            <div style="text-align: center; padding: 4rem; color: var(--text-secondary);">
+                <i class="fas fa-spinner fa-spin fa-2x"></i><br><br>シフトデータを読み込んでいます...
             </div>
         </div>
     </div>
-
+` + `
     <style>
-        .calendar-mini-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 2px;
-            background: var(--border);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        .cal-day-hdr { background: #f8fafc; padding: 0.5rem; text-align: center; font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); }
-        .cal-day-cell { 
-            background: white; 
-            aspect-ratio: 1; 
-            padding: 0.3rem; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center;
-            cursor: pointer;
+        .slot-section {
             position: relative;
-            transition: all 0.2s;
-        }
-        .cal-day-cell:hover { background: #f1f5f9; }
-        .cal-day-cell.active-day { background: #eff6ff; }
-        .cal-day-cell .day-num { font-size: 0.9rem; font-weight: 700; }
-        .cal-day-cell .my-dot { 
-            width: 6px; height: 6px; background: var(--primary); border-radius: 50%; 
-            position: absolute; bottom: 6px; 
-        }
-        .cal-day-cell.today { border: 2px solid var(--primary); z-index: 1; }
-        .confirmed-badge {
-            background: #ecfdf5; color: #059669; font-size: 0.65rem; padding: 0.2rem 0.5rem; 
-            border-radius: 12px; font-weight: 800; border: 1px solid #d1fae5;
-        }
-        .member-tag {
-            padding: 0.4rem 0.8rem; border-radius: 20px; background: #f1f5f9; 
-            font-size: 0.85rem; font-weight: 700; color: var(--text-primary);
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
             border: 1px solid var(--border);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
         }
-        .member-tag.help {
-            background: #f5f3ff; color: #8b5cf6; border-color: #ddd6fe;
+        .slot-section.past {
+            background: #f1f5f9;
+            opacity: 0.8;
+            filter: grayscale(0.5);
+        }
+        .slot-section.current {
+            border: 2px solid var(--primary);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .slot-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.2rem;
+            padding-bottom: 0.8rem;
+            border-bottom: 1px dashed var(--border);
+        }
+        .slot-label {
+            font-size: 1.1rem;
+            font-weight: 900;
+            color: var(--text-primary);
+        }
+        .slot-badge {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 20px;
+            font-weight: 800;
+        }
+        .badge-past { background: #e2e8f0; color: #64748b; }
+        .badge-current { background: #fee2e2; color: #ef4444; border: 1px solid #fecaca; }
+        .badge-future { background: #f0f9ff; color: #0369a1; }
+        
+        .personal-shift-row {
+            display: flex;
+            align-items: center;
+            padding: 0.8rem;
+            border-radius: 12px;
+            background: #f8fafc;
+            margin-bottom: 0.6rem;
+            gap: 1rem;
+            border: 1px solid transparent;
+        }
+        .personal-shift-row.help {
+            background: #f5f3ff;
+            border-color: #ddd6fe;
+        }
+        
+        .official-stamp {
+            position: absolute;
+            bottom: 15px;
+            right: 25px;
+            width: 75px;
+            height: 75px;
+            border: 4px solid #dc2626;
+            border-radius: 50%;
+            color: #dc2626;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            font-weight: 900;
+            line-height: 1.1;
+            transform: rotate(-15deg);
+            opacity: 0.5;
+            pointer-events: none;
+            user-select: none;
+            background: rgba(255,255,255,0.7);
+            z-index: 5;
+        }
+        .official-stamp span { font-size: 0.5rem; letter-spacing: 1px; }
+
+        .btn-ics {
+            background: white;
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            font-size: 0.75rem;
+            padding: 0.4rem 0.8rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .btn-ics:hover {
+            background: #f8fafc;
+            border-color: var(--primary);
+            color: var(--primary);
         }
     </style>
 `;
 
 export async function initShiftViewerPage() {
-    console.log("Initializing Shift Viewer...");
+    console.log("Initializing Rolling Shift Dashboard...");
     const me = JSON.parse(localStorage.getItem('currentUser'));
     if (!me) return;
 
-    calculateSlot();
-    
     document.getElementById('viewer-user-name').textContent = me.Name;
-    document.getElementById('viewer-period-label').textContent = `${currentSlot.year}年${currentSlot.month}月 ${currentSlot.slot === 1 ? '前半' : '後半'}`;
-    
-    const sid = me.StoreID || me.StoreId || 'UNKNOWN';
-    const sName = me.Store || '所属店舗';
+    const container = document.getElementById('viewer-timeline-container');
+    if (!container) return;
 
-    // 1. データの読み込み
-    const range = {
-        start: formatDateJST(currentSlot.startDate),
-        end: formatDateJST(currentSlot.endDate)
-    };
+    // 1. ローリング6スロットを取得
+    const slots = getRollingSlots();
+    
+    // 2. 店舗リストを取得 (他店舗名の解決用)
+    const storeMap = {};
+    try {
+        const storeSnap = await getDocs(collection(db, "m_stores"));
+        storeSnap.forEach(doc => {
+            const d = doc.data();
+            storeMap[String(d.store_id || d.id)] = d.store_name || d.name || '不明な店舗';
+        });
+    } catch (e) { console.warn(e); }
+
+    // 3. 全期間の自分の確定シフトを一括取得 (または範囲指定)
+    const overallStart = formatDateJST(slots[0].startDate);
+    const overallEnd = formatDateJST(slots[slots.length-1].endDate);
     
     const q = query(collection(db, "t_shifts"), 
-        where("date", ">=", range.start), 
-        where("date", "<=", range.end),
+        where("userId", "==", me.id),
+        where("date", ">=", overallStart),
+        where("date", "<=", overallEnd),
         where("status", "==", "confirmed")
     );
     const snap = await getDocs(q);
-    
-    const myShifts = [];
-    const allConfirmed = []; // { date, userId, DisplayName, isHelp }
+    const shiftData = snap.docs.map(d => d.data());
 
-    // メンバーの表示名(DisplayName)を解決するためのキャッシュ
-    const userDisplayNames = new Map();
+    // 4. 各スロットの描画
+    container.innerHTML = slots.map(slot => {
+        const slotShifts = shiftData.filter(s => s.date >= formatDateJST(slot.startDate) && s.date <= formatDateJST(slot.endDate));
+        slotShifts.sort((a,b) => a.date.localeCompare(b.date));
 
-    for (const d of snap.docs) {
-        const data = d.data();
-        // 自分に関連する全店舗の確定シフトを収集（他店舗でのヘルプ出勤を含むため storeId 制限を外す）
-        if (data.userId === me.id) {
-            myShifts.push(data);
-        }
-        // カレンダー表示用：この店舗（ホーム店舗）の全確定シフトを収集
-        if (data.storeId == sid) {
-            allConfirmed.push(data);
-        }
-    }
+        const isFuture = !slot.isPast && !slot.isCurrent;
+        const isConfirmed = slotShifts.length > 0;
+        
+        let statusBadge = `<span class="slot-badge badge-past">終了</span>`;
+        if (slot.isCurrent) statusBadge = `<span class="slot-badge badge-current">現在</span>`;
+        if (isFuture) statusBadge = `<span class="slot-badge badge-future">予定</span>`;
 
-    // 2. 個人リストの描画
-    myShifts.sort((a,b) => a.date.localeCompare(b.date));
-    const listCont = document.getElementById('viewer-personal-list');
-    if (myShifts.length === 0) {
-        listCont.innerHTML = `<div style="text-align:center; padding:2rem; color:var(--text-secondary); background:#f8fafc; border-radius:12px;">この期間の確定した予定はありません。</div>`;
-    } else {
-        let totalMin = 0;
-        listCont.innerHTML = myShifts.map(s => {
-            const dateObj = new Date(s.date);
-            const dayOfWeek = ['日','月','火','水','木','金','土'][dateObj.getDay()];
-            const [sh, sm] = s.start.split(':');
-            const [eh, em] = s.end.split(':');
-            const startMin = parseInt(sh) * 60 + parseInt(sm);
-            const endMin = parseInt(eh) * 60 + parseInt(em);
-            const diff = (endMin < startMin ? endMin + 1440 : endMin) - startMin - (s.breakMin || 0);
-            totalMin += diff;
+        let contentHtml = "";
+        if (isConfirmed) {
+            contentHtml = slotShifts.map(s => {
+                const dateObj = new Date(s.date);
+                const dayOfWeek = ['日','月','火','水','木','金','土'][dateObj.getDay()];
+                const dateColor = dateObj.getDay() === 0 ? '#ef4444' : (dateObj.getDay() === 6 ? '#2563eb' : 'var(--text-primary)');
+                
+                const shiftStoreId = String(s.storeId || s.StoreID || '');
+                const isHelp = shiftStoreId !== '' && shiftStoreId !== String(me.StoreID || me.StoreId);
 
-            const dateColor = dateObj.getDay() === 0 ? '#ef4444' : (dateObj.getDay() === 6 ? '#2563eb' : 'var(--text-primary)');
-            
-            // ヘルプ判定
-            const isHelp = s.storeId != sid;
-            const cardBg = isHelp ? '#f5f3ff' : 'white';
-            const cardBorder = isHelp ? '1px solid #ddd6fe' : '1px solid var(--border)';
-            const timeColor = isHelp ? '#8b5cf6' : 'inherit';
-
-            return `
-                <div style="display: flex; align-items: center; padding: 1rem; background: ${cardBg}; border: ${cardBorder}; border-radius: 12px; gap: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02); position: relative;">
-                    <div style="flex: 0 0 70px; border-right: 1px solid var(--border); color: ${dateColor};">
-                        <div style="font-size: 0.75rem; font-weight: 800;">${s.date.split('-')[1]}/${s.date.split('-')[2]}</div>
-                        <div style="font-size: 1rem; font-weight: 900;">(${dayOfWeek})</div>
-                    </div>
-                    <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                        <div style="display: flex; align-items: center; gap: 0.8rem; font-size: 1.1rem; font-weight: 800; color: ${timeColor};">
+                return `
+                    <div class="personal-shift-row ${isHelp ? 'help' : ''}">
+                        <div style="flex: 0 0 45px; text-align: center; border-right: 1px solid var(--border); color: ${dateColor};">
+                            <div style="font-size: 0.65rem; font-weight: 700;">${s.date.split('-')[2]}</div>
+                            <div style="font-size: 0.8rem; font-weight: 900;">(${dayOfWeek})</div>
+                        </div>
+                        <div style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.4rem; font-weight: 800; font-size: 1rem;">
                             <span>${s.start}</span>
-                            <i class="fas fa-long-arrow-alt-right" style="color: var(--text-secondary); font-size: 0.8rem;"></i>
+                            <span style="opacity:0.2;">-</span>
                             <span>${s.end}</span>
                         </div>
-                        ${isHelp ? `<div style="font-size: 0.65rem; color: #8b5cf6; font-weight: 700; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;">
-                            <i class="fas fa-map-marker-alt" style="margin-right:2px;"></i> ${s.storeName || '他店舗'}
-                        </div>` : ''}
+                        <div style="flex: 1; font-size: 0.75rem; font-weight: 700; color: ${isHelp ? '#7c3aed' : 'var(--text-secondary)'}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            ${isHelp ? `<i class="fas fa-map-marker-alt"></i> ${s.storeName || storeMap[shiftStoreId] || '他店舗'}` : '<i class="fas fa-home"></i> 本店'}
+                        </div>
                     </div>
-                    <div style="flex: 0 0 60px; text-align: right;">
-                        <span class="confirmed-badge" style="${isHelp ? 'background:#ddd6fe; border-color:#c4b5fd;' : ''}">確定</span>
-                    </div>
+                `;
+            }).join('');
+            
+            // 赤色の公式スタンプ
+            contentHtml += `
+                <div class="official-stamp">
+                    <div style="font-size: 0.5rem; letter-spacing: 1px; opacity: 0.8;">KANESHO</div>
+                    <div style="font-size: 1.1rem; line-height: 1; margin: 2px 0;">かね将</div>
+                    <div style="font-size: 0.5rem; letter-spacing: 1px; opacity: 0.8;">OFFICIAL</div>
                 </div>
             `;
-        }).join('');
-        document.getElementById('viewer-total-val').textContent = `${(totalMin/60).toFixed(1)}h`;
-    }
-
-    // 3. カレンダーの描画
-    renderViewerCalendar(allConfirmed, myShifts);
-}
-
-function renderViewerCalendar(allConfirmed, myShifts) {
-    const grid = document.getElementById('viewer-calendar-grid');
-    if (!grid) return;
-    grid.innerHTML = '';
-
-    // 曜日ヘッダー
-    ['月','火','水','木','金','土','日'].forEach(w => {
-        grid.innerHTML += `<div class="cal-day-hdr">${w}</div>`;
-    });
-
-    const start = new Date(currentSlot.startDate);
-    const end = new Date(currentSlot.endDate);
-    
-    // 月・火...日の順にするために月曜始まりに調整
-    const firstDay = new Date(start);
-    const offset = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
-    
-    // 空白埋め
-    for (let i = 0; i < offset; i++) grid.innerHTML += `<div class="cal-day-cell" style="background:#f8fafc; cursor:default;"></div>`;
-
-    const todayStr = formatDateJST(new Date());
-
-    const daysCount = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
-    for (let i = 0; i < daysCount; i++) {
-        const d = new Date(start); d.setDate(d.getDate() + i);
-        const ymd = formatDateJST(d);
-        const isMyDay = myShifts.some(s => s.date === ymd);
-        const isToday = ymd === todayStr;
-
-        const cell = document.createElement('div');
-        cell.className = `cal-day-cell ${isToday ? 'today' : ''}`;
-        cell.innerHTML = `
-            <div class="day-num">${d.getDate()}</div>
-            ${isMyDay ? '<div class="my-dot"></div>' : ''}
-        `;
-        cell.onclick = () => showDayMembers(ymd, allConfirmed);
-        grid.appendChild(cell);
-    }
-}
-
-async function showDayMembers(dateStr, allConfirmed) {
-    const detailArea = document.getElementById('viewer-day-details');
-    const title = document.getElementById('viewer-detail-date');
-    const tags = document.getElementById('viewer-member-tags');
-    if (!detailArea || !tags) return;
-
-    const dateObj = new Date(dateStr);
-    const dayOfWeek = ['日','月','火','水','木','金','土'][dateObj.getDay()];
-    title.textContent = `${dateStr.replace(/-/g, '/')} (${dayOfWeek}) の出勤メンバー`;
-    
-    const members = allConfirmed.filter(s => s.date === dateStr);
-    
-    if (members.length === 0) {
-        tags.innerHTML = '<div style="font-size: 0.8rem; color: var(--text-secondary);">出勤予定のスタッフはいません。</div>';
-    } else {
-        // 表示名(DisplayName)を取得するためにユーザーマスタを参照
-        // ※キャッシュして効率化
-        const uids = [...new Set(members.map(m => m.userId))];
-        const userMap = new Map();
-        
-        try {
-            const snaps = await Promise.all(uids.map(id => getDoc(doc(db, "m_users", id))));
-            snaps.forEach(s => {
-                if (s.exists()) userMap.set(s.id, s.data());
-            });
-        } catch (e) {
-            console.error("User fetch error:", e);
+        } else {
+            if (isFuture) {
+                contentHtml = `<div style="text-align:center; padding:1.5rem; color:var(--text-secondary); background:#f8fafc; border-radius:12px; border:2px dashed var(--border); font-size: 0.85rem;">
+                    <i class="fas fa-tools" style="margin-right:5px;"></i> 調整中...
+                </div>`;
+            } else {
+                contentHtml = `<div style="text-align:center; padding:1rem; color:var(--text-secondary); font-size:0.8rem; opacity: 0.6;">予定はありませんでした</div>`;
+            }
         }
 
-        // 現場の要望通り「シフト表示名」を優先して表示
-        tags.innerHTML = members.map(m => {
-            const uData = userMap.get(m.userId);
-            const displayName = uData?.DisplayName || m.userName || 'スタッフ';
-            
-            // ヘルプスタッフ判定（現在の所属店舗と異なる場合）
-            // ※ここでのsid判定は、現在閲覧している店舗IDと比較
-            const me = JSON.parse(localStorage.getItem('currentUser'));
-            const currentViewerStoreId = me.StoreID || me.StoreId;
-            const isHelp = uData ? (uData.StoreID != currentViewerStoreId && uData.StoreId != currentViewerStoreId) : false;
+        return `
+            <div class="slot-section ${slot.isPast ? 'past' : ''} ${slot.isCurrent ? 'current' : ''}" id="slot-${slot.id}">
+                <div class="slot-header">
+                    <div style="display: flex; align-items: center; gap: 0.6rem;">
+                        <span class="slot-label">${slot.label}</span>
+                        ${statusBadge}
+                    </div>
+                    ${isConfirmed ? `<button class="btn-ics" onclick="window.downloadShiftIcs('${slot.id}')"><i class="fas fa-file-export"></i> カレンダー追加</button>` : ''}
+                </div>
+                <div class="slot-content" style="position: relative;">
+                    ${contentHtml}
+                </div>
+            </div>
+        `;
+    }).join('');
 
-            return `<div class="member-tag ${isHelp ? 'help' : ''}">
-                ${isHelp ? '<i class="fas fa-exchange-alt" style="font-size:0.7rem; margin-right:4px;"></i>' : ''}
-                ${displayName}
-                <span style="font-size:0.6rem; font-weight:400; opacity:0.8; margin-left:4px;">${m.start}</span>
-            </div>`;
-        }).join('');
-    }
-
-    detailArea.style.display = 'block';
-    
-    // スムーズにスクロール
-    detailArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // ICSダウンロード用に関数をグローバル公開
+    window.downloadShiftIcs = (slotId) => {
+        const slot = slots.find(s => s.id === slotId);
+        if (!slot) return;
+        const targetShifts = shiftData.filter(s => s.date >= formatDateJST(slot.startDate) && s.date <= formatDateJST(slot.endDate));
+        if (targetShifts.length === 0) return;
+        generateAndDownloadIcs(targetShifts, slot.label);
+    };
 }
 
 /**
- * 現在の期間でこの店舗の確定シフトが既に存在するか（＝公開済みか）をチェックする
+ * ICSファイルの生成とダウンロード
+ */
+function generateAndDownloadIcs(shifts, label) {
+    let icsContent = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Kanesho Portal//NONSGML v1.0//EN',
+        'CALSCALE:GREGORIAN',
+        'METHOD:PUBLISH'
+    ];
+
+    shifts.forEach(s => {
+        const dateStr = s.date.replace(/-/g, '');
+        const sTime = s.start.replace(':', '') + '00';
+        const eTime = s.end.replace(':', '') + '00';
+        
+        let endDateStr = dateStr;
+        if (parseInt(eTime.substring(0,4)) < parseInt(sTime.substring(0,4))) {
+            const d = new Date(s.date);
+            d.setDate(d.getDate() + 1);
+            endDateStr = d.toISOString().split('T')[0].replace(/-/g, '');
+        }
+
+        icsContent.push('BEGIN:VEVENT');
+        icsContent.push(`SUMMARY:【かね将】${s.storeName || '出勤'}`);
+        icsContent.push(`DTSTART;TZID=Asia/Tokyo:${dateStr}T${sTime}`);
+        icsContent.push(`DTEND;TZID=Asia/Tokyo:${endDateStr}T${eTime}`);
+        icsContent.push(`DESCRIPTION:シフト予定: ${s.start}-${s.end}${s.note ? '\\n備考: ' + s.note : ''}`);
+        icsContent.push('END:VEVENT');
+    });
+
+    icsContent.push('END:VCALENDAR');
+
+    const blob = new Blob([icsContent.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = window.URL.createObjectURL(blob);
+    link.download = `kanesho_shift_${label.replace(' ', '_')}.ics`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+/**
+ * 公開状況チェック（他画面からの遷移制御用）
  */
 export async function checkIfShiftPublished() {
-    const me = JSON.parse(localStorage.getItem('currentUser'));
-    if (!me) return false;
-
-    calculateSlot();
-    const sid = me.StoreID || me.StoreId || 'UNKNOWN';
-    const range = {
-        start: formatDateJST(currentSlot.startDate),
-        end: formatDateJST(currentSlot.endDate)
-    };
-
-    try {
-        // 自分の店舗で、この期間に一つでも 'confirmed' があれば公開済みとみなす
-        const q = query(collection(db, "t_shifts"), 
-            where("storeId", "==", sid),
-            where("date", ">=", range.start),
-            where("date", "<=", range.end),
-            where("status", "==", "confirmed"),
-            limit(1)
-        );
-        const snap = await getDocs(q);
-        return !snap.empty;
-    } catch (e) {
-        console.error("Shift publish check error:", e);
-        return false;
-    }
+    return true; // シフト閲覧ページは常に閲覧可能（調整中も表示）とするため常にtrue
 }
+
