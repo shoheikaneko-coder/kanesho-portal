@@ -220,120 +220,152 @@ export async function initAttendanceCheckPage() {
     if (btnClose) btnClose.onclick = () => modal.style.display = 'none';
 }
 
-function formatTime(isoStr) {
-    if (!isoStr) return '-';
+function safeGetDate(val) {
+    if (!val) return null;
+    if (val.toDate && typeof val.toDate === 'function') return val.toDate(); // Firestore Timestamp
+    if (val instanceof Date) return val;
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : d;
+}
+
+function formatTime(val) {
+    const d = safeGetDate(val);
+    if (!d) return '-';
     try {
-        const d = new Date(isoStr);
         return d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Tokyo' });
+    } catch (e) { return '-'; }
+}
+
+function formatDate(val) {
+    const d = safeGetDate(val);
+    if (!d) return '-';
+    try {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
     } catch (e) { return '-'; }
 }
 
 function showDetail(staff, month) {
     const modal = document.getElementById('check-detail-modal');
+    if (!modal) return;
+    
     const title = document.getElementById('detail-staff-name');
     const period = document.getElementById('detail-period');
     const tbody = document.getElementById('detail-table-body');
 
-    title.textContent = staff.name;
-    period.textContent = `${month} の打刻記録`;
-    tbody.innerHTML = '';
+    try {
+        title.textContent = staff.name || '不明';
+        period.textContent = `${month} の打刻記録`;
+        tbody.innerHTML = '';
 
-    const recs = staff.records.sort((a,b) => {
-        const t1 = a.timestamp || a.date || '';
-        const t2 = b.timestamp || b.date || '';
-        return t1.localeCompare(t2);
-    });
+        if (!staff.records || staff.records.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="padding: 2rem; text-align: center;">記録がありません</td></tr>';
+            modal.style.display = 'flex';
+            return;
+        }
 
-    // ─ 出勤日基準で日次データを構築（日またぎシフト対応） ─
-    // check_out が日付をまたいでも、出勤した日の行に正しく表示する
-    const dayData = {}; // { [YYYY-MM-DD]: { inTime, outTime, breakMs, hours, storeName, isImported } }
+        const recs = [...staff.records].sort((a,b) => {
+            const t1 = safeGetDate(a.timestamp || a.date)?.getTime() || 0;
+            const t2 = safeGetDate(b.timestamp || b.date)?.getTime() || 0;
+            return t1 - t2;
+        });
 
-    let activeIn = null;        // check_in の Date オブジェクト
-    let activeInDate = null;    // check_in 日付 (YYYY-MM-DD)
-    let activeInTime = null;    // check_in 表示時刻
-    let activeStoreName = null;
-    let breakStartT = null;
-    let totalBreakMs = 0;
+        const dayData = {}; 
 
-    recs.forEach(r => {
-        const storeName = r.store_name || '-';
+        let activeIn = null;
+        let activeInDate = null;
+        let activeInTime = null;
+        let activeStoreName = null;
+        let breakStartT = null;
+        let totalBreakMs = 0;
 
-        if (r.total_labor_hours !== undefined) {
-            // KOTインポートデータ
-            const d = (r.timestamp || r.date || '').substring(0, 10);
-            if (!dayData[d]) dayData[d] = { inTime: '(インポート)', outTime: '-', breakMs: 0, hours: 0, storeName, isImported: true };
-            dayData[d].hours += Number(r.total_labor_hours) || 0;
+        recs.forEach(r => {
+            const storeName = r.store_name || r.StoreName || '-';
 
-        } else if (r.timestamp) {
-            const type = String(r.type || '').toLowerCase();
-            const timeStr = formatTime(r.timestamp);
-            const date = r.timestamp.substring(0, 10);
+            if (r.total_labor_hours !== undefined) {
+                const d = formatDate(r.timestamp || r.date || r.Timestamp);
+                if (d === '-') return;
+                if (!dayData[d]) dayData[d] = { inTime: '(インポート)', outTime: '-', breakMs: 0, hours: 0, storeName, isImported: true };
+                dayData[d].hours += Number(r.total_labor_hours) || 0;
 
-            if (type === 'check_in' || type === 'in' || type.includes('出勤')) {
-                activeIn = new Date(r.timestamp);
-                activeInDate = date;
-                activeInTime = timeStr;
-                activeStoreName = storeName;
-                totalBreakMs = 0;
-                breakStartT = null;
-                if (!dayData[date]) {
-                    dayData[date] = { inTime: timeStr, outTime: '-', breakMs: 0, hours: 0, storeName, isImported: false };
-                } else {
-                    dayData[date].inTime = timeStr;
-                    dayData[date].storeName = storeName;
-                }
+            } else {
+                const ts = safeGetDate(r.timestamp);
+                if (!ts) return;
+                
+                const type = String(r.type || '').toLowerCase();
+                const timeStr = formatTime(ts);
+                const dateStr = formatDate(ts);
 
-            } else if (type === 'break_start' || type.includes('休憩開始')) {
-                breakStartT = new Date(r.timestamp);
-
-            } else if ((type === 'break_end' || type.includes('休憩終了')) && breakStartT) {
-                totalBreakMs += (new Date(r.timestamp) - breakStartT);
-                breakStartT = null;
-
-            } else if (type === 'check_out' || type === 'out' || type.includes('退勤')) {
-                if (activeIn) {
-                    // ペアになった退勤：出勤日を基準キーにして集計
-                    const grossMs = new Date(r.timestamp) - activeIn;
-                    const netMs = Math.max(0, grossMs - totalBreakMs);
-                    const key = activeInDate;
-                    if (!dayData[key]) {
-                        dayData[key] = { inTime: activeInTime || '-', outTime: '-', breakMs: 0, hours: 0, storeName: activeStoreName || storeName, isImported: false };
+                if (type === 'check_in' || type === 'in' || type.includes('出勤')) {
+                    // 前回分が締まっていない場合はここで一旦無視（簡易ペアリング）
+                    activeIn = ts;
+                    activeInDate = dateStr;
+                    activeInTime = timeStr;
+                    activeStoreName = storeName;
+                    totalBreakMs = 0;
+                    breakStartT = null;
+                    if (!dayData[dateStr]) {
+                        dayData[dateStr] = { inTime: timeStr, outTime: '-', breakMs: 0, hours: 0, storeName, isImported: false };
                     }
-                    dayData[key].outTime = timeStr;
-                    dayData[key].breakMs = totalBreakMs;
-                    dayData[key].hours += netMs / 3600000;
-                    activeIn = null; activeInDate = null; activeInTime = null;
-                    totalBreakMs = 0; breakStartT = null;
-                } else {
-                    // 対応する check_in がない孤立退勤：退勤時刻だけ記録
-                    if (!dayData[date]) {
-                        dayData[date] = { inTime: '-', outTime: timeStr, breakMs: 0, hours: 0, storeName, isImported: false };
+
+                } else if (type === 'break_start' || type.includes('休憩開始')) {
+                    breakStartT = ts;
+
+                } else if ((type === 'break_end' || type.includes('休憩終了')) && breakStartT) {
+                    totalBreakMs += (ts.getTime() - breakStartT.getTime());
+                    breakStartT = null;
+
+                } else if (type === 'check_out' || type === 'out' || type.includes('退勤')) {
+                    if (activeIn) {
+                        const grossMs = ts.getTime() - activeIn.getTime();
+                        const netMs = Math.max(0, grossMs - totalBreakMs);
+                        const key = activeInDate;
+                        if (!dayData[key]) {
+                            dayData[key] = { inTime: activeInTime || '-', outTime: '-', breakMs: 0, hours: 0, storeName: activeStoreName || storeName, isImported: false };
+                        }
+                        dayData[key].outTime = timeStr;
+                        dayData[key].breakMs = totalBreakMs;
+                        dayData[key].hours += netMs / 3600000;
+                        activeIn = null; activeInDate = null; activeInTime = null;
+                        totalBreakMs = 0; breakStartT = null;
                     } else {
-                        dayData[date].outTime = timeStr;
+                        if (!dayData[dateStr]) {
+                            dayData[dateStr] = { inTime: '-', outTime: timeStr, breakMs: 0, hours: 0, storeName, isImported: false };
+                        } else {
+                            dayData[dateStr].outTime = timeStr;
+                        }
                     }
                 }
             }
+        });
+
+        const sortedKeys = Object.keys(dayData).sort();
+        if (sortedKeys.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="padding: 2rem; text-align: center;">集計可能なデータがありません</td></tr>';
+        } else {
+            sortedKeys.forEach(d => {
+                const day = dayData[d];
+                const breakMin = Math.round((day.breakMs || 0) / 60000);
+                const breakStr = breakMin > 0 ? `${breakMin}分` : '-';
+                const tr = document.createElement('tr');
+                tr.style.borderBottom = '1px solid var(--border)';
+                tr.innerHTML = `
+                    <td style="padding: 0.75rem 0.5rem;">${d}</td>
+                    <td style="padding: 0.75rem 0.5rem;">${day.storeName}</td>
+                    <td style="padding: 0.75rem 0.5rem; font-weight: 500;">${day.isImported ? '(インポート)' : day.inTime}</td>
+                    <td style="padding: 0.75rem 0.5rem; font-weight: 500;">${day.isImported ? '-' : day.outTime}</td>
+                    <td style="padding: 0.75rem 0.5rem; text-align: right;">${day.isImported ? '-' : breakStr}</td>
+                    <td style="padding: 0.75rem 0.5rem; text-align: right; font-weight: 600;">${(day.hours || 0).toFixed(1)}h</td>
+                `;
+                tbody.appendChild(tr);
+            });
         }
-    });
-
-    // ─ 描画 ─
-    Object.keys(dayData).sort().forEach(d => {
-        const day = dayData[d];
-        const breakMin = Math.round(day.breakMs / 60000);
-        const breakStr = breakMin > 0 ? `${breakMin}分` : '-';
-
-        const tr = document.createElement('tr');
-        tr.style.borderBottom = '1px solid var(--border)';
-        tr.innerHTML = `
-            <td style="padding: 0.75rem 0.5rem;">${d}</td>
-            <td style="padding: 0.75rem 0.5rem;">${day.storeName}</td>
-            <td style="padding: 0.75rem 0.5rem; font-weight: 500;">${day.isImported ? '(インポート)' : day.inTime}</td>
-            <td style="padding: 0.75rem 0.5rem; font-weight: 500;">${day.isImported ? '-' : day.outTime}</td>
-            <td style="padding: 0.75rem 0.5rem; text-align: right;">${day.isImported ? '-' : breakStr}</td>
-            <td style="padding: 0.75rem 0.5rem; text-align: right; font-weight: 600;">${day.hours.toFixed(1)}h</td>
-        `;
-        tbody.appendChild(tr);
-    });
-
-    modal.style.display = 'flex';
+        modal.style.display = 'flex';
+    } catch (err) {
+        console.error("Error in showDetail:", err);
+        showAlert('エラー', '詳細データの表示中にエラーが発生しました。データ形式が正しくない可能性があります。');
+        modal.style.display = 'none';
+    }
 }
