@@ -991,7 +991,7 @@ function renderCellUI(uid, date, data) {
     if (!data || !data.start) { cell.innerHTML = ''; return; }
     
     const isConfirmed = data.status === 'confirmed';
-    const stampHtml = isConfirmed ? `<div class="official-stamp"><i class="fas fa-check-circle"></i> かね将公式</div>` : '';
+    const stampHtml = isConfirmed ? `<div class="official-stamp"><i class="fas fa-check-circle"></i></div>` : '';
     
     cell.innerHTML = `
         <div class="shift-box ${isConfirmed ? '' : 'applied'}">
