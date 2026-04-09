@@ -270,7 +270,8 @@ export async function initHomePage() {
             'Admin': '管理者',
             'Manager': '店長',
             'Staff': '一般社員',
-            'Tablet': '店舗タブレット'
+            'Tablet': '店舗タブレット',
+            'PartTimer': 'アルバイトスタッフ'
         };
         const roleName = roleMap[user.Role] || user.Role || '一般';
         if (user.Role === 'Tablet') {
@@ -293,11 +294,16 @@ export async function initHomePage() {
         document.getElementById('tablet-cockpit-container').style.display = 'block';
         renderOperationCards(permissions, 'Tablet'); 
         await initTabletHomeAttendance(user); 
-    } else {
         // 通常レイアウト
         document.getElementById('tablet-cockpit-container').style.display = 'none';
         await renderTodayShifts(user); 
         renderOperationCards(permissions, user.Role); 
+
+        // アルバイトスタッフの場合は業務コックピットを非表示にする
+        if (user.Role === 'PartTimer') {
+            const cockpit = document.getElementById('standard-cockpit-section');
+            if (cockpit) cockpit.style.display = 'none';
+        }
     }
 
     // スタッフ用マイアセットと棚卸しアラート
