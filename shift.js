@@ -240,27 +240,27 @@ export const shiftSubmissionPageHtml = `
         <div id="shift-mobile-list-container" class="mobile-only">
             <!-- ここに縦リストが描画される -->
         </div>
+    </div>
 
-        <!-- モバイルアクションハブ (オーバーレイ) -->
-        <div id="mobile-action-hub-overlay" class="mobile-action-hub-overlay" onclick="window.toggleMobileActionHub(false)">
-            <div class="mobile-action-hub-content" onclick="event.stopPropagation()">
-                <div class="mobile-hub-title"><i class="fas fa-magic" style="color:var(--primary);"></i> シフト作成サポート</div>
-                <div class="mobile-hub-grid">
-                    <button class="mobile-hub-btn" id="btn-bulk-mode-staff-mobile">
-                        <i class="fas fa-check-double"></i>
-                        <span>一括入力</span>
-                    </button>
-                    <button class="mobile-hub-btn" id="btn-apply-template-mobile">
-                        <i class="fas fa-wand-magic-sparkles"></i>
-                        <span>いつもの<br>パターン</span>
-                    </button>
-                    <button class="mobile-hub-btn" id="btn-save-as-template-mobile">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                        <span>基本型に<br>保存</span>
-                    </button>
-                </div>
-                <button class="btn" style="width:100%; margin-top:2rem; padding: 1rem; font-weight: 700; background: #f1f5f9; color: var(--text-secondary); border-radius: 14px;" onclick="window.toggleMobileActionHub(false)">閉じる</button>
+    <!-- モバイルアクションハブ (オーバーレイ) -->
+    <div id="mobile-action-hub-overlay" class="mobile-action-hub-overlay" onclick="window.toggleMobileActionHub(false)">
+        <div class="mobile-action-hub-content" onclick="event.stopPropagation()">
+            <div class="mobile-hub-title"><i class="fas fa-magic" style="color:var(--primary);"></i> シフト作成サポート</div>
+            <div class="mobile-hub-grid">
+                <button class="mobile-hub-btn" id="btn-bulk-mode-staff-mobile">
+                    <i class="fas fa-check-double"></i>
+                    <span>一括入力</span>
+                </button>
+                <button class="mobile-hub-btn" id="btn-apply-template-mobile">
+                    <i class="fas fa-wand-magic-sparkles"></i>
+                    <span>いつもの<br>パターン</span>
+                </button>
+                <button class="mobile-hub-btn" id="btn-save-as-template-mobile">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <span>基本型に<br>保存</span>
+                </button>
             </div>
+            <button class="btn" style="width:100%; margin-top:2rem; padding: 1rem; font-weight: 700; background: #f1f5f9; color: var(--text-secondary); border-radius: 14px;" onclick="window.toggleMobileActionHub(false)">閉じる</button>
         </div>
     </div>
 
@@ -425,17 +425,17 @@ const injectStyles = () => {
             .mobile-action-hub-overlay.show { display: block; opacity: 1; }
             .mobile-action-hub-content {
                 position: fixed;
-                bottom: -100%;
+                top: -100%;
                 left: 0;
                 right: 0;
                 background: white;
-                border-radius: 24px 24px 0 0;
-                padding: 2rem 1.5rem;
+                border-radius: 0 0 24px 24px;
+                padding: 1.5rem 1.2rem;
                 z-index: 10000;
-                transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                box-shadow: 0 -10px 25px rgba(0,0,0,0.1);
+                transition: top 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 0 10px 25px rgba(0,0,0,0.1);
             }
-            .mobile-action-hub-content.show { bottom: 0; }
+            .mobile-action-hub-content.show { top: 0; }
             .mobile-hub-title { font-size: 1.1rem; font-weight: 900; color: var(--text-primary); margin-bottom: 1.5rem; }
             .mobile-hub-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
             .mobile-hub-btn {
