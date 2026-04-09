@@ -208,13 +208,27 @@ export const shiftSubmissionPageHtml = `
         </div>
 
         <!-- モバイル用アクションバー (Sticky化) -->
-        <div class="mobile-only" style="position: sticky; top: 0; z-index: 100; margin: 0 -1.5rem 1.5rem -1.5rem; padding: 0.5rem 1rem 1rem 1.5rem; background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border);">
-            <div style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 0.8rem 1rem; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+        <div class="mobile-only" id="mobile-action-bar-container" style="position: sticky; top: 0; z-index: 100; margin: 0 -1.5rem 1.5rem -1.5rem; padding: 0.5rem 1rem 1rem 1.5rem; background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border);">
+            <!-- 通常時 -->
+            <div id="mobile-standard-actions" style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 0.8rem 1rem; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
                 <button onclick="window.toggleMobileActionHub(true)" class="btn" style="background: #f1f5f9; color: var(--text-primary); padding: 0.6rem 1rem; font-size: 0.85rem; font-weight: 700; border-radius: 12px; display: flex; align-items: center; gap: 0.5rem;">
                     <i class="fas fa-folder-open" style="color:var(--primary);"></i> 機能
                 </button>
                 <button id="btn-submit-shifts-mobile" class="btn btn-primary" style="padding: 0.6rem 1.5rem; font-size: 0.9rem; font-weight: 800; border-radius: 12px; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);">
                     提出する
+                </button>
+            </div>
+
+            <!-- 一括選択モード時 -->
+            <div id="mobile-bulk-actions" style="display: none; justify-content: space-between; align-items: center; background: #fef9c3; padding: 0.6rem 0.8rem; border-radius: 16px; border: 2px solid #eab308; box-shadow: 0 4px 12px rgba(234, 179, 8, 0.15);">
+                <button id="btn-mobile-bulk-cancel" class="btn" style="background: white; border: 1px solid #cbd5e1; color: var(--text-secondary); padding: 0.5rem 0.8rem; font-size: 0.8rem; font-weight: 700; border-radius: 10px;">
+                    <i class="fas fa-times"></i> 解除
+                </button>
+                <div style="font-size:0.85rem; font-weight:800; color:#854d0e;">
+                    <span id="mobile-bulk-count">0</span>日分を選択中
+                </div>
+                <button id="btn-mobile-bulk-set" class="btn btn-primary" style="padding: 0.5rem 0.8rem; font-size: 0.8rem; font-weight: 800; border-radius: 10px; background: #eab308; border-color:#d4a017; color:#422006;">
+                    時間を設定
                 </button>
             </div>
             <p id="shift-deadline-info-mobile" style="margin: 0.6rem 0 0 0.5rem; font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;"></p>
@@ -567,7 +581,7 @@ export async function initShiftSubmissionPage() {
             
             if(bulkBtnStaff) bulkBtnStaff.parentNode.insertBefore(cancelBtn, bulkBtnStaff);
             window.toggleMobileActionHub(false);
-            document.getElementById('shift-submission-container').classList.add('bulk-mode-active');
+            updateBulkModeUI();
         } else {
             if (selectedCells.length > 0) openBulkInputModal();
             else exitBulkMode();
@@ -599,6 +613,18 @@ export async function initShiftSubmissionPage() {
         btnSubmitMobile.onclick = () => {
             const btn = document.getElementById('btn-submit-shifts');
             if(btn) btn.click();
+        };
+    }
+
+    // 一括選択モード用ボタン (モバイル)
+    const btnBulkCancelMobile = document.getElementById('btn-mobile-bulk-cancel');
+    if (btnBulkCancelMobile) {
+        btnBulkCancelMobile.onclick = () => exitBulkMode();
+    }
+    const btnBulkSetMobile = document.getElementById('btn-mobile-bulk-set');
+    if (btnBulkSetMobile) {
+        btnBulkSetMobile.onclick = () => {
+            if (selectedCells.length > 0) openBulkInputModal();
         };
     }
 }
@@ -770,6 +796,10 @@ function exitBulkMode() {
     const cont = document.getElementById('shift-admin-container') || document.getElementById('shift-submission-container');
     if (cont) cont.classList.remove('bulk-mode-active');
     document.querySelectorAll('.selected-shift-cell').forEach(el => el.classList.remove('selected-shift-cell'));
+    document.querySelectorAll('.selected-shift-card').forEach(el => el.classList.remove('selected-shift-card'));
+    
+    // モバイルUIのリセット
+    updateBulkModeUI();
 }
 
 function openBulkInputModal() {
@@ -1285,6 +1315,9 @@ window.openTimeInput = (date, uid) => {
             if (cardEl) cardEl.classList.add('selected-shift-card');
         }
         
+        // モバイルUIの更新
+        updateBulkModeUI();
+
         const bulkBtn = document.getElementById('btn-bulk-mode') || document.getElementById('btn-bulk-mode-staff');
         if (bulkBtn) bulkBtn.innerHTML = `<i class="fas fa-save"></i> 選択完了 (${selectedCells.length}件)`;
         return;
@@ -1343,6 +1376,26 @@ window.openTimeInput = (date, uid) => {
         saveShift(uid, date, user.Name);
     };
 };
+
+/**
+ * モバイル用の一括選択モードUIを更新する
+ */
+function updateBulkModeUI() {
+    const std = document.getElementById('mobile-standard-actions');
+    const bulk = document.getElementById('mobile-bulk-actions');
+    const countEl = document.getElementById('mobile-bulk-count');
+    
+    if (!std || !bulk) return;
+    
+    if (isBulkMode) {
+        std.style.display = 'none';
+        bulk.style.display = 'flex';
+        if (countEl) countEl.textContent = selectedCells.length;
+    } else {
+        std.style.display = 'flex';
+        bulk.style.display = 'none';
+    }
+}
 
 async function saveShift(uid, date, userName) {
     const sH = document.getElementById('modal-start-h').value;
