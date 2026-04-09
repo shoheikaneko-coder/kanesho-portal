@@ -361,7 +361,7 @@ function renderStandardForm(container) {
                             </div>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                                 <div class="input-group compact-input" style="margin-bottom: 0;">
-                                    <label style="font-size: 0.8rem; font-weight: 700;">仕入単価(税込)</label>
+                                    <label style="font-size: 0.8rem; font-weight: 700;">仕入単価(税抜)</label>
                                     <div class="input-with-addon-wrapper">
                                         <input type="number" id="ing-purchase-price" placeholder="例: 5000" style="padding:0.6rem; font-weight: 700; font-family: monospace;">
                                         <span class="input-addon" style="padding:0 0.8rem; font-size:0.8rem;">円</span>
