@@ -193,7 +193,9 @@ window.openSideDrawer = () => {
 
 export const shiftSubmissionPageHtml = `
     <div class="animate-fade-in" id="shift-submission-container" style="max-width: 1400px; margin: 0 auto; padding-bottom: 3rem;">
-        <div class="glass-panel" style="padding: 1.2rem 1.5rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid var(--primary);">
+        
+        <!-- デスクトップ用アクションバー -->
+        <div class="glass-panel desktop-only" style="padding: 1.2rem 1.5rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid var(--primary);">
             <div>
                 <p style="margin: 0; font-size: 0.85rem; color: var(--text-secondary); font-weight: 700;" id="shift-deadline-info"></p>
             </div>
@@ -204,16 +206,60 @@ export const shiftSubmissionPageHtml = `
                 <button id="btn-submit-shifts" class="btn btn-primary" style="font-size: 0.9rem; padding: 0.6rem 2rem; font-weight: 800;">提出する</button>
             </div>
         </div>
+
+        <!-- モバイル用アクションバー -->
+        <div class="mobile-only" style="margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 0.8rem 1rem; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+                <button onclick="window.toggleMobileActionHub(true)" class="btn" style="background: #f1f5f9; color: var(--text-primary); padding: 0.6rem 1rem; font-size: 0.85rem; font-weight: 700; border-radius: 12px; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-folder-open" style="color:var(--primary);"></i> 機能
+                </button>
+                <button id="btn-submit-shifts-mobile" class="btn btn-primary" style="padding: 0.6rem 1.5rem; font-size: 0.9rem; font-weight: 800; border-radius: 12px; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);">
+                    提出する
+                </button>
+            </div>
+            <p id="shift-deadline-info-mobile" style="margin: 0.6rem 0 0 0.5rem; font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;"></p>
+        </div>
+
+        <!-- 店長メモ -->
         <div id="staff-memo-area" class="glass-panel" style="padding: 1rem 1.5rem; margin-bottom: 2rem; border-left: 5px solid #10b981; display: none;">
             <div style="font-size: 0.75rem; color: #059669; font-weight: 800; margin-bottom: 0.5rem;"><i class="fas fa-bullhorn"></i> 店長からの連絡事項</div>
             <div id="staff-memo-text" style="font-size: 0.95rem; color: var(--text-primary); line-height: 1.6; white-space: pre-wrap;"></div>
         </div>
-        <div class="glass-panel" style="padding: 0; overflow: hidden; border: 1px solid var(--border);">
+
+        <!-- デスクトップ用テーブル -->
+        <div class="glass-panel desktop-only" style="padding: 0; overflow: hidden; border: 1px solid var(--border);">
             <div style="overflow-x: auto;">
                 <table id="shift-submission-table" style="width: 100%; border-collapse: collapse; min-width: 1000px;">
                     <thead><tr id="shift-table-header"><th class="staff-cell">スタッフ</th></tr></thead>
                     <tbody id="shift-table-body"></tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- モバイル用リスト -->
+        <div id="shift-mobile-list-container" class="mobile-only">
+            <!-- ここに縦リストが描画される -->
+        </div>
+
+        <!-- モバイルアクションハブ (オーバーレイ) -->
+        <div id="mobile-action-hub-overlay" class="mobile-action-hub-overlay" onclick="window.toggleMobileActionHub(false)">
+            <div class="mobile-action-hub-content" onclick="event.stopPropagation()">
+                <div class="mobile-hub-title"><i class="fas fa-magic" style="color:var(--primary);"></i> シフト作成サポート</div>
+                <div class="mobile-hub-grid">
+                    <button class="mobile-hub-btn" id="btn-bulk-mode-staff-mobile">
+                        <i class="fas fa-check-double"></i>
+                        <span>一括入力</span>
+                    </button>
+                    <button class="mobile-hub-btn" id="btn-apply-template-mobile">
+                        <i class="fas fa-wand-magic-sparkles"></i>
+                        <span>いつもの<br>パターン</span>
+                    </button>
+                    <button class="mobile-hub-btn" id="btn-save-as-template-mobile">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <span>基本型に<br>保存</span>
+                    </button>
+                </div>
+                <button class="btn" style="width:100%; margin-top:2rem; padding: 1rem; font-weight: 700; background: #f1f5f9; color: var(--text-secondary); border-radius: 14px;" onclick="window.toggleMobileActionHub(false)">閉じる</button>
             </div>
         </div>
     </div>
@@ -321,6 +367,91 @@ const injectStyles = () => {
         .sph-good { background: var(--secondary); }
         .sph-warn { background: var(--warning); }
         .sph-danger { background: var(--primary); }
+
+        /* モバイル用表示切り替え */
+        .mobile-only { display: none !important; }
+        @media (max-width: 1024px) {
+            .mobile-only { display: block !important; }
+            .desktop-only { display: none !important; }
+            
+            /* モバイル用リストカード */
+            .mobile-shift-card {
+                background: white;
+                border-radius: 16px;
+                padding: 1rem;
+                margin-bottom: 0.8rem;
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+                border: 1px solid var(--border);
+                box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+                transition: background 0.2s;
+            }
+            .mobile-shift-card:active { background: #f8fafc; }
+            .mobile-date-box {
+                width: 50px;
+                height: 50px;
+                background: #f1f5f9;
+                border-radius: 12px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+            }
+            .mobile-date-box.is-holiday { background: #fee2e2; }
+            .mobile-date-box.is-sat { background: #e0f2fe; }
+            .mobile-date-box .day { font-size: 1.1rem; font-weight: 800; color: var(--text-primary); line-height: 1; }
+            .mobile-date-box .weekday { font-size: 0.6rem; font-weight: 700; color: var(--text-secondary); margin-top: 0.1rem; }
+            
+            .mobile-shift-content { flex: 1; min-width: 0; }
+            .mobile-shift-time { font-size: 1rem; font-weight: 800; color: var(--primary); }
+            .mobile-shift-status { font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; margin-top: 0.1rem; }
+            .mobile-shift-empty { font-size: 0.9rem; color: #94a3b8; font-weight: 500; }
+            
+            .mobile-holiday-label { font-size: 0.6rem; color: #ef4444; font-weight: 800; margin-top: 0.2rem; white-space: nowrap; }
+            
+            /* モバイル用アクションハブ */
+            .mobile-action-hub-overlay {
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.3);
+                backdrop-filter: blur(4px);
+                z-index: 9999;
+                display: none;
+                opacity: 0;
+                transition: opacity 0.3s;
+            }
+            .mobile-action-hub-overlay.show { display: block; opacity: 1; }
+            .mobile-action-hub-content {
+                position: fixed;
+                bottom: -100%;
+                left: 0;
+                right: 0;
+                background: white;
+                border-radius: 24px 24px 0 0;
+                padding: 2rem 1.5rem;
+                z-index: 10000;
+                transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 0 -10px 25px rgba(0,0,0,0.1);
+            }
+            .mobile-action-hub-content.show { bottom: 0; }
+            .mobile-hub-title { font-size: 1.1rem; font-weight: 900; color: var(--text-primary); margin-bottom: 1.5rem; }
+            .mobile-hub-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+            .mobile-hub-btn {
+                background: #f8fafc;
+                border: 1px solid var(--border);
+                border-radius: 16px;
+                padding: 1.2rem 1rem;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 0.6rem;
+                text-align: center;
+            }
+            .mobile-hub-btn i { font-size: 1.5rem; color: var(--primary); }
+            .mobile-hub-btn span { font-size: 0.85rem; font-weight: 700; color: var(--text-primary); }
+        }
     `;
     document.head.appendChild(s);
 };
@@ -400,28 +531,67 @@ export async function initShiftSubmissionPage() {
 
     // 一括入力ボタン (スタッフ用)
     const bulkBtnStaff = document.getElementById('btn-bulk-mode-staff');
-    if (bulkBtnStaff) {
-        bulkBtnStaff.onclick = () => {
-            if (!isBulkMode) {
-                isBulkMode = true;
-                selectedCells = [];
+    const bulkBtnMobile = document.getElementById('btn-bulk-mode-staff-mobile');
+    const bulkAction = () => {
+        if (!isBulkMode) {
+            isBulkMode = true;
+            selectedCells = [];
+            
+            // デスクトップUI更新
+            if(bulkBtnStaff) {
                 bulkBtnStaff.innerHTML = '<i class="fas fa-save"></i> 選択完了・設定';
                 bulkBtnStaff.classList.add('btn-primary');
                 bulkBtnStaff.classList.remove('btn-secondary');
-                
-                const cancelBtn = document.createElement('button');
-                cancelBtn.id = 'btn-bulk-cancel-staff';
-                cancelBtn.className = 'btn btn-secondary';
-                cancelBtn.style = 'font-size:0.85rem;';
-                cancelBtn.innerHTML = '<i class="fas fa-times"></i> 解除';
-                cancelBtn.onclick = (e) => { e.stopPropagation(); exitBulkMode(); };
-                bulkBtnStaff.parentNode.insertBefore(cancelBtn, bulkBtnStaff);
-
-                document.getElementById('shift-submission-container').classList.add('bulk-mode-active');
-            } else {
-                if (selectedCells.length > 0) openBulkInputModal();
-                else exitBulkMode();
             }
+            
+            // モバイルUI更新
+            if(bulkBtnMobile) {
+                bulkBtnMobile.innerHTML = '<i class="fas fa-save"></i> 選択完了・設定';
+                bulkBtnMobile.style.background = 'var(--primary)';
+                bulkBtnMobile.style.color = 'white';
+            }
+
+            const cancelBtn = document.createElement('button');
+            cancelBtn.id = 'btn-bulk-cancel-staff';
+            cancelBtn.className = 'btn btn-secondary';
+            cancelBtn.style = 'font-size:0.85rem;';
+            cancelBtn.innerHTML = '<i class="fas fa-times"></i> 解除';
+            cancelBtn.onclick = (e) => { e.stopPropagation(); exitBulkMode(); };
+            
+            if(bulkBtnStaff) bulkBtnStaff.parentNode.insertBefore(cancelBtn, bulkBtnStaff);
+            window.toggleMobileActionHub(false);
+            document.getElementById('shift-submission-container').classList.add('bulk-mode-active');
+        } else {
+            if (selectedCells.length > 0) openBulkInputModal();
+            else exitBulkMode();
+        }
+    };
+
+    if (bulkBtnStaff) bulkBtnStaff.onclick = bulkAction;
+    if (bulkBtnMobile) bulkBtnMobile.onclick = bulkAction;
+
+    // パターン系ボタンのバインド (モバイル)
+    const btnApplyTplMobile = document.getElementById('btn-apply-template-mobile');
+    if (btnApplyTplMobile) {
+        btnApplyTplMobile.onclick = () => {
+            window.toggleMobileActionHub(false);
+            const btn = document.getElementById('btn-apply-template');
+            if(btn) btn.click();
+        };
+    }
+    const btnSaveTplMobile = document.getElementById('btn-save-as-template-mobile');
+    if (btnSaveTplMobile) {
+        btnSaveTplMobile.onclick = () => {
+            window.toggleMobileActionHub(false);
+            const btn = document.getElementById('btn-save-as-template');
+            if(btn) btn.click();
+        };
+    }
+    const btnSubmitMobile = document.getElementById('btn-submit-shifts-mobile');
+    if (btnSubmitMobile) {
+        btnSubmitMobile.onclick = () => {
+            const btn = document.getElementById('btn-submit-shifts');
+            if(btn) btn.click();
         };
     }
 }
@@ -954,8 +1124,14 @@ function renderAdminGrid() {
 async function renderSubmissionGrid() {
     const header = document.getElementById('shift-table-header');
     const body = document.getElementById('shift-table-body');
+    const mobileContainer = document.getElementById('shift-mobile-list-container');
+    const deadlineMobile = document.getElementById('shift-deadline-info-mobile');
     const span = Math.round((currentSlot.endDate - currentSlot.startDate) / (1000 * 60 * 60 * 24)) + 1;
     
+    // 締切日の表示 (モバイル)
+    if (deadlineMobile) deadlineMobile.textContent = `提出締切: ${currentSlot.deadLine}`;
+
+    // デスクトップ用テーブルヘッダー
     header.innerHTML = '<th class="staff-cell">スタッフ</th>';
     for (let i = 0; i < span; i++) {
         const d = new Date(currentSlot.startDate); d.setDate(d.getDate() + i);
@@ -975,6 +1151,7 @@ async function renderSubmissionGrid() {
     const roleName = roleMap[currentTargetUser.Role] || currentTargetUser.Role || '';
     const displayRole = currentTargetUser.JobTitle || roleName;
 
+    // デスクトップ用テーブルボディ
     body.innerHTML = `<tr><td class="staff-cell">
         <div style="display:flex; flex-direction:column; justify-content:center; text-align:left; line-height:1.2;">
             <span style="font-weight:700;">${currentTargetUser.DisplayName || currentTargetUser.Name}</span>
@@ -988,7 +1165,36 @@ async function renderSubmissionGrid() {
         return `<td class="shift-cell ${isOff ? 'is-off' : ''}" id="cell-${currentTargetUser.id}-${ymd}" onclick="window.openTimeInput('${ymd}', '${currentTargetUser.id}')"></td>`;
     }).join('')}</tr>`;
 
-    // 既存シフトの描画 (追加)
+    // モバイル用縦リストの描画
+    if (mobileContainer) {
+        let mobileHtml = '';
+        for (let i = 0; i < span; i++) {
+            const d = new Date(currentSlot.startDate); d.setDate(d.getDate() + i);
+            const ymd = formatDateJST(d);
+            const cal = calendarData[ymd] || {};
+            const isHoliday = cal.is_holiday;
+            const isSat = d.getDay() === 6;
+            const isSun = d.getDay() === 0;
+            const weekday = ['日','月','火','水','木','金','土'][d.getDay()];
+            
+            mobileHtml += `
+                <div class="mobile-shift-card" onclick="window.openTimeInput('${ymd}', '${currentTargetUser.id}')">
+                    <div class="mobile-date-box ${isHoliday || isSun ? 'is-holiday' : ''} ${isSat ? 'is-sat' : ''}">
+                        <div class="day">${d.getDate()}</div>
+                        <div class="weekday">${weekday}</div>
+                        ${isHoliday ? `<div class="mobile-holiday-label">${cal.label || '祝日'}</div>` : ''}
+                    </div>
+                    <div class="mobile-shift-content" id="cell-mobile-${currentTargetUser.id}-${ymd}">
+                        <div class="mobile-shift-empty">タップして入力</div>
+                    </div>
+                    <div><i class="fas fa-chevron-right" style="color:#cbd5e1; font-size:0.8rem;"></i></div>
+                </div>
+            `;
+        }
+        mobileContainer.innerHTML = mobileHtml;
+    }
+
+    // 既存シフトの描画
     for (let i = 0; i < span; i++) {
         const d = new Date(currentSlot.startDate); d.setDate(d.getDate() + i);
         const ymd = formatDateJST(d);
@@ -1000,23 +1206,60 @@ async function renderSubmissionGrid() {
 
 function renderCellUI(uid, date, data) {
     const cell = document.getElementById(`cell-${uid}-${date}`);
-    if (!cell) return;
-    if (!data || !data.start) { cell.innerHTML = ''; return; }
+    const mobileCell = document.getElementById(`cell-mobile-${uid}-${date}`);
     
-    const isConfirmed = data.status === 'confirmed';
+    const isConfirmed = data?.status === 'confirmed';
     const stampHtml = isConfirmed ? `<div class="official-stamp"><i class="fas fa-check-circle"></i></div>` : '';
     
-    cell.innerHTML = `
-        <div class="shift-box ${isConfirmed ? '' : 'applied'}">
-            ${stampHtml}
-            <div>${data.start}-${data.end}</div>
-        </div>
-    `;
+    // デスクトップ用UI更新
+    if (cell) {
+        if (!data || !data.start) {
+            cell.innerHTML = '';
+        } else {
+            cell.innerHTML = `
+                <div class="shift-box ${isConfirmed ? '' : 'applied'}">
+                    ${stampHtml}
+                    <div>${data.start}-${data.end}</div>
+                </div>
+            `;
+        }
+    }
+
+    // モバイル用UI更新
+    if (mobileCell) {
+        if (!data || !data.start) {
+            mobileCell.innerHTML = '<div class="mobile-shift-empty">タップして入力</div>';
+        } else {
+            mobileCell.innerHTML = `
+                <div class="mobile-shift-time">
+                    <i class="fas fa-clock" style="font-size:0.8rem; margin-right:0.3rem;"></i>${data.start} - ${data.end}
+                </div>
+                <div class="mobile-shift-status">
+                    <span style="color: ${isConfirmed ? '#059669' : '#D97706'}; background: ${isConfirmed ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)'}; padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.65rem;">
+                        ${isConfirmed ? '確定済み' : '提出中'}
+                    </span>
+                </div>
+            `;
+        }
+    }
 }
 
 /**
  * --- Actions ---
  */
+window.toggleMobileActionHub = (show) => {
+    const overlay = document.getElementById('mobile-action-hub-overlay');
+    const content = document.querySelector('.mobile-action-hub-content');
+    if (!overlay || !content) return;
+    if (show) {
+        overlay.classList.add('show');
+        setTimeout(() => content.classList.add('show'), 10);
+    } else {
+        content.classList.remove('show');
+        setTimeout(() => overlay.classList.remove('show'), 300);
+    }
+};
+
 window.openTimeInput = (date, uid) => {
     if (isBulkMode) {
         const cellId = `cell-${uid}-${date}`;
