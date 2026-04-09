@@ -213,6 +213,11 @@ async function renderSidebar(user) {
         hrNav.style.display = (role === 'Admin' || role === '管理者' || allowed.includes('hr_hub')) ? 'flex' : 'none';
     }
 
+    const opsNav = document.getElementById('nav-item-ops');
+    if (opsNav) {
+        opsNav.style.display = (role === 'Admin' || role === '管理者' || allowed.includes('ops_hub')) ? 'flex' : 'none';
+    }
+
     let html = '';
     const categories = [...new Set(defaultMenuItems.map(item => item.category))];
     
