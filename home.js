@@ -703,21 +703,20 @@ async function renderPersonalShiftsSemimonthly(user) {
     container.innerHTML = '<div style="text-align:center; padding:1rem;"><i class="fas fa-spinner fa-spin"></i> シフトを読み込み中...</div>';
 
     try {
-        const fetchRange = async (start, end) => {
-            const q = query(collection(db, "t_shifts"), 
-                where("userId", "==", user.id),
-                where("date", ">=", start),
-                where("date", "<=", end));
-            const snap = await getDocs(q);
-            const list = [];
-            snap.forEach(doc => list.push(doc.data()));
-            return list.sort((a,b) => a.date.localeCompare(b.date));
+        // インデックス設定なしでも動作するように、ユーザーIDのみで取得してからアプリ側で日付フィルタリングを行う
+        const q = query(collection(db, "t_shifts"), where("userId", "==", user.id));
+        const snap = await getDocs(q);
+        const allMyShifts = [];
+        snap.forEach(doc => allMyShifts.push(doc.data()));
+
+        const filterShifts = (shifts, start, end) => {
+            return shifts
+                .filter(s => s.date >= start && s.date <= end)
+                .sort((a, b) => a.date.localeCompare(b.date));
         };
 
-        const [shifts1, shifts2] = await Promise.all([
-            fetchRange(range1[0], range1[1]),
-            fetchRange(range2[0], range2[1])
-        ]);
+        const shifts1 = filterShifts(allMyShifts, range1[0], range1[1]);
+        const shifts2 = filterShifts(allMyShifts, range2[0], range2[1]);
 
         const renderShiftList = (shifts, label) => {
             let html = `
