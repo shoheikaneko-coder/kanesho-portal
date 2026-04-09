@@ -146,16 +146,41 @@
                 </div>
 
                 <!-- ヘッダー右側のアクションボタン -->
-                <div style="display: flex; gap: 1rem; align-items: center; margin-left: auto;">
-                    <button id="btn-header-shift" class="btn" style="background: transparent; color: var(--text-primary);" title="シフト表を表示">
-                        <i class="fas fa-users-rectangle"></i>
-                    </button>
-                    <button id="btn-calendar-viewer" class="btn" style="background: transparent; color: var(--text-primary);" title="営業カレンダー表示">
-                        <i class="fas fa-calendar-days"></i>
-                    </button>
+                <div style="display: flex; gap: 1rem; align-items: center; margin-left: auto;" class="header-actions">
+                    <!-- デスクトップ用ショートカット（スマホでは非表示にして集約ボタンへ） -->
+                    <div class="desktop-only-header-actions" style="display: flex; gap: 1rem;">
+                        <button id="btn-header-shift" class="btn" style="background: transparent; color: var(--text-primary);" title="シフト表を表示">
+                            <i class="fas fa-users-rectangle"></i>
+                        </button>
+                        <button id="btn-calendar-viewer" class="btn" style="background: transparent; color: var(--text-primary);" title="営業カレンダー表示">
+                            <i class="fas fa-calendar-days"></i>
+                        </button>
+                    </div>
+
+                    <!-- 通知（全デバイス共通） -->
                     <button id="btn-notifications" class="btn" style="background: transparent; color: var(--text-primary);">
                         <i class="fas fa-bell"></i>
                     </button>
+
+                    <!-- スマホ用：閲覧集約ボタン -->
+                    <button id="btn-view-switcher" class="btn mobile-only-btn" style="background: transparent; color: var(--text-primary); display: none;">
+                        <i class="fas fa-layer-group"></i>
+                    </button>
+                </div>
+
+                <!-- クイックビューメニュー（閲覧集約） -->
+                <div id="header-view-menu" class="header-view-menu glass animate-scale-in" style="display: none;">
+                    <div class="view-menu-header">閲覧・ショートカット</div>
+                    <div class="view-menu-content">
+                        <div class="view-menu-item" data-target="shift_viewer">
+                            <i class="fas fa-users-rectangle"></i>
+                            <span>シフト表</span>
+                        </div>
+                        <div class="view-menu-item" data-target="calendar_viewer">
+                            <i class="fas fa-calendar-days"></i>
+                            <span>営業カレンダー</span>
+                        </div>
+                    </div>
                 </div>
             </header>
 

@@ -531,6 +531,36 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // スマホ用閲覧集約メニューの制御
+    const viewSwitcherBtn = document.getElementById('btn-view-switcher');
+    const headerViewMenu = document.getElementById('header-view-menu');
+    
+    if (viewSwitcherBtn && headerViewMenu) {
+        viewSwitcherBtn.onclick = (e) => {
+            e.stopPropagation();
+            const isVisible = headerViewMenu.style.display === 'block';
+            headerViewMenu.style.display = isVisible ? 'none' : 'block';
+        };
+
+        headerViewMenu.querySelectorAll('.view-menu-item').forEach(item => {
+            item.onclick = (e) => {
+                const target = e.currentTarget.dataset.target;
+                if (target === 'shift_viewer') {
+                    const role = state.currentUser?.Role;
+                    if (role === 'Tablet' || role === '店舗タブレット') return;
+                }
+                window.navigateTo(target);
+                headerViewMenu.style.display = 'none';
+            };
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!headerViewMenu.contains(e.target) && e.target !== viewSwitcherBtn) {
+                headerViewMenu.style.display = 'none';
+            }
+        });
+    }
+
     overlay?.addEventListener('click', () => {
         sidebar?.classList.remove('show');
         overlay?.classList.remove('show');
