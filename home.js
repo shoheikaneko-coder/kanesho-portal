@@ -13,6 +13,9 @@ export const homePageHtml = `
             <h1 id="cockpit-user-name" style="font-size: 3.2rem; font-weight: 900; color: var(--primary); margin: 0; letter-spacing: -1px; text-shadow: 0 4px 10px rgba(0,0,0,0.05);">----</h1>
             <p id="cockpit-user-meta" style="color: var(--text-secondary); font-size: 1.1rem; margin-top: 0.5rem; font-weight: 600; letter-spacing: 0.05rem;">----</p>
         </div>
+        
+        <!-- 個人用シフトサマリー (アルバイトスタッフ用) -->
+        <div id="personal-shift-summary-container" style="display: none; margin-bottom: 3rem;"></div>
 
         <!-- 昨日の実績サマリー (権限がある場合のみ描画) -->
         <div id="yesterday-summary-container" style="display: none; margin-bottom: 3.5rem;">
@@ -234,6 +237,45 @@ export const homePageHtml = `
             font-size: 0.9rem;
             color: var(--text-primary);
         }
+
+        /* 個人シフト用スタイル */
+        .personal-shift-card {
+            background: white;
+            border-radius: 20px;
+            padding: 1.2rem;
+            border: 1px solid var(--border);
+            margin-bottom: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 1.2rem;
+            transition: transform 0.2s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        }
+        .personal-shift-card:hover { transform: translateY(-2px); }
+        .shift-date-box {
+            background: #f1f5f9;
+            width: 54px;
+            height: 54px;
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .shift-date-box .day { font-size: 1.1rem; font-weight: 900; color: var(--text-primary); line-height: 1; }
+        .shift-date-box .weekday { font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); margin-top: 0.2rem; }
+        .shift-info { flex: 1; }
+        .shift-time { font-size: 1.05rem; font-weight: 800; color: var(--primary); }
+        .shift-store { font-size: 0.8rem; color: var(--text-secondary); font-weight: 600; margin-top: 0.1rem; }
+        .shift-status-badge {
+            font-size: 0.65rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 20px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+        .status-confirmed { background: rgba(16, 185, 129, 0.1); color: #059669; }
+        .status-pending { background: rgba(245, 158, 11, 0.1); color: #D97706; }
     </style>
 `;
 
@@ -305,7 +347,7 @@ export async function initHomePage() {
 
         renderOperationCards(permissions, user.Role); 
 
-        // アルバイトスタッフの場合は業務コックピットを非表示にする
+        // アルバイトスタッフの場合は業務コックピットを非表示にし、個人のシフトサマリーを表示する
         if (user.Role === 'PartTimer') {
             const cockpit = document.getElementById('standard-cockpit-section');
             if (cockpit) cockpit.style.display = 'none';
@@ -313,6 +355,9 @@ export async function initHomePage() {
             // 「本日の出勤メンバー」セクションも非表示（明示的）
             const shifts = document.getElementById('today-shifts-container');
             if (shifts) shifts.style.display = 'none';
+
+            // 個人シフトサマリーの描画
+            await renderPersonalShiftsSemimonthly(user);
         }
     }
 
@@ -614,4 +659,115 @@ function renderOperationCards(permissions, role) {
                 `;
             }
         }).join('');
+}
+
+/**
+ * アルバイトスタッフ向け：直近の自分のシフトを2期間（半月ごと）分表示する
+ */
+async function renderPersonalShiftsSemimonthly(user) {
+    const container = document.getElementById('personal-shift-summary-container');
+    if (!container) return;
+
+    const today = new Date();
+    const day = today.getDate();
+    const month = today.getMonth(); // 0-11
+    const year = today.getFullYear();
+
+    let p1_start, p1_end, p2_start, p2_end;
+    let label1, label2;
+
+    if (day <= 15) {
+        // 今月前半(1-15) と 今月後半(16-末)
+        p1_start = new Date(year, month, 1);
+        p1_end = new Date(year, month, 15);
+        p2_start = new Date(year, month, 16);
+        p2_end = new Date(year, month + 1, 0); // 末日
+        label1 = `${month + 1}月前半 (1日〜15日)`;
+        label2 = `${month + 1}月後半 (16日〜末日)`;
+    } else {
+        // 今月後半(16-末) と 翌月前半(1-15)
+        p1_start = new Date(year, month, 16);
+        p1_end = new Date(year, month + 1, 0);
+        p2_start = new Date(year, month + 1, 1);
+        p2_end = new Date(year, month + 1, 15);
+        label1 = `${month + 1}月後半 (16日〜末日)`;
+        const nextMonth = new Date(year, month + 1, 1);
+        label2 = `${nextMonth.getMonth() + 1}月前半 (1日〜15日)`;
+    }
+
+    const toYmd = (d) => d.toISOString().split('T')[0];
+    const range1 = [toYmd(p1_start), toYmd(p1_end)];
+    const range2 = [toYmd(p2_start), toYmd(p2_end)];
+
+    container.style.display = 'block';
+    container.innerHTML = '<div style="text-align:center; padding:1rem;"><i class="fas fa-spinner fa-spin"></i> シフトを読み込み中...</div>';
+
+    try {
+        const fetchRange = async (start, end) => {
+            const q = query(collection(db, "t_shifts"), 
+                where("userId", "==", user.id),
+                where("date", ">=", start),
+                where("date", "<=", end));
+            const snap = await getDocs(q);
+            const list = [];
+            snap.forEach(doc => list.push(doc.data()));
+            return list.sort((a,b) => a.date.localeCompare(b.date));
+        };
+
+        const [shifts1, shifts2] = await Promise.all([
+            fetchRange(range1[0], range1[1]),
+            fetchRange(range2[0], range2[1])
+        ]);
+
+        const renderShiftList = (shifts, label) => {
+            let html = `
+                <div style="margin-bottom: 2rem;">
+                    <h4 style="font-size: 0.95rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 1rem; display:flex; align-items:center; gap:0.6rem;">
+                        <i class="far fa-calendar-alt" style="color:var(--primary);"></i> ${label}
+                    </h4>
+            `;
+            if (shifts.length === 0) {
+                html += '<div style="padding: 1.2rem; background: #f8fafc; border-radius: 18px; text-align: center; color: var(--text-secondary); font-size: 0.85rem; border: 1px dashed var(--border);">この期間のシフト予定はありません。</div>';
+            } else {
+                shifts.forEach(s => {
+                    const d = new Date(s.date);
+                    const weekday = ['日','月','火','水','木','金','土'][d.getDay()];
+                    const isConfirmed = s.status === 'confirmed';
+                    html += `
+                        <div class="personal-shift-card">
+                            <div class="shift-date-box" style="background: ${d.getDay() === 0 ? '#fee2e2' : d.getDay() === 6 ? '#e0f2fe' : '#f1f5f9'};">
+                                <div class="day">${d.getDate()}</div>
+                                <div class="weekday">${weekday}</div>
+                            </div>
+                            <div class="shift-info">
+                                <div class="shift-time">${s.start} - ${s.end}</div>
+                                <div class="shift-store"><i class="fas fa-map-marker-alt"></i> ${s.storeName || '店舗不明'}</div>
+                            </div>
+                            <div class="shift-status">
+                                <span class="shift-status-badge ${isConfirmed ? 'status-confirmed' : 'status-pending'}">
+                                    ${isConfirmed ? '確定' : '予定'}
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            html += '</div>';
+            return html;
+        };
+
+        container.innerHTML = `
+            <div style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.8rem;">
+                <h3 style="margin: 0; font-size: 1.2rem; font-weight: 900; color: var(--text-primary);">
+                    <i class="fas fa-calendar-check" style="color:#2563eb;"></i> 自分のシフト一覧
+                </h3>
+            </div>
+            ${renderShiftList(shifts1, label1)}
+            ${renderShiftList(shifts2, label2)}
+        `;
+
+    } catch (e) {
+        console.error("Personal Shift Summary Error:", e);
+        container.innerHTML = '<div style="color:var(--danger); padding:1rem;">シフトデータの読み込みに失敗しました。</div>';
+    }
 }
