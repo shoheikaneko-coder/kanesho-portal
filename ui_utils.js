@@ -16,7 +16,7 @@ export function showAlert(title, message) {
     }
 
     modal.innerHTML = `
-        <div class="glass-panel animate-scale-in" style="width:100%; max-width:400px; padding:2rem; text-align:center; margin: auto;">
+        <div class="glass-panel animate-zoom-fade" style="width:100%; max-width:400px; padding:2rem; text-align:center; margin: auto;">
             <h3 style="margin-top:0; color:var(--text-primary); font-size: 1.2rem;">${title}</h3>
             <p style="color:var(--text-secondary); margin-bottom:1.5rem; line-height: 1.5;">${message}</p>
             <button id="alert-ok-btn" class="btn btn-primary" style="width:100%;">OK</button>
@@ -47,7 +47,7 @@ export function showConfirm(title, message, onConfirm) {
         }
 
         modal.innerHTML = `
-            <div class="glass-panel animate-scale-in" style="width:100%; max-width:400px; padding:2rem; margin: auto;">
+            <div class="glass-panel animate-zoom-fade" style="width:100%; max-width:400px; padding:2rem; margin: auto;">
                 <h3 style="margin-top:0; color:var(--text-primary); text-align:center; font-size: 1.2rem;">${title}</h3>
                 <p style="color:var(--text-secondary); margin-bottom:1.5rem; text-align:center; line-height: 1.5;">${message}</p>
                 <div style="display:flex; gap:1rem;">

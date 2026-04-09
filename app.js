@@ -538,8 +538,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (viewSwitcherBtn && headerViewMenu) {
         viewSwitcherBtn.onclick = (e) => {
             e.stopPropagation();
-            const isVisible = headerViewMenu.style.display === 'block';
-            headerViewMenu.style.display = isVisible ? 'none' : 'block';
+            headerViewMenu.classList.toggle('show');
         };
 
         headerViewMenu.querySelectorAll('.view-menu-item').forEach(item => {
@@ -550,13 +549,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (role === 'Tablet' || role === '店舗タブレット') return;
                 }
                 window.navigateTo(target);
-                headerViewMenu.style.display = 'none';
+                headerViewMenu.classList.remove('show');
             };
         });
 
         document.addEventListener('click', (e) => {
             if (!headerViewMenu.contains(e.target) && e.target !== viewSwitcherBtn) {
-                headerViewMenu.style.display = 'none';
+                headerViewMenu.classList.remove('show');
             }
         });
     }
