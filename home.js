@@ -294,15 +294,25 @@ export async function initHomePage() {
         document.getElementById('tablet-cockpit-container').style.display = 'block';
         renderOperationCards(permissions, 'Tablet'); 
         await initTabletHomeAttendance(user); 
+    } else {
         // 通常レイアウト
         document.getElementById('tablet-cockpit-container').style.display = 'none';
-        await renderTodayShifts(user); 
+        
+        // アルバイトスタッフ以外は「本日の出勤メンバー」を表示
+        if (user.Role !== 'PartTimer') {
+            await renderTodayShifts(user);
+        }
+
         renderOperationCards(permissions, user.Role); 
 
         // アルバイトスタッフの場合は業務コックピットを非表示にする
         if (user.Role === 'PartTimer') {
             const cockpit = document.getElementById('standard-cockpit-section');
             if (cockpit) cockpit.style.display = 'none';
+            
+            // 「本日の出勤メンバー」セクションも非表示（明示的）
+            const shifts = document.getElementById('today-shifts-container');
+            if (shifts) shifts.style.display = 'none';
         }
     }
 
