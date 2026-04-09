@@ -218,6 +218,19 @@ async function renderSidebar(user) {
         opsNav.style.display = (role === 'Admin' || role === '管理者' || allowed.includes('ops_hub')) ? 'flex' : 'none';
     }
 
+    // クイック操作 (FAB) の制御
+    const fabItems = [
+        { id: 'fab-item-attendance', pid: 'fab_attendance' },
+        { id: 'fab-item-sales', pid: 'fab_sales' },
+        { id: 'fab-item-inventory', pid: 'fab_inventory' }
+    ];
+    fabItems.forEach(item => {
+        const el = document.getElementById(item.id);
+        if (el) {
+            el.style.display = (role === 'Admin' || role === '管理者' || allowed.includes(item.pid)) ? 'flex' : 'none';
+        }
+    });
+
     let html = '';
     const categories = [...new Set(defaultMenuItems.map(item => item.category))];
     

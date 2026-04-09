@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>かね将ポータル - プロトタイプ</title>
-    <link rel="stylesheet" href="styles.css?v=110">
-    <script type="module" src="app.js?v=110"></script>
+    <link rel="stylesheet" href="styles.css?v=111">
+    <script type="module" src="app.js?v=111"></script>
     <!-- FontAwesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- SheetJS for Excel/CSV processing -->
@@ -212,15 +212,15 @@
             <!-- Quick Action FAB (Mobile Only) -->
             <div class="fab-container">
                 <div class="fab-menu" id="fab-menu">
-                    <div class="fab-item" onclick="window.navigateTo('attendance')">
+                    <div class="fab-item" id="fab-item-attendance" onclick="window.navigateTo('attendance')">
                         <span class="fab-label">出退勤打刻</span>
                         <div class="fab-icon"><i class="fas fa-fingerprint"></i></div>
                     </div>
-                    <div class="fab-item" onclick="window.navigateTo('sales')">
+                    <div class="fab-item" id="fab-item-sales" onclick="window.navigateTo('sales')">
                         <span class="fab-label">営業実績報告</span>
                         <div class="fab-icon"><i class="fas fa-calculator"></i></div>
                     </div>
-                    <div class="fab-item" onclick="window.navigateTo('inventory')">
+                    <div class="fab-item" id="fab-item-inventory" onclick="window.navigateTo('inventory')">
                         <span class="fab-label">棚卸・在庫登録</span>
                         <div class="fab-icon"><i class="fas fa-box-open"></i></div>
                     </div>

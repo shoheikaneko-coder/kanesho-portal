@@ -99,7 +99,11 @@ const menuItems = [
     { id: 'home', name: '[ナビ領域] メインホーム', icon: 'fa-home' },
     { id: 'ops_hub', name: '[ナビ領域] 店舗業務Hub', icon: 'fa-store' },
     { id: 'hr_hub', name: '[ナビ領域] 人事総務業務Hub', icon: 'fa-user-friends' },
-    { id: 'master_hub', name: '[ナビ領域] 設定Hub', icon: 'fa-cog' }
+    { id: 'master_hub', name: '[ナビ領域] 設定Hub', icon: 'fa-cog' },
+    // クイック操作 (FAB)
+    { id: 'fab_attendance', name: '[クイック操作] 出退勤打刻', icon: 'fa-fingerprint' },
+    { id: 'fab_sales', name: '[クイック操作] 営業実績報告', icon: 'fa-calculator' },
+    { id: 'fab_inventory', name: '[クイック操作] 棚卸・在庫登録', icon: 'fa-warehouse' }
 ];
 
 let selectedRole = 'Admin';
