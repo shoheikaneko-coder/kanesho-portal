@@ -257,7 +257,7 @@ export const shiftSubmissionPageHtml = `
     </div>
 
     <!-- モバイルアクションハブ (オーバーレイ) -->
-    <div id="mobile-action-hub-overlay" class="mobile-action-hub-overlay" onclick="window.toggleMobileActionHub(false)">
+    <div id="mobile-action-hub-overlay" class="mobile-action-hub-overlay mobile-only" onclick="window.toggleMobileActionHub(false)">
         <div class="mobile-action-hub-content" onclick="event.stopPropagation()">
             <div class="mobile-hub-title"><i class="fas fa-magic" style="color:var(--primary);"></i> シフト作成サポート</div>
             <div class="mobile-hub-grid">
@@ -274,7 +274,7 @@ export const shiftSubmissionPageHtml = `
                     <span>基本型に<br>保存</span>
                 </button>
             </div>
-            <button class="btn" style="width:100%; margin-top:2rem; padding: 1rem; font-weight: 700; background: #f1f5f9; color: var(--text-secondary); border-radius: 14px;" onclick="window.toggleMobileActionHub(false)">閉じる</button>
+            <button class="btn mobile-only" style="width:100%; margin-top:2rem; padding: 1rem; font-weight: 700; background: #f1f5f9; color: var(--text-secondary); border-radius: 14px;" onclick="window.toggleMobileActionHub(false)">閉じる</button>
         </div>
     </div>
 
@@ -283,7 +283,30 @@ export const shiftSubmissionPageHtml = `
 
 export const shiftAdminPageHtml = `
     <div class="animate-fade-in" id="shift-admin-container" style="max-width: 100%; padding-bottom: 5rem;">
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+        
+        <!-- 【スマホ専用】イマーシブ・ライブ・ヘッダー ( Cockpit v2 ) -->
+        <div id="admin-mobile-live-header" class="mobile-only">
+            <div class="live-header-top">
+                <div id="live-header-date" class="live-date">2024/04/01 (月)</div>
+                <div class="live-sph-badge">予定SPH: <span id="live-header-sph">¥ 0</span></div>
+                <div id="admin-28h-alerts-mobile" class="live-alert-badge">アラート: 0</div>
+                <button id="btn-edit-memo-mobile" class="btn btn-memo-quick">
+                    <i class="fas fa-edit"></i>
+                </button>
+            </div>
+            <div class="live-graph-area">
+                <div class="live-graph-label">人員充足状況 (1h点分)</div>
+                <div id="live-hourly-graph-mobile" class="mini-graph-container">
+                    <!-- JSで動的にバーが生成される -->
+                </div>
+            </div>
+            <div id="admin-active-store-mobile" class="live-store-label"></div>
+        </div>
+
+        <div id="admin-mobile-kpi-bar-placeholder" class="mobile-only" style="height: 10px;"></div>
+
+        <!-- 【PC専用】KPIグリッドエリア -->
+        <div class="desktop-only admin-kpi-grid" style="margin-bottom: 1.5rem;">
             <div class="glass-panel" style="padding: 1.2rem; border-left: 5px solid var(--secondary);">
                 <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700;">期間平均人時売上</div>
                 <div id="admin-avg-sph" style="font-size: 1.8rem; font-weight: 900; color: var(--secondary);">¥ 0</div>
@@ -305,7 +328,8 @@ export const shiftAdminPageHtml = `
             </div>
         </div>
 
-        <div class="glass-panel" style="padding: 1rem 1.5rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <!-- 【PC専用】アクションバー -->
+        <div class="glass-panel desktop-only" style="padding: 1rem 1.5rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
             <div style="display: flex; align-items: center; gap: 1rem;">
                 <select id="admin-store-select" class="form-input" style="width: auto; min-width: 200px; margin: 0; padding: 0.4rem 0.8rem; font-weight: 700; height: 38px; display: none;">
                     <option value="">店舗を選択してください</option>
@@ -344,6 +368,92 @@ export const shiftAdminPageHtml = `
                 </table>
             </div>
         </div>
+
+        <!-- 【スマホ専用】管理者用アクション・コックピット（公式FAB互換デザイン） -->
+        <div id="admin-mobile-fab-hub" class="mobile-only fab-container">
+            <!-- 没入型ボカシオーバーレイ -->
+            <div id="admin-fab-overlay" class="admin-fab-overlay"></div>
+            
+            <div id="admin-fab-menu" class="fab-menu">
+                <div class="fab-item" id="btn-publish-mobile">
+                    <span class="fab-label">一括確定・公開</span>
+                    <div class="fab-icon" style="color:var(--primary);"><i class="fas fa-paper-plane"></i></div>
+                </div>
+                <div class="fab-item" id="btn-share-line-mobile">
+                    <span class="fab-label">LINE周知</span>
+                    <div class="fab-icon" style="color:#06C755;"><i class="fab fa-line"></i></div>
+                </div>
+                <div class="fab-item" id="btn-add-help-mobile">
+                    <span class="fab-label">ヘルプスタッフ追加</span>
+                    <div class="fab-icon"><i class="fas fa-user-plus"></i></div>
+                </div>
+                <div class="fab-item" id="btn-apply-fixed-mobile">
+                    <span class="fab-label">いつものパターン反映</span>
+                    <div class="fab-icon"><i class="fas fa-magic"></i></div>
+                </div>
+                <div class="fab-item" id="btn-manage-fixed-mobile">
+                    <span class="fab-label">固定シフト設定</span>
+                    <div class="fab-icon"><i class="fas fa-user-clock"></i></div>
+                </div>
+                <div class="fab-item" id="btn-bulk-mode-mobile">
+                    <span class="fab-label">一括入力モード</span>
+                    <div class="fab-icon"><i class="fas fa-check-double"></i></div>
+                </div>
+            </div>
+            
+            <div class="fab-main" id="admin-fab-main-btn" onclick="window.toggleAdminFabHub()">
+                <i class="fas fa-plus"></i>
+            </div>
+        </div>
+
+        <!-- 【スマホ専用】クイック・ボトムシート・エディター -->
+        <div id="admin-mobile-bottom-sheet" class="mobile-only bottom-sheet">
+            <div class="sheet-handle"></div>
+            <div class="sheet-content">
+                <div class="sheet-header">
+                    <div id="sheet-staff-name" class="staff-name">スタッフ名</div>
+                    <div id="sheet-date-label" class="date-label">04/01 (月)</div>
+                </div>
+                
+                <div class="time-adjust-section">
+                    <div class="time-input-row">
+                        <div class="time-group">
+                            <label>開始</label>
+                            <div class="select-pair">
+                                <select id="sheet-start-h" class="time-select"></select>
+                                <span>:</span>
+                                <select id="sheet-start-m" class="time-select"></select>
+                            </div>
+                        </div>
+                        <div class="time-arrow"><i class="fas fa-arrow-right"></i></div>
+                        <div class="time-group">
+                            <label>終了</label>
+                            <div class="select-pair">
+                                <select id="sheet-end-h" class="time-select"></select>
+                                <span>:</span>
+                                <select id="sheet-end-m" class="time-select"></select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="extra-input-row">
+                        <div class="input-item">
+                            <label>休憩 (分)</label>
+                            <input type="number" id="sheet-break" class="sheet-input" value="0">
+                        </div>
+                        <div class="input-item" style="flex:2;">
+                            <label>メモ</label>
+                            <input type="text" id="sheet-note" class="sheet-input" placeholder="特記事項...">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sheet-actions">
+                    <button class="btn btn-cancel-sheet" onclick="window.closeAdminBottomSheet()">キャンセル</button>
+                    <button id="btn-save-sheet" class="btn btn-save-sheet">保存する</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     ${sharedModalHtml}
@@ -356,6 +466,7 @@ let currentShifts = {};
 let currentTargetUser = null;
 let allStoreUsers = [];
 let helpUsers = [];
+let globalShiftMap = {}; // 28h判定用：全店舗・複数シフトを保持 { uid: { date: [shift1, shift2] } }
 
 // 一括入力用
 let isBulkMode = false;
@@ -387,31 +498,17 @@ const injectStyles = () => {
         @media (max-width: 1024px) {
             .mobile-only { display: block !important; }
             .desktop-only { display: none !important; }
-            
-            /* モバイル用リストカード */
+
+            /* モバイル用リストカード (Cockpit v2) */
             .mobile-shift-card {
-                background: white;
-                border-radius: 16px;
-                padding: 1rem;
-                margin-bottom: 0.8rem;
-                display: flex;
-                align-items: center;
-                gap: 1rem;
-                border: 1px solid var(--border);
-                box-shadow: 0 2px 8px rgba(0,0,0,0.02);
-                transition: background 0.2s;
+                background: white; border-radius: 16px; padding: 1rem; margin-bottom: 0.8rem;
+                display: flex; align-items: center; gap: 1rem; border: 1px solid var(--border);
+                box-shadow: 0 2px 8px rgba(0,0,0,0.02); transition: background 0.2s;
             }
             .mobile-shift-card:active { background: #f8fafc; }
             .mobile-date-box {
-                width: 50px;
-                height: 50px;
-                background: #f1f5f9;
-                border-radius: 12px;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                flex-shrink: 0;
+                width: 50px; height: 50px; background: #f1f5f9; border-radius: 12px;
+                display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0;
             }
             .mobile-date-box.is-holiday { background: #fee2e2; }
             .mobile-date-box.is-sat { background: #e0f2fe; }
@@ -422,58 +519,73 @@ const injectStyles = () => {
             .mobile-shift-time { font-size: 1rem; font-weight: 800; color: var(--primary); }
             .mobile-shift-status { font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; margin-top: 0.1rem; }
             .mobile-shift-empty { font-size: 0.9rem; color: #94a3b8; font-weight: 500; }
-            
             .mobile-holiday-label { font-size: 0.6rem; color: #ef4444; font-weight: 800; margin-top: 0.2rem; white-space: nowrap; }
-            
-            /* モバイル用アクションハブ */
+
+            /* モバイル専用 隔離レイアウト (Cockpit v2) */
             .mobile-action-hub-overlay {
-                position: fixed;
-                inset: 0;
-                background: rgba(0,0,0,0.3);
-                backdrop-filter: blur(4px);
-                z-index: 9999;
-                display: none;
-                opacity: 0;
-                transition: opacity 0.3s;
+                position: fixed; inset: 0; background: rgba(0,0,0,0.3);
+                backdrop-filter: blur(4px); z-index: 9999;
+                display: none; opacity: 0; transition: opacity 0.3s;
             }
             .mobile-action-hub-overlay.show { display: block; opacity: 1; }
             .mobile-action-hub-content {
-                position: fixed;
-                top: -100%;
-                left: 0;
-                right: 0;
-                background: white;
-                border-radius: 0 0 24px 24px;
-                padding: 1.5rem 1.2rem;
-                z-index: 10000;
+                position: fixed; top: -100%; left: 0; right: 0; background: white;
+                border-radius: 0 0 24px 24px; padding: 1.5rem 1.2rem; z-index: 10000;
                 transition: top 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                 box-shadow: 0 10px 25px rgba(0,0,0,0.1);
             }
             .mobile-action-hub-content.show { top: 0; }
-            .mobile-hub-title { font-size: 1.1rem; font-weight: 900; color: var(--text-primary); margin-bottom: 1.5rem; }
+
+            body:has(#shift-admin-container) #fab-main-btn { display: none !important; }
+
+            /* モバイル・ライブ・ヘッダー */
+            #admin-mobile-live-header {
+                position: sticky; top: 0; background: rgba(255, 255, 255, 0.9);
+                backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+                border-bottom: 1px solid var(--border); padding: 0.8rem; z-index: 998;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            }
+            .live-header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem; }
+            .live-sph-badge { background: var(--secondary); color: white; padding: 0.3rem 0.6rem; border-radius: 8px; font-size: 0.75rem; font-weight: 800; }
+            .live-alert-badge { background: #ef4444; color: white; padding: 0.3rem 0.6rem; border-radius: 8px; font-size: 0.75rem; font-weight: 800; display: none; }
+            .btn-memo-quick { width: 40px; height: 40px; background: white; border: 1px solid var(--border); border-radius: 10px; color: #10b981; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
             
-            /* モバイルカード選択中（一括入力用） */
-            .mobile-shift-card.selected-shift-card {
-                background: #fef9c3 !important;
-                border: 2px solid #eab308 !important;
-                box-shadow: 0 4px 12px rgba(234, 179, 8, 0.15);
+            .live-graph-area { background: #f8fafc; border-radius: 10px; padding: 0.5rem; }
+            .mini-graph-container { display: flex; align-items: flex-end; gap: 2px; height: 36px; padding: 2px 0; }
+            .mini-graph-bar { flex: 1; background: #e2e8f0; border-radius: 2px; min-height: 4px; }
+            .mini-graph-bar.staffed { background: #fee2e2; }
+            .mini-graph-bar.full { background: #ef4444; }
+
+            /* FABハブ (Cockpit v2) */
+            #admin-mobile-fab-hub {
+                position: fixed; bottom: calc(80px + env(safe-area-inset-bottom));
+                right: 20px; display: flex; flex-direction: column; align-items: flex-end; z-index: 10001;
             }
-            .mobile-hub-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-            .mobile-hub-btn {
-                background: #f8fafc;
-                border: 1px solid var(--border);
-                border-radius: 16px;
-                padding: 1.2rem 1rem;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 0.6rem;
-                text-align: center;
+            .admin-fab-overlay {
+                position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4);
+                backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+                opacity: 0; visibility: hidden; transition: all 0.3s ease;
             }
-            .mobile-hub-btn i { font-size: 1.5rem; color: var(--primary); }
-            .mobile-hub-btn span { font-size: 0.85rem; font-weight: 700; color: var(--text-primary); }
+            .admin-fab-overlay.show { opacity: 1; visibility: visible; }
+            #admin-fab-main-btn {
+                width: 60px; height: 60px; background: linear-gradient(135deg, var(--primary), #FF5A5F);
+                border-radius: 50%; display: flex; justify-content: center; align-items: center;
+                color: white; font-size: 1.5rem; box-shadow: 0 4px 15px rgba(230, 57, 70, 0.4);
+            }
+            .bottom-sheet {
+                position: fixed; left: 0; right: 0; bottom: 0; background: white;
+                border-radius: 24px 24px 0 0; box-shadow: 0 -10px 40px rgba(15, 23, 42, 0.25);
+                transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+                z-index: 10002; padding-bottom: env(safe-area-inset-bottom);
+            }
+            .bottom-sheet.show { transform: translateY(0); }
+
+            /* シフト表のモバイル調整 */
+            #shift-admin-table th.date-hdr { min-width: 50px !important; font-size: 0.7rem !important; }
+            #shift-admin-table td.shift-cell { height: 60px !important; }
+            .staff-cell { min-width: 100px !important; font-size: 0.85rem !important; }
         }
-    `;
+        `;
     document.head.appendChild(s);
 };
 
@@ -689,14 +801,16 @@ export async function initShiftAdminPage() {
             window.currentAdminStoreId = sid;
             window.currentAdminStoreName = storeName;
             
+            await loadDailyGoalData(sid);
+            await loadStoreStaff(sid, storeName);
+            
             await Promise.all([
-                loadDailyGoalData(sid),
-                loadStoreStaff(sid, storeName), 
                 loadShiftsBatch(sid),
                 loadShiftMemo(sid)
             ]);
             
-            renderAdminGrid(); 
+            // シフト描画の完了（ヘルプスタッフの特定）を待ってからKPI/アラート計算を行う
+            await renderAdminGrid(); 
             updateOverallKPIs();
         } catch (e) {
             console.error("Critical error in updateView:", e);
@@ -750,6 +864,68 @@ export async function initShiftAdminPage() {
         };
     }
     document.getElementById('btn-save-memo').onclick = saveShiftMemo;
+
+    // --- 【スマホ専用】機能・イベントのバインド ---
+    const mobileStoreLabel = document.getElementById('admin-active-store-mobile');
+    if (mobileStoreLabel) {
+        // 現在の店舗を表示（Adminの場合は選択後に更新される）
+        const updateMobileLabel = () => {
+            const sid = window.currentAdminStoreId;
+            const sname = window.currentAdminStoreName || sid;
+            mobileStoreLabel.textContent = sname ? `📍 ${sname}` : "";
+        };
+        updateMobileLabel();
+        
+        // 店舗切替時の連動
+        if (isAdmin && storeSelect) {
+            const originalOnChange = storeSelect.onchange;
+            storeSelect.onchange = async (e) => {
+                await originalOnChange(e);
+                updateMobileLabel();
+            };
+        }
+    }
+
+    // メモ編集ボタン (📝)
+    const btnEditMemoMobile = document.getElementById('btn-edit-memo-mobile');
+    if (btnEditMemoMobile) {
+        btnEditMemoMobile.onclick = () => {
+            const memoEl = document.getElementById('admin-shift-memo');
+            const currentMemo = memoEl ? memoEl.value : "";
+            
+            // シンプルな入力プロンプトを表示 (将来的にはリッチなモーダルに変更も可能)
+            const newMemo = prompt("【店長メモ・周知事項】を編集", currentMemo);
+            if (newMemo !== null) {
+                if (memoEl) {
+                    memoEl.value = newMemo;
+                    saveShiftMemo(); // Firestoreへの保存処理を呼び出し
+                }
+            }
+        };
+    }
+
+    // モバイル下部FABのボタン連動
+    const bindMobileBtn = (mobileId, desktopId) => {
+        const mBtn = document.getElementById(mobileId);
+        const dBtn = document.getElementById(desktopId);
+        if (mBtn && dBtn) {
+            mBtn.onclick = () => {
+                window.toggleAdminFabHub(false); // メニューを閉じてから実行
+                dBtn.click();
+            };
+        }
+    };
+    bindMobileBtn('btn-bulk-mode-mobile', 'btn-bulk-mode');
+    bindMobileBtn('btn-apply-fixed-mobile', 'btn-apply-fixed-schedule');
+    bindMobileBtn('btn-manage-fixed-mobile', 'btn-manage-fixed-shift');
+    bindMobileBtn('btn-add-help-mobile', 'btn-add-help-staff');
+    bindMobileBtn('btn-share-line-mobile', 'btn-share-line');
+    bindMobileBtn('btn-publish-mobile', 'btn-publish-shifts');
+
+    // オーバーレイクリックで閉じる
+    document.getElementById('admin-fab-overlay')?.addEventListener('click', () => {
+        window.toggleAdminFabHub(false);
+    });
 
     // 一括入力ボタン
     const bulkBtn = document.getElementById('btn-bulk-mode');
@@ -966,11 +1142,19 @@ async function loadShiftsBatch(sid, uid = null) {
     const snap = await getDocs(q);
     
     currentShifts = {};
+    globalShiftMap = {}; 
     if (sid) helpUsers = [];
     const helpIds = [];
     snap.forEach(d => {
         const data = d.data();
         if (!data || !data.userId) return;
+
+        // --- 同一店舗内での分割シフト合算のため、フィルタ前にマップへ蓄積 ---
+        if (!globalShiftMap[data.userId]) globalShiftMap[data.userId] = {};
+        if (!globalShiftMap[data.userId][data.date]) globalShiftMap[data.userId][data.date] = [];
+        globalShiftMap[data.userId][data.date].push(data);
+
+        // --- 店舗フィルタ (ここから下は自店舗データのみ対象) ---
         if (sid && data.storeId != sid) return;
         if (uid && data.userId !== uid) return;
 
@@ -1110,6 +1294,20 @@ function renderAdminGrid() {
                     ${d.getDate()}<br>${['日','月','火','水','木','金','土'][d.getDay()]}
                     ${isHoliday ? `<div class="holiday-name">${cal.label || '祝日'}</div>` : ''}
                 </th>`;
+        }
+
+        // 【スマホ専用】横スクロール同期 (Cockpit v2)
+        const scrollArea = document.getElementById('shift-admin-table')?.parentElement;
+        if (scrollArea && window.innerWidth <= 1024) {
+            scrollArea.onscroll = () => {
+                const scrollLeft = scrollArea.scrollLeft;
+                const colWidth = 60; // date-hdrの標準幅（要調整）
+                const dayIdx = Math.max(0, Math.floor((scrollLeft - 40) / colWidth)); // 40はスタッフ名の固定幅分
+                const targetD = new Date(currentSlot.startDate);
+                targetD.setDate(targetD.getDate() + dayIdx);
+                const ymd = formatDateJST(targetD);
+                window.updateMobileLiveHeader(ymd);
+            };
         }
 
         body.innerHTML = '';
@@ -1284,6 +1482,104 @@ function renderCellUI(uid, date, data) {
 /**
  * --- Actions ---
  */
+/**
+ * 管理者用モバイルFABハブのトグル制御
+ */
+/**
+ * 【スマホ専用】ライブヘッダーの描画同期 (Cockpit v2)
+ */
+window.updateMobileLiveHeader = (ymd) => {
+    const liveHeader = document.getElementById('admin-mobile-live-header');
+    if (!liveHeader || window.innerWidth > 1024) return;
+
+    // 日付ラベルの更新
+    const dateLabel = document.getElementById('live-header-date');
+    if (dateLabel) {
+        const d = new Date(ymd);
+        const dow = ['日','月','火','水','木','金','土'][d.getDay()];
+        dateLabel.textContent = `${ymd.replace(/-/g,'/')} (${dow})`;
+    }
+
+    // SPHの計算 (その日限定)
+    let dayHours = 0;
+    const users = [...allStoreUsers, ...helpUsers];
+    users.forEach(u => {
+        // 現在編集中の仮データ（シート内）があればそれを優先
+        let s = currentShifts[u.id]?.[ymd];
+        const sheet = document.getElementById('admin-mobile-bottom-sheet');
+        if (sheet && sheet.classList.contains('show') && window.currentEditingUid === u.id && window.currentEditingDate === ymd) {
+            s = {
+                start: `${document.getElementById('sheet-start-h').value}:${document.getElementById('sheet-start-m').value}`,
+                end: `${document.getElementById('sheet-end-h').value}:${document.getElementById('sheet-end-m').value}`,
+                breakMin: parseInt(document.getElementById('sheet-break').value) || 0
+            };
+        }
+
+        if (s && s.start && s.end) {
+            const sA = s.start.split(':').map(Number); const eA = s.end.split(':').map(Number);
+            let h = (eA[0] + eA[1]/60) - (sA[0] + sA[1]/60); if (h < 0) h += 24;
+            dayHours += Math.max(0, h - (s.breakMin || 0)/60);
+        }
+    });
+
+    const target = dailyGoalSales[ymd] || 0;
+    const sph = Math.round(dayHours > 0 ? target / dayHours : 0);
+    const sphEl = document.getElementById('live-header-sph');
+    if (sphEl) sphEl.textContent = `¥ ${sph.toLocaleString()}`;
+
+    // グラフの更新 (1h単位の簡易版)
+    const graphCont = document.getElementById('live-hourly-graph-mobile');
+    if (graphCont) {
+        graphCont.innerHTML = '';
+        const hourly = new Array(24).fill(0);
+        users.forEach(u => {
+            let s = currentShifts[u.id]?.[ymd];
+            if (window.currentEditingUid === u.id && window.currentEditingDate === ymd) {
+                s = {
+                    start: `${document.getElementById('sheet-start-h').value}:${document.getElementById('sheet-start-m').value}`,
+                    end: `${document.getElementById('sheet-end-h').value}:${document.getElementById('sheet-end-m').value}`,
+                };
+            }
+            if (!s || !s.start || !s.end) return;
+            const sH = parseInt(s.start.split(':')[0]), eH = parseInt(s.end.split(':')[0]);
+            for(let h=0; h<24; h++) {
+                let active = false;
+                if (sH <= eH) { if (h >= sH && h < eH) active = true; }
+                else { if (h >= sH || h < eH) active = true; }
+                if (active) hourly[h]++;
+            }
+        });
+
+        const maxStaff = Math.max(5, ...hourly);
+        hourly.forEach((count, h) => {
+            if (h < 10) return; // 10時以前は表示省略
+            const bar = document.createElement('div');
+            bar.className = 'mini-graph-bar' + (count > 0 ? ' staffed' : '') + (count >= 4 ? ' full' : '');
+            bar.style.height = `${(count / maxStaff) * 100}%`;
+            graphCont.appendChild(bar);
+        });
+    }
+};
+
+window.toggleAdminFabHub = (forceState) => {
+    const menu = document.getElementById('admin-fab-menu');
+    const mainBtn = document.getElementById('admin-fab-main-btn');
+    const overlay = document.getElementById('admin-fab-overlay');
+    if (!menu || !mainBtn || !overlay) return;
+
+    const isShow = forceState !== undefined ? forceState : !menu.classList.contains('show');
+
+    if (isShow) {
+        menu.classList.add('show');
+        mainBtn.classList.add('active');
+        overlay.classList.add('show');
+    } else {
+        menu.classList.remove('show');
+        mainBtn.classList.remove('active');
+        overlay.classList.remove('show');
+    }
+};
+
 window.toggleMobileActionHub = (show) => {
     const overlay = document.getElementById('mobile-action-hub-overlay');
     const content = document.querySelector('.mobile-action-hub-content');
@@ -1297,7 +1593,11 @@ window.toggleMobileActionHub = (show) => {
     }
 };
 
-window.openTimeInput = (date, uid) => {
+window.openTimeInput = async (date, uid) => {
+    const isMobile = window.innerWidth <= 1024;
+    window.currentEditingUid = uid;
+    window.currentEditingDate = date;
+
     if (isBulkMode) {
         const cellId = `cell-${uid}-${date}`;
         const cardMobileId = `card-mobile-${uid}-${date}`;
@@ -1323,11 +1623,64 @@ window.openTimeInput = (date, uid) => {
         return;
     }
 
-    const user = allStoreUsers.find(u => u.id === uid) || helpUsers.find(u => u.id === uid) || (uid === currentTargetUser?.id ? currentTargetUser : null);
+    const user = [...allStoreUsers, ...helpUsers].find(u => u.id === uid) || (uid === currentTargetUser?.id ? currentTargetUser : null);
     if (!user) return;
     
-    const sData = currentShifts[uid]?.[date] || {};
-    // スタッフ（非管理者）かつ確定済みの場合は、編集不可のアラートを出して終了
+    const sData = currentShifts[uid]?.[date] || { start: '17:00', end: '22:00', breakMin: 0, note: '' };
+
+    if (isMobile && document.getElementById('admin-table-body')) {
+        // --- モバイル管理者：ボトムシート起動 ---
+        const sheet = document.getElementById('admin-mobile-bottom-sheet');
+        if (sheet) {
+            document.getElementById('sheet-staff-name').textContent = user.DisplayName || user.Name;
+            document.getElementById('sheet-date-label').textContent = date.replace(/-/g, '/');
+            
+            const [sH, sM] = (sData.start || '17:00').split(':');
+            const [eH, eM] = (sData.end || '22:00').split(':');
+            
+            const sH_el = document.getElementById('sheet-start-h');
+            const sM_el = document.getElementById('sheet-start-m');
+            const eH_el = document.getElementById('sheet-end-h');
+            const eM_el = document.getElementById('sheet-end-m');
+            
+            sH_el.innerHTML = generateHOptions(sH);
+            sM_el.innerHTML = generateMOptions(sM);
+            eH_el.innerHTML = generateHOptions(eH);
+            eM_el.innerHTML = generateMOptions(eM);
+            
+            document.getElementById('sheet-break').value = sData.breakMin || 0;
+            document.getElementById('sheet-note').value = sData.note || "";
+
+            // ライブフィードバック登録
+            [sH_el, sM_el, eH_el, eM_el, document.getElementById('sheet-break')].forEach(el => {
+                el.onchange = () => updateMobileLiveHeader(date);
+            });
+
+            sheet.classList.add('show');
+            updateMobileLiveHeader(date);
+
+            document.getElementById('btn-save-sheet').onclick = async () => {
+                const btnSave = document.getElementById('btn-save-sheet');
+                btnSave.disabled = true;
+                btnSave.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                
+                const news = {
+                    start: `${sH_el.value}:${sM_el.value}`,
+                    end: `${eH_el.value}:${eM_el.value}`,
+                    breakMin: parseInt(document.getElementById('sheet-break').value) || 0,
+                    note: document.getElementById('sheet-note').value
+                };
+                const ok = await applyShiftUpdate(uid, date, news);
+                if (ok) sheet.classList.remove('show');
+                
+                btnSave.disabled = false;
+                btnSave.innerHTML = '保存する';
+            };
+            return;
+        }
+    }
+
+    // --- PC/スタッフ画面: 従来通りのモーダル ---
     if (!adminMode && sData.status === 'confirmed') {
         showAlert('案内', 'すでに確定済みのシフトです。変更できません。');
         return;
@@ -1364,18 +1717,85 @@ window.openTimeInput = (date, uid) => {
         }
     }
 
+    // ✅ 【バグ修正】保存ボタンのonclickハンドラーを設定（PC/スタッフ画面用）
+    // ※ 一括入力モードは openBulkInputModal() 内で別途設定済みのため干渉しない
+    const saveBtn = document.getElementById('btn-modal-save');
+    if (saveBtn) {
+        saveBtn.onclick = async () => {
+            await saveShift(uid, date, user.Name || user.DisplayName);
+        };
+    }
+
+    // ✅ 【バグ修正】削除ボタンのonclickハンドラーを設定（PC/スタッフ画面用）
+    if (clearBtn) {
+        clearBtn.onclick = async () => {
+            if (!currentShifts[uid]?.[date]?.start) {
+                document.getElementById('shift-input-modal').style.display = 'none';
+                return;
+            }
+            const ok = await showConfirm('削除確認', 'このシフト希望を削除してもよいですか？');
+            if (!ok) return;
+            try {
+                await deleteDoc(doc(db, 't_shifts', `${date}_${uid}`));
+                if (currentShifts[uid]) delete currentShifts[uid][date];
+                renderCellUI(uid, date, null);
+                document.getElementById('shift-input-modal').style.display = 'none';
+            } catch (e) {
+                console.error(e);
+                showAlert('エラー', '削除に失敗しました。');
+            }
+        };
+    }
+
     document.getElementById('shift-input-modal').style.display = 'flex';
-    document.getElementById('btn-modal-clear').onclick = async () => {
-        if(currentShifts[uid]) delete currentShifts[uid][date];
-        renderCellUI(uid, date, null);
-        document.getElementById('shift-input-modal').style.display = 'none';
-        await deleteDoc(doc(db, "t_shifts", `${date}_${uid}`));
-        if (adminMode) updateOverallKPIs();
-    };
-    document.getElementById('btn-modal-save').onclick = async () => {
-        saveShift(uid, date, user.Name);
-    };
 };
+
+window.closeAdminBottomSheet = () => {
+    document.getElementById('admin-mobile-bottom-sheet').classList.remove('show');
+    window.currentEditingUid = null;
+    window.currentEditingDate = null;
+};
+
+async function applyShiftUpdate(uid, date, data) {
+    const user = [...allStoreUsers, ...helpUsers].find(u => u.id === uid);
+    const me = JSON.parse(localStorage.getItem('currentUser'));
+    const adminMode = document.getElementById('admin-table-body') ? true : false;
+    const sid = adminMode ? (window.currentAdminStoreId || me.StoreID || me.StoreId) : (me.StoreID || me.StoreId || 'UNKNOWN');
+    const sName = adminMode ? (window.currentAdminStoreName || '管理店舗') : (me.Store || '所属店舗');
+
+    const conflict = await checkDoubleBooking(uid, date, data.start, data.end);
+    if (conflict) {
+        showAlert('⚠ 重複', `【${conflict.storeName}】ですでに確定済みのシフトと重なっています。`);
+        return false;
+    }
+
+    const news = {
+        userId: uid, userName: user.Name, date, 
+        start: data.start, end: data.end, 
+        breakMin: data.breakMin, note: data.note,
+        status: adminMode ? 'confirmed' : 'applied',
+        storeId: String(sid),
+        StoreID: String(sid),
+        storeName: sName,
+        StoreName: sName,
+        updatedAt: new Date().toISOString(),
+        Has28hLimit: !!user.Has28hLimit
+    };
+
+    if (!currentShifts[uid]) currentShifts[uid] = {};
+    currentShifts[uid][date] = news;
+    renderCellUI(uid, date, news);
+    
+    try {
+        await setDoc(doc(db, "t_shifts", `${date}_${uid}`), news);
+        updateOverallKPIs();
+        return true;
+    } catch (e) {
+        console.error(e);
+        showAlert('エラー', '保存に失敗しました。');
+        return false;
+    }
+}
 
 /**
  * モバイル用の一括選択モードUIを更新する
@@ -1420,7 +1840,9 @@ async function saveShift(uid, date, userName) {
         breakMin: parseInt(document.getElementById('modal-break').value) || 0,
         note: document.getElementById('modal-note').value,
         status: adminMode ? 'confirmed' : 'applied',
-        storeId: sid, storeName: sName, updatedAt: new Date().toISOString()
+        storeId: sid, storeName: sName, updatedAt: new Date().toISOString(),
+        // 28hフラグをデータ自体に焼き付ける（将来的な集計漏れ防止・他店参照用）
+        Has28hLimit: !!([...allStoreUsers, ...helpUsers].find(u => u.id === uid)?.Has28hLimit)
     };
 
     if (!currentShifts[uid]) currentShifts[uid] = {};
@@ -1473,53 +1895,77 @@ function updateOverallKPIs() {
             }
         });
     }
-    document.getElementById('admin-avg-sph').textContent = `¥ ${Math.round(hours > 0 ? target/hours : 0).toLocaleString()}`;
+    const avgSphText = `¥ ${Math.round(hours > 0 ? target/hours : 0).toLocaleString()}`;
+    const sphEl = document.getElementById('admin-avg-sph');
+    const sphElMobile = document.getElementById('live-header-sph');
+    if (sphEl) sphEl.textContent = avgSphText;
+    if (sphElMobile && window.innerWidth <= 1024) sphElMobile.textContent = avgSphText;
     
-    // 28時間制限計算 (週次)
+    // モバイル用ライブヘッダーの更新（今日の分）
+    if (window.innerWidth <= 1024) {
+        const today = formatDateJST(new Date());
+        if (typeof updateMobileLiveHeader === 'function') {
+            updateMobileLiveHeader(today);
+        }
+    }
+    
+    // 28時間制限計算 (週次・店舗横断対応)
     const range = getExtendedRange(currentSlot.startDate, currentSlot.endDate);
     const alertsCont = document.getElementById('admin-28h-alerts');
+    const alertsContMobile = document.getElementById('admin-28h-alerts-mobile');
     const violations = [];
 
+    // 高速判定：loadShiftsBatchで取得済みの全店舗データ(globalShiftMap)を活用
     users.forEach(u => {
-        if (!u.Has28hLimit) return;
-        
-        // 週ごとの集計
+        const isTarget = u.Has28hLimit === true || u.Has28hLimit === 'true' || u.Has28hLimit === 'on' || u.has28hLimit === true;
+        if (!isTarget) return;
+
         let tempDate = new Date(range.start);
         const limitEnd = new Date(range.end);
         
         while (tempDate <= limitEnd) {
             let weekHours = 0;
             const weekStart = new Date(tempDate);
-            const weekEnd = new Date(tempDate);
-            weekEnd.setDate(weekEnd.getDate() + 6);
             
-            // その週の時間を合計
             for (let j = 0; j < 7; j++) {
                 const checkD = new Date(weekStart);
                 checkD.setDate(checkD.getDate() + j);
                 const iso = formatDateJST(checkD);
-                const s = currentShifts[u.id]?.[iso];
-                if (s && s.start) {
-                    const sA = s.start.split(':').map(Number); const eA = s.end.split(':').map(Number);
-                    let h = (eA[0] + eA[1]/60) - (sA[0] + sA[1]/60); if (h < 0) h += 24;
-                    weekHours += Math.max(0, h - (s.breakMin || 0)/60);
-                }
+                
+                // globalShiftMapから全店舗の勤務を取得 (loadShiftsBatchで同期済み)
+                const dayShifts = globalShiftMap[u.id]?.[iso] || [];
+                dayShifts.forEach(s => {
+                    if (s && s.start && s.end) {
+                        const sA = s.start.split(':').map(Number); 
+                        const eA = s.end.split(':').map(Number);
+                        let h = (eA[0] + eA[1]/60) - (sA[0] + sA[1]/60); if (h < 0) h += 24;
+                        weekHours += Math.max(0, h - (Number(s.breakMin || 0))/60);
+                    }
+                });
             }
             
             if (weekHours > 28) {
                 const weekLabel = `${weekStart.getMonth()+1}/${weekStart.getDate()}週`;
                 violations.push(`${u.DisplayName || u.Name} (${weekLabel}: ${weekHours.toFixed(1)}h)`);
-                break; // 1つでもあればこの人は違反者
+                break;
             }
             tempDate.setDate(tempDate.getDate() + 7);
         }
     });
 
+    // UI表示の更新
     if (alertsCont) {
         if (violations.length > 0) {
             alertsCont.innerHTML = violations.map(v => `<div style="color:#ef4444;"><i class="fas fa-times-circle"></i> ${v}</div>`).join('');
+            if (alertsContMobile) {
+                alertsContMobile.textContent = `超過: ${violations.length}名`;
+                alertsContMobile.style.display = 'block';
+            }
         } else {
             alertsCont.innerHTML = '<span style="color:#10b981;"><i class="fas fa-check-circle"></i> 超過なし</span>';
+            if (alertsContMobile) {
+                alertsContMobile.style.display = 'none';
+            }
         }
     }
 
