@@ -207,8 +207,8 @@ export const shiftSubmissionPageHtml = `
             </div>
         </div>
 
-        <!-- モバイル用アクションバー -->
-        <div class="mobile-only" style="margin-bottom: 1.5rem;">
+        <!-- モバイル用アクションバー (Sticky化) -->
+        <div class="mobile-only" style="position: sticky; top: 0; z-index: 100; margin: 0 -1.5rem 1.5rem -1.5rem; padding: 0.5rem 1rem 1rem 1.5rem; background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border);">
             <div style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 0.8rem 1rem; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
                 <button onclick="window.toggleMobileActionHub(true)" class="btn" style="background: #f1f5f9; color: var(--text-primary); padding: 0.6rem 1rem; font-size: 0.85rem; font-weight: 700; border-radius: 12px; display: flex; align-items: center; gap: 0.5rem;">
                     <i class="fas fa-folder-open" style="color:var(--primary);"></i> 機能
@@ -437,6 +437,13 @@ const injectStyles = () => {
             }
             .mobile-action-hub-content.show { top: 0; }
             .mobile-hub-title { font-size: 1.1rem; font-weight: 900; color: var(--text-primary); margin-bottom: 1.5rem; }
+            
+            /* モバイルカード選択中（一括入力用） */
+            .mobile-shift-card.selected-shift-card {
+                background: #fef9c3 !important;
+                border: 2px solid #eab308 !important;
+                box-shadow: 0 4px 12px rgba(234, 179, 8, 0.15);
+            }
             .mobile-hub-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
             .mobile-hub-btn {
                 background: #f8fafc;
@@ -1178,7 +1185,7 @@ async function renderSubmissionGrid() {
             const weekday = ['日','月','火','水','木','金','土'][d.getDay()];
             
             mobileHtml += `
-                <div class="mobile-shift-card" onclick="window.openTimeInput('${ymd}', '${currentTargetUser.id}')">
+                <div class="mobile-shift-card" id="card-mobile-${currentTargetUser.id}-${ymd}" onclick="window.openTimeInput('${ymd}', '${currentTargetUser.id}')">
                     <div class="mobile-date-box ${isHoliday || isSun ? 'is-holiday' : ''} ${isSat ? 'is-sat' : ''}">
                         <div class="day">${d.getDate()}</div>
                         <div class="weekday">${weekday}</div>
@@ -1263,14 +1270,19 @@ window.toggleMobileActionHub = (show) => {
 window.openTimeInput = (date, uid) => {
     if (isBulkMode) {
         const cellId = `cell-${uid}-${date}`;
+        const cardMobileId = `card-mobile-${uid}-${date}`;
         const el = document.getElementById(cellId);
+        const cardEl = document.getElementById(cardMobileId);
+        
         const idx = selectedCells.findIndex(x => x.uid === uid && x.date === date);
         if (idx > -1) {
             selectedCells.splice(idx, 1);
-            el.classList.remove('selected-shift-cell');
+            if (el) el.classList.remove('selected-shift-cell');
+            if (cardEl) cardEl.classList.remove('selected-shift-card');
         } else {
             selectedCells.push({ uid, date });
-            el.classList.add('selected-shift-cell');
+            if (el) el.classList.add('selected-shift-cell');
+            if (cardEl) cardEl.classList.add('selected-shift-card');
         }
         
         const bulkBtn = document.getElementById('btn-bulk-mode') || document.getElementById('btn-bulk-mode-staff');
