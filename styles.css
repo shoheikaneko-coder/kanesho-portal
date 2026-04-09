@@ -426,6 +426,18 @@ p { color: var(--text-secondary); line-height: 1.5; }
   
   .sidebar.show {
     transform: translateX(280px);
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+  
+  /* スマホではパンくずを非表示にしてヘッダーをスッキリさせる */
+  .breadcrumb {
+    display: none !important;
+  }
+
+  .top-header-v2 {
+    min-height: 70px; /* パンくずがない分、高さを少し抑える */
+    padding: 0.8rem 1.2rem;
   }
   
   /* メインコンテンツ表示時、ヘッダーにハンバーガーメニューを表示 */
