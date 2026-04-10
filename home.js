@@ -628,6 +628,7 @@ function renderOperationCards(permissions, role) {
         { id: 'inventory', name: '在庫管理', icon: 'fa-warehouse', desc: '現在の在庫数確認、棚卸登録を行います。' },
         { id: 'procurement', name: '仕入れ', icon: 'fa-shopping-cart', desc: '発注・入荷管理、仕入先への注文登録。' },
         { id: 'recipe_viewer', name: 'レシピ閲覧', icon: 'fa-book-open', desc: '料理やドリンクの作り方、盛り付けを確認します。' },
+        { id: 'goals_store', name: '月次計画(店長用)', icon: 'fa-tasks', desc: '月の目標値の按分シミュレーションと保存。' },
         { id: 'loans', name: '貸与物管理', icon: 'fa-key', desc: '従業員への制服、鍵、端末等の貸与状況を管理。' },
         { id: 'product_analysis', name: '商品分析', icon: 'fa-chart-pie', desc: 'ABC分析等を行い、メニューの改善に繋げます。' }
     ];

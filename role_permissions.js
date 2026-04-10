@@ -103,7 +103,10 @@ const menuItems = [
     // クイック操作 (FAB)
     { id: 'fab_attendance', name: '[クイック操作] 出退勤打刻', icon: 'fa-fingerprint' },
     { id: 'fab_sales', name: '[クイック操作] 営業実績報告', icon: 'fa-calculator' },
-    { id: 'fab_inventory', name: '[クイック操作] 棚卸・在庫登録', icon: 'fa-warehouse' }
+    { id: 'fab_inventory', name: '[クイック操作] 棚卸・在庫登録', icon: 'fa-warehouse' },
+    // 目標管理
+    { id: 'goals_admin', name: '目標設定 (社長用)', icon: 'fa-bullseye' },
+    { id: 'goals_store', name: '月次計画 (店長用)', icon: 'fa-tasks' }
 ];
 
 let selectedRole = 'Admin';
