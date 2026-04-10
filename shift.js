@@ -1976,8 +1976,16 @@ function renderAdminFooter() {
     const foot = document.getElementById('admin-table-foot');
     if (!foot) return;
     foot.innerHTML = '';
-    const tr = document.createElement('tr');
-    tr.innerHTML = '<td class="staff-cell">人時売上</td>';
+
+    // 1. 人時売上行
+    const trSPH = document.createElement('tr');
+    trSPH.innerHTML = '<td class="staff-cell">人時売上</td>';
+    
+    // 2. 売上目標行
+    const trGoal = document.createElement('tr');
+    trGoal.style.background = '#f8fafc';
+    trGoal.innerHTML = '<td class="staff-cell" style="color: var(--text-secondary); font-size: 0.75rem;">売上目標</td>';
+
     const span = Math.round((currentSlot.endDate - currentSlot.startDate) / (1000 * 60 * 60 * 24)) + 1;
     for (let i = 0; i < span; i++) {
         const d = new Date(currentSlot.startDate); d.setDate(d.getDate() + i);
@@ -1991,11 +1999,18 @@ function renderAdminFooter() {
                 dayH += Math.max(0, h - (s.breakMin||0)/60);
             }
         });
+        
+        // SPH計算
         const sph = dayH > 0 ? (dailyGoalSales[ymd] / dayH) : 0;
         let cls = 'sph-good'; if(sph < 4000) cls = 'sph-danger'; else if(sph < 5000) cls = 'sph-warn';
-        tr.innerHTML += `<td><span class="sph-badge ${cls}">¥${Math.round(sph).toLocaleString()}</span></td>`;
+        trSPH.innerHTML += `<td><span class="sph-badge ${cls}">¥${Math.round(sph).toLocaleString()}</span></td>`;
+
+        // 目標売上表示
+        const goalVal = dailyGoalSales[ymd] || 0;
+        trGoal.innerHTML += `<td style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700;">¥${Math.round(goalVal).toLocaleString()}</td>`;
     }
-    foot.appendChild(tr);
+    foot.appendChild(trSPH);
+    foot.appendChild(trGoal);
 }
 
 window.showHourlyGraph = (date) => {
