@@ -1,5 +1,6 @@
 import { db } from './firebase.js';
 import { collection, getDocs, doc, getDoc, setDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { showAlert } from './ui_utils.js';
 
 /**
  * --- HTML Templates ---
@@ -463,6 +464,7 @@ export async function initGoalsStorePage() {
         };
         weightModal.style.display = 'none';
         refreshSimulator();
+        showAlert('設定適用', '曜日ごとの重み付けをシミュレーション全体に適用しました。\n内容を確定するには、画面下部の「計画を確定して保存」ボタンを押してください。');
     };
 
     loadBtn.onclick = async () => {
