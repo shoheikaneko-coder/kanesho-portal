@@ -34,6 +34,10 @@ export function calculateSlot() {
     currentSlot.month = targetMonth;
     currentSlot.slot = slot;
     
+    // 締切日の計算 (以前のロジックを復元)
+    const deadlineText = (slot === 2) ? `${targetYear}/${targetMonth}/10` : (day > 25 ? `${targetYear}/${targetMonth}/25` : `${now.getFullYear()}/${now.getMonth()+1}/25`);
+    currentSlot.deadLine = deadlineText;
+    
     const lastDayOfMonth = new Date(targetYear, targetMonth, 0).getDate();
     currentSlot.startDate = new Date(targetYear, targetMonth - 1, slot === 1 ? 1 : 16);
     currentSlot.endDate = new Date(targetYear, targetMonth - 1, slot === 1 ? 15 : lastDayOfMonth);
