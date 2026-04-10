@@ -1278,7 +1278,7 @@ function renderTable(filter = "") {
 
             tr.innerHTML = `
                 <td style="padding: 1rem; font-weight: 600;">
-                    ${item.furigana ? `<div style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.2; margin-bottom: 0.1rem;">${item.furigana}</div>` : ''}
+                    ${item.furigana ? `<div style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.2; margin-bottom: 0.1rem;" title="${item.furigana}">${item.furigana.length > 12 ? item.furigana.substring(0, 12) + '...' : item.furigana}</div>` : ''}
                     <div style="font-size: 1.05rem; display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
                         ${item.name}
                         ${storeName ? `<span style="font-size: 0.65rem; color: #475569; background: #e2e8f0; padding: 0.15rem 0.5rem; border-radius: 4px; font-weight: 700; letter-spacing: 0.02em;">${storeName}</span>` : ''}
@@ -1332,7 +1332,7 @@ function renderTable(filter = "") {
 
             tr.innerHTML = `
                 <td style="padding: 1rem; font-weight: 600;">
-                    ${item.furigana ? `<div style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.2; margin-bottom: 0.1rem;">${item.furigana}</div>` : ''}
+                    ${item.furigana ? `<div style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.2; margin-bottom: 0.1rem;" title="${item.furigana}">${item.furigana.length > 12 ? item.furigana.substring(0, 12) + '...' : item.furigana}</div>` : ''}
                     <div style="font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem; color: ${isSub ? 'var(--recipe-homemade-primary)' : 'inherit'};">
                         ${item.name} 
                         ${notesIcon}
