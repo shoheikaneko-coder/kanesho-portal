@@ -972,15 +972,18 @@ function setupFormLogic() {
     const hardenedForm = newForm;
     console.log("Form cloned and replaced.");
 
-    if (currentTab === 'menus' || currentTab === 'sub_recipes') {
+    const itemMenu = editingItemData ? cachedMenus.find(m => m.item_id === editingItemData.id) : null;
+    const effectiveType = itemMenu?.is_sub_recipe ? 'sub_recipes' : currentTab;
+
+    if (effectiveType === 'menus' || effectiveType === 'sub_recipes') {
         setupRecipeEditor();
     }
 
     if (editingItemData) {
         const item = editingItemData;
-        const menuRecord = cachedMenus.find(m => m.item_id === item.id);
+        const menuRecord = itemMenu; // itemMenu は同等
         
-        if (currentTab === 'menus' || currentTab === 'sub_recipes') {
+        if (effectiveType === 'menus' || effectiveType === 'sub_recipes') {
             currentRecipe = menuRecord?.recipe || [];
             renderRecipeRows();
         } 
@@ -1330,9 +1333,8 @@ function renderTable(filter = "") {
             tr.innerHTML = `
                 <td style="padding: 1rem; font-weight: 600;">
                     ${item.furigana ? `<div style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.2; margin-bottom: 0.1rem;">${item.furigana}</div>` : ''}
-                    <div style="font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <div style="font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem; color: ${isSub ? 'var(--recipe-homemade-primary)' : 'inherit'};">
                         ${item.name} 
-                        ${isSub ? `<span class="badge" style="background: #f0fdf4; color: #10b981; border: 1px solid #bbf7d0; font-size: 0.65rem; padding: 0.1rem 0.4rem;">自家製</span>` : ''}
                         ${notesIcon}
                     </div>
                     <div style="margin-top: 0.4rem; display: flex; align-items: center;">
