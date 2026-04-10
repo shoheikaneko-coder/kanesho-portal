@@ -27,6 +27,7 @@ import { homePageHtml, initHomePage } from './home.js';
 import { shiftSubmissionPageHtml, initShiftSubmissionPage, shiftAdminPageHtml, initShiftAdminPage, shiftViewerPageHtml, initShiftViewerPage, checkIfShiftPublished } from './shift.js?v=60';
 import { loansPageHtml, initLoansPage } from './loans.js';
 import { hubPageHtml, initHubPage } from './hubs.js';
+import { inviteNaviPageHtml, initInviteNaviPage } from './invite_navi.js';
 
 console.log("AntiGravity Portal: app.js loaded successfully.");
 
@@ -49,6 +50,7 @@ const defaultMenuItems = [
     { id: 'shift_admin', name: 'シフト作成・調整', icon: 'fa-user-edit', category: 'サブ機能' },
     { id: 'recipe_viewer', name: 'レシピ閲覧', icon: 'fa-book-open', category: 'サブ機能' },
     { id: 'attendance_check', name: '勤怠照会', icon: 'fa-clipboard-check', category: 'サブ機能', hidden: true },
+    { id: 'invite_navi', name: '従業員への招待案内', icon: 'fa-paper-plane', category: 'サブ機能' },
     { id: 'users', name: '従業員管理', icon: 'fa-users-cog', category: 'サブ機能', hidden: true }
 ];
 
@@ -77,6 +79,7 @@ const pageParentMap = {
     'attendance_check': 'hr_hub',
     'shift_submission': 'hr_hub',
     'users': 'hr_hub',
+    'invite_navi': 'hr_hub',
     'loans': 'hr_hub',
     'notifications': 'hr_hub',
     'role_permissions': 'master_hub',
@@ -193,7 +196,7 @@ async function renderSidebar(user) {
     if (role === 'Admin' || role === '管理者') {
         allowed = defaultMenuItems.map(m => m.id);
         // 全般的な権限を付与
-        const adminPerms = ['sales','attendance','inventory','procurement','product_analysis','home_performance','shift_admin','shift_submission','attendance_check','users','loans','role_permissions','stores','products','suppliers','sales_correction','csv_export','csv_import','calendar_admin','goals_admin','line_share'];
+        const adminPerms = ['sales','attendance','inventory','procurement','product_analysis','home_performance','shift_admin','shift_submission','attendance_check','users','invite_navi','loans','role_permissions','stores','products','suppliers','sales_correction','csv_export','csv_import','calendar_admin','goals_admin','line_share'];
         adminPerms.forEach(id => { if (!allowed.includes(id)) allowed.push(id); });
     } else {
         try {
@@ -462,6 +465,11 @@ function showPage(target) {
                 pageTitle.textContent = '貸与物管理(アセット)';
                 pageContent.innerHTML = loansPageHtml;
                 initLoansPage();
+                break;
+            case 'invite_navi':
+                pageTitle.textContent = '従業員への招待案内';
+                pageContent.innerHTML = inviteNaviPageHtml;
+                initInviteNaviPage();
                 break;
         }
 

@@ -26,10 +26,10 @@
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-body {
+html, body {
   background-color: var(--bg-dark);
   color: var(--text-primary);
-  overflow-x: hidden;
+  overflow-x: hidden !important; /* 横ブレを根本から防止 */
   min-height: 100vh;
   min-height: -webkit-fill-available;
   display: flex;
@@ -63,6 +63,22 @@ h1, h2, h3, h4 {
 h1 { font-size: 2rem; margin-bottom: 0.5rem; }
 h2 { font-size: 1.5rem; margin-bottom: 1rem; }
 p { color: var(--text-secondary); line-height: 1.5; }
+
+/* Visibility Utilities */
+.mobile-only { display: none !important; }
+.desktop-only { } /* 継承されたdisplay属性（grid等）を優先 */
+@media (max-width: 1024px) {
+    .mobile-only { display: block !important; }
+    .desktop-only { display: none !important; }
+}
+
+/* シフト管理：PC版KPIグリッド強制 */
+.admin-kpi-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr 1fr !important;
+    gap: 1.2rem !important;
+    width: 100% !important;
+}
 
 /* Buttons */
 .btn {
@@ -298,7 +314,7 @@ p { color: var(--text-secondary); line-height: 1.5; }
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: hidden; /* 全体の横突き出しを防止 */
 }
 
 .top-header-v2 {
@@ -475,6 +491,9 @@ p { color: var(--text-secondary); line-height: 1.5; }
   
   .page-content {
     padding: 1rem;
+    overflow-x: hidden !important; /* 横ブレ防止 */
+    overflow-y: auto !important;   /* 縦スクロールを最優先で許可 */
+    -webkit-overflow-scrolling: touch; /* iOSの滑らかなスクロール */
   }
 
   .grid-cards {
@@ -1715,4 +1734,88 @@ input:checked + .toggle-slider:before {
 
 .view-menu-item:hover i {
     color: var(--primary);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Mobile Action Hub (Shift Creation Support)
+   ───────────────────────────────────────────────────────────── */
+.mobile-action-hub-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 10001;
+    display: none !important; /* PCでは常に物理的に消去 */
+    align-items: flex-end;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+@media (max-width: 1024px) {
+    .mobile-action-hub-overlay.show {
+        display: flex !important; /* スマホで「表示」指示がある時のみ物理的に出現 */
+        opacity: 1;
+        pointer-events: auto;
+    }
+    .mobile-action-hub-overlay {
+        display: none !important; /* スマホでも閉じている間は存在を消す(最重要) */
+        opacity: 0;
+        pointer-events: none;
+    }
+}
+
+.mobile-action-hub-content {
+    width: 100%;
+    background: white;
+    border-radius: 24px 24px 0 0;
+    padding: 2rem 1.5rem env(safe-area-inset-bottom);
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mobile-action-hub-overlay.show .mobile-action-hub-content {
+    transform: translateY(0);
+}
+
+.mobile-hub-title {
+    font-size: 1.1rem;
+    font-weight: 800;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    color: var(--text-primary);
+}
+
+.mobile-hub-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+.mobile-hub-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    padding: 1.2rem 0.5rem;
+    border-radius: 16px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.mobile-hub-btn i {
+    font-size: 1.4rem;
+    color: var(--primary);
+}
+
+.mobile-hub-btn:active {
+    background: #f1f5f9;
+    transform: scale(0.95);
 }

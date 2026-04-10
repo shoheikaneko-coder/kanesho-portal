@@ -35,8 +35,11 @@ function renderView() {
 }
 
 function renderFormView(container) {
-    if (currentTab === 'sub_recipes' || currentTab === 'menus') {
-        renderRecipeEditor(container, currentTab);
+    const itemMenu = editingItemData ? cachedMenus.find(m => m.item_id === editingItemData.id) : null;
+    // 自家製原材料（サブレシピ）はどこから編集してもレシピエディタを表示する
+    if (itemMenu?.is_sub_recipe || currentTab === 'sub_recipes' || currentTab === 'menus') {
+        const type = itemMenu?.is_sub_recipe ? 'sub_recipes' : currentTab;
+        renderRecipeEditor(container, type);
     } else {
         renderStandardForm(container);
     }
@@ -1044,14 +1047,17 @@ function setupFormLogic() {
         try {
             await setDoc(doc(db, "m_items", itemId), baseItem, { merge: true });
 
-            if (currentTab === 'menus') {
+            const itemMenu = editingItemData ? cachedMenus.find(m => m.item_id === editingItemData.id) : null;
+            const effectiveType = itemMenu?.is_sub_recipe ? 'sub_recipes' : currentTab;
+
+            if (effectiveType === 'menus') {
                 await setDoc(doc(db, "m_menus", itemId), {
                     item_id: itemId, 
                     recipe: currentRecipe,
                     is_sub_recipe: false, 
                     updated_at: new Date().toISOString()
                 }, { merge: true });
-            } else if (currentTab === 'sub_recipes') {
+            } else if (effectiveType === 'sub_recipes') {
                 const yieldAmount = Number(document.getElementById('recipe-yield-amount')?.value || 0) || 0;
                 const instructions = document.getElementById('recipe-instructions')?.value || "";
                 const developer = document.getElementById('recipe-developer')?.value || "";
@@ -1100,7 +1106,7 @@ function setupFormLogic() {
             await reloadData();
             
             // レシピ未登録通知を自動的に解消(doneにする) または 削除
-            if (currentTab === 'menus' || currentTab === 'sub_recipes') {
+            if (effectiveType === 'menus' || effectiveType === 'sub_recipes') {
                 try {
                     const qNotif = query(collection(db, "notifications"), 
                         where("menu_id", "==", itemId),
@@ -1306,6 +1312,9 @@ function renderTable(filter = "") {
         } else {
             const ing = cachedIngredients.find(i => i.item_id === item.id);
             const vendor = cachedVendors.find(v => (v.vendor_id || v.id) === ing?.vendor_id);
+            const menu = cachedMenus.find(m => m.item_id === item.id);
+            const isSub = menu?.is_sub_recipe === true;
+            
             const contentAmount = item.content_amount || 0;
             const purchasePrice = ing?.purchase_price || 0;
             const yieldRate = ing?.yield_rate || 1.0;
@@ -1321,7 +1330,11 @@ function renderTable(filter = "") {
             tr.innerHTML = `
                 <td style="padding: 1rem; font-weight: 600;">
                     ${item.furigana ? `<div style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.2; margin-bottom: 0.1rem;">${item.furigana}</div>` : ''}
-                    <div style="font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem;">${item.name} ${notesIcon}</div>
+                    <div style="font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem;">
+                        ${item.name} 
+                        ${isSub ? `<span class="badge" style="background: #f0fdf4; color: #10b981; border: 1px solid #bbf7d0; font-size: 0.65rem; padding: 0.1rem 0.4rem;">自家製</span>` : ''}
+                        ${notesIcon}
+                    </div>
                     <div style="margin-top: 0.4rem; display: flex; align-items: center;">
                         <span class="badge badge-green" style="font-size: 0.65rem;">${item.category || '未分類'}</span>
                         <span style="color:var(--text-secondary); font-weight:500; font-size: 0.75rem; margin-left: 0.6rem;">単位: ${item.unit || '-'}</span>

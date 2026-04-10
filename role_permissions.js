@@ -91,7 +91,7 @@ const menuItems = [
     { id: 'sales_correction', name: '営業実績修正', icon: 'fa-edit' },
     { id: 'csv_export', name: 'CSV出力', icon: 'fa-file-csv' },
     { id: 'menu_order', name: 'メニュー並び順', icon: 'fa-sort-amount-down' },
-    { id: 'line_share', name: 'アプリをLINE共有', icon: 'fa-share-alt' },
+    { id: 'invite_navi', name: '従業員への招待案内 (Email)', icon: 'fa-paper-plane' },
     { id: 'home_performance', name: 'ホーム実績サマリー表示', icon: 'fa-eye-slash' },
     { id: 'shift_submission', name: 'シフト提出・確認', icon: 'fa-calendar-alt' },
     { id: 'shift_admin', name: 'シフト作成・調整', icon: 'fa-user-edit' },
