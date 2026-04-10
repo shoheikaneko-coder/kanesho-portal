@@ -423,11 +423,13 @@ async function loadStoreOptions(id) {
  * --- Phase 2: Goals Store (Simulator) ---
  */
 
-let annualBudget = null;
-let monthlyData = []; // 12ヶ月分のデータ
-let storeWeights = {
+const DEFAULT_STORE_WEIGHTS = {
     mon_thu: 1.0, fri: 1.2, sat: 1.5, sun: 1.4, holiday: 1.5, day_before_holiday: 1.6
 };
+
+let annualBudget = null;
+let monthlyData = []; // 12ヶ月分のデータ
+let storeWeights = { ...DEFAULT_STORE_WEIGHTS };
 
 export async function initGoalsStorePage() {
     setupFYSelector('goal-store-fy');
@@ -471,6 +473,10 @@ export async function initGoalsStorePage() {
         loadBtn.disabled = true;
         loadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 読込中...';
 
+        // 表示の初期化とisolation対応: 読み込み開始時にデフォルトに戻す
+        storeWeights = { ...DEFAULT_STORE_WEIGHTS };
+        let weightsLoaded = false;
+
         try {
             // 1. 年間ターゲット取得
             const aSnap = await getDoc(doc(db, "m_annual_budgets", `${fy}_${sid}`));
@@ -500,6 +506,12 @@ export async function initGoalsStorePage() {
                 // 保存済み計画取得
                 const goalSnap = await getDoc(doc(db, "t_monthly_goals", `${ym}_${sid}`));
                 const goalData = goalSnap.exists() ? goalSnap.data() : { allocation_pct: 8.33 }; // デフォルト 1/12
+
+                // 指数設定が保存されていれば1つ目の有効なデータから読み込む
+                if (!weightsLoaded && goalSnap.exists() && goalData.weights) {
+                    storeWeights = { ...goalData.weights };
+                    weightsLoaded = true;
+                }
 
                 monthlyData.push({
                     m, actualY, ym,

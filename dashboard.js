@@ -561,6 +561,10 @@ async function calculatePeriodGoals(storeId, from, to) {
             const snap = await getDoc(doc(db, "t_monthly_goals", key));
             if (snap.exists()) {
                 const data = snap.data();
+                const weights = data.weights || { 
+                    mon_thu: 1.0, fri: 1.2, sat: 1.5, sun: 1.4, holiday: 1.5, day_before_holiday: 1.6 
+                };
+
                 // 月の総指数を再計算
                 const calSnap = await getDoc(doc(db, "m_calendars", `${ym}_common`));
                 const calDays = calSnap.exists() ? calSnap.data().days : [];
@@ -568,10 +572,10 @@ async function calculatePeriodGoals(storeId, from, to) {
                 let totalWeights = 0;
                 calDays.forEach(day => {
                     if (day.type !== 'work') return;
-                    totalWeights += calculateDayWeight(d.getFullYear(), d.getMonth() + 1, day, calDays, data.weights);
+                    totalWeights += calculateDayWeight(d.getFullYear(), d.getMonth() + 1, day, calDays, weights);
                 });
                 
-                monthCache[key] = { ...data, totalWeights, calDays };
+                monthCache[key] = { ...data, weights, totalWeights, calDays };
             } else {
                 monthCache[key] = null;
             }

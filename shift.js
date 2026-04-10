@@ -598,10 +598,14 @@ async function fetchCalendarData(sid) {
     const startDate = currentSlot.startDate;
     const endDate = currentSlot.endDate;
     
-    // 表示期間に含まれる年月を抽出
+    // 祝前日判定や月間目標の按分計算（1日〜末日）を正確に行うため、
+    // 表示期間が含まれる月の「月初1日」から「翌月1日」までを網羅して取得する
+    const fetchStart = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+    const fetchEnd = new Date(endDate.getFullYear(), endDate.getMonth() + 1, 1);
+
     const months = [];
-    let curr = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
-    while (curr <= endDate) {
+    let curr = new Date(fetchStart);
+    while (curr <= fetchEnd) {
         months.push(`${curr.getFullYear()}-${String(curr.getMonth() + 1).padStart(2, '0')}`);
         curr.setMonth(curr.getMonth() + 1);
     }
@@ -1216,7 +1220,10 @@ async function loadDailyGoalData(sid) {
         if (gSnap.exists()) {
             const g = gSnap.data();
             const monthlyTarget = g.sales_target || 0;
-            const weights = g.weights || { mon_thu: 1.0, fri: 1.2, sat: 1.5, sun: 1.4, holiday: 1.5, day_before_holiday: 1.6 };
+            // goals.js と共通のデフォルト値を使用
+            const weights = g.weights || { 
+                mon_thu: 1.0, fri: 1.2, sat: 1.5, sun: 1.4, holiday: 1.5, day_before_holiday: 1.6 
+            };
 
             // その月の全日数を取得して総ポイントを計算
             const daysInMonth = new Date(currentSlot.year, currentSlot.month, 0).getDate();
