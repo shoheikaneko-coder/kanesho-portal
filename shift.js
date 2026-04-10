@@ -27,17 +27,8 @@ export function calculateSlot() {
     let targetMonth = now.getMonth() + 1;
     let slot = 1;
 
-    if (day <= 10) {
-        slot = 2; // 今月後半
-    } else if (day <= 25) {
-        targetMonth++; // 翌月前半
-        if (targetMonth > 12) { targetMonth = 1; targetYear++; }
-        slot = 1;
-    } else {
-        targetMonth++; // 翌月後半
-        if (targetMonth > 12) { targetMonth = 1; targetYear++; }
-        slot = 2;
-    }
+    const targetMonth = now.getMonth() + 1;
+    const slot = (day <= 15) ? 1 : 2;
 
     currentSlot.year = targetYear;
     currentSlot.month = targetMonth;
@@ -791,7 +782,42 @@ export async function initShiftAdminPage() {
     const storeLabel = document.getElementById('admin-active-store-label');
     
     const pageTitle = document.getElementById('page-title');
-    if (pageTitle) pageTitle.textContent = `シフト作成 (${currentSlot.year}/${currentSlot.month} ${currentSlot.slot === 1 ? '前半' : '後半'})`;
+    if (pageTitle) {
+        // 現在の期間を表示しつつ、切り替え用のセレクターを動的に構築
+        const slots = getRollingSlots();
+        let optionsHtml = '';
+        slots.forEach(s => {
+            const isSelected = (s.year === currentSlot.year && s.month === currentSlot.month && s.slot === currentSlot.slot);
+            optionsHtml += `<option value="${s.id}" ${isSelected ? 'selected' : ''}>${s.year}/${s.label}</option>`;
+        });
+        
+        pageTitle.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 0.8rem;">
+                <span>シフト作成</span>
+                <select id="admin-slot-select" style="font-size: 1rem; padding: 0.3rem 0.6rem; border-radius: 8px; border: 1px solid var(--border); font-weight: 800; background: var(--surface); color: var(--primary);">
+                    ${optionsHtml}
+                </select>
+            </div>
+        `;
+
+        const slotSelect = document.getElementById('admin-slot-select');
+        if (slotSelect) {
+            slotSelect.onchange = (e) => {
+                const [y, m, s] = e.target.value.split('-').map(Number);
+                currentSlot.year = y;
+                currentSlot.month = m;
+                currentSlot.slot = s;
+                
+                // 開始・終了日を再計算
+                const lastDayOfMonth = new Date(y, m, 0).getDate();
+                currentSlot.startDate = new Date(y, m - 1, s === 1 ? 1 : 16);
+                currentSlot.endDate = new Date(y, m - 1, s === 1 ? 15 : lastDayOfMonth);
+                
+                // 再読み込み
+                updateView(window.currentAdminStoreId);
+            };
+        }
+    }
 
     async function updateView(sid) {
         if (!sid) return;
@@ -1267,13 +1293,32 @@ async function loadDailyGoalData(sid) {
             // 1ポイントあたりの単価
             const unitValue = totalMonthPoints > 0 ? (monthlyTarget / totalMonthPoints) : 0;
             
+            // --- 精度向上のための端数調整ロジック ---
+            const fullMonthRounded = {};
+            let monthCheckSum = 0;
+            for (const dayYmd in pointsByDay) {
+                const val = Math.round(unitValue * pointsByDay[dayYmd]);
+                fullMonthRounded[dayYmd] = val;
+                monthCheckSum += val;
+            }
+            
+            // 月次目標との差分（数円程度）を算出
+            const diff = monthlyTarget - monthCheckSum;
+            // 差分があれば、その月の「最後の営業日」に加減算して1円単位で一致させる
+            if (diff !== 0) {
+                const workDays = Object.keys(pointsByDay).filter(k => pointsByDay[k] > 0).sort();
+                if (workDays.length > 0) {
+                    const lastWorkDay = workDays[workDays.length - 1];
+                    fullMonthRounded[lastWorkDay] += diff;
+                }
+            }
+            
             // 表示期間（currentSlot）の範囲でdailyGoalSalesを確定
             const span = Math.round((currentSlot.endDate - currentSlot.startDate) / (1000 * 60 * 60 * 24)) + 1;
             for (let i = 0; i < span; i++) {
                 const t = new Date(currentSlot.startDate); t.setDate(t.getDate() + i);
                 const ymd = formatDateJST(t);
-                const dp = pointsByDay[ymd] || 0;
-                dailyGoalSales[ymd] = Math.round(unitValue * dp);
+                dailyGoalSales[ymd] = fullMonthRounded[ymd] || 0;
             }
         }
     } catch (e) { 
