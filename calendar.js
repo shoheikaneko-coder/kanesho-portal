@@ -4,8 +4,20 @@ import { collection, getDocs, doc, getDoc, setDoc } from "https://www.gstatic.co
 // --- HTML Templates ---
 
 export const calendarAdminPageHtml = `
-    <div class="animate-fade-in">
-        <div class="glass-panel" style="padding: 1.5rem; margin-bottom: 2rem;">
+    <div class="animate-fade-in" style="padding: 0;">
+        <!-- モバイル専用：スティッキー・ナビゲーションバー (PCでは非表示) -->
+        <div class="mobile-month-nav mobile-only">
+            <div class="nav-bar-content">
+                <button class="nav-btn" onclick="window.changeCalMonth(-1)"><i class="fas fa-chevron-left"></i></button>
+                <div id="cal-admin-mobile-ym-display" class="nav-title">----年--月</div>
+                <button class="nav-btn" onclick="window.changeCalMonth(1)"><i class="fas fa-chevron-right"></i></button>
+            </div>
+            <div class="nav-bar-store">
+                <select id="cal-admin-mobile-store" class="nav-select-minimal"></select>
+            </div>
+        </div>
+
+        <div class="glass-panel desktop-only" style="padding: 1.5rem; margin-bottom: 2rem;">
             <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: flex-end;">
                 <div style="flex: 1; min-width: 150px;">
                     <label class="field-label">対象年度 (7月〜)</label>
@@ -141,8 +153,20 @@ export const calendarAdminPageHtml = `
 `;
 
 export const calendarViewerPageHtml = `
-    <div class="animate-fade-in">
-        <div class="glass-panel" style="padding: 1.5rem; margin-bottom: 2rem; display: flex; gap: 2rem; align-items: center; flex-wrap: wrap;">
+    <div class="animate-fade-in" style="padding: 0;">
+        <!-- モバイル専用：スティッキー・ナビゲーションバー (PCでは非表示) -->
+        <div class="mobile-month-nav mobile-only">
+            <div class="nav-bar-content">
+                <button class="nav-btn" onclick="window.changeCalMonth(-1)"><i class="fas fa-chevron-left"></i></button>
+                <div id="cal-mobile-ym-display" class="nav-title">----年--月</div>
+                <button class="nav-btn" onclick="window.changeCalMonth(1)"><i class="fas fa-chevron-right"></i></button>
+            </div>
+            <div class="nav-bar-store">
+                <select id="cal-mobile-store" class="nav-select-minimal"></select>
+            </div>
+        </div>
+
+        <div class="glass-panel desktop-only" style="padding: 1.5rem; margin-bottom: 2rem; display: flex; gap: 2rem; align-items: center; flex-wrap: wrap;">
             <div style="flex: 1; min-width: 250px;">
                 <label class="field-label" style="margin-bottom: 0.5rem;">表示月</label>
                 <div style="display: flex; gap: 1rem; align-items: center;">
@@ -276,12 +300,39 @@ export async function initCalendarAdminPage() {
         currentAdminState.year = parseInt(yearSel.value);
         currentAdminState.month = parseInt(monthSel.value);
         currentAdminState.storeId = storeSel.value;
+        
+        const isMobile = window.innerWidth <= 1024;
+        const monthText = `${currentAdminState.year}年${currentAdminState.month}月`;
+        
+        const mobileYmDisplay = document.getElementById('cal-admin-mobile-ym-display');
+        if (mobileYmDisplay) mobileYmDisplay.textContent = monthText;
+
+        const pageTitle = document.getElementById('page-title');
+        if (pageTitle) {
+            pageTitle.textContent = isMobile ? '営業カレンダー作成' : `営業カレンダー作成 (${monthText})`;
+        }
+        
         await refreshAdminCalendar();
     };
 
     yearSel.onchange = refresh;
     monthSel.onchange = refresh;
-    storeSel.onchange = refresh;
+    storeSel.onchange = () => {
+        const mobileStoreSel = document.getElementById('cal-admin-mobile-store');
+        if (mobileStoreSel) mobileStoreSel.value = storeSel.value;
+        refresh();
+    };
+
+    const mobileStoreSel = document.getElementById('cal-admin-mobile-store');
+    if (mobileStoreSel) {
+        // オプションを同期
+        mobileStoreSel.innerHTML = storeSel.innerHTML;
+        mobileStoreSel.value = storeSel.value;
+        mobileStoreSel.onchange = () => {
+            storeSel.value = mobileStoreSel.value;
+            refresh();
+        };
+    }
 
     document.getElementById('cal-admin-save-btn').onclick = saveCalendar;
 
@@ -348,6 +399,16 @@ export async function initCalendarAdminPage() {
         window.closeDayEditor();
     };
 
+    window.changeCalMonth = async (dir) => {
+        let m = parseInt(monthSel.value) + dir;
+        let y = parseInt(yearSel.value);
+        if (m > 12) { m = 1; y++; }
+        if (m < 1) { m = 12; y--; }
+        yearSel.value = y;
+        monthSel.value = m;
+        await refresh();
+    };
+
     await refresh();
 }
 
@@ -368,10 +429,21 @@ export async function initCalendarViewerPage() {
 
     currentViewState.refresh = async () => {
         const ymText = `${currentViewState.year}年${currentViewState.month}月`;
-        document.getElementById('cal-view-ym-display').textContent = ymText;
+        const isMobile = window.innerWidth <= 1024;
         
+        // PC用の表示更新
+        const ymDisplay = document.getElementById('cal-view-ym-display');
+        if (ymDisplay) ymDisplay.textContent = ymText;
+        
+        // モバイル用の表示更新
+        const mobileYmDisplay = document.getElementById('cal-mobile-ym-display');
+        if (mobileYmDisplay) mobileYmDisplay.textContent = ymText;
+
         const pageTitle = document.getElementById('page-title');
-        if (pageTitle) pageTitle.textContent = `営業カレンダー (${ymText})`;
+        if (pageTitle) {
+            // モバイル時はスリム化、PC時は詳細表示
+            pageTitle.textContent = isMobile ? '営業カレンダー' : `営業カレンダー (${ymText})`;
+        }
         const ym = `${currentViewState.year}-${String(currentViewState.month).padStart(2, '0')}`;
         
         const commonSnap = await getDoc(doc(db, "m_calendars", `${ym}_common`));
@@ -411,10 +483,24 @@ export async function initCalendarViewerPage() {
 
     storeSel.onchange = () => {
         currentViewState.storeId = storeSel.value;
+        const mobileStoreSel = document.getElementById('cal-mobile-store');
+        if (mobileStoreSel) mobileStoreSel.value = storeSel.value;
         currentViewState.refresh();
     };
 
-    await currentViewState.refresh();
+    const mobileStoreSel = document.getElementById('cal-mobile-store');
+    if (mobileStoreSel) {
+        // オプションを同期
+        mobileStoreSel.innerHTML = storeSel.innerHTML;
+        mobileStoreSel.value = storeSel.value;
+        mobileStoreSel.onchange = () => {
+            currentViewState.storeId = mobileStoreSel.value;
+            storeSel.value = mobileStoreSel.value;
+            currentViewState.refresh();
+        };
+    }
+
+    currentViewState.refresh();
 }
 
 /**
