@@ -25,26 +25,35 @@ export function calculateSlot() {
     const day = now.getDate();
     let targetYear = now.getFullYear();
     let targetMonth = now.getMonth() + 1;
-    let slot = 1;
+    let slot;
 
-    const targetMonth = now.getMonth() + 1;
-    const slot = (day <= 15) ? 1 : 2;
+    // 先取りロジック:
+    // 1-15日は「当月後半(slot 2)」、16日以降は「翌月前半(slot 1)」をデフォルトとする
+    if (day <= 15) {
+        slot = 2;
+    } else {
+        slot = 1;
+        targetMonth++;
+        if (targetMonth > 12) {
+            targetMonth = 1;
+            targetYear++;
+        }
+    }
 
     currentSlot.year = targetYear;
     currentSlot.month = targetMonth;
     currentSlot.slot = slot;
     
-    // 締切日の計算 (以前のロジックを復元)
+    // 締切日の計算 (スロットが先を指すため、既存ロジックが整合します)
     const deadlineText = (slot === 2) ? `${targetYear}/${targetMonth}/10` : (day > 25 ? `${targetYear}/${targetMonth}/25` : `${now.getFullYear()}/${now.getMonth()+1}/25`);
     currentSlot.deadLine = deadlineText;
     
     const lastDayOfMonth = new Date(targetYear, targetMonth, 0).getDate();
     currentSlot.startDate = new Date(targetYear, targetMonth - 1, slot === 1 ? 1 : 16);
     currentSlot.endDate = new Date(targetYear, targetMonth - 1, slot === 1 ? 15 : lastDayOfMonth);
-    
-    const deadlineText = (slot === 2) ? `${targetYear}/${targetMonth}/10` : (day > 25 ? `${targetYear}/${targetMonth}/25` : `${now.getFullYear()}/${now.getMonth()+1}/25`);
-    currentSlot.deadLine = deadlineText;
 }
+
+
 
 /**
  * 閲覧用のローリング6スロット（前月・今月・翌月 × 前半・後半）を取得する
@@ -54,11 +63,13 @@ export function getRollingSlots() {
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
 
-    const months = [
-        { y: currentMonth === 1 ? currentYear - 1 : currentYear, m: currentMonth === 1 ? 12 : currentMonth - 1 },
-        { y: currentYear, m: currentMonth },
-        { y: currentMonth === 12 ? currentYear + 1 : currentYear, m: currentMonth === 12 ? 1 : currentMonth + 1 }
-    ];
+    const months = [];
+    let d = new Date(currentYear, currentMonth - 2, 1); // 1ヶ月前から
+    for (let i = 0; i < 4; i++) { // 計4ヶ月分
+        months.push({ y: d.getFullYear(), m: d.getMonth() + 1 });
+        d.setMonth(d.getMonth() + 1);
+    }
+
 
     const slots = [];
     months.forEach(item => {
@@ -650,9 +661,58 @@ export async function initShiftSubmissionPage() {
     calculateSlot();
     
     const pageTitle = document.getElementById('page-title');
-    if (pageTitle) pageTitle.textContent = `シフト希望提出 (${currentSlot.year}/${currentSlot.month} ${currentSlot.slot === 1 ? '前半' : '後半'})`;
+    if (pageTitle) {
+        const slots = getRollingSlots();
+        let optionsHtml = '';
+        slots.forEach(s => {
+            const isSelected = (s.year === currentSlot.year && s.month === currentSlot.month && s.slot === currentSlot.slot);
+            optionsHtml += `<option value="${s.id}" ${isSelected ? 'selected' : ''}>${s.year}/${s.label}</option>`;
+        });
+
+        pageTitle.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 0.8rem;">
+                <span>シフト提出</span>
+                <select id="submission-slot-select" style="font-size: 1rem; padding: 0.3rem 0.6rem; border-radius: 8px; border: 1px solid var(--border); font-weight: 800; background: var(--surface); color: var(--primary);">
+                    ${optionsHtml}
+                </select>
+            </div>
+        `;
+
+        const slotSelect = document.getElementById('submission-slot-select');
+        if (slotSelect) {
+            slotSelect.onchange = async (e) => {
+                const [y, m, s] = e.target.value.split('-').map(Number);
+                currentSlot.year = y;
+                currentSlot.month = m;
+                currentSlot.slot = s;
+
+                const lastDayOfMonth = new Date(y, m, 0).getDate();
+                currentSlot.startDate = new Date(y, m - 1, s === 1 ? 1 : 16);
+                currentSlot.endDate = new Date(y, m - 1, s === 1 ? 15 : lastDayOfMonth);
+                
+                // 締切情報を更新 (ダミー表示を最新スロットに合わせる)
+                const now = new Date();
+                const day = now.getDate();
+                currentSlot.deadLine = (s === 2) ? `${y}/${m}/10` : ( (y===now.getFullYear() && m===(now.getMonth()+1) && day > 25) ? `${y}/${m}/25` : `${y}/${m}/25`);
+
+                showLoader();
+                const sid = currentTargetUser.StoreID || currentTargetUser.StoreId || 'UNKNOWN';
+                await fetchCalendarData(sid);
+                const deadlineEl = document.getElementById('shift-deadline-info');
+                if (deadlineEl) deadlineEl.textContent = `提出締切: ${currentSlot.deadLine}`;
+                const deadlineMobile = document.getElementById('shift-deadline-info-mobile');
+                if (deadlineMobile) deadlineMobile.textContent = `提出締切: ${currentSlot.deadLine}`;
+
+                await loadShiftMemoForStaff(sid);
+                await renderSubmissionGrid();
+                await loadShiftsBatch(null, currentTargetUser.id);
+                document.querySelector('.loader-overlay')?.remove();
+            };
+        }
+    }
     
-    document.getElementById('shift-deadline-info').textContent = `提出締切: ${currentSlot.deadLine}`;
+    const deadlineEl = document.getElementById('shift-deadline-info');
+    if (deadlineEl) deadlineEl.textContent = `提出締切: ${currentSlot.deadLine}`;
     
     const sid = user.StoreID || user.StoreId || 'UNKNOWN';
     await fetchCalendarData(sid);
@@ -660,6 +720,7 @@ export async function initShiftSubmissionPage() {
     await renderSubmissionGrid();
     setupSubmissionEvents();
     await loadShiftsBatch(null, user.id);
+
 
     // 一括入力ボタン (スタッフ用)
     const bulkBtnStaff = document.getElementById('btn-bulk-mode-staff');

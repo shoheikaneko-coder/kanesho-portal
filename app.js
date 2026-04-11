@@ -146,25 +146,39 @@ async function loginSuccess(user) {
 async function handleLogin(e) {
     e.preventDefault();
     const btn = e.target.querySelector('button');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 認証中...';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 認証中...';
+    }
 
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
 
     try {
         let user = null;
-        const userSnap = await getDocs(collection(db, "m_users"));
+        
+        // 効率的なクエリによる検索（大文字・小文字両方のフィールド名に対応）
+        const tryQuery = async (field, val) => {
+            const q = query(collection(db, "m_users"), where(field, "==", val));
+            return await getDocs(q);
+        };
+
+        // 検索順序: Email(入力値) -> email(入力値) -> Email(小文字) -> email(小文字)
+        let userSnap = await tryQuery("Email", email);
+        if (userSnap.empty) userSnap = await tryQuery("email", email);
+        if (userSnap.empty) userSnap = await tryQuery("Email", email.toLowerCase());
+        if (userSnap.empty) userSnap = await tryQuery("email", email.toLowerCase());
+
         userSnap.forEach(d => {
             const data = d.data();
-            const uEmail = (data.Email || data.email || "").toLowerCase();
             const uLoginPass = String(data.LoginPassword || data.password || "");
-            if (uEmail === email.toLowerCase() && uLoginPass === password) {
+            if (uLoginPass === password) {
                 user = { id: d.id, ...data };
             }
         });
 
-        if (!user && email === 'admin@kaneshow.jp' && password === 'password') {
+        // 管理者フォールバック
+        if (!user && email.toLowerCase() === 'admin@kaneshow.jp' && password === 'password') {
             user = { Name: '管理者', Email: email, Role: 'Admin' };
         }
 
@@ -174,8 +188,8 @@ async function handleLogin(e) {
             alert('ログイン失敗: IDまたはパスワードが正しくありません。');
         }
     } catch (err) {
-        console.error(err);
-        alert('通信エラー: ' + err.message);
+        console.error("Login error:", err);
+        alert('通信エラーが発生しました。ネットワーク接続を確認してください。\n' + err.message);
     } finally {
         if (btn) {
             btn.disabled = false;
@@ -183,6 +197,7 @@ async function handleLogin(e) {
         }
     }
 }
+
 
 /**
  * サイドバーのメニューを描画（権限考慮）

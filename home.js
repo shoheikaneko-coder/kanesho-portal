@@ -557,42 +557,69 @@ async function renderPerformanceSummary(user) {
     const ym = ymd.substring(0, 7);
     dateLabel.textContent = `${yesterday.getMonth() + 1}月${yesterday.getDate()}日(${['日','月','火','水','木','金','土'][yesterday.getDay()]})`;
 
+    const storeId = user.StoreID || user.StoreId || "ALL";
+
     try {
-        // 実績取得
+        // 実績取得 (t_performance)
         const perfSnap = await getDocs(query(collection(db, "t_performance"), 
-            where("store_id", "==", user.StoreId || "ALL"), 
+            where("store_id", "==", storeId), 
             where("date", "==", ymd)));
         
-        let actual = { sales: 0, customers: 0, op_hours: 0, total_hours: 0 };
+        // 勤怠取得 (t_attendance) - 人時売上算出用
+        const attendanceSnap = await getDocs(query(collection(db, "t_attendance"),
+            where("store_id", "==", storeId),
+            where("date", "==", ymd)));
+        
+        let actual = { sales: 0, sales_ex_tax: 0, customers: 0, total_labor_hours: 0 };
+        
         perfSnap.forEach(doc => {
             const d = doc.data();
-            actual.sales += (d.sales || 0);
-            actual.customers += (d.customers || 0);
-            actual.op_hours += (d.op_hours || 0);
-            actual.total_hours += (d.total_hours || 0) + (d.ck_alloc || 0);
+            actual.sales += (d.amount || d.sales || 0); // amount が POS等からの標準
+            actual.sales_ex_tax += (d.amount_ex_tax || (actual.sales / 1.1));
+            actual.customers += (d.customer_count || d.customers || 0);
+        });
+
+        attendanceSnap.forEach(doc => {
+            const d = doc.data();
+            actual.total_labor_hours += (d.total_labor_hours || 0);
         });
 
         // 目標取得
         let target = { sales: 0, customers: 0 };
-        const goalSnap = await getDoc(doc(db, "t_monthly_goals", `${ym}_${user.StoreId}`));
+        const goalSnap = await getDoc(doc(db, "t_monthly_goals", `${ym}_${storeId}`));
         if (goalSnap.exists()) {
             const g = goalSnap.data();
-            // 簡易的に日割り計算（本来は傾斜指数を使うが、ホーム画面では直感的な目安を表示）
             const calSnap = await getDoc(doc(db, "m_calendars", `${ym}_common`));
             const workDays = calSnap.exists() ? calSnap.data().days.filter(d => d.type === 'work').length : 25;
             target.sales = (g.sales_target || 0) / (workDays || 25);
             target.customers = (g.sales_target / 4500) / (workDays || 25);
         }
 
-        const salesRate = target.sales > 0 ? (actual.sales / 1.1 / target.sales) * 100 : 0;
-        const avgSpend = actual.customers > 0 ? Math.round(actual.sales / actual.customers) : 0;
-        const ophSph = actual.op_hours > 0 ? Math.round((actual.sales / 1.1) / actual.op_hours) : 0;
+        // 予算目標 (m_annual_budgets) から客単価目標を算出
+        let targetAvgSpend = 4500;
+        try {
+            const now = new Date();
+            let fy = now.getFullYear();
+            if (now.getMonth() < 6) fy--; // 7月開始の年度
+            
+            const budgetSnap = await getDoc(doc(db, "m_annual_budgets", `${fy}_${storeId}`));
+            if (budgetSnap.exists()) {
+                const b = budgetSnap.data();
+                if (b.total_sales_target && b.total_cust_target) {
+                    targetAvgSpend = Math.round(b.total_sales_target / b.total_cust_target);
+                }
+            }
+        } catch (e) { console.error("Annual budget fetch error:", e); }
+
+        const salesRate = target.sales > 0 ? (actual.sales_ex_tax / target.sales) * 100 : 0;
+        const avgSpend = actual.customers > 0 ? Math.round(actual.sales_ex_tax / actual.customers) : 0;
+        const sph = actual.total_labor_hours > 0 ? Math.round(actual.sales_ex_tax / actual.total_labor_hours) : 0;
 
         grid.innerHTML = `
             <div class="cockpit-kpi-card">
                 <div class="cockpit-kpi-label">昨日の売上進捗 (税抜)</div>
                 <div class="cockpit-kpi-val ${salesRate >= 100 ? 'status-success' : 'status-danger'}">${Math.round(salesRate)}%</div>
-                <div class="cockpit-kpi-sub">実績: ¥${Math.round(actual.sales/1.1).toLocaleString()}</div>
+                <div class="cockpit-kpi-sub">実績: ¥${Math.round(actual.sales_ex_tax).toLocaleString()}</div>
             </div>
             <div class="cockpit-kpi-card">
                 <div class="cockpit-kpi-label">来客数</div>
@@ -600,16 +627,18 @@ async function renderPerformanceSummary(user) {
                 <div class="cockpit-kpi-sub">昨対比: --%</div>
             </div>
             <div class="cockpit-kpi-card">
-                <div class="cockpit-kpi-label">客単価 (税込)</div>
+                <div class="cockpit-kpi-label">客単価 (税抜)</div>
                 <div class="cockpit-kpi-val">¥${avgSpend.toLocaleString()}</div>
-                <div class="cockpit-kpi-sub">目標: ¥4,500</div>
+                <div class="cockpit-kpi-sub">目標: ¥${targetAvgSpend.toLocaleString()}</div>
             </div>
             <div class="cockpit-kpi-card">
                 <div class="cockpit-kpi-label">営業人時売上</div>
-                <div class="cockpit-kpi-val">¥${ophSph.toLocaleString()}</div>
-                <div class="cockpit-kpi-sub">労働h: ${actual.op_hours}h</div>
+                <div class="cockpit-kpi-val">¥${sph.toLocaleString()}</div>
+                <div class="cockpit-kpi-sub">労働h: ${actual.total_labor_hours.toFixed(1)}h</div>
             </div>
         `;
+
+
     } catch (e) {
         console.error("Home KPI Fetch Error:", e);
         grid.innerHTML = '<p style="color:red;">実績データの読み込みに失敗しました。</p>';
