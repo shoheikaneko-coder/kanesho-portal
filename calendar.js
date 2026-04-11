@@ -115,6 +115,28 @@ export const calendarAdminPageHtml = `
         .box-holiday { width: 16px; height: 16px; color: #e53e3e; font-weight: 800; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: 3px; background: #fff; }
         .box-holiday::after { content: "1"; font-size: 10px; }
         .box-market { width: 16px; height: 16px; background: #3b82f6; border-radius: 3px; }
+
+        /* モバイル専用プレミアムスタイル (PC版には影響しません) */
+        @media (max-width: 1024px) {
+            .calendar-grid { gap: 0; border: none; border-radius: 12px; background: var(--border); border: 1px solid var(--border); }
+            .calendar-day-header { padding: 0.5rem; font-size: 0.75rem; border-bottom: 1px solid var(--border); }
+            .calendar-day-cell { min-height: 70px; padding: 0.3rem; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); border-radius: 0 !important; }
+            .calendar-day-cell:nth-child(7n) { border-right: none; }
+            .day-num-container { display: flex; justify-content: center; align-items: center; height: 32px; }
+            .day-num { font-size: 1rem; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: all 0.2s; }
+            
+            /* 祝日: 日付の赤丸塗り */
+            .calendar-day-cell.is-holiday .day-num { background: #E63946 !important; color: white !important; font-weight: 800; }
+            
+            /* 市場休: 青ドット */
+            .market-dot { width: 5px; height: 5px; background: #3b82f6; border-radius: 50%; margin: 2px auto 0; }
+            
+            /* 店休: セル背景を赤く */
+            .calendar-day-cell.is-off { background: #fee2e2 !important; }
+            
+            /* PC用ラベルを隠す */
+            .market-badge, .holiday-label, .off-text-pc { display: none !important; }
+        }
     </style>
 `;
 
@@ -182,6 +204,28 @@ export const calendarViewerPageHtml = `
         .box-holiday { width: 16px; height: 16px; color: #e53e3e; font-weight: 800; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: 3px; background: #fff; }
         .box-holiday::after { content: "1"; font-size: 10px; }
         .box-market { width: 16px; height: 16px; background: #3b82f6; border-radius: 3px; }
+
+        /* モバイル専用プレミアムスタイル (PC版には影響しません) */
+        @media (max-width: 1024px) {
+            .calendar-grid { gap: 0; border: none; border-radius: 12px; background: var(--border); border: 1px solid var(--border); }
+            .calendar-day-header { padding: 0.5rem; font-size: 0.75rem; border-bottom: 1px solid var(--border); }
+            .calendar-day-cell { min-height: 70px; padding: 0.3rem; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); border-radius: 0 !important; }
+            .calendar-day-cell:nth-child(7n) { border-right: none; }
+            .day-num-container { display: flex; justify-content: center; align-items: center; height: 32px; }
+            .day-num { font-size: 1rem; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: all 0.2s; }
+            
+            /* 祝日: 日付の赤丸塗り */
+            .calendar-day-cell.is-holiday .day-num { background: #E63946 !important; color: white !important; font-weight: 800; }
+            
+            /* 市場休: 青ドット */
+            .market-dot { width: 5px; height: 5px; background: #3b82f6; border-radius: 50%; margin: 2px auto 0; }
+            
+            /* 店休: セル背景を赤く */
+            .calendar-day-cell.is-off { background: #fee2e2 !important; }
+            
+            /* PC用ラベルを隠す */
+            .market-badge, .holiday-label, .off-text-pc { display: none !important; }
+        }
     </style>
 `;
 
@@ -485,10 +529,13 @@ function renderCalendarGrid(containerId, days, editable, actualYear, month) {
         
         html += `
             <div class="${classes.join(' ')}" data-day="${d.day}" ${editable ? 'onclick="window.openDayEditor('+d.day+')"' : ''}>
-                <div class="day-num">${d.day}</div>
+                <div class="day-num-container">
+                    <div class="day-num">${d.day}</div>
+                </div>
                 ${d.is_holiday ? `<span class="holiday-label">${d.label || '祝日'}</span>` : ''}
                 ${d.is_market_off ? `<span class="market-badge">市場休</span>` : ''}
-                ${d.type === 'off' && !d.is_holiday ? `<div style="font-size:0.7rem; color:#e53e3e; font-weight:700; margin-top:auto;">店休</div>` : ''}
+                ${d.is_market_off ? `<div class="market-dot mobile-only"></div>` : ''}
+                ${d.type === 'off' && !d.is_holiday ? `<div class="off-text-pc" style="font-size:0.7rem; color:#e53e3e; font-weight:700; margin-top:auto;">店休</div>` : ''}
             </div>
         `;
     });

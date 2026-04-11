@@ -504,10 +504,28 @@ p { color: var(--text-secondary); line-height: 1.5; }
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   }
   
-  .login-card {
+    .login-card {
     margin: 1rem;
     padding: 1.5rem;
   }
+
+  /* カレンダー表示時のモバイル最適化（画面端まで広げる） */
+  .page-content:has(.calendar-grid) {
+    padding: 0.5rem !important;
+  }
+  .page-content:has(.calendar-grid) .glass-panel {
+    padding: 0.8rem !important;
+    border-radius: 12px;
+  }
+}
+
+/* FAB Scroll Interaction Styles */
+.fab-container {
+    transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+}
+.fab-container.scrolling {
+    opacity: 0.35 !important;
+    pointer-events: none;
 }
 
 /* デスクトップ表示でも折りたたみボタンを常に表示 */

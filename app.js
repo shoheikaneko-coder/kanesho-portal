@@ -21,7 +21,7 @@ import { menuOrderPageHtml, initMenuOrderPage } from './menu_order.js?v=6';
 import { csvImportPageHtml, initCsvImportPage } from './csv_import.js?v=6';
 import { productAnalysisPageHtml, initProductAnalysisPage } from './product_analysis.js?v=30';
 import { notificationsPageHtml, initNotificationsPage } from './notifications.js?v=6';
-import { calendarAdminPageHtml, initCalendarAdminPage, calendarViewerPageHtml, initCalendarViewerPage } from './calendar.js?v=6';
+import { calendarAdminPageHtml, initCalendarAdminPage, calendarViewerPageHtml, initCalendarViewerPage } from './calendar.js?v=61';
 import { goalsAdminPageHtml, initGoalsAdminPage, goalsStorePageHtml, initGoalsStorePage } from './goals.js?v=6';
 import { homePageHtml, initHomePage } from './home.js?v=6';
 import { shiftSubmissionPageHtml, initShiftSubmissionPage, shiftAdminPageHtml, initShiftAdminPage, shiftViewerPageHtml, initShiftViewerPage, checkIfShiftPublished } from './shift.js?v=71';
@@ -631,6 +631,23 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch(e) { container.innerHTML = '読み込みエラー'; }
     });
     document.getElementById('close-admin-modal')?.addEventListener('click', () => adminModal.style.display = 'none');
+
+    // FABスクロール透過制御 (モバイル操作性向上)
+    const pageContentEl = document.getElementById('page-content');
+    const fabContainer = document.querySelector('.fab-container');
+    let scrollTimeout;
+
+    if (pageContentEl && fabContainer) {
+        pageContentEl.addEventListener('scroll', () => {
+            // スクロール中のみクラスを付与
+            fabContainer.classList.add('scrolling');
+            clearTimeout(scrollTimeout);
+            // 停止して200ms後にクラスを除去
+            scrollTimeout = setTimeout(() => {
+                fabContainer.classList.remove('scrolling');
+            }, 200);
+        }, { passive: true });
+    }
 });
 
 function initNotificationBadge() {
