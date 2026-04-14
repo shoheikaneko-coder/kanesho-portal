@@ -449,15 +449,8 @@ export function setupEventListeners() {
         return newEl;
     };
 
-    // 出勤ボタン（最も汚染されやすい箇所をクリーンアップ）
-    rebind('btn-checkin', handleCheckIn);
-
-    // ヘルプ出勤関連
-    rebind('btn-help-mode', openHelpModal);
-    rebind('close-help-modal', closeHelpModal);
-    rebind('btn-apply-help', applyHelpMode);
-    
-    // 背景クリックで閉じる処理
+    // 1. まず親モーダル全体をクローンして、背景クリック等の既存リスナーを完全にクリアする
+    // (これ以降、document.getElementById は新しいクローン内の要素を指すようになる)
     const helpModal = document.getElementById('help-modal');
     if (helpModal) {
         const newHelpModal = helpModal.cloneNode(true);
@@ -465,14 +458,25 @@ export function setupEventListeners() {
         newHelpModal.addEventListener('click', e => { if (e.target.id === 'help-modal') closeHelpModal(); });
     }
 
-    // パスワードモーダル
-    rebind('punch-modal-cancel', closePunchModal);
     const punchModal = document.getElementById('punch-modal');
     if (punchModal) {
         const newPunchModal = punchModal.cloneNode(true);
         punchModal.parentNode.replaceChild(newPunchModal, punchModal);
         newPunchModal.addEventListener('click', e => { if (e.target.id === 'punch-modal') closePunchModal(); });
     }
+
+    // 2. クリーンな状態のDOMに対して各種ボタンのリスナーを紐付ける
+    // 出勤ボタン
+    rebind('btn-checkin', handleCheckIn);
+
+    // ヘルプ出勤関連
+    rebind('btn-help-mode', openHelpModal);
+    rebind('close-help-modal', closeHelpModal);
+    rebind('btn-apply-help', applyHelpMode);
+    
+    // パスワードモーダル
+    rebind('punch-modal-cancel', closePunchModal);
+
 
     // 詳細モーダルの閉じるボタン
     const closeDetailBtn = document.getElementById('close-check-modal');
