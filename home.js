@@ -400,8 +400,15 @@ async function renderPersonalAssets(user) {
     if (!container || !grid) return;
 
     try {
+        const userId = user.id || user.uid || user.ID;
+        if (!userId) {
+            console.warn("renderPersonalAssets: userId is missing, skipping query.");
+            container.style.display = 'none';
+            return;
+        }
+
         const q = query(collection(db, "t_staff_loans"), 
-            where("userId", "==", user.id),
+            where("userId", "==", userId),
             where("status", "==", "loaned"));
         
         const snap = await getDocs(q);
@@ -515,6 +522,11 @@ async function renderTodayShifts(user) {
             where("date", "==", todayYmd),
             where("status", "==", "confirmed"));
         
+        if (!storeId || storeId === 'undefined') {
+            console.warn("renderTodayShifts: storeId is invalid for where query.", storeId);
+            return;
+        }
+
         const snap = await getDocs(q);
         if (snap.empty) {
             grid.innerHTML = '<div style="grid-column: 1/-1; padding: 1.5rem; background: #f8fafc; border-radius: 16px; text-align: center; color: var(--text-secondary); border: 1px dashed var(--border); font-size: 0.9rem;">本日の確定済みシフトはありません。</div>';
@@ -560,6 +572,11 @@ async function renderPerformanceSummary(user) {
     const storeId = user.StoreID || user.StoreId || "ALL";
 
     try {
+        if (!storeId || storeId === 'undefined') {
+            console.warn("renderPerformanceSummary: storeId is invalid.", storeId);
+            return;
+        }
+
         // 実績取得 (t_performance)
         const perfSnap = await getDocs(query(collection(db, "t_performance"), 
             where("store_id", "==", storeId), 
@@ -733,8 +750,15 @@ async function renderPersonalShiftsSemimonthly(user) {
     container.innerHTML = '<div style="text-align:center; padding:1rem;"><i class="fas fa-spinner fa-spin"></i> シフトを読み込み中...</div>';
 
     try {
+        const userId = user.id || user.uid || user.ID;
+        if (!userId) {
+            console.warn("renderPersonalShiftsSemimonthly: userId is missing.");
+            container.style.display = 'none';
+            return;
+        }
+
         // インデックス設定なしでも動作するように、ユーザーIDのみで取得してからアプリ側で日付フィルタリングを行う
-        const q = query(collection(db, "t_shifts"), where("userId", "==", user.id));
+        const q = query(collection(db, "t_shifts"), where("userId", "==", userId));
         const snap = await getDocs(q);
         const allMyShifts = [];
         snap.forEach(doc => allMyShifts.push(doc.data()));

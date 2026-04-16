@@ -221,6 +221,10 @@ export function initNotificationsPage() {
     // リアルタイム監視（件数更新用）
     const q = query(collection(db, "notifications"), where("status", "==", "pending"));
     unsubscribeNotifs = onSnapshot(q, (snapshot) => {
+        if (!user) {
+            console.warn("initNotificationsPage: User data is missing from listener.");
+            return;
+        }
         const notifs = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
         
         // 店舗フィルタリング (ユーザーが管理者の場合は全件、スタッフなら自店舗のみ)
@@ -317,6 +321,10 @@ async function updateAssetCheckCount() {
         
         // 貸与中の全件を取得してフィルタリング（小規模ならこれでOK）
         const q = query(collection(db, "t_staff_loans"), where("status", "==", "loaned"));
+        if (!q) {
+            console.warn("updateAssetCheckCount: query failed to initialize.");
+            return;
+        }
         const snap = await getDocs(q);
         let count = 0;
         snap.forEach(d => {

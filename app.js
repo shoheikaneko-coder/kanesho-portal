@@ -100,9 +100,31 @@ const pageParentMap = {
 };
 
 /**
+ * ユーザーオブジェクトを正規化して、IDや店舗IDの不整合を解消する
+ */
+function normalizeUser(user) {
+    if (!user) return null;
+    const normalized = {
+        ...user,
+        id: user.id || user.uid || user.ID || null,
+        StoreID: user.StoreID || user.StoreId || user.store_id || 'honten',
+        Role: user.Role || 'Staff'
+    };
+    
+    if (!normalized.id) console.warn("normalizeUser: User ID is missing for", user);
+    return normalized;
+}
+
+/**
  * ログイン成功時の処理（初期化・画面遷移）
  */
-async function loginSuccess(user) {
+async function loginSuccess(rawData) {
+    const user = normalizeUser(rawData);
+    if (!user || !user.id) {
+        console.warn("loginSuccess: Invalid user data, aborting login flow.");
+        return;
+    }
+
     state.currentUser = user;
     localStorage.setItem('currentUser', JSON.stringify(user));
 
@@ -507,14 +529,26 @@ function showPage(target) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // 1. まずログインフォームを最優先でバインドする (不具合再発防止)
     const form = document.getElementById('login-form');
-    if (form) form.onsubmit = handleLogin;
+    if (form) {
+        form.onsubmit = handleLogin;
+    } else {
+        console.warn("DOMContentLoaded: #login-form not found.");
+    }
 
+    // 2. ログイン状態の確認と自動ログイン
     const savedUser = localStorage.getItem('currentUser');
     if (savedUser) {
         try {
-            loginSuccess(JSON.parse(savedUser));
-        } catch (e) { localStorage.removeItem('currentUser'); }
+            const userData = JSON.parse(savedUser);
+            if (userData) {
+                loginSuccess(userData);
+            }
+        } catch (e) { 
+            console.error("Auto-login error:", e);
+            localStorage.removeItem('currentUser'); 
+        }
     }
 
     const btnCalendar = document.getElementById('btn-calendar-viewer');

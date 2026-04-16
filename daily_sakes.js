@@ -155,6 +155,12 @@ async function renderLineupTab(container) {
     container.innerHTML = `<div style="padding:4rem; text-align:center;"><i class="fas fa-spinner fa-spin fa-2x" style="color:var(--sake-primary);"></i></div>`;
     try {
         const storeId = window.appState?.currentUser?.StoreID || 'honten';
+        if (!storeId || storeId === 'undefined') {
+            console.warn("renderLineupTab: storeId is invalid for query.", storeId);
+            container.innerHTML = `<div style="padding:2rem;color:var(--text-secondary);">店舗情報が取得できないため表示できません。</div>`;
+            return;
+        }
+
         const q = query(
             collection(db, "daily_sake_slots"), 
             where("store_id", "==", storeId), 
@@ -650,6 +656,11 @@ async function handleMoveOrder(id, dir, btn) {
     btn.disabled = true;
     try {
         const item = window.sakeApp.dailySnapshots.find(s => s.id === id);
+        if (!item) {
+            console.warn("handleMoveOrder: item not found in state.", id);
+            btn.disabled = false;
+            return;
+        }
         const group = window.sakeApp.dailySnapshots
             .filter(s => s.taste_type === item.taste_type)
             .sort((a,b) => a.display_order - b.display_order);
@@ -678,6 +689,11 @@ async function handlePromoteToCurrent(id, type, name, btn) {
         try {
             const batch = writeBatch(db);
             const storeId = window.appState?.currentUser?.StoreID || 'honten';
+            if (!storeId || !type) {
+                console.warn("handlePromoteToCurrent: missing parameters.", { storeId, type });
+                btn.disabled = false;
+                return;
+            }
             const q = query(collection(db, "daily_sake_slots"), where("store_id","==",storeId), where("taste_type","==",type), where("is_deleted","==",false), where("is_archived","==",false), orderBy("display_order","desc"));
             const items = (await getDocs(q)).docs.map(d => ({id:d.id, ...d.data()}));
             
@@ -711,6 +727,11 @@ async function handleArchiveSlot(id, btn) {
         btn.disabled = true;
         try {
             const item = window.sakeApp.dailySnapshots.find(s => s.id === id);
+            if (!item) {
+                console.warn("handleArchiveSlot: item not found in state.", id);
+                btn.disabled = false;
+                return;
+            }
             const batch = writeBatch(db);
             
             // Re-order followers
@@ -751,6 +772,12 @@ async function handleCommitAdd(sakeId, taste) {
     document.getElementById('sake-modal-portal').innerHTML = '';
     try {
         const storeId = window.appState?.currentUser?.StoreID || 'honten';
+        if (!storeId || !id || !taste) {
+            console.warn("handleCommitAdd: missing parameters.", { storeId, id, taste });
+            btn.disabled = false;
+            return;
+        }
+
         const q = query(
             collection(db, "daily_sake_slots"), 
             where("store_id","==",storeId), 
