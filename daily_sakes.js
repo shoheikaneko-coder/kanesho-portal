@@ -829,8 +829,10 @@ async function handleCommitAdd(sakeId, taste) {
 function resizeImage(file, maxWidth) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
+        reader.onerror = () => reject(new Error("ファイルの読み込みに失敗しました"));
         reader.onload = (event) => {
             const img = new Image();
+            img.onerror = () => reject(new Error("画像の読み込みに失敗しました。ファイル形式が不正な可能性があります。"));
             img.onload = () => {
                 const canvas = document.createElement('canvas');
                 let width = img.width;
@@ -844,7 +846,7 @@ function resizeImage(file, maxWidth) {
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
                 canvas.toBlob((blob) => {
-                    if (blob) resolve(blob); else reject("Canvas to Blob failed");
+                    if (blob) resolve(blob); else reject(new Error("画像変換(Blob)に失敗しました"));
                 }, 'image/jpeg', 0.85);
             };
             img.src = event.target.result;
