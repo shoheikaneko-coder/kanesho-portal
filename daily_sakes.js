@@ -565,27 +565,15 @@ window.sakeApp.openMasterForm = async (id = null) => {
             const f = fIn.files[0];
             if (f) {
                 try {
-                    const rs = await resizeImage(f, 1200);
-                    p = `sake_master/${Date.now()}_${f.name}`;
-                    const sr = ref(storage, p);
-                    
-                    // 10秒のタイムアウトを設定してアップロードを実行（CORSエラーによる無限リトライ防止）
-                    await Promise.race([
-                        uploadBytes(sr, rs),
-                        new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 10000))
-                    ]);
-                    
-                    u = await getDownloadURL(sr);
+                    // 倉庫(Storage)ではなく、画像を圧縮してデータとして直接DBに保存する方式に変更
+                    // これによりCORS等の複雑な設定が不要になります
+                    const base64Data = await resizeImage(f, 600); 
+                    u = base64Data;
+                    p = null; // Storageは使わないためパスは不要
                 } catch (imgErr) {
-                    console.error("Image upload/resize error:", imgErr);
-                    let errMsg = "画像の保存に失敗しました。";
-                    if (imgErr.message.toLowerCase().includes('cors') || imgErr.message.toLowerCase().includes('network error')) {
-                        errMsg += "\n\n【原因】Firebase StorageのCORS設定が不足している可能性があります。管理者に連絡し、CORS設定を適用してください。";
-                    } else {
-                        errMsg += "\n" + imgErr.message;
-                    }
-                    showAlert("保存エラー", errMsg);
-                    return; // 中断
+                    console.error("Image process error:", imgErr);
+                    showAlert("画像エラー", "画像の処理に失敗しました: " + imgErr.message);
+                    return; 
                 }
             }
 
@@ -863,9 +851,11 @@ function resizeImage(file, maxWidth) {
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
-                canvas.toBlob((blob) => {
-                    if (blob) resolve(blob); else reject(new Error("画像変換(Blob)に失敗しました"));
-                }, 'image/jpeg', 0.85);
+                
+                // Base64形式の文字列（DataURL）として書き出し
+                // 画質を適度に落とす(0.7)ことでデータ量を節約しつつ美しさを維持
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                resolve(dataUrl);
             };
             img.src = event.target.result;
         };
