@@ -564,11 +564,16 @@ window.sakeApp.openMasterForm = async (id = null) => {
             let u = d.image_url, p = d.image_path;
             const f = fIn.files[0];
             if (f) {
+                console.log("Saving Sake: Starting image resize...", f.name);
                 const rs = await resizeImage(f, 1200);
+                console.log("Saving Sake: Image resize complete, size:", rs.size);
                 p = `sake_master/${Date.now()}_${f.name}`;
                 const sr = ref(storage, p);
+                console.log("Saving Sake: Starting upload to:", p);
                 await uploadBytes(sr, rs);
+                console.log("Saving Sake: Upload complete, getting URL...");
                 u = await getDownloadURL(sr);
+                console.log("Saving Sake: Got URL:", u);
             }
 
             const m = {
