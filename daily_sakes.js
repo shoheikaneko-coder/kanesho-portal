@@ -156,11 +156,10 @@ async function renderLineupTab(container) {
     try {
         const user = window.appState?.currentUser;
         const storeId = user?.StoreID || user?.StoreId ||'honten';
-        console.log("renderLineupTab: Fetching lineup for storeId:", storeId, "User:", user);
         
         if (!storeId || storeId === 'undefined') {
             console.warn("renderLineupTab: storeId is invalid for query.", storeId);
-            container.innerHTML = `<div style="padding:2rem;color:var(--text-secondary);">店舗情報が取得できないため表示できません。 (Debug: ${JSON.stringify(user)})</div>`;
+            container.innerHTML = `<div style="padding:2rem;color:var(--text-secondary);">店舗情報が取得できないため表示できません。</div>`;
             return;
         }
 
@@ -173,7 +172,6 @@ async function renderLineupTab(container) {
             orderBy("display_order")
         );
         const snap = await getDocs(q);
-        console.log("renderLineupTab: Lineup query results count:", snap.size);
         window.sakeApp.dailySnapshots = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
         const mIds = [...new Set(window.sakeApp.dailySnapshots.map(s => s.sake_id))];
@@ -324,7 +322,6 @@ async function renderMasterTab(container) {
     document.getElementById('btn-master-new').onclick = () => window.sakeApp.openMasterForm();
 
     const listArea = document.getElementById('sake-master-list-area');
-    console.log("renderMasterTab: Initializing master fetch. Current cache size:", window.sakeApp.masterSakes.length);
     if (window.sakeApp.masterSakes.length === 0) {
         try {
             const q = query(collection(db, "sake_master"), where("is_deleted", "==", false), orderBy("brand_name"));
