@@ -695,18 +695,24 @@ export async function initShiftSubmissionPage() {
                 const day = now.getDate();
                 currentSlot.deadLine = (s === 2) ? `${y}/${m}/10` : ( (y===now.getFullYear() && m===(now.getMonth()+1) && day > 25) ? `${y}/${m}/25` : `${y}/${m}/25`);
 
-                showLoader();
-                const sid = currentTargetUser.StoreID || currentTargetUser.StoreId || 'UNKNOWN';
-                await fetchCalendarData(sid);
-                const deadlineEl = document.getElementById('shift-deadline-info');
-                if (deadlineEl) deadlineEl.textContent = `提出締切: ${currentSlot.deadLine}`;
-                const deadlineMobile = document.getElementById('shift-deadline-info-mobile');
-                if (deadlineMobile) deadlineMobile.textContent = `提出締切: ${currentSlot.deadLine}`;
+                const loader = showLoader();
+                try {
+                    const sid = currentTargetUser.StoreID || currentTargetUser.StoreId || 'UNKNOWN';
+                    await fetchCalendarData(sid);
+                    const deadlineEl = document.getElementById('shift-deadline-info');
+                    if (deadlineEl) deadlineEl.textContent = `提出締切: ${currentSlot.deadLine}`;
+                    const deadlineMobile = document.getElementById('shift-deadline-info-mobile');
+                    if (deadlineMobile) deadlineMobile.textContent = `提出締切: ${currentSlot.deadLine}`;
 
-                await loadShiftMemoForStaff(sid);
-                await renderSubmissionGrid();
-                await loadShiftsBatch(null, currentTargetUser.id);
-                document.querySelector('.loader-overlay')?.remove();
+                    await loadShiftMemoForStaff(sid);
+                    await renderSubmissionGrid();
+                    await loadShiftsBatch(null, currentTargetUser.id);
+                } catch (err) {
+                    console.error("Shift period change error:", err);
+                    showAlert('エラー', 'データの読み込みに失敗しました。');
+                } finally {
+                    if (loader) loader.remove();
+                }
             };
         }
     }
@@ -867,7 +873,7 @@ export async function initShiftAdminPage() {
 
         const slotSelect = document.getElementById('admin-slot-select');
         if (slotSelect) {
-            slotSelect.onchange = (e) => {
+            slotSelect.onchange = async (e) => {
                 const [y, m, s] = e.target.value.split('-').map(Number);
                 currentSlot.year = y;
                 currentSlot.month = m;
@@ -879,7 +885,12 @@ export async function initShiftAdminPage() {
                 currentSlot.endDate = new Date(y, m - 1, s === 1 ? 15 : lastDayOfMonth);
                 
                 // 再読み込み
-                updateView(window.currentAdminStoreId);
+                const loader = showLoader();
+                try {
+                    await updateView(window.currentAdminStoreId);
+                } finally {
+                    if (loader) loader.remove();
+                }
             };
         }
     }
@@ -1229,6 +1240,10 @@ async function loadStoreStaff(sid, sname) {
 }
 
 async function loadShiftsBatch(sid, uid = null) {
+    if (!currentSlot.startDate || !currentSlot.endDate) {
+        console.warn("loadShiftsBatch: currentSlot range is missing.");
+        return;
+    }
     const range = getExtendedRange(currentSlot.startDate, currentSlot.endDate);
     const s = range.start;
     const e = range.end;
@@ -1292,6 +1307,7 @@ async function loadShiftsBatch(sid, uid = null) {
 }
 
 function getExtendedRange(start, end) {
+    if (!start || !end) return { start: "", end: "" };
     const s = new Date(start);
     s.setDate(s.getDate() - s.getDay()); 
     const e = new Date(end);
@@ -2291,7 +2307,8 @@ async function publishShifts() {
  * --- 周知・共有機能 ---
  */
 async function shareShiftToLine(sid, sName) {
-    showLoader();
+    if (!sid) return showAlert('警告', '店舗IDが取得できませんでした。');
+    const loader = showLoader();
     try {
         console.log("Preparing shift image for sharing...");
         
@@ -2373,8 +2390,7 @@ ${portalUrl}
         console.error("Sharing failed:", e);
         showAlert('エラー', `画像の生成または共有に失敗しました: ${e.message}`);
     } finally {
-        const loader = document.getElementById('ui-global-loader');
-        if (loader) loader.style.display = 'none';
+        if (loader) loader.remove();
     }
 }
 

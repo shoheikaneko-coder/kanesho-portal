@@ -204,7 +204,7 @@ async function handleLogin(e) {
 
         // 管理者フォールバック
         if (!user && email.toLowerCase() === 'admin@kaneshow.jp' && password === 'password') {
-            user = { Name: '管理者', Email: email, Role: 'Admin' };
+            user = { id: 'admin-fallback', Name: '管理者', Email: email, Role: 'Admin' };
         }
 
         if (user) {
@@ -740,8 +740,13 @@ function renderNavigationUI(target, titleEl, breadcrumbEl) {
         breadcrumbHTML += ` <i class="fas fa-chevron-right"></i> <span>${hubLabels[target] || titleEl.textContent}</span>`;
     } else if (parentHubId) {
         // サブ機能の場合は「ホーム > ハブ > 現在の機能」
+        // 子要素（プルダウン等）が含まれる場合の対策：まずspanを探し、なければ最初のテキストノードを試みる
+        const spanText = titleEl.querySelector('span')?.textContent;
+        const firstNodeText = titleEl.firstChild?.nodeType === 3 ? titleEl.firstChild.textContent : titleEl.textContent;
+        const cleanTitle = (spanText || firstNodeText || "").trim().split('\n')[0];
+        
         breadcrumbHTML += ` <i class="fas fa-chevron-right"></i> <span onclick="window.navigateTo('${parentHubId}')">${hubLabel}</span>`;
-        breadcrumbHTML += ` <i class="fas fa-chevron-right"></i> <span>${titleEl.textContent}</span>`;
+        breadcrumbHTML += ` <i class="fas fa-chevron-right"></i> <span>${cleanTitle}</span>`;
     }
     
     breadcrumbEl.innerHTML = breadcrumbHTML;
