@@ -400,10 +400,10 @@ async function renderPersonalAssets(user) {
     if (!container || !grid) return;
 
     try {
-        const userId = user.id || user.uid || user.ID;
-        if (!userId) {
-            console.warn("renderPersonalAssets: userId is missing, skipping query.");
-            container.style.display = 'none';
+        const userId = user?.id || user?.uid || user?.ID || null;
+        if (!userId || userId === 'undefined') {
+            console.warn("renderPersonalAssets: userId is invalid, skipping query.");
+            if (container) container.style.display = 'none';
             return;
         }
 
