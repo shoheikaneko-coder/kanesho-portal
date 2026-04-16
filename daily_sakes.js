@@ -661,7 +661,10 @@ async function setupSakeGlobalDelegation() {
         } else if (action === 'commit-add') {
             handleCommitAdd(id, target.dataset.taste);
         } else if (action === 'close-modal') {
-            document.getElementById('sake-modal-portal').innerHTML = '';
+            // 背景クリック（e.targetがtargetそのもの）か、ボタンのクリックであれば閉じる
+            if (e.target === target || target.tagName === 'BUTTON') {
+                document.getElementById('sake-modal-portal').innerHTML = '';
+            }
         }
     };
 }
@@ -766,7 +769,7 @@ function handleOpenAddModal(sakeId) {
     const portal = document.getElementById('sake-modal-portal');
     portal.innerHTML = `
         <div class="sake-modal-overlay" data-action="close-modal">
-            <div class="glass-panel" style="max-width:380px; width:100%; padding:2.5rem; text-align:center; background:white; border-radius:30px; box-shadow:0 30px 60px rgba(0,0,0,0.2);" onclick="event.stopPropagation()">
+            <div class="glass-panel" style="max-width:380px; width:100%; padding:2.5rem; text-align:center; background:white; border-radius:30px; box-shadow:0 30px 60px rgba(0,0,0,0.2);">
                 <div style="font-size:2.5rem; color:var(--sake-primary); margin-bottom:1rem;"><i class="fas fa-plus-circle"></i></div>
                 <h3 style="margin-bottom:0.5rem; font-weight:900;">追加先を選択</h3>
                 <p style="font-size:0.85rem; color:var(--sake-text-sub); margin-bottom:2rem;">どの味わい系統の順番待ちに追加しますか？</p>
