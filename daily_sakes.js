@@ -564,16 +564,23 @@ window.sakeApp.openMasterForm = async (id = null) => {
             let u = d.image_url, p = d.image_path;
             const f = fIn.files[0];
             if (f) {
-                console.log("Saving Sake: Starting image resize...", f.name);
-                const rs = await resizeImage(f, 1200);
-                console.log("Saving Sake: Image resize complete, size:", rs.size);
-                p = `sake_master/${Date.now()}_${f.name}`;
-                const sr = ref(storage, p);
-                console.log("Saving Sake: Starting upload to:", p);
-                await uploadBytes(sr, rs);
-                console.log("Saving Sake: Upload complete, getting URL...");
-                u = await getDownloadURL(sr);
-                console.log("Saving Sake: Got URL:", u);
+                try {
+                    const rs = await resizeImage(f, 1200);
+                    p = `sake_master/${Date.now()}_${f.name}`;
+                    const sr = ref(storage, p);
+                    await uploadBytes(sr, rs);
+                    u = await getDownloadURL(sr);
+                } catch (imgErr) {
+                    console.error("Image upload/resize error:", imgErr);
+                    let errMsg = "画像の保存に失敗しました。";
+                    if (imgErr.message.toLowerCase().includes('cors') || imgErr.message.toLowerCase().includes('network error')) {
+                        errMsg += "\n\n【原因】Firebase StorageのCORS設定が不足している可能性があります。管理者に連絡し、CORS設定を適用してください。";
+                    } else {
+                        errMsg += "\n" + imgErr.message;
+                    }
+                    showAlert("保存エラー", errMsg);
+                    return; // 中断
+                }
             }
 
             const m = {
