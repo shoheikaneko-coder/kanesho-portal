@@ -568,7 +568,13 @@ window.sakeApp.openMasterForm = async (id = null) => {
                     const rs = await resizeImage(f, 1200);
                     p = `sake_master/${Date.now()}_${f.name}`;
                     const sr = ref(storage, p);
-                    await uploadBytes(sr, rs);
+                    
+                    // 10秒のタイムアウトを設定してアップロードを実行（CORSエラーによる無限リトライ防止）
+                    await Promise.race([
+                        uploadBytes(sr, rs),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 10000))
+                    ]);
+                    
                     u = await getDownloadURL(sr);
                 } catch (imgErr) {
                     console.error("Image upload/resize error:", imgErr);
