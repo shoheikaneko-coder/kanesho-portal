@@ -18,6 +18,7 @@ import { csvExportPageHtml, initCsvExportPage } from './csv_export.js?v=6';
 import { salesCorrectionPageHtml, initSalesCorrectionPage } from './sales_correction.js?v=6';
 import { rolePermissionsPageHtml, initRolePermissionsPage } from './role_permissions.js?v=6';
 import { menuOrderPageHtml, initMenuOrderPage } from './menu_order.js?v=6';
+import { dailySakesPageHtml, initDailySakesPage } from './daily_sakes.js';
 import { csvImportPageHtml, initCsvImportPage } from './csv_import.js?v=6';
 import { productAnalysisPageHtml, initProductAnalysisPage } from './product_analysis.js?v=30';
 import { notificationsPageHtml, initNotificationsPage } from './notifications.js?v=6';
@@ -49,6 +50,7 @@ const defaultMenuItems = [
     { id: 'shift_submission', name: 'シフト提出・確認', icon: 'fa-calendar-alt', category: 'サブ機能' },
     { id: 'shift_admin', name: 'シフト作成・調整', icon: 'fa-user-edit', category: 'サブ機能' },
     { id: 'recipe_viewer', name: 'レシピ閲覧', icon: 'fa-book-open', category: 'サブ機能' },
+    { id: 'daily_sakes', name: '日本酒管理', icon: 'fa-wine-glass-alt', category: 'サブ機能' },
     { id: 'attendance_check', name: '勤怠照会', icon: 'fa-clipboard-check', category: 'サブ機能', hidden: true },
     { id: 'invite_navi', name: '従業員への招待案内', icon: 'fa-paper-plane', category: 'サブ機能' },
     { id: 'users', name: '従業員管理', icon: 'fa-users-cog', category: 'サブ機能', hidden: true }
@@ -76,6 +78,7 @@ const pageParentMap = {
     'recipe_viewer': 'ops_hub',
     'menu_order': 'ops_hub',
     'calendar_viewer': 'ops_hub',
+    'daily_sakes': 'ops_hub',
     'attendance_check': 'hr_hub',
     'shift_submission': 'hr_hub',
     'users': 'hr_hub',
@@ -212,7 +215,7 @@ async function renderSidebar(user) {
     if (role === 'Admin' || role === '管理者') {
         allowed = defaultMenuItems.map(m => m.id);
         // 全般的な権限を付与
-        const adminPerms = ['sales','attendance','inventory','procurement','product_analysis','home_performance','shift_admin','shift_submission','attendance_check','users','invite_navi','loans','role_permissions','stores','products','suppliers','sales_correction','csv_export','csv_import','calendar_admin','goals_admin','goals_store','line_share'];
+        const adminPerms = ['sales','attendance','inventory','procurement','product_analysis','home_performance','shift_admin','shift_submission','attendance_check','users','invite_navi','loans','role_permissions','stores','products','suppliers','sales_correction','csv_export','csv_import','calendar_admin','goals_admin','goals_store','line_share','daily_sakes'];
         adminPerms.forEach(id => { if (!allowed.includes(id)) allowed.push(id); });
     } else {
         try {
@@ -486,6 +489,11 @@ function showPage(target) {
                 pageTitle.textContent = '従業員への招待案内';
                 pageContent.innerHTML = inviteNaviPageHtml;
                 initInviteNaviPage();
+                break;
+            case 'daily_sakes':
+                pageTitle.textContent = '日本酒管理';
+                pageContent.innerHTML = dailySakesPageHtml;
+                initDailySakesPage();
                 break;
         }
 

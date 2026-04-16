@@ -106,7 +106,8 @@ const menuItems = [
     { id: 'fab_inventory', name: '[クイック操作] 棚卸・在庫登録', icon: 'fa-warehouse' },
     // 目標管理
     { id: 'goals_admin', name: '目標設定 (社長用)', icon: 'fa-bullseye' },
-    { id: 'goals_store', name: '月次計画 (店長用)', icon: 'fa-tasks' }
+    { id: 'goals_store', name: '月次計画 (店長用)', icon: 'fa-tasks' },
+    { id: 'daily_sakes', name: '日本酒管理', icon: 'fa-wine-glass-alt' }
 ];
 
 let selectedRole = 'Admin';
