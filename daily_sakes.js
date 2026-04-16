@@ -154,22 +154,26 @@ async function renderSakeAppTab() {
 async function renderLineupTab(container) {
     container.innerHTML = `<div style="padding:4rem; text-align:center;"><i class="fas fa-spinner fa-spin fa-2x" style="color:var(--sake-primary);"></i></div>`;
     try {
-        const storeId = window.appState?.currentUser?.StoreID || 'honten';
+        const user = window.appState?.currentUser;
+        const storeId = user?.StoreID || user?.StoreId ||'honten';
+        console.log("renderLineupTab: Fetching lineup for storeId:", storeId, "User:", user);
+        
         if (!storeId || storeId === 'undefined') {
             console.warn("renderLineupTab: storeId is invalid for query.", storeId);
-            container.innerHTML = `<div style="padding:2rem;color:var(--text-secondary);">店舗情報が取得できないため表示できません。</div>`;
+            container.innerHTML = `<div style="padding:2rem;color:var(--text-secondary);">店舗情報が取得できないため表示できません。 (Debug: ${JSON.stringify(user)})</div>`;
             return;
         }
 
         const q = query(
             collection(db, "daily_sake_slots"), 
-            where("store_id", "==", storeId), 
+            where("store_id", "==", String(storeId)), 
             where("is_deleted", "==", false), 
             where("is_archived", "==", false), 
             orderBy("taste_type"), 
             orderBy("display_order")
         );
         const snap = await getDocs(q);
+        console.log("renderLineupTab: Lineup query results count:", snap.size);
         window.sakeApp.dailySnapshots = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
         const mIds = [...new Set(window.sakeApp.dailySnapshots.map(s => s.sake_id))];
@@ -196,8 +200,11 @@ async function renderLineupTab(container) {
             ${renderTasteSection('fruity', 'フルーティ (Fruity)', groups.fruity)}
         `;
     } catch (e) {
+        console.error("Lineup fetch error:", e);
         container.innerHTML = `<div style="padding:2rem; background:#fee2e2; color:#b91c1c; border-radius:12px; margin-top:1rem;">
-            <strong>読み込みエラー:</strong><br><small>${e.message}</small>
+            <strong>読み込みエラー:</strong><br>
+            <small style="display:block; margin-top:0.5rem; word-break:break-all;">${e.message}</small>
+            ${e.message.indexOf('index') > -1 ? '<p style="margin-top:0.8rem; font-size:0.8rem; font-weight:700;">※Firestoreのインデックス作成が必要です。</p>' : ''}
         </div>`;
     }
 }
@@ -314,17 +321,27 @@ async function renderMasterTab(container) {
         </div>
     `;
 
-    document.getElementById('sake-master-search').oninput = (e) => {
-        window.sakeApp.masterSearchQuery = e.target.value;
-        renderMasterListArea();
-    };
-    
     document.getElementById('btn-master-new').onclick = () => window.sakeApp.openMasterForm();
 
+    const listArea = document.getElementById('sake-master-list-area');
+    console.log("renderMasterTab: Initializing master fetch. Current cache size:", window.sakeApp.masterSakes.length);
     if (window.sakeApp.masterSakes.length === 0) {
-        const q = query(collection(db, "sake_master"), where("is_deleted", "==", false), orderBy("brand_name"));
-        const snap = await getDocs(q);
-        window.sakeApp.masterSakes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        try {
+            const q = query(collection(db, "sake_master"), where("is_deleted", "==", false), orderBy("brand_name"));
+            const snap = await getDocs(q);
+            window.sakeApp.masterSakes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch (e) {
+            console.error("Master fetch error:", e);
+            if (listArea) {
+                listArea.innerHTML = `
+                    <div style="padding:2rem; background:#fee2e2; color:#b91c1c; border-radius:12px; margin-top:1rem; text-align:left;">
+                        <strong>銘柄マスタの取得に失敗しました:</strong><br>
+                        <small style="display:block; margin-top:0.5rem; word-break:break-all;">${e.message}</small>
+                        ${e.message.indexOf('index') > -1 ? '<p style="margin-top:0.8rem; font-size:0.8rem; border-top:1px solid #fecaca; padding-top:0.8rem;">※コンソールに表示されているURLからインデックスを作成してください。</p>' : ''}
+                    </div>`;
+            }
+            return; // 描画処理を中断
+        }
     }
     renderMasterListArea();
 }
@@ -772,9 +789,8 @@ async function handleCommitAdd(sakeId, taste) {
     document.getElementById('sake-modal-portal').innerHTML = '';
     try {
         const storeId = window.appState?.currentUser?.StoreID || 'honten';
-        if (!storeId || !id || !taste) {
-            console.warn("handleCommitAdd: missing parameters.", { storeId, id, taste });
-            btn.disabled = false;
+        if (!storeId || !sakeId || !taste) {
+            console.warn("handleCommitAdd: missing parameters.", { storeId, sakeId, taste });
             return;
         }
 
