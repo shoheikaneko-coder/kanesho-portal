@@ -165,7 +165,7 @@ export const attendanceManagementPageHtml = `
             <div style="margin-top: 1.5rem; padding: 1rem; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px;">
                 <h2 style="margin: 0; display: flex; align-items: center; gap: 0.8rem;">
                     <i class="fas fa-user-clock" style="color: var(--primary);"></i>
-                    勤怠管理 <span style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 400; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; margin-left: 0.5rem;">v1.2</span>
+                    勤怠管理 <span style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 400; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; margin-left: 0.5rem;">v1.3</span>
                 </h2>
                 <p style="margin: 0; font-size: 0.8rem; color: #92400e; line-height: 1.5;">
                     <i class="fas fa-info-circle"></i> <b>ご注意:</b><br>
@@ -515,34 +515,31 @@ async function saveAttendanceEdits() {
     const loginUser = JSON.parse(localStorage.getItem('currentUser'))?.Name || 'Admin';
 
     try {
-        const sorted = [...currentEditPunches].sort((a,b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
-        let lastInTs = null;
-        let breakMs = 0;
-        let bStartTs = null;
+        // 出退勤ペアから合計時間を算出 (v1.3: 全レコード適用)
+        let totalDailyHours = 0;
+        let tempInTs = null;
+        let tempBreakMs = 0;
+        let tempBStartTs = null;
 
         sorted.forEach(p => {
             const ts = p.timestamp ? new Date(p.timestamp) : null;
             if (!ts || isNaN(ts.getTime())) return;
-
             if (p.type === 'check_in') {
-                lastInTs = ts;
-                breakMs = 0;
-                bStartTs = null;
+                tempInTs = ts; tempBreakMs = 0; tempBStartTs = null;
             } else if (p.type === 'break_start') {
-                bStartTs = ts;
-            } else if (p.type === 'break_end' && bStartTs) {
-                breakMs += (ts - bStartTs);
-                bStartTs = null;
-            } else if (p.type === 'check_out' && lastInTs) {
-                const grossMs = ts - lastInTs;
-                const netMs = Math.max(0, grossMs - breakMs);
-                p.total_labor_hours = netMs / 3600000;
-                lastInTs = null;
-                breakMs = 0;
-                bStartTs = null;
-            } else {
-                p.total_labor_hours = 0;
+                tempBStartTs = ts;
+            } else if (p.type === 'break_end' && tempBStartTs) {
+                tempBreakMs += (ts - tempBStartTs);
+                tempBStartTs = null;
+            } else if (p.type === 'check_out' && tempInTs) {
+                totalDailyHours += Math.max(0, (ts - tempInTs - tempBreakMs) / 3600000);
+                tempInTs = null;
             }
+        });
+
+        // 全レコードに合計時間をセット (Dashboardの集計漏れ防止)
+        sorted.forEach(p => {
+            p.total_labor_hours = totalDailyHours;
         });
 
         const nextDay = getNextDateStr(currentTargetDate);
@@ -572,8 +569,10 @@ async function saveAttendanceEdits() {
                 timestamp: finalTs,
                 // Dashboard集計に必須のキー項目を100%の精度でセット
                 store_id: String(p.store_id || "").trim(), 
+                StoreID: String(p.store_id || "").trim(), // 大文字の項目名も追加 (Dashboard互換性)
                 labor_store_id: String(p.labor_store_id || p.store_id || "").trim(), 
                 staff_id: String(p.staff_id || "").trim(),
+                total_labor_hours: p.total_labor_hours || 0,
                 year_month: p.date.substring(0, 7),
                 modifiedBy: loginUser,
                 modifiedAt: serverTimestamp()
