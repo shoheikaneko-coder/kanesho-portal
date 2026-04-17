@@ -467,16 +467,19 @@ async function saveAttendanceEdits() {
     const loginUser = JSON.parse(localStorage.getItem('currentUser'))?.Name || 'Admin';
 
     try {
-        // 既存データの削除（現在のDBにある該当スタッフ・日付範囲のものを一度クリア）
+        // インデックスエラー回避のため、日付範囲のみで取得し、JS側でスタッフIDをフィルタリングして削除対象を特定
         const nextDay = getNextDateStr(currentTargetDate);
         const q = query(collection(db, 't_attendance'), 
-            where('staff_id', '==', currentStaff.id),
             where('date', '>=', currentTargetDate),
             where('date', '<=', nextDay));
         const snap = await getDocs(q);
         
         const batch = writeBatch(db);
-        snap.forEach(d => batch.delete(d.ref));
+        snap.forEach(d => {
+            if (d.data().staff_id === currentStaff.id) {
+                batch.delete(d.ref);
+            }
+        });
 
         // 新しいデータの書き込み
         currentEditPunches.forEach(p => {
