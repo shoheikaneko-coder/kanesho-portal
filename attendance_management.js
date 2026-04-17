@@ -251,9 +251,11 @@ async function loadStoreList() {
             const isMonthly = sel.id === 'attn-mon-store-filter';
             sel.innerHTML = isMonthly ? '<option value="">全店舗</option>' : '';
             cachedStores.forEach(s => {
+                const sid = s.store_id || s.StoreID || s.id;
+                const snm = s.store_name || s.StoreName || s.Store || '名称未設定';
                 const opt = document.createElement('option');
-                opt.value = s.store_name;
-                opt.textContent = s.store_name;
+                opt.value = sid;
+                opt.textContent = snm;
                 sel.appendChild(opt);
             });
         });
@@ -271,14 +273,23 @@ async function loadDailyData() {
     body.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:3rem;">読み込み中...</td></tr>';
 
     try {
-        // 店舗設定取得（日替わり時刻）
-        const storeInfo = cachedStores.find(s => s.store_name === storeName);
+        // 店舗取得（正規化されたID/名前で検索）
+        const selectedSid = document.getElementById('attn-day-store-filter').value;
+        const storeInfo = cachedStores.find(s => (s.store_id || s.id) === selectedSid);
+        const storeNameForUserSearch = storeInfo?.store_name || storeInfo?.Store || "";
         const dayChangeTime = storeInfo?.day_change_time || 5;
 
-        // 対象日のスタッフ取得
-        const userSnap = await getDocs(query(collection(db, 'm_users'), where('Store', '==', storeName)));
+        // 対象日のスタッフ取得（Storeフィールドで検索）
+        const userSnap = await getDocs(query(collection(db, 'm_users'), where('Store', '==', storeNameForUserSearch)));
         const staffList = [];
-        userSnap.forEach(d => staffList.push({ id: d.id, ...d.data() }));
+        userSnap.forEach(d => {
+            const data = d.data();
+            staffList.push({ 
+                id: data.EmployeeCode || data.staff_id || d.id, 
+                name: data.Name,
+                data: data 
+            });
+        });
 
         // 打刻データ取得（対象日 00:00 〜 翌日 05:00 などの範囲をカバー）
         const nextDay = getNextDateStr(date);
@@ -301,8 +312,11 @@ async function loadDailyData() {
 
         // 描画
         body.innerHTML = '';
-        staffList.sort((a,b) => (a.EmployeeCode || '').localeCompare(b.EmployeeCode || '')).forEach(s => {
-            const myPunches = businessDayPunches.filter(p => p.staff_id === (s.EmployeeCode || s.id));
+        staffList.sort((a,b) => (a.id || '').localeCompare(b.id || '')).forEach(s => {
+            const myPunches = businessDayPunches.filter(p => {
+                const pid = p.staff_id || p.staff_code || p.EmployeeCode || "";
+                return String(pid) === String(s.id);
+            });
             myPunches.sort((a,b) => a.timestamp.localeCompare(b.timestamp));
 
             const checkIn = myPunches.find(p => p.type === 'check_in');
@@ -371,8 +385,15 @@ async function openStaffEdit(staffId, staffName, date) {
         currentEditPunches = [];
         snap.forEach(d => {
             const data = d.data();
-            if (data.staff_id === staffId) {
-                currentEditPunches.push({ docId: d.id, ...data });
+            const pid = data.staff_id || data.staff_code || data.EmployeeCode || "";
+            if (String(pid) === String(staffId)) {
+                // 正規化した状態で保持
+                currentEditPunches.push({ 
+                    docId: d.id, 
+                    ...data,
+                    staff_id: pid,
+                    store_id: data.store_id || data.StoreID || ""
+                });
             }
         });
         currentEditPunches.sort((a,b) => a.timestamp.localeCompare(b.timestamp));
@@ -438,21 +459,21 @@ window.updateLocalPunch = (idx, field, val) => {
     } else {
         currentEditPunches[idx][field] = val;
         if (field === 'store_id') {
-            const s = cachedStores.find(st => st.store_id === val);
-            currentEditPunches[idx].store_name = s ? s.store_name : '';
+            const s = cachedStores.find(st => (st.store_id || st.id) === val);
+            currentEditPunches[idx].store_name = s ? (s.store_name || s.Store) : '';
         }
     }
 };
 
 function addPunchRow() {
-    const storeId = document.getElementById('attn-day-store-filter').value;
-    const store = cachedStores.find(s => s.store_id === storeId) || cachedStores[0];
+    const selectedSid = document.getElementById('attn-day-store-filter').value;
+    const store = cachedStores.find(s => (s.store_id || s.id) === selectedSid) || cachedStores[0];
     currentEditPunches.push({
         type: 'check_in',
         date: currentTargetDate,
         timestamp: `${currentTargetDate}T12:00:00`,
-        store_id: store.store_id,
-        store_name: store.store_name,
+        store_id: store.store_id || store.id,
+        store_name: store.store_name || store.Store,
         staff_id: currentStaff.id,
         staff_name: currentStaff.name
     });
@@ -529,6 +550,8 @@ async function saveAttendanceEdits() {
             const data = {
                 ...p,
                 timestamp: finalTs,
+                store_id: p.store_id || "", 
+                staff_id: p.staff_id || "",
                 year_month: p.date.substring(0, 7),
                 modifiedBy: loginUser,
                 modifiedAt: serverTimestamp()
