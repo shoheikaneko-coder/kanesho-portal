@@ -361,18 +361,20 @@ async function openStaffEdit(staffId, staffName, date) {
     switchView('edit');
 
     try {
-        // 当日+翌日の範囲で該当スタッフの全打刻を取得
+        // インデックスエラー回避のため、日付範囲のみで取得し、JS側でスタッフIDをフィルタリング
         const nextDay = getNextDateStr(date);
         const q = query(collection(db, 't_attendance'), 
-            where('staff_id', '==', staffId),
             where('date', '>=', date),
             where('date', '<=', nextDay));
         const snap = await getDocs(q);
         
-        // 業務日（day_change_time）に基づいて再度フィルタリング
-        // ここでは一旦全部取得して、ユーザーに編集させる
         currentEditPunches = [];
-        snap.forEach(d => currentEditPunches.push({ docId: d.id, ...d.data() }));
+        snap.forEach(d => {
+            const data = d.data();
+            if (data.staff_id === staffId) {
+                currentEditPunches.push({ docId: d.id, ...data });
+            }
+        });
         currentEditPunches.sort((a,b) => a.timestamp.localeCompare(b.timestamp));
 
         renderEditTable();
