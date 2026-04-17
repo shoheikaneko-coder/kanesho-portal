@@ -307,16 +307,27 @@ export function initNotificationsPage() {
 async function loadDetails(type) {
     const listBody = document.getElementById('notif-list-body');
     if (listBody && window.__currentVisibleNotifs) {
-        renderNotifDetails(window.__currentVisibleNotifs.filter(n => n.type === type));
+        const user = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        const myId = user.id;
+
+        let items = window.__currentVisibleNotifs.filter(n => n.type === type);
+        
+        // シフト通知のみ、既読のものをリストから除外
+        if (type === 'shift_published') {
+            items = items.filter(n => !(n.readBy || []).includes(myId));
+        }
+
+        renderNotifDetails(items, type);
     }
 }
 
-function renderNotifDetails(items) {
+function renderNotifDetails(items, type) {
     const listBody = document.getElementById('notif-list-body');
     if (!listBody) return;
 
     if (items.length === 0) {
-        listBody.innerHTML = '<div style="padding: 3rem; text-align: center; color: #94a3b8;">未登録のレシピはありません</div>';
+        const msg = (type === 'shift_published') ? '新しいシフト通知はありません' : '未登録のレシピはありません';
+        listBody.innerHTML = `<div style="padding: 3rem; text-align: center; color: #94a3b8;">${msg}</div>`;
         return;
     }
 
