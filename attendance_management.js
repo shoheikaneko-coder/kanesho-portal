@@ -165,7 +165,7 @@ export const attendanceManagementPageHtml = `
             <div style="margin-top: 1.5rem; padding: 1rem; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px;">
                 <h2 style="margin: 0; display: flex; align-items: center; gap: 0.8rem;">
                     <i class="fas fa-user-clock" style="color: var(--primary);"></i>
-                    勤怠管理 <span style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 400; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; margin-left: 0.5rem;">v1.2</span>
+                    勤怠管理 <span style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 400; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; margin-left: 0.5rem;">v1.4</span>
                 </h2>
                 <p style="margin: 0; font-size: 0.8rem; color: #92400e; line-height: 1.5;">
                     <i class="fas fa-info-circle"></i> <b>ご注意:</b><br>
@@ -450,7 +450,7 @@ function renderEditTable() {
                 <input type="time" class="attn-row-input time-input" value="${timeVal}" onchange="window.updateLocalPunch(${idx}, 'time', this.value)">
             </td>
             <td>
-                <select style="width:100%;" onchange="window.updateLocalPunch(${idx}, 'store_id', this.value)">
+                <select class="attn-row-input store-select" style="width:100%;" onchange="window.updateLocalPunch(${idx}, 'store_id', this.value)">
                     ${cachedStores.map(s => `<option value="${s.store_id}" ${(s.store_id === p.store_id || s.id === p.store_id) ? 'selected' : ''}>${s.store_name}</option>`).join('')}
                 </select>
             </td>
