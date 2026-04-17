@@ -284,9 +284,13 @@ async function loadDailyData() {
         const staffList = [];
         userSnap.forEach(d => {
             const data = d.data();
+            // あらゆるフィールド名のパターンを許容する「スマート・ゲッター」
+            const sId = data.EmployeeCode || data.staff_id || data.staff_code || data.UserId || d.id;
+            const sName = data.Name || data.name || data.staff_name || data.DisplayName || '名前未設定';
+            
             staffList.push({ 
-                id: data.EmployeeCode || data.staff_id || d.id, 
-                name: data.Name,
+                id: String(sId), 
+                name: sName,
                 data: data 
             });
         });
@@ -385,13 +389,15 @@ async function openStaffEdit(staffId, staffName, date) {
         currentEditPunches = [];
         snap.forEach(d => {
             const data = d.data();
-            const pid = data.staff_id || data.staff_code || data.EmployeeCode || "";
+            // 元データのIDを正確に判定
+            const pid = data.staff_id || data.staff_code || data.EmployeeCode || data.UserId || "";
             if (String(pid) === String(staffId)) {
                 // 正規化した状態で保持
                 currentEditPunches.push({ 
                     docId: d.id, 
                     ...data,
                     staff_id: pid,
+                    // 店舗IDも正規化 (Dashboardとの紐付け用)
                     store_id: data.store_id || data.StoreID || ""
                 });
             }
@@ -550,8 +556,9 @@ async function saveAttendanceEdits() {
             const data = {
                 ...p,
                 timestamp: finalTs,
-                store_id: p.store_id || "", 
-                staff_id: p.staff_id || "",
+                // Dashboard (t_performance) が期待する形式に完全に固定
+                store_id: String(p.store_id || ""), 
+                staff_id: String(p.staff_id || ""),
                 year_month: p.date.substring(0, 7),
                 modifiedBy: loginUser,
                 modifiedAt: serverTimestamp()
