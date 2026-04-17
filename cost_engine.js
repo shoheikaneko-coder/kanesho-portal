@@ -21,9 +21,9 @@ export function getEffectivePrice(itemId, cache, visiting = new Set()) {
     }
     visiting.add(itemId);
 
-    // 1. 自家製(sub_recipe)の場合：最新のレシピ構成から再帰計算を行う（最優先）
+    // 1. レシピ(sub_recipe または 販売メニュー)の場合：最新のレシピ構成から再帰計算を行う（最優先）
     const menu = cache.menus.find(m => m.item_id === itemId);
-    if (menu && menu.is_sub_recipe && menu.recipe && menu.recipe.length > 0) {
+    if (menu && menu.recipe && menu.recipe.length > 0) {
         let totalCost = 0;
         menu.recipe.forEach(ri => {
             const rowPrice = getEffectivePrice(ri.ingredient_id, cache, visiting);
