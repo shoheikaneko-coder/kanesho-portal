@@ -972,7 +972,11 @@ function setupFormLogic() {
     const hardenedForm = newForm;
     console.log("Form cloned and replaced.");
 
-    const itemMenu = editingItemData ? cachedMenus.find(m => m.item_id === editingItemData.id) : null;
+    // メニューレコードを特定（ダイニー由来のレコードを優先するため、variants または dinii_id があるものを優先的に探す）
+    const itemMenu = editingItemData ? 
+        (cachedMenus.find(m => m.item_id === editingItemData.id && (m.variants || m.dinii_id)) || 
+         cachedMenus.find(m => m.item_id === editingItemData.id)) 
+        : null;
     const effectiveType = itemMenu?.is_sub_recipe ? 'sub_recipes' : currentTab;
 
     if (effectiveType === 'menus' || effectiveType === 'sub_recipes') {
@@ -1054,12 +1058,31 @@ function setupFormLogic() {
             const effectiveType = itemMenu?.is_sub_recipe ? 'sub_recipes' : currentTab;
 
             if (effectiveType === 'menus') {
-                await setDoc(doc(db, "m_menus", itemId), {
+                // ダイニー連携メニューの保存ロジック
+                // item_id が一致する既存のメニューレコード（店舗ID_ダイニーIDがドキュメントIDになっているもの）を特定
+                const existingMenu = cachedMenus.find(m => m.item_id === itemId);
+                const targetDocId = existingMenu ? existingMenu.id : itemId;
+
+                const updateData = {
                     item_id: itemId, 
                     recipe: currentRecipe,
                     is_sub_recipe: false, 
                     updated_at: new Date().toISOString()
-                }, { merge: true });
+                };
+
+                // ダイニーの構造（variants配列）にレシピを同期
+                if (existingMenu && existingMenu.variants) {
+                    const updatedVariants = [...existingMenu.variants];
+                    // プライマリ（choice_idが空）のバリエーションにレシピを保存
+                    const pIdx = updatedVariants.findIndex(v => v.choice_id === "");
+                    if (pIdx > -1) {
+                        updatedVariants[pIdx].recipe = currentRecipe;
+                        updatedVariants[pIdx].recipe_status = currentRecipe.length > 0 ? "completed" : "pending";
+                    }
+                    updateData.variants = updatedVariants;
+                }
+
+                await setDoc(doc(db, "m_menus", targetDocId), updateData, { merge: true });
             } else if (effectiveType === 'sub_recipes') {
                 const yieldAmount = Number(document.getElementById('recipe-yield-amount')?.value || 0) || 0;
                 const instructions = document.getElementById('recipe-instructions')?.value || "";
