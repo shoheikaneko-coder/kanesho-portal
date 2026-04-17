@@ -29,6 +29,7 @@ import { shiftSubmissionPageHtml, initShiftSubmissionPage, shiftAdminPageHtml, i
 import { loansPageHtml, initLoansPage } from './loans.js?v=116';
 import { hubPageHtml, initHubPage } from './hubs.js?v=116';
 import { inviteNaviPageHtml, initInviteNaviPage } from './invite_navi.js';
+import { attendanceManagementPageHtml, initAttendanceManagementPage } from './attendance_management.js';
 
 console.log("AntiGravity Portal: app.js loaded successfully.");
 
@@ -51,6 +52,7 @@ const defaultMenuItems = [
     { id: 'shift_admin', name: 'シフト作成・調整', icon: 'fa-user-edit', category: 'サブ機能' },
     { id: 'recipe_viewer', name: 'レシピ閲覧', icon: 'fa-book-open', category: 'サブ機能' },
     { id: 'daily_sakes', name: '日本酒管理', icon: 'fa-wine-glass-alt', category: 'サブ機能' },
+    { id: 'attendance_management', name: '勤怠管理', icon: 'fa-user-clock', category: 'サブ機能' },
     { id: 'attendance_check', name: '勤怠照会', icon: 'fa-clipboard-check', category: 'サブ機能', hidden: true },
     { id: 'invite_navi', name: '従業員への招待案内', icon: 'fa-paper-plane', category: 'サブ機能' },
     { id: 'users', name: '従業員管理', icon: 'fa-users-cog', category: 'サブ機能', hidden: true }
@@ -79,6 +81,7 @@ const pageParentMap = {
     'menu_order': 'ops_hub',
     'calendar_viewer': 'ops_hub',
     'daily_sakes': 'ops_hub',
+    'attendance_management': 'hr_hub',
     'attendance_check': 'hr_hub',
     'shift_submission': 'hr_hub',
     'users': 'hr_hub',
@@ -516,6 +519,11 @@ function showPage(target) {
                 pageTitle.textContent = '日本酒管理';
                 pageContent.innerHTML = dailySakesPageHtml;
                 initDailySakesPage();
+                break;
+            case 'attendance_management':
+                pageTitle.textContent = '勤怠管理';
+                pageContent.innerHTML = attendanceManagementPageHtml;
+                initAttendanceManagementPage();
                 break;
         }
 
