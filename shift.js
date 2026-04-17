@@ -828,7 +828,27 @@ export async function initShiftAdminPage() {
     const user = JSON.parse(localStorage.getItem('currentUser'));
     if (!user) return;
     currentTargetUser = user;
-    calculateSlot();
+    
+    // --- 【追加】ディープリンク（通知等）からのパラメータ制御 ---
+    if (window.__shiftNavTarget) {
+        const target = window.__shiftNavTarget;
+        if (target.year && target.month && target.slot) {
+            currentSlot.year = target.year;
+            currentSlot.month = target.month;
+            currentSlot.slot = target.slot;
+            
+            const lastDayOfMonth = new Date(target.year, target.month, 0).getDate();
+            currentSlot.startDate = new Date(target.year, target.month - 1, target.slot === 1 ? 1 : 16);
+            currentSlot.endDate = new Date(target.year, target.month - 1, target.slot === 1 ? 15 : lastDayOfMonth);
+        }
+        if (target.storeId) {
+            window.currentAdminStoreId = target.storeId;
+        }
+        // 消費したパラメータをクリア
+        window.__shiftNavTarget = null;
+    } else {
+        calculateSlot();
+    }
 
     // --- [最優先] 固定シフト関連ボタンのバインド ---
     // データの読み込み待ち(await)によるボタンの不感化を防ぐため、最初に行います。
@@ -2264,6 +2284,9 @@ async function publishShifts() {
                     status: 'pending',
                     store_id: sid,
                     store_name: sName,
+                    year: currentSlot.year,
+                    month: currentSlot.month,
+                    slot: currentSlot.slot,
                     title: 'シフトが公開されました',
                     message: `${sName} の ${ymText} シフトが確定・公開されました。`,
                     created_at: new Date().toISOString(),

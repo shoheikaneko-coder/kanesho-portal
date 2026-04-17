@@ -347,7 +347,7 @@ function renderNotifDetails(items) {
                 </div>
                 <div style="display: flex; gap: 0.5rem;">
                     ${isShift ? `
-                        <button class="btn btn-register-notif" style="background:var(--secondary);" onclick="window.navigateTo('shift')">
+                        <button class="btn btn-register-notif" style="background:var(--secondary);" onclick="viewShiftDetail('${item.store_id}', '${item.year || ''}', '${item.month || ''}', '${item.slot || ''}', '${item.message || ''}')">
                             <i class="fas fa-eye"></i> シフトを確認
                         </button>
                     ` : `
@@ -360,6 +360,42 @@ function renderNotifDetails(items) {
         `;
     }).join('');
 }
+
+// シフト詳細へのインテリジェント遷移
+window.viewShiftDetail = (storeId, year, month, slot, message) => {
+    const userStr = localStorage.getItem('currentUser');
+    if (!userStr) return;
+    const user = JSON.parse(userStr);
+    const isAdmin = user.Role === 'Admin' || user.Role === '管理者';
+
+    if (isAdmin) {
+        // 管理者の場合はコックピットへ。対象期間を抽出。
+        let y = parseInt(year);
+        let m = parseInt(month);
+        let s = parseInt(slot);
+
+        // 古い通知などでフィールドがない場合はメッセージからパース試行 (例: "2024/4 前半")
+        if (!y || !m || !s) {
+            const match = message.match(/(\d{4})\/(\d{1,2})\s+(前半|後半)/);
+            if (match) {
+                y = parseInt(match[1]);
+                m = parseInt(match[2]);
+                s = match[3] === '前半' ? 1 : 2;
+            }
+        }
+
+        window.__shiftNavTarget = {
+            storeId: storeId,
+            year: y,
+            month: m,
+            slot: s
+        };
+        window.navigateTo('shift_admin');
+    } else {
+        // スタッフの場合は自分のカレンダーへ
+        window.navigateTo('shift_viewer');
+    }
+};
 
 // グローバルに公開（HTML文字列内のonclickから呼ぶ用）
 window.goToMenuRecipe = (menuId) => {
