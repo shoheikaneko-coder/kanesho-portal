@@ -163,6 +163,10 @@ export const attendanceManagementPageHtml = `
                 </table>
             </div>
             <div style="margin-top: 1.5rem; padding: 1rem; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px;">
+                <h2 style="margin: 0; display: flex; align-items: center; gap: 0.8rem;">
+                    <i class="fas fa-user-clock" style="color: var(--primary);"></i>
+                    勤怠管理 <span style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 400; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; margin-left: 0.5rem;">v1.2</span>
+                </h2>
                 <p style="margin: 0; font-size: 0.8rem; color: #92400e; line-height: 1.5;">
                     <i class="fas fa-info-circle"></i> <b>ご注意:</b><br>
                     深夜0時を過ぎた退勤などは、日付を翌日のものに設定してください。業務日の集計範囲（日替わり時刻）に基づき、自動的に前日の営業実績として処理されます。
@@ -284,16 +288,21 @@ async function loadDailyData() {
         const staffList = [];
         userSnap.forEach(d => {
             const data = d.data();
-            // 確実に中身が入っているものを拾う (フェイルセーフ)
-            const sId = data.EmployeeCode || data.staff_id || data.staff_code || data.UserId || d.id;
+            // あらゆる可能性を網羅するスマート・マッピング
+            const sId = data.EmployeeCode || data.staff_id || data.staff_code || data.UserId || data.id || d.id;
             const sName = data.Name || data.name || data.staff_name || data.DisplayName || data.name_kanji || '';
             
+            // 文字列として確実に固定して保持
             staffList.push({ 
-                id: sId ? String(sId) : '-', 
-                name: sName ? String(sName) : '(名前なし)',
+                id: sId ? String(sId).trim() : String(d.id), 
+                name: (sName && String(sName).trim() !== 'undefined') ? String(sName).trim() : '(名前なし)',
                 data: data 
             });
         });
+
+        // デバッグ用ログ（ブラウザのコンソールで確認可能）
+        console.log(`[v1.2] Loaded ${staffList.length} staff members for ${storeNameForUserSearch}`);
+        if (staffList.length > 0) console.log("Sample staff data:", staffList[0]);
         
         if (staffList.length > 0) {
             console.log(`[Attendance] Found ${staffList.length} staff members for store ${storeNameForUserSearch}`);
@@ -323,8 +332,9 @@ async function loadDailyData() {
         body.innerHTML = '';
         staffList.sort((a,b) => (a.id || '').localeCompare(b.id || '')).forEach((s, rowIdx) => {
             const myPunches = businessDayPunches.filter(p => {
-                const pid = p.staff_id || p.staff_code || p.EmployeeCode || "";
-                return String(pid) === String(s.id);
+                // 打刻データ側のID取得も柔軟に
+                const pid = p.staff_id || p.staff_code || p.EmployeeCode || p.UserId || "";
+                return String(pid).trim() === String(s.id).trim();
             });
             myPunches.sort((a,b) => a.timestamp.localeCompare(b.timestamp));
 
@@ -348,13 +358,13 @@ async function loadDailyData() {
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td style="font-family: monospace;">${s.EmployeeCode || '-'}</td>
-                <td style="font-weight:600;">${s.Name}</td>
+                <td style="font-family: monospace;">${s.id || '-'}</td>
+                <td style="font-weight:600;">${s.name}</td>
                 <td style="font-size:0.85rem;">${checkIn ? checkIn.timestamp.substring(11, 16) : '-'}</td>
                 <td style="font-size:0.85rem;">${checkOut ? checkOut.timestamp.substring(11, 16) : '-'}</td>
                 <td style="text-align:right; font-weight:700;">${hours > 0 ? hours.toFixed(2) + 'h' : '-'}</td>
                 <td style="text-align:center;">
-                    <button class="btn" style="padding:0.3rem 0.6rem; font-size:0.8rem; background:#e2e8f0;" onclick="window.openStaffEdit('${s.EmployeeCode || s.id}', '${s.Name}', '${date}')">
+                    <button class="btn" style="padding:0.3rem 0.6rem; font-size:0.8rem; background:#e2e8f0;" onclick="window.openStaffEdit('${s.id}', '${s.name}', '${date}')">
                         <i class="fas fa-edit"></i> 編集
                     </button>
                 </td>
@@ -392,15 +402,15 @@ async function openStaffEdit(staffId, staffName, date) {
         currentEditPunches = [];
         snap.forEach(d => {
             const data = d.data();
-            // 元データのIDを正確に判定
+            // 保存済みデータのID特定ロジック
             const pid = data.staff_id || data.staff_code || data.EmployeeCode || data.UserId || "";
-            if (String(pid) === String(staffId)) {
+            if (String(pid).trim() === String(staffId).trim()) {
                 // 正規化した状態で保持
                 currentEditPunches.push({ 
                     docId: d.id, 
                     ...data,
-                    staff_id: pid,
-                    // Dashboardとの紐付けに必須となる項目
+                    staff_id: String(pid).trim(),
+                    // Dashboardとの紐付け必須項目を確実に抽出
                     labor_store_id: data.labor_store_id || data.store_id || data.StoreID || "",
                     store_id: data.store_id || data.StoreID || ""
                 });
@@ -543,7 +553,7 @@ async function saveAttendanceEdits() {
         
         const batch = writeBatch(db);
         snap.forEach(d => {
-            if (d.data().staff_id === currentStaff.id) {
+            if (String(d.data().staff_id).trim() === String(currentStaff.id).trim()) {
                 batch.delete(d.ref);
             }
         });
@@ -560,10 +570,10 @@ async function saveAttendanceEdits() {
             const data = {
                 ...p,
                 timestamp: finalTs,
-                // Dashboard (t_performance) の集計エンジンが100%認識する項目セット
-                store_id: String(p.store_id || ""), 
-                labor_store_id: String(p.labor_store_id || p.store_id || ""), 
-                staff_id: String(p.staff_id || ""),
+                // Dashboard集計に必須のキー項目を100%の精度でセット
+                store_id: String(p.store_id || "").trim(), 
+                labor_store_id: String(p.labor_store_id || p.store_id || "").trim(), 
+                staff_id: String(p.staff_id || "").trim(),
                 year_month: p.date.substring(0, 7),
                 modifiedBy: loginUser,
                 modifiedAt: serverTimestamp()
