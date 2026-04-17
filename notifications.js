@@ -47,6 +47,20 @@ export const notificationsPageHtml = `
                     </div>
                 </div>
             </div>
+
+            <div class="notification-category-card danger-card" id="cat-deletion-request" style="display: none;">
+                <div class="category-icon">
+                    <i class="fas fa-trash-alt"></i>
+                </div>
+                <div class="category-info">
+                    <h3>商品削除申請</h3>
+                    <p>従業員から申請された、不要な食材やメニューの削除依頼を確認します</p>
+                    <div class="category-status">
+                        <span class="count-badge" id="count-deletion-request" style="background: #f59e0b;">0件</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Detailed List View (Hidden by default) -->
@@ -114,6 +128,7 @@ export const notificationsPageHtml = `
         .recipe-card .category-icon { background: #fee2e2; color: #ef4444; }
         .info-card .category-icon { background: #e0f2fe; color: #0ea5e9; }
         .task-card .category-icon { background: #f0fdf4; color: #10b981; }
+        .danger-card .category-icon { background: #fff7ed; color: #f59e0b; }
 
         .category-info { flex: 1; }
         .category-info h3 { margin: 0 0 0.4rem 0; font-size: 1.1rem; color: #1e293b; }
@@ -215,6 +230,21 @@ export function initNotificationsPage() {
         };
     }
 
+    const catDeletion = document.getElementById('cat-deletion-request');
+    if (catDeletion) {
+        if (user.Role === 'Admin' || user.Role === '管理者') {
+            catDeletion.style.display = 'flex';
+            catDeletion.onclick = () => {
+                panelCategories.style.display = 'none';
+                panelDetail.style.display = 'block';
+                document.getElementById('detail-title').textContent = '商品・レシピ削除申請';
+                loadDetails('deletion_request');
+            };
+        } else {
+            catDeletion.style.display = 'none';
+        }
+    }
+
     // クリーンアップ
     if (unsubscribeNotifs) unsubscribeNotifs();
 
@@ -236,12 +266,16 @@ export function initNotificationsPage() {
 
         const recipeMissingCount = visibleNotifs.filter(n => n.type === 'recipe_missing').length;
         const shiftPublishedCount = visibleNotifs.filter(n => n.type === 'shift_published').length;
+        const deletionRequestCount = visibleNotifs.filter(n => n.type === 'deletion_request').length;
         
         const rEl = document.getElementById('count-recipe-missing');
         if (rEl) rEl.textContent = `${recipeMissingCount}件`;
         
         const sEl = document.getElementById('count-shift-published');
         if (sEl) sEl.textContent = `${shiftPublishedCount}件`;
+
+        const dEl = document.getElementById('count-deletion-request');
+        if (dEl) dEl.textContent = `${deletionRequestCount}件`;
 
         // 貸与物確認（30日以上未確認の件数）を簡易取得（リアルタイム監視は一旦無しで初期表示時に出すか、別クエリが必要）
         updateAssetCheckCount();
@@ -250,7 +284,9 @@ export function initNotificationsPage() {
         window.__currentVisibleNotifs = visibleNotifs; // キャッシュ
         if (panelDetail.style.display === 'block') {
             const currentTitle = document.getElementById('detail-title').textContent;
-            const type = currentTitle.includes('レシピ') ? 'recipe_missing' : 'shift_published';
+            let type = 'recipe_missing';
+            if (currentTitle.includes('シフト')) type = 'shift_published';
+            if (currentTitle.includes('削除')) type = 'deletion_request';
             renderNotifDetails(visibleNotifs.filter(n => n.type === type));
         }
     });
@@ -276,6 +312,28 @@ function renderNotifDetails(items) {
     items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
     listBody.innerHTML = items.map(item => {
+        if (item.type === 'deletion_request') {
+            return `
+                <div class="notif-item">
+                    <div class="notif-main-info">
+                        <div class="notif-menu-name"><i class="fas fa-trash-alt" style="color:#f59e0b; margin-right:0.4rem;"></i>${item.target_name || '名称不明'}</div>
+                        <div class="notif-meta">
+                            <span><i class="fas fa-user"></i> 申請者: ${item.requester_name || '不明'}</span>
+                            <span><i class="fas fa-clock"></i> ${new Date(item.created_at).toLocaleString()}</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn" style="background:#fef2f2; color:#ef4444; border:1px solid #fee2e2; font-weight:700; padding:0.5rem 1rem;" onclick="handleDeletionRequest('${item.id}', '${item.target_id}', 'approve')">
+                            承認(削除)
+                        </button>
+                        <button class="btn" style="background:white; border:1px solid var(--border); color:var(--text-secondary); font-weight:700; padding:0.5rem 1rem;" onclick="handleDeletionRequest('${item.id}', null, 'reject')">
+                            却下
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
         const isShift = item.type === 'shift_published';
         return `
             <div class="notif-item">
@@ -309,6 +367,34 @@ window.goToMenuRecipe = (menuId) => {
     window.__productTargetMenuId = menuId;
     if (window.navigateTo) {
         window.navigateTo('products');
+    }
+};
+
+window.handleDeletionRequest = async (notifId, targetId, action) => {
+    if (action === 'approve') {
+        const ok = confirm('本当に削除を承認し、アイテムをマスタから完全に削除しますか？\n(この操作は取り消せません)');
+        if (!ok) return;
+
+        try {
+            await Promise.all([
+                deleteDoc(doc(db, "m_items", targetId)),
+                deleteDoc(doc(db, "m_ingredients", targetId)),
+                deleteDoc(doc(db, "m_menus", targetId)),
+                updateDoc(doc(db, "notifications", notifId), { status: 'done', processed_at: new Date().toISOString() })
+            ]);
+            showAlert('完了', '削除と承認を完了しました。');
+        } catch (e) {
+            console.error(e);
+            showAlert('エラー', '削除処理に失敗しました。');
+        }
+    } else {
+        try {
+            await updateDoc(doc(db, "notifications", notifId), { status: 'done', processed_at: new Date().toISOString() });
+            showAlert('完了', '申請を却下し、通知を解消しました。');
+        } catch (e) {
+            console.error(e);
+            showAlert('エラー', '却下処理に失敗しました。');
+        }
     }
 };
 
