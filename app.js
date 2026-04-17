@@ -696,11 +696,36 @@ function initNotificationBadge() {
     const btnNotify = document.getElementById('btn-notifications');
     if (!btnNotify) return;
     btnNotify.onclick = () => window.navigateTo('notifications');
-    if (state.currentUser?.Role !== 'Admin') return;
+    
+    // 全ユーザーがバッジを見れるように変更 (以前はAdmin限定)
+    const user = state.currentUser;
+    if (!user) return;
+
     const q = query(collection(db, "notifications"), where("status", "==", "pending"));
     onSnapshot(q, (snapshot) => {
         let badge = document.getElementById('notification-badge');
-        if (snapshot.size > 0) {
+        const notifs = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
+        
+        // ハイブリッドカウント判定
+        const mySid = user.StoreID || user.StoreId;
+        const myId = user.id;
+
+        const count = notifs.filter(n => {
+            // 1. 店舗フィルタリング (管理者は全件、スタッフは自店舗分のみ)
+            const isAuthorized = (user.Role === 'Admin' || user.Role === '管理者' || n.store_id == mySid);
+            if (!isAuthorized) return false;
+
+            // 2. タイプ別カウント判定
+            if (n.type === 'shift_published') {
+                // 既読管理型: 自分のIDが readBy に入っていないものだけカウント
+                const readBy = n.readBy || [];
+                return !readBy.includes(myId);
+            }
+            // タスク型 (recipe_missing, deletion_request): pending ならカウント (全共有)
+            return true;
+        }).length;
+
+        if (count > 0) {
             if (!badge) {
                 badge = document.createElement('span');
                 badge.id = 'notification-badge';
@@ -708,9 +733,11 @@ function initNotificationBadge() {
                 btnNotify.style.position = 'relative';
                 btnNotify.appendChild(badge);
             }
-            badge.textContent = snapshot.size;
+            badge.textContent = count;
             badge.style.display = 'block';
-        } else if (badge) badge.style.display = 'none';
+        } else if (badge) {
+            badge.style.display = 'none';
+        }
     });
 }
 

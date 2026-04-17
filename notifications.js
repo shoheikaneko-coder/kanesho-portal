@@ -1,5 +1,5 @@
 import { db } from './firebase.js';
-import { collection, getDocs, query, where, orderBy, updateDoc, doc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, getDocs, query, where, orderBy, updateDoc, doc, deleteDoc, onSnapshot, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { showAlert } from './ui_utils.js';
 
 export const notificationsPageHtml = `
@@ -264,8 +264,14 @@ export function initNotificationsPage() {
             return n.store_id == mySid;
         });
 
+        const myId = user.id;
+
         const recipeMissingCount = visibleNotifs.filter(n => n.type === 'recipe_missing').length;
-        const shiftPublishedCount = visibleNotifs.filter(n => n.type === 'shift_published').length;
+        const shiftPublishedCount = visibleNotifs.filter(n => {
+            if (n.type !== 'shift_published') return false;
+            const readBy = n.readBy || [];
+            return !readBy.includes(myId);
+        }).length;
         const deletionRequestCount = visibleNotifs.filter(n => n.type === 'deletion_request').length;
         
         const rEl = document.getElementById('count-recipe-missing');
@@ -287,7 +293,13 @@ export function initNotificationsPage() {
             let type = 'recipe_missing';
             if (currentTitle.includes('シフト')) type = 'shift_published';
             if (currentTitle.includes('削除')) type = 'deletion_request';
-            renderNotifDetails(visibleNotifs.filter(n => n.type === type));
+            
+            let itemsToRender = visibleNotifs.filter(n => n.type === type);
+            if (type === 'shift_published') {
+                // 既読のものは詳細リストからも除外
+                itemsToRender = itemsToRender.filter(n => !(n.readBy || []).includes(myId));
+            }
+            renderNotifDetails(itemsToRender);
         }
     });
 }
@@ -347,7 +359,7 @@ function renderNotifDetails(items) {
                 </div>
                 <div style="display: flex; gap: 0.5rem;">
                     ${isShift ? `
-                        <button class="btn btn-register-notif" style="background:var(--secondary);" onclick="viewShiftDetail('${item.store_id}', '${item.year || ''}', '${item.month || ''}', '${item.slot || ''}', '${item.message || ''}')">
+                        <button class="btn btn-register-notif" style="background:var(--secondary);" onclick="viewShiftDetail('${item.id}', '${item.store_id}', '${item.year || ''}', '${item.month || ''}', '${item.slot || ''}', '${item.message || ''}')">
                             <i class="fas fa-eye"></i> シフトを確認
                         </button>
                     ` : `
@@ -362,11 +374,21 @@ function renderNotifDetails(items) {
 }
 
 // シフト詳細へのインテリジェント遷移
-window.viewShiftDetail = (storeId, year, month, slot, message) => {
+window.viewShiftDetail = async (notifId, storeId, year, month, slot, message) => {
     const userStr = localStorage.getItem('currentUser');
     if (!userStr) return;
     const user = JSON.parse(userStr);
     const isAdmin = user.Role === 'Admin' || user.Role === '管理者';
+
+    // 既読処理 (readBy配列に自分を追加)
+    try {
+        const notifRef = doc(db, "notifications", notifId);
+        await updateDoc(notifRef, {
+            readBy: arrayUnion(user.id)
+        });
+    } catch (e) {
+        console.warn("Failed to mark as read:", e);
+    }
 
     if (isAdmin) {
         // 管理者の場合はコックピットへ。対象期間を抽出。
