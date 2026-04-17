@@ -467,7 +467,40 @@ async function saveAttendanceEdits() {
     const loginUser = JSON.parse(localStorage.getItem('currentUser'))?.Name || 'Admin';
 
     try {
-        // インデックスエラー回避のため、日付範囲のみで取得し、JS側でスタッフIDをフィルタリングして削除対象を特定
+        // 並び替えて労働時間を計算（ダッシュボード集計用）
+        const sorted = [...currentEditPunches].sort((a,b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
+        let lastInTs = null;
+        let breakMs = 0;
+        let bStartTs = null;
+
+        sorted.forEach(p => {
+            // 計算用に一時的にDate変換（不正な日付は無視）
+            const ts = p.timestamp ? new Date(p.timestamp) : null;
+            if (!ts || isNaN(ts.getTime())) return;
+
+            if (p.type === 'check_in') {
+                lastInTs = ts;
+                breakMs = 0;
+                bStartTs = null;
+            } else if (p.type === 'break_start') {
+                bStartTs = ts;
+            } else if (p.type === 'break_end' && bStartTs) {
+                breakMs += (ts - bStartTs);
+                bStartTs = null;
+            } else if (p.type === 'check_out' && lastInTs) {
+                const grossMs = ts - lastInTs;
+                const netMs = Math.max(0, grossMs - breakMs);
+                p.total_labor_hours = netMs / 3600000; // 時間単位で保存
+                // 以降のペア用リセット
+                lastInTs = null;
+                breakMs = 0;
+                bStartTs = null;
+            } else {
+                p.total_labor_hours = 0;
+            }
+        });
+
+        // 既存データの削除
         const nextDay = getNextDateStr(currentTargetDate);
         const q = query(collection(db, 't_attendance'), 
             where('date', '>=', currentTargetDate),
@@ -482,19 +515,24 @@ async function saveAttendanceEdits() {
         });
 
         // 新しいデータの書き込み
-        currentEditPunches.forEach(p => {
-            // ID生成 (staffId_timestamp)
-            const cleanTs = (p.timestamp || '').replace(/[:\-]/g, '');
-            const docId = `${p.staff_id}_${cleanTs}_${Math.random().toString(36).substring(2, 5)}`;
+        sorted.forEach(p => {
+            // タイムスタンプ形式の厳密な統一（秒+タイムゾーン）
+            let finalTs = p.timestamp;
+            if (p.timestamp && p.timestamp.length === 16) {
+                finalTs = p.timestamp + ':00+09:00';
+            }
+
+            const docId = `${p.staff_id}_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`;
             const docRef = doc(collection(db, 't_attendance'), docId);
             
             const data = {
                 ...p,
+                timestamp: finalTs,
                 year_month: p.date.substring(0, 7),
                 modifiedBy: loginUser,
                 modifiedAt: serverTimestamp()
             };
-            if (data.docId) delete data.docId; // 内部管理用プロパティ削除
+            if (data.docId) delete data.docId;
 
             batch.set(docRef, data);
         });
