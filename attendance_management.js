@@ -409,8 +409,8 @@ function renderEditTable() {
                 <input type="time" class="attn-row-input time-input" value="${timeVal}" onchange="window.updateLocalPunch(${idx}, 'time', this.value)">
             </td>
             <td>
-                <select class="attn-row-input store-select" onchange="window.updateLocalPunch(${idx}, 'store_name', this.value)">
-                    ${cachedStores.map(s => `<option value="${s.store_name}" ${p.store_name === s.store_name ? 'selected' : ''}>${s.store_name}</option>`).join('')}
+                <select style="width:100%;" onchange="window.updateLocalPunch(${idx}, 'store_id', this.value)">
+                    ${cachedStores.map(s => `<option value="${s.store_id}" ${(s.store_id === p.store_id || s.id === p.store_id) ? 'selected' : ''}>${s.store_name}</option>`).join('')}
                 </select>
             </td>
             <td style="text-align: center;">
@@ -437,15 +437,22 @@ window.updateLocalPunch = (idx, field, val) => {
         currentEditPunches[idx].timestamp = `${val}T${t}:00`;
     } else {
         currentEditPunches[idx][field] = val;
+        if (field === 'store_id') {
+            const s = cachedStores.find(st => st.store_id === val);
+            currentEditPunches[idx].store_name = s ? s.store_name : '';
+        }
     }
 };
 
 function addPunchRow() {
+    const storeId = document.getElementById('attn-day-store-filter').value;
+    const store = cachedStores.find(s => s.store_id === storeId) || cachedStores[0];
     currentEditPunches.push({
         type: 'check_in',
         date: currentTargetDate,
         timestamp: `${currentTargetDate}T12:00:00`,
-        store_name: document.getElementById('attn-day-store-filter').value,
+        store_id: store.store_id,
+        store_name: store.store_name,
         staff_id: currentStaff.id,
         staff_name: currentStaff.name
     });
@@ -467,14 +474,12 @@ async function saveAttendanceEdits() {
     const loginUser = JSON.parse(localStorage.getItem('currentUser'))?.Name || 'Admin';
 
     try {
-        // 並び替えて労働時間を計算（ダッシュボード集計用）
         const sorted = [...currentEditPunches].sort((a,b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
         let lastInTs = null;
         let breakMs = 0;
         let bStartTs = null;
 
         sorted.forEach(p => {
-            // 計算用に一時的にDate変換（不正な日付は無視）
             const ts = p.timestamp ? new Date(p.timestamp) : null;
             if (!ts || isNaN(ts.getTime())) return;
 
@@ -490,8 +495,7 @@ async function saveAttendanceEdits() {
             } else if (p.type === 'check_out' && lastInTs) {
                 const grossMs = ts - lastInTs;
                 const netMs = Math.max(0, grossMs - breakMs);
-                p.total_labor_hours = netMs / 3600000; // 時間単位で保存
-                // 以降のペア用リセット
+                p.total_labor_hours = netMs / 3600000;
                 lastInTs = null;
                 breakMs = 0;
                 bStartTs = null;
@@ -500,7 +504,6 @@ async function saveAttendanceEdits() {
             }
         });
 
-        // 既存データの削除
         const nextDay = getNextDateStr(currentTargetDate);
         const q = query(collection(db, 't_attendance'), 
             where('date', '>=', currentTargetDate),
@@ -514,9 +517,7 @@ async function saveAttendanceEdits() {
             }
         });
 
-        // 新しいデータの書き込み
         sorted.forEach(p => {
-            // タイムスタンプ形式の厳密な統一（秒+タイムゾーン）
             let finalTs = p.timestamp;
             if (p.timestamp && p.timestamp.length === 16) {
                 finalTs = p.timestamp + ':00+09:00';
@@ -556,10 +557,10 @@ function getNextDateStr(dateStr) {
     return d.toISOString().split('T')[0];
 }
 
-// ─── 月別実績 (既存から流用しつつ微調整) ────────────────────
+// ─── 月別実績 ──────────────────────────────────────────
 async function loadMonthlyData() {
     const month = document.getElementById('attn-month-select')?.value;
-    const storeName = document.getElementById('attn-mon-store-filter')?.value;
+    const storeId = document.getElementById('attn-mon-store-filter')?.value;
     const body = document.getElementById('attn-monthly-body');
     if (!body || !month) return;
 
@@ -571,7 +572,7 @@ async function loadMonthlyData() {
         userSnap.forEach(d => {
             const data = d.data();
             const sid = data.EmployeeCode || d.id;
-            staffMap[sid] = { code: sid, name: data.Name, store: data.Store, days: new Set(), totalHours: 0, lateHours: 0 };
+            staffMap[sid] = { code: sid, name: data.Name, store_id: data.store_id, days: new Set(), totalHours: 0, lateHours: 0 };
         });
 
         const q = query(collection(db, 't_attendance'), where('year_month', '==', month));
