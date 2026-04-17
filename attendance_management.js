@@ -284,16 +284,22 @@ async function loadDailyData() {
         const staffList = [];
         userSnap.forEach(d => {
             const data = d.data();
-            // あらゆるフィールド名のパターンを許容する「スマート・ゲッター」
+            // 確実に中身が入っているものを拾う (フェイルセーフ)
             const sId = data.EmployeeCode || data.staff_id || data.staff_code || data.UserId || d.id;
-            const sName = data.Name || data.name || data.staff_name || data.DisplayName || '名前未設定';
+            const sName = data.Name || data.name || data.staff_name || data.DisplayName || data.name_kanji || '';
             
             staffList.push({ 
-                id: String(sId), 
-                name: sName,
+                id: sId ? String(sId) : '-', 
+                name: sName ? String(sName) : '(名前なし)',
                 data: data 
             });
         });
+        
+        if (staffList.length > 0) {
+            console.log(`[Attendance] Found ${staffList.length} staff members for store ${storeNameForUserSearch}`);
+        } else {
+            console.warn(`[Attendance] No staff found for store: ${storeNameForUserSearch}`);
+        }
 
         // 打刻データ取得（対象日 00:00 〜 翌日 05:00 などの範囲をカバー）
         const nextDay = getNextDateStr(date);
@@ -314,9 +320,8 @@ async function loadDailyData() {
             return ts >= startEdge && ts < endEdge;
         });
 
-        // 描画
         body.innerHTML = '';
-        staffList.sort((a,b) => (a.id || '').localeCompare(b.id || '')).forEach(s => {
+        staffList.sort((a,b) => (a.id || '').localeCompare(b.id || '')).forEach((s, rowIdx) => {
             const myPunches = businessDayPunches.filter(p => {
                 const pid = p.staff_id || p.staff_code || p.EmployeeCode || "";
                 return String(pid) === String(s.id);
@@ -326,11 +331,9 @@ async function loadDailyData() {
             const checkIn = myPunches.find(p => p.type === 'check_in');
             const checkOut = [...myPunches].reverse().find(p => p.type === 'check_out');
             
-            // 労働時間計算
             let hours = 0;
             if (checkIn && checkOut) {
                 const diff = (new Date(checkOut.timestamp) - new Date(checkIn.timestamp)) / 3600000;
-                // 休憩計算（簡易）
                 let breaks = 0;
                 let bStart = null;
                 myPunches.forEach(p => {
@@ -397,7 +400,8 @@ async function openStaffEdit(staffId, staffName, date) {
                     docId: d.id, 
                     ...data,
                     staff_id: pid,
-                    // 店舗IDも正規化 (Dashboardとの紐付け用)
+                    // Dashboardとの紐付けに必須となる項目
+                    labor_store_id: data.labor_store_id || data.store_id || data.StoreID || "",
                     store_id: data.store_id || data.StoreID || ""
                 });
             }
@@ -556,8 +560,9 @@ async function saveAttendanceEdits() {
             const data = {
                 ...p,
                 timestamp: finalTs,
-                // Dashboard (t_performance) が期待する形式に完全に固定
+                // Dashboard (t_performance) の集計エンジンが100%認識する項目セット
                 store_id: String(p.store_id || ""), 
+                labor_store_id: String(p.labor_store_id || p.store_id || ""), 
                 staff_id: String(p.staff_id || ""),
                 year_month: p.date.substring(0, 7),
                 modifiedBy: loginUser,
