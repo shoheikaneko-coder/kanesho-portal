@@ -30,6 +30,8 @@ import { loansPageHtml, initLoansPage } from './loans.js?v=116';
 import { hubPageHtml, initHubPage } from './hubs.js?v=116';
 import { inviteNaviPageHtml, initInviteNaviPage } from './invite_navi.js';
 import { attendanceManagementPageHtml, initAttendanceManagementPage } from './attendance_management.js';
+import { bottleKeepPageHtml, initBottleKeepPage } from './bottle_keep.js';
+
 
 console.log("AntiGravity Portal: app.js loaded successfully.");
 
@@ -52,6 +54,7 @@ const defaultMenuItems = [
     { id: 'shift_admin', name: 'シフト作成・調整', icon: 'fa-user-edit', category: 'サブ機能' },
     { id: 'recipe_viewer', name: 'レシピ閲覧', icon: 'fa-book-open', category: 'サブ機能' },
     { id: 'daily_sakes', name: '日本酒管理', icon: 'fa-wine-glass-alt', category: 'サブ機能' },
+    { id: 'bottle_keep', name: 'ボトルキープ', icon: 'fa-wine-bottle', category: 'サブ機能' },
     { id: 'attendance_management', name: '勤怠管理', icon: 'fa-user-clock', category: 'サブ機能' },
     { id: 'attendance_check', name: '勤怠照会', icon: 'fa-clipboard-check', category: 'サブ機能', hidden: true },
     { id: 'invite_navi', name: '従業員への招待案内', icon: 'fa-paper-plane', category: 'サブ機能' },
@@ -81,6 +84,7 @@ const pageParentMap = {
     'menu_order': 'ops_hub',
     'calendar_viewer': 'ops_hub',
     'daily_sakes': 'ops_hub',
+    'bottle_keep': 'ops_hub',
     'attendance_management': 'hr_hub',
     'attendance_check': 'hr_hub',
     'shift_submission': 'hr_hub',
@@ -240,7 +244,7 @@ async function renderSidebar(user) {
     if (role === 'Admin' || role === '管理者') {
         allowed = defaultMenuItems.map(m => m.id);
         // 全般的な権限を付与
-        const adminPerms = ['sales','attendance','inventory','procurement','product_analysis','home_performance','shift_admin','shift_submission','attendance_check','users','invite_navi','loans','role_permissions','stores','products','suppliers','sales_correction','csv_export','csv_import','calendar_admin','goals_admin','goals_store','line_share','daily_sakes'];
+        const adminPerms = ['sales','attendance','inventory','procurement','product_analysis','home_performance','shift_admin','shift_submission','attendance_check','users','invite_navi','loans','role_permissions','stores','products','suppliers','sales_correction','csv_export','csv_import','calendar_admin','goals_admin','goals_store','line_share','daily_sakes','bottle_keep'];
         adminPerms.forEach(id => { if (!allowed.includes(id)) allowed.push(id); });
     } else {
         try {
@@ -537,7 +541,13 @@ function showPage(target) {
                 pageContent.innerHTML = attendanceManagementPageHtml;
                 initAttendanceManagementPage();
                 break;
+            case 'bottle_keep':
+                pageTitle.textContent = 'ボトルキープ管理';
+                pageContent.innerHTML = bottleKeepPageHtml;
+                initBottleKeepPage();
+                break;
         }
+
 
         // ページ読み込み完了後にナビゲーションUIを確定
         renderNavigationUI(target, pageTitle, breadcrumbArea);

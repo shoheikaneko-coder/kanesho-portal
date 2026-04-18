@@ -1,0 +1,560 @@
+import { db } from './firebase.js';
+import { 
+    collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, orderBy, onSnapshot, serverTimestamp, setDoc 
+} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { showAlert, showConfirm, showLoader } from './ui_utils.js';
+
+let currentUser = null;
+let cachedBottles = [];
+let cachedAreas = [];
+let cachedBrands = [];
+let bottleSettings = { expirationDays: 180 }; // Default
+let expandedAreas = new Set();
+let searchQuery = "";
+
+export const bottleKeepPageHtml = `
+    <div id="bottle-keep-container" class="animate-fade-in" style="display: flex; flex-direction: column; height: calc(100vh - 120px); overflow: hidden;">
+        
+        <!-- Top Toolbar -->
+        <div class="glass-panel" style="padding: 1rem 1.5rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; z-index: 100;">
+            <!-- Search Console -->
+            <div style="flex: 1; min-width: 300px; position: relative;">
+                <div class="input-group" style="margin-bottom: 0;">
+                    <i class="fas fa-search" style="top: 0.8rem;"></i>
+                    <input type="text" id="bottle-search-input" placeholder="お客様名・ふりがな・銘柄で検索..." style="padding: 0.8rem 1rem 0.8rem 2.8rem; height: 44px;">
+                </div>
+                <!-- Continuous Search Results window -->
+                <div id="bottle-search-results" class="glass" style="display: none; position: absolute; top: calc(100% + 8px); left: 0; right: 0; max-height: 400px; overflow-y: auto; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid var(--border); background: white;">
+                    <!-- results dynamic -->
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div style="display: flex; gap: 0.8rem;">
+                <button id="btn-new-bottle" class="btn btn-primary" style="height: 44px; padding: 0 1.2rem;">
+                    <i class="fas fa-plus-circle"></i> 新規登録
+                </button>
+                <button id="btn-brand-master" class="btn" style="height: 44px; padding: 0 1rem; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;">
+                    <i class="fas fa-tags"></i> 銘柄
+                </button>
+                <button id="btn-area-settings" class="btn" style="height: 44px; width: 44px; padding: 0; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;" title="エリア・期限設定">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Grid View -->
+        <div id="bottle-grid-scroll-area" style="flex: 1; overflow-x: auto; overflow-y: hidden; display: flex; padding-bottom: 1rem; gap: 1rem;">
+            <!-- columns dynamic -->
+            <div style="padding: 2rem; color: var(--text-secondary); font-weight: 600;">読み込み中...</div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="bottle-modal" class="modal-overlay"></div>
+    <div id="brand-modal" class="modal-overlay"></div>
+    <div id="area-modal" class="modal-overlay"></div>
+`;
+
+export async function initBottleKeepPage() {
+    currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    if (!currentUser) return;
+    const storeId = currentUser.StoreID || currentUser.StoreId;
+    if (!storeId) {
+        showAlert("エラー", "店舗情報が見つかりません。");
+        return;
+    }
+
+    const loader = showLoader();
+
+    // Listen to Areas (Order by order)
+    onSnapshot(query(collection(db, "m_bottle_areas"), where("storeId", "==", storeId), orderBy("order", "asc")), (snap) => {
+        cachedAreas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderGrid();
+    });
+
+    // Listen to Brands
+    onSnapshot(query(collection(db, "m_bottle_brands"), where("storeId", "==", storeId), orderBy("name", "asc")), (snap) => {
+        cachedBrands = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    });
+
+    // Listen to Settings
+    onSnapshot(doc(db, "m_bottle_settings", storeId), (docSnap) => {
+        if (docSnap.exists()) {
+            bottleSettings = docSnap.data();
+        } else {
+            bottleSettings = { expirationDays: 180 };
+        }
+        renderGrid();
+    });
+
+    // Listen to Bottles
+    onSnapshot(query(collection(db, "t_bottles"), where("storeId", "==", storeId)), (snap) => {
+        cachedBottles = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderGrid();
+        if (loader) loader.remove();
+    });
+
+    // Bind Events
+    setupEventListeners();
+}
+
+function setupEventListeners() {
+    document.getElementById('btn-new-bottle').onclick = () => openBottleModal();
+    document.getElementById('btn-brand-master').onclick = () => openBrandModal();
+    document.getElementById('btn-area-settings').onclick = () => openAreaModal();
+
+    const searchInput = document.getElementById('bottle-search-input');
+    const searchResults = document.getElementById('bottle-search-results');
+
+    searchInput.oninput = (e) => {
+        searchQuery = e.target.value.trim().toLowerCase();
+        renderSearchResults();
+    };
+
+    searchInput.onfocus = () => {
+        if (searchQuery) searchResults.style.display = 'block';
+    };
+
+    // Close results when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+            searchResults.style.display = 'none';
+        }
+    });
+}
+
+function renderGrid() {
+    const container = document.getElementById('bottle-grid-scroll-area');
+    if (!container) return;
+
+    if (cachedAreas.length === 0) {
+        container.innerHTML = `<div style="padding: 2rem; color: var(--text-secondary);">エリアが設定されていません。「設定」ボタンからエリアを作成してください。</div>`;
+        return;
+    }
+
+    let html = "";
+    cachedAreas.forEach(area => {
+        const isExpanded = expandedAreas.has(area.id);
+        const areaBottles = cachedBottles
+            .filter(b => b.areaId === area.id)
+            .sort((a, b) => (a.customerFurigana || "").localeCompare(b.customerFurigana || "", 'ja'));
+
+        html += `
+            <div class="area-column ${isExpanded ? 'expanded' : ''}" data-id="${area.id}" style="
+                flex: 0 0 ${isExpanded ? '350px' : '65px'};
+                background: white;
+                border-radius: 16px;
+                border: 1px solid var(--border);
+                display: flex;
+                flex-direction: column;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                overflow: hidden;
+            ">
+                <!-- Column Header -->
+                <div class="area-header" onclick="toggleArea('${area.id}')" style="
+                    padding: 1rem 0.5rem;
+                    background: ${isExpanded ? 'var(--primary)' : '#f8fafc'};
+                    color: ${isExpanded ? 'white' : 'var(--text-primary)'};
+                    cursor: pointer;
+                    display: flex;
+                    flex-direction: ${isExpanded ? 'row' : 'column'};
+                    align-items: center;
+                    justify-content: center;
+                    gap: 0.5rem;
+                    border-bottom: 1px solid var(--border);
+                ">
+                    <span style="font-weight: 800; font-size: 1.1rem; writing-mode: ${isExpanded ? 'horizontal-tb' : 'vertical-rl'}; text-orientation: upright;">
+                        ${area.name}
+                    </span>
+                    <span style="font-size: 0.8rem; opacity: 0.8;">(${areaBottles.length})</span>
+                    <i class="fas ${isExpanded ? 'fa-chevron-left' : 'fa-chevron-right'}" style="font-size: 0.7rem; margin-top: auto;"></i>
+                </div>
+
+                <!-- Column Content (only if expanded) -->
+                ${isExpanded ? `
+                <div class="area-content" style="flex: 1; overflow-y: auto; padding: 0.8rem;">
+                    ${areaBottles.length === 0 ? `
+                        <div style="text-align: center; color: #94a3b8; font-size: 0.85rem; padding-top: 2rem;">ボトルなし</div>
+                    ` : areaBottles.map(b => renderBottleCard(b)).join('')}
+                </div>
+                ` : ''}
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+function renderBottleCard(bottle) {
+    const brand = cachedBrands.find(br => br.id === bottle.brandId)?.name || '不明';
+    const lastDate = bottle.lastServingDate ? (bottle.lastServingDate.toDate ? bottle.lastServingDate.toDate() : new Date(bottle.lastServingDate)) : null;
+    const diffDays = lastDate ? Math.floor((new Date() - lastDate) / (1000 * 60 * 60 * 24)) : 0;
+    const isExpired = lastDate && diffDays >= bottleSettings.expirationDays;
+
+    return `
+        <div class="bottle-card ${isExpired ? 'expired' : ''}" onclick="openBottleModal('${bottle.id}')" style="
+            background: ${isExpired ? '#fff1f2' : 'white'};
+            border: 2px solid ${isExpired ? '#f43f5e' : 'var(--border)'};
+            border-radius: 12px;
+            padding: 0.8rem;
+            margin-bottom: 0.8rem;
+            cursor: pointer;
+            transition: transform 0.2s;
+            position: relative;
+        ">
+            ${isExpired ? `
+                <div style="position: absolute; top: -8px; right: -8px; background: #f43f5e; color: white; font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; font-weight: 900; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    期限切れ (${diffDays}日)
+                </div>
+            ` : ''}
+            <div style="font-size: 0.7rem; color: #94a3b8; font-weight: 600;">${bottle.customerFurigana || ''}</div>
+            <div style="font-weight: 800; font-size: 1rem; color: var(--text-primary); margin-bottom: 0.4rem;">${bottle.customerName}</div>
+            <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                <span class="badge" style="background: #f1f5f9; color: #475569; font-size: 0.7rem;">${brand}</span>
+                <div style="text-align: right;">
+                    <div style="font-size: 0.65rem; color: #94a3b8;">最終提供</div>
+                    <div style="font-size: 0.8rem; font-weight: 700; color: ${isExpired ? '#f43f5e' : 'var(--text-secondary)'};">
+                        ${lastDate ? lastDate.toLocaleDateString() : '不明'}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+window.toggleArea = (areaId) => {
+    if (expandedAreas.has(areaId)) {
+        expandedAreas.delete(areaId);
+    } else {
+        expandedAreas.add(areaId);
+    }
+    renderGrid();
+};
+
+function renderSearchResults() {
+    const results = document.getElementById('bottle-search-results');
+    if (!searchQuery) {
+        results.style.display = 'none';
+        return;
+    }
+
+    const filtered = cachedBottles.filter(b => {
+        const brand = cachedBrands.find(br => br.id === b.brandId)?.name || '';
+        return b.customerName.toLowerCase().includes(searchQuery) ||
+               (b.customerFurigana || "").toLowerCase().includes(searchQuery) ||
+               brand.toLowerCase().includes(searchQuery);
+    }).slice(0, 20);
+
+    if (filtered.length === 0) {
+        results.innerHTML = `<div style="padding: 1rem; text-align: center; color: #94a3b8;">一致するボトルがありません</div>`;
+    } else {
+        results.innerHTML = filtered.map(b => {
+            const area = cachedAreas.find(a => a.id === b.areaId)?.name || '未配置';
+            const brand = cachedBrands.find(br => br.id === b.brandId)?.name || '不明';
+            return `
+                <div class="search-item" onclick="handleSearchResultClick('${b.id}', '${b.areaId}')" style="
+                    padding: 0.8rem 1.2rem;
+                    border-bottom: 1px solid #f1f5f9;
+                    cursor: pointer;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                ">
+                    <div>
+                        <div style="font-size: 0.7rem; color: #94a3b8;">${b.customerFurigana || ''}</div>
+                        <div style="font-weight: 800; font-size: 1rem;">${b.customerName}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary);">${brand}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <span class="badge badge-blue">${area}</span>
+                        <i class="fas fa-chevron-right" style="margin-left: 0.5rem; color: #cbd5e1; font-size: 0.8rem;"></i>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+    results.style.display = 'block';
+}
+
+window.handleSearchResultClick = (bottleId, areaId) => {
+    expandedAreas.add(areaId);
+    renderGrid();
+    setTimeout(() => {
+        openBottleModal(bottleId);
+    }, 100);
+    document.getElementById('bottle-search-results').style.display = 'none';
+};
+
+// --- Modals Implementation ---
+
+async function openBottleModal(bottleId = null) {
+    const modal = document.getElementById('bottle-modal');
+    const bottle = bottleId ? cachedBottles.find(b => b.id === bottleId) : null;
+    const isEdit = !!bottle;
+
+    modal.innerHTML = `
+        <div class="modal-content-box animate-scale-in" style="max-width: 500px;">
+            <div style="padding: 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0;">${isEdit ? 'ボトルの確認・編集' : 'ボトルの新規登録'}</h3>
+                <button class="btn" style="background: transparent;" onclick="closeModal('bottle-modal')"><i class="fas fa-times"></i></button>
+            </div>
+            <div style="padding: 1.5rem; overflow-y: auto;">
+                <form id="bottle-form">
+                    <div class="input-group">
+                        <label>お客様名 <span style="color:var(--danger)">*</span></label>
+                        <input type="text" id="cust-name" required value="${bottle?.customerName || ''}" placeholder="例: 佐藤 啓一">
+                    </div>
+                    <div class="input-group">
+                        <label>ふりがな</label>
+                        <input type="text" id="cust-furigana" value="${bottle?.customerFurigana || ''}" placeholder="例: さとう けいいち">
+                    </div>
+                    <div class="input-group">
+                        <label>配置エリア <span style="color:var(--danger)">*</span></label>
+                        <select id="bottle-area" required>
+                            <option value="">選択してください</option>
+                            ${cachedAreas.map(a => `<option value="${a.id}" ${bottle?.areaId === a.id ? 'selected' : ''}>${a.name}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>銘柄 <span style="color:var(--danger)">*</span></label>
+                        <select id="bottle-brand" required>
+                            <option value="">選択してください</option>
+                            ${cachedBrands.map(b => `<option value="${b.id}" ${bottle?.brandId === b.id ? 'selected' : ''}>${b.name}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="input-group">
+                            <label>初回提供日</label>
+                            <input type="date" id="first-date" value="${bottle?.firstServingDate ? (bottle.firstServingDate.toDate ? bottle.firstServingDate.toDate().toISOString().split('T')[0] : new Date(bottle.firstServingDate).toISOString().split('T')[0]) : new Date().toISOString().split('T')[0]}" ${isEdit ? 'readonly style="background:#f1f5f9"' : ''}>
+                        </div>
+                        <div class="input-group">
+                            <label>最終提供日</label>
+                            <input type="date" id="last-date" value="${bottle?.lastServingDate ? (bottle.lastServingDate.toDate ? bottle.lastServingDate.toDate().toISOString().split('T')[0] : new Date(bottle.lastServingDate).toISOString().split('T')[0]) : new Date().toISOString().split('T')[0]}">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div style="padding: 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between;">
+                ${isEdit ? `
+                    <button class="btn" style="background: white; color: var(--danger); border: 1px solid #fee2e2;" onclick="deleteBottle('${bottle.id}')">
+                        <i class="fas fa-trash"></i> 削除
+                    </button>
+                ` : '<div></div>'}
+                <div style="display: flex; gap: 0.8rem;">
+                    <button class="btn" onclick="closeModal('bottle-modal')">キャンセル</button>
+                    <button class="btn btn-primary" id="btn-save-bottle">保存</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    modal.classList.add('show');
+
+    document.getElementById('btn-save-bottle').onclick = async () => {
+        const form = document.getElementById('bottle-form');
+        if (!form.checkValidity()) { form.reportValidity(); return; }
+
+        const data = {
+            customerName: document.getElementById('cust-name').value,
+            customerFurigana: document.getElementById('cust-furigana').value,
+            areaId: document.getElementById('bottle-area').value,
+            brandId: document.getElementById('bottle-brand').value,
+            lastServingDate: new Date(document.getElementById('last-date').value),
+            updatedAt: serverTimestamp()
+        };
+
+        if (!isEdit) {
+            data.storeId = currentUser.StoreID || currentUser.StoreId;
+            data.firstServingDate = new Date(document.getElementById('first-date').value);
+            data.createdAt = serverTimestamp();
+            await addDoc(collection(db, "t_bottles"), data);
+        } else {
+            await updateDoc(doc(db, "t_bottles", bottleId), data);
+        }
+
+        closeModal('bottle-modal');
+    };
+}
+
+async function openBrandModal() {
+    const modal = document.getElementById('brand-modal');
+    modal.innerHTML = `
+        <div class="modal-content-box animate-scale-in" style="max-width: 450px;">
+            <div style="padding: 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0;">銘柄マスタ管理</h3>
+                <button class="btn" style="background: transparent;" onclick="closeModal('brand-modal')"><i class="fas fa-times"></i></button>
+            </div>
+            <div style="padding: 1.5rem; overflow-y: auto; max-height: 400px;">
+                <div style="margin-bottom: 1.5rem; display: flex; gap: 0.5rem;">
+                    <input type="text" id="new-brand-name" placeholder="新しい銘柄名..." style="flex: 1; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px;">
+                    <button class="btn btn-primary" id="btn-add-brand"><i class="fas fa-plus"></i> 追加</button>
+                </div>
+                <div id="brand-list-container" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    ${cachedBrands.map(b => `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 1rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                            <span style="font-weight: 600;">${b.name}</span>
+                            <button class="btn" style="padding: 4px 8px; font-size: 0.8rem; color: var(--danger);" onclick="deleteBrand('${b.id}', '${b.name}')"><i class="fas fa-trash"></i></button>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            <div style="padding: 1rem; text-align: right;">
+                <button class="btn" onclick="closeModal('brand-modal')">閉じる</button>
+            </div>
+        </div>
+    `;
+    modal.classList.add('show');
+
+    document.getElementById('btn-add-brand').onclick = async () => {
+        const name = document.getElementById('new-brand-name').value.trim();
+        if (!name) return;
+        
+        await addDoc(collection(db, "m_bottle_brands"), {
+            storeId: currentUser.StoreID || currentUser.StoreId,
+            name: name,
+            createdAt: serverTimestamp()
+        });
+        document.getElementById('new-brand-name').value = "";
+        openBrandModal(); // Refresh view
+    };
+}
+
+async function openAreaModal() {
+    const modal = document.getElementById('area-modal');
+    modal.innerHTML = `
+        <div class="modal-content-box animate-scale-in" style="max-width: 550px;">
+            <div style="padding: 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0;">エリア・保管設定</h3>
+                <button class="btn" style="background: transparent;" onclick="closeModal('area-modal')"><i class="fas fa-times"></i></button>
+            </div>
+            <div style="padding: 1.5rem; overflow-y: auto;">
+                <h4 style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem; border-left: 4px solid var(--warning); padding-left: 0.8rem;">
+                    共通設定
+                </h4>
+                <div class="input-group">
+                    <label>ボトル保管期限 (日数)</label>
+                    <div style="display: flex; align-items: center; gap: 0.8rem;">
+                        <input type="number" id="setting-expiration" value="${bottleSettings.expirationDays}" style="flex: 1;">
+                        <span style="font-weight: 700; color: var(--text-secondary);">日</span>
+                    </div>
+                    <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.4rem;">最終提供日からこの日数が経過すると画面で赤く強調されます。</p>
+                </div>
+                <button class="btn btn-primary" id="btn-save-settings" style="width: 100%; margin-bottom: 2rem;">設定を保存</button>
+
+                <h4 style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem; border-left: 4px solid var(--primary); padding-left: 0.8rem;">
+                    エリア管理
+                </h4>
+                <div style="margin-bottom: 1rem; display: flex; gap: 0.5rem;">
+                    <input type="text" id="new-area-name" placeholder="新しいエリア名 (例: あ行 / 棚A)..." style="flex: 1; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px;">
+                    <button class="btn btn-primary" id="btn-add-area"><i class="fas fa-plus"></i> 追加</button>
+                </div>
+                <div id="area-list-container" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    ${cachedAreas.map((a, idx) => `
+                        <div style="display: flex; align-items: center; gap: 0.8rem; padding: 0.6rem 1rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                            <div style="width: 24px; color: #94a3b8; cursor: pointer; display: flex; flex-direction: column; gap: 2px;">
+                                <i class="fas fa-chevron-up" onclick="moveArea('${a.id}', -1)" style="font-size: 0.7rem; display: ${idx === 0 ? 'none' : 'block'}"></i>
+                                <i class="fas fa-chevron-down" onclick="moveArea('${a.id}', 1)" style="font-size: 0.7rem; display: ${idx === cachedAreas.length - 1 ? 'none' : 'block'}"></i>
+                            </div>
+                            <span style="font-weight: 800; flex: 1;">${a.name}</span>
+                            <button class="btn" style="padding: 4px 8px; font-size: 0.8rem; color: var(--danger);" onclick="deleteArea('${a.id}', '${a.name}')"><i class="fas fa-trash"></i></button>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            <div style="padding: 1.5rem; text-align: right; border-top: 1px solid var(--border);">
+                <button class="btn" onclick="closeModal('area-modal')">閉じる</button>
+            </div>
+        </div>
+    `;
+    modal.classList.add('show');
+
+    document.getElementById('btn-save-settings').onclick = async () => {
+        const days = parseInt(document.getElementById('setting-expiration').value);
+        if (isNaN(days) || days < 0) return;
+        await setDoc(doc(db, "m_bottle_settings", currentUser.StoreID || currentUser.StoreId), {
+            expirationDays: days,
+            updatedAt: serverTimestamp()
+        });
+        showAlert("成功", "設定を保存しました。");
+    };
+
+    document.getElementById('btn-add-area').onclick = async () => {
+        const name = document.getElementById('new-area-name').value.trim();
+        if (!name) return;
+        await addDoc(collection(db, "m_bottle_areas"), {
+            storeId: currentUser.StoreID || currentUser.StoreId,
+            name: name,
+            order: cachedAreas.length,
+            createdAt: serverTimestamp()
+        });
+        openAreaModal();
+    };
+}
+
+window.closeModal = (id) => {
+    document.getElementById(id).classList.remove('show');
+};
+
+window.deleteBottle = (id) => {
+    showConfirm("削除の確認", "このボトル情報を削除しますか？アーカイブは作成されません。", async () => {
+        await deleteDoc(doc(db, "t_bottles", id));
+        closeModal('bottle-modal');
+    });
+};
+
+window.deleteBrand = (id, name) => {
+    showConfirm("銘柄の削除", `「${name}」を削除しますか？`, async () => {
+        await deleteDoc(doc(db, "m_bottle_brands", id));
+        openBrandModal();
+    });
+};
+
+window.deleteArea = (id, name) => {
+    const hasBottles = cachedBottles.some(b => b.areaId === id);
+    if (hasBottles) {
+        showAlert("エラー", "このエリアにボトルが配置されているため削除できません。");
+        return;
+    }
+    showConfirm("エリアの削除", `「${name}」を削除しますか？`, async () => {
+        await deleteDoc(doc(db, "m_bottle_areas", id));
+        openAreaModal();
+    });
+};
+
+window.moveArea = async (id, direction) => {
+    const idx = cachedAreas.findIndex(a => a.id === id);
+    const newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= cachedAreas.length) return;
+
+    const currentArea = cachedAreas[idx];
+    const targetArea = cachedAreas[newIdx];
+
+    await updateDoc(doc(db, "m_bottle_areas", currentArea.id), { order: newIdx });
+    await updateDoc(doc(db, "m_bottle_areas", targetArea.id), { order: idx });
+    // Snapshot will fix view
+};
+
+// CSS Injection
+const style = document.createElement('style');
+style.textContent = \`
+    .area-column.expanded .area-header {
+        writing-mode: horizontal-tb;
+    }
+    .area-column:not(.expanded) .area-header:hover {
+        background: #f1f5f9;
+    }
+    .bottle-card:hover {
+        transform: scale(1.02);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .search-item:hover {
+        background: #f8fafc;
+    }
+    @media (max-width: 768px) {
+        .area-column.expanded {
+            flex: 0 0 85vw !important;
+        }
+    }
+\`;
+document.head.appendChild(style);
