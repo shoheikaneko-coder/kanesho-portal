@@ -252,6 +252,9 @@ async function renderSidebar(user) {
             if (docSnap.exists()) {
                 allowed = docSnap.data().permissions || [];
             }
+            if (role === 'Tablet' || role === '店舗タブレット') {
+                if (!allowed.includes('bottle_keep')) allowed.push('bottle_keep');
+            }
         } catch (e) {
             console.error("Permission check failed:", e);
         }
