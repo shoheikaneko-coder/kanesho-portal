@@ -71,11 +71,15 @@ export async function initBottleKeepPage() {
     onSnapshot(query(collection(db, "m_bottle_areas"), where("storeId", "==", storeId), orderBy("order", "asc")), (snap) => {
         cachedAreas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         renderGrid();
+    }, (err) => {
+        console.error("Areas Snapshot Error (likely missing index):", err);
     });
 
     // Listen to Brands
     onSnapshot(query(collection(db, "m_bottle_brands"), where("storeId", "==", storeId), orderBy("name", "asc")), (snap) => {
         cachedBrands = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    }, (err) => {
+        console.error("Brands Snapshot Error (likely missing index):", err);
     });
 
     // Listen to Settings
@@ -86,12 +90,17 @@ export async function initBottleKeepPage() {
             bottleSettings = { expirationDays: 180 };
         }
         renderGrid();
+    }, (err) => {
+        console.error("Settings Snapshot Error:", err);
     });
 
     // Listen to Bottles
     onSnapshot(query(collection(db, "t_bottles"), where("storeId", "==", storeId)), (snap) => {
         cachedBottles = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         renderGrid();
+        if (loader) loader.remove();
+    }, (err) => {
+        console.error("Bottles Snapshot Error:", err);
         if (loader) loader.remove();
     });
 
@@ -326,7 +335,7 @@ async function openBottleModal(bottleId = null) {
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                         <div class="input-group">
                             <label>初回提供日</label>
-                            <input type="date" id="first-date" value="${bottle?.firstServingDate ? (bottle.firstServingDate.toDate ? bottle.firstServingDate.toDate().toISOString().split('T')[0] : new Date(bottle.firstServingDate).toISOString().split('T')[0]) : new Date().toISOString().split('T')[0]}" ${isEdit ? 'readonly style="background:#f1f5f9"' : ''}>
+                            <input type="date" id="first-date" value="${bottle?.firstServingDate ? (bottle.firstServingDate.toDate ? bottle.firstServingDate.toDate().toISOString().split('T')[0] : new Date(bottle.firstServingDate).toISOString().split('T')[0]) : new Date().toISOString().split('T')[0]}" readonly style="background:#f1f5f9; cursor:not-allowed;">
                         </div>
                         <div class="input-group">
                             <label>最終提供日</label>
@@ -413,16 +422,18 @@ async function openBrandModal() {
         
         btn.disabled = true;
         try {
+            console.log("Attempting to add brand:", name);
             await addDoc(collection(db, "m_bottle_brands"), {
                 storeId: currentUser.StoreID || currentUser.StoreId,
                 name: name,
                 createdAt: serverTimestamp()
             });
+            console.log("Brand added successfully");
             document.getElementById('new-brand-name').value = "";
             openBrandModal(); // Refresh view
         } catch (err) {
-            console.error(err);
-            showAlert("エラー", "銘柄の保存に失敗しました。");
+            console.error("Brand Save Error:", err);
+            showAlert("エラー", "銘柄の保存に失敗しました。詳細な理由はブラウザのコンソールを確認してください。");
             btn.disabled = false;
         }
     };
@@ -504,16 +515,18 @@ async function openAreaModal() {
         
         btn.disabled = true;
         try {
+            console.log("Attempting to add area:", name);
             await addDoc(collection(db, "m_bottle_areas"), {
                 storeId: currentUser.StoreID || currentUser.StoreId,
                 name: name,
                 order: cachedAreas.length,
                 createdAt: serverTimestamp()
             });
+            console.log("Area added successfully");
             openAreaModal();
         } catch (err) {
-            console.error(err);
-            showAlert("エラー", "エリアの保存に失敗しました。");
+            console.error("Area Save Error:", err);
+            showAlert("エラー", "エリアの保存に失敗しました。詳細な理由はブラウザのコンソールを確認してください。");
             btn.disabled = false;
         }
     };
