@@ -36,6 +36,12 @@ export const attendanceManagementPageHtml = `
                 <h3>データ出力</h3>
                 <p>外部給与ソフト用CSVを出力します</p>
             </div>
+            <div id="card-attn-approvals" class="glass-panel menu-card" onclick="window.switchAttnView('approvals')" style="position:relative; border: 1px solid var(--secondary);">
+                <i class="fas fa-check-double" style="color: var(--secondary);"></i>
+                <h3>修正申請の承認</h3>
+                <p>店長から届いた勤怠修正申請を確認・承認します</p>
+                <span id="badge-attn-approvals" style="position:absolute; top:1rem; right:1rem; background:var(--danger); color:white; padding:2px 8px; border-radius:10px; font-size:0.8rem; font-weight:700; display:none;">0</span>
+            </div>
         </div>
     </div>
 
@@ -175,6 +181,33 @@ export const attendanceManagementPageHtml = `
         </div>
     </div>
 
+    <!-- 5. 修正申請承認画面 -->
+    <div id="attn-approvals-view" class="view-section" style="display: none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+            <h2 style="margin:0;"><i class="fas fa-check-double" style="color:var(--secondary);"></i> 修正申請の承認待ちリスト</h2>
+            <button onclick="window.backToAttnHub()" class="btn" style="padding: 0.65rem 1.2rem; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;">
+                <i class="fas fa-arrow-left"></i> 戻る
+            </button>
+        </div>
+        
+        <div class="glass-panel" style="padding:0; overflow:hidden;">
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; border-spacing: 0;">
+                    <thead>
+                        <tr style="background:#f8fafc; border-bottom:1px solid var(--border); color:var(--text-secondary); font-size:0.85rem;">
+                            <th style="padding:1rem; width:150px;">操作</th>
+                            <th style="padding:1rem; width:120px;">対象日</th>
+                            <th style="padding:1rem; width:180px;">対象従業員</th>
+                            <th style="padding:1rem;">申請内容（打刻）</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attn-approvals-body">
+                        <!-- JSで描画 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 
 <style>
@@ -208,6 +241,7 @@ let currentTargetDate = null; // YYYY-MM-DD (業務日)
 let currentEditPunches = []; // 編集中の打刻リスト
 let canDirectEdit = false;
 let canRequestCorrection = false;
+let unsubscribeApprovals = null;
 
 // ─── 初期化 ──────────────────────────────────────────────────
 export async function initAttendanceManagementPage() {
@@ -244,6 +278,12 @@ export async function initAttendanceManagementPage() {
     const btnError = document.getElementById('btn-attn-error-check');
     if (btnError) btnError.onclick = () => showAlert('情報', 'エラーチェック機能は現在準備中です。');
 
+    // 承認カードの表示制御 (管理者のみ表示)
+    const cardApprovals = document.getElementById('card-attn-approvals');
+    if (cardApprovals) {
+        cardApprovals.style.display = canDirectEdit ? 'block' : 'none';
+    }
+
     // 画面遷移ロジックの改善
     if (!canDirectEdit && canRequestCorrection) {
         // 店長（申請のみ）の場合はハブをスキップして直接日別画面へ
@@ -252,6 +292,16 @@ export async function initAttendanceManagementPage() {
         if (titleEl) titleEl.textContent = '勤怠修正申請';
     } else {
         switchView('hub');
+        // 管理者の場合は申請数を監視
+        if (canDirectEdit) {
+            startApprovalsListener();
+        }
+    }
+
+    // 他のページから承認画面への直接遷移フラグをチェック
+    if (window.__triggerAttnApprovals) {
+        delete window.__triggerAttnApprovals;
+        switchView('approvals');
     }
 }
 
@@ -266,6 +316,7 @@ function switchView(viewName) {
 
     if (viewName === 'monthly') loadMonthlyData();
     if (viewName === 'daily') loadDailyData();
+    if (viewName === 'approvals' && window.__pendingAttnRequests) renderApprovalList(window.__pendingAttnRequests);
 }
 
 function backToAttnHub() {
@@ -687,7 +738,7 @@ async function saveAttendanceEdits() {
                 created_at: serverTimestamp()
             };
 
-            await addDoc(collection(db, 't_attendance_requests'), requestData);
+            const reqRef = await addDoc(collection(db, 't_attendance_requests'), requestData);
 
             // 管理者への通知作成 (既存のnotificationsコレクションを使用)
             await addDoc(collection(db, 'notifications'), {
@@ -697,8 +748,11 @@ async function saveAttendanceEdits() {
                 status: 'pending',
                 store_id: storeId,
                 target_date: currentTargetDate,
+                target_id: reqRef.id, // 申請IDを保持
                 staff_id: currentStaff.id,
-                created_at: serverTimestamp()
+                created_at: serverTimestamp(),
+                staff_name: currentStaff.name,
+                requester_name: loginUser
             });
 
             showAlert('申請完了', '管理者に修正申請を送信しました。');
@@ -850,3 +904,156 @@ function calculateLateNightHours(start, end, totalBreaks) {
     }
     return Math.max(0, late);
 }
+
+// ─── 承認ワークフロー（Phase 2） ──────────────────────────────
+
+function startApprovalsListener() {
+    if (unsubscribeApprovals) unsubscribeApprovals();
+    
+    const q = query(collection(db, "t_attendance_requests"), where("status", "==", "pending"), orderBy("created_at", "desc"));
+    unsubscribeApprovals = onSnapshot(q, (snapshot) => {
+        const requests = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
+        
+        // ハブ画面のバッジ更新
+        const badge = document.getElementById('badge-attn-approvals');
+        if (badge) {
+            badge.textContent = requests.length;
+            badge.style.display = requests.length > 0 ? 'block' : 'none';
+        }
+        
+        // 承認一覧画面が開いていれば再描画
+        const approvalsView = document.getElementById('attn-approvals-view');
+        if (approvalsView && approvalsView.style.display !== 'none') {
+            renderApprovalList(requests);
+        }
+        
+        // グローバルキャッシュ
+        window.__pendingAttnRequests = requests;
+    }, (err) => {
+        console.error("Approvals listener error:", err);
+    });
+}
+
+function renderApprovalList(requests) {
+    const body = document.getElementById('attn-approvals-body');
+    if (!body) return;
+
+    if (requests.length === 0) {
+        body.innerHTML = '<tr><td colspan="4" style="padding:3rem; text-align:center; color:var(--text-secondary);">現在、承認待ちの申請はありません。</td></tr>';
+        return;
+    }
+
+    body.innerHTML = requests.map(req => {
+        const punches = req.requested_punches || [];
+        const punchDetails = punches.map(p => {
+            if (p.isDelete) {
+                return `<div style="color:var(--danger); margin-bottom:0.3rem;">
+                    <i class="fas fa-trash-alt"></i> 削除依頼: ${p.type} (${p.time})
+                </div>`;
+            } else {
+                return `<div style="margin-bottom:0.3rem;">
+                    <i class="fas fa-plus-circle" style="color:var(--secondary);"></i> 修正/追加: <b>${p.type} (${p.time})</b>
+                </div>`;
+            }
+        }).join('');
+
+        return `
+            <tr style="border-bottom: 1px solid #f1f5f9; vertical-align: top;">
+                <td style="padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                    <button class="btn btn-primary" style="padding:0.4rem 0.8rem; font-size:0.8rem; background:var(--secondary); border:none;" onclick="window.processAttnApproval('${req.id}', 'approve')">
+                        <i class="fas fa-check"></i> 承認
+                    </button>
+                    <button class="btn" style="padding:0.4rem 0.8rem; font-size:0.8rem; background:#fef2f2; color:#ef4444; border:1px solid #fee2e2;" onclick="window.processAttnApproval('${req.id}', 'reject')">
+                        <i class="fas fa-times"></i> 却下
+                    </button>
+                </td>
+                <td style="padding: 1rem; font-weight: 700; color: #1e293b;">
+                    ${req.target_date}
+                </td>
+                <td style="padding: 1rem;">
+                    <div style="font-weight: 700;">${req.staff_name || '不明'}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary);">コード: ${req.staff_code || '-'}</div>
+                </td>
+                <td style="padding: 1rem; font-size: 0.85rem;">
+                    <div style="margin-bottom:0.5rem; font-size: 0.75rem; color:var(--text-secondary);">
+                        <i class="fas fa-user-edit"></i> 申請者: ${req.requester_name || '店長'} (${new Date(req.created_at).toLocaleString()})
+                    </div>
+                    ${punchDetails}
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+window.processAttnApproval = async (requestId, action) => {
+    const req = window.__pendingAttnRequests?.find(r => r.id === requestId);
+    if (!req) return;
+
+    const confirmMsg = action === 'approve' 
+        ? 'この申請を承認し、勤怠実績データを更新しますか？' 
+        : 'この申請を却下しますか？';
+    
+    if (!confirm(confirmMsg)) return;
+
+    try {
+        const batch = writeBatch(db);
+
+        if (action === 'approve') {
+            // 1. 既存の該当従業員・該当日の打刻を削除 (管理者の直接編集と同じロジック)
+            const staffId = req.staff_id;
+            const dateStr = req.target_date;
+            
+            const q = query(collection(db, "t_attendance"), 
+                where("staff_id", "==", staffId), 
+                where("target_date", "==", dateStr)
+            );
+            const existingSnap = await getDocs(q);
+            existingSnap.forEach(d => batch.delete(d.ref));
+
+            // 2. 申請された新しい打刻を登録
+            req.requested_punches.forEach(p => {
+                if (!p.isDelete) {
+                    const newRef = doc(collection(db, "t_attendance"));
+                    batch.set(newRef, {
+                        ...p,
+                        staff_id: staffId,
+                        staff_name: req.staff_name,
+                        target_date: dateStr,
+                        updated_at: serverTimestamp(),
+                        updated_by: JSON.parse(localStorage.getItem('currentUser'))?.name || 'Admin',
+                        is_manual: true
+                    });
+                }
+            });
+            
+            // 3. 申請ステータスを更新
+            batch.update(doc(db, "t_attendance_requests", requestId), {
+                status: 'approved',
+                processed_at: serverTimestamp(),
+                processed_by: JSON.parse(localStorage.getItem('currentUser'))?.name || 'Admin'
+            });
+        } else {
+            // 却下処理
+            batch.update(doc(db, "t_attendance_requests", requestId), {
+                status: 'rejected',
+                processed_at: serverTimestamp()
+            });
+        }
+
+        // 4. 対応する「通知」を完了（既読）にする
+        const notifQuery = query(collection(db, "notifications"), 
+            where("type", "==", "attendance_correction_request"),
+            where("target_id", "==", requestId), // 申請IDが格納されている想定
+            where("status", "==", "pending")
+        );
+        const notifSnap = await getDocs(notifQuery);
+        notifSnap.forEach(d => batch.update(d.ref, { status: 'done', processed_at: new Date().toISOString() }));
+
+        await batch.commit();
+        showAlert('完了', action === 'approve' ? '申請を承認しました。' : '申請を却下しました。');
+    } catch (e) {
+        console.error("Approval error:", e);
+        showAlert('エラー', '処理中にエラーが発生しました。');
+    }
+};
+

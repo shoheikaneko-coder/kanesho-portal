@@ -61,6 +61,20 @@ export const notificationsPageHtml = `
                     </div>
                 </div>
             </div>
+
+            <div class="notification-category-card approval-card" id="cat-request-approvals" style="display: none;">
+                <div class="category-icon">
+                    <i class="fas fa-check-double"></i>
+                </div>
+                <div class="category-info">
+                    <h3>申請承認ワークフロー</h3>
+                    <p>勤怠修正や、その他各種申請の内容を確認し承認を行います</p>
+                    <div class="category-status">
+                        <span class="count-badge" id="count-request-approvals" style="background: var(--secondary);">0件</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Detailed List View (Hidden by default) -->
@@ -129,6 +143,7 @@ export const notificationsPageHtml = `
         .info-card .category-icon { background: #e0f2fe; color: #0ea5e9; }
         .task-card .category-icon { background: #f0fdf4; color: #10b981; }
         .danger-card .category-icon { background: #fff7ed; color: #f59e0b; }
+        .approval-card .category-icon { background: #ede9fe; color: var(--secondary); }
 
         .category-info { flex: 1; }
         .category-info h3 { margin: 0 0 0.4rem 0; font-size: 1.1rem; color: #1e293b; }
@@ -230,18 +245,16 @@ export function initNotificationsPage() {
         };
     }
 
-    const catDeletion = document.getElementById('cat-deletion-request');
-    if (catDeletion) {
+    const catApproval = document.getElementById('cat-request-approvals');
+    if (catApproval) {
         if (user.Role === 'Admin' || user.Role === '管理者') {
-            catDeletion.style.display = 'flex';
-            catDeletion.onclick = () => {
+            catApproval.style.display = 'flex';
+            catApproval.onclick = () => {
                 panelCategories.style.display = 'none';
                 panelDetail.style.display = 'block';
-                document.getElementById('detail-title').textContent = '商品・レシピ削除申請';
-                loadDetails('deletion_request');
+                document.getElementById('detail-title').textContent = '申請承認待ちリスト';
+                loadDetails('attendance_correction_request');
             };
-        } else {
-            catDeletion.style.display = 'none';
         }
     }
 
@@ -273,6 +286,7 @@ export function initNotificationsPage() {
             return !readBy.includes(myId);
         }).length;
         const deletionRequestCount = visibleNotifs.filter(n => n.type === 'deletion_request').length;
+        const approvalCount = visibleNotifs.filter(n => n.type === 'attendance_correction_request').length;
         
         const rEl = document.getElementById('count-recipe-missing');
         if (rEl) rEl.textContent = `${recipeMissingCount}件`;
@@ -282,6 +296,9 @@ export function initNotificationsPage() {
 
         const dEl = document.getElementById('count-deletion-request');
         if (dEl) dEl.textContent = `${deletionRequestCount}件`;
+
+        const aEl = document.getElementById('count-request-approvals');
+        if (aEl) aEl.textContent = `${approvalCount}件`;
 
         // 貸与物確認（30日以上未確認の件数）を簡易取得（リアルタイム監視は一旦無しで初期表示時に出すか、別クエリが必要）
         updateAssetCheckCount();
@@ -351,6 +368,26 @@ function renderNotifDetails(items, type) {
                         </button>
                         <button class="btn" style="background:white; border:1px solid var(--border); color:var(--text-secondary); font-weight:700; padding:0.5rem 1rem;" onclick="handleDeletionRequest('${item.id}', null, 'reject')">
                             却下
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (item.type === 'attendance_correction_request') {
+            return `
+                <div class="notif-item">
+                    <div class="notif-main-info">
+                        <div class="notif-menu-name"><i class="fas fa-check-double" style="color:var(--secondary); margin-right:0.4rem;"></i>勤怠修正依頼: ${item.staff_name || '名称不明'}</div>
+                        <div class="notif-meta">
+                            <span><i class="fas fa-calendar"></i> 対象日: ${item.target_date || '-'}</span>
+                            <span><i class="fas fa-user-edit"></i> 申請者: ${item.requester_name || '不明'}</span>
+                            <span><i class="fas fa-clock"></i> ${new Date(item.created_at).toLocaleString()}</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-register-notif" style="background:var(--secondary);" onclick="goToAttendanceApproval()">
+                            内容を確認
                         </button>
                     </div>
                 </div>
@@ -436,6 +473,14 @@ window.goToMenuRecipe = (menuId) => {
     window.__productTargetMenuId = menuId;
     if (window.navigateTo) {
         window.navigateTo('products');
+    }
+};
+
+window.goToAttendanceApproval = () => {
+    // 勤怠管理ページの承認ビューへ直接遷移するためのフラグ
+    window.__triggerAttnApprovals = true;
+    if (window.navigateTo) {
+        window.navigateTo('attendance_management');
     }
 };
 
