@@ -360,8 +360,12 @@ function renderNotifDetails(items, type) {
         return;
     }
 
-    // 日付順
-    items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    // 日付順 (最新順)
+    items.sort((a, b) => {
+        const timeA = a.created_at?.seconds || new Date(a.created_at).getTime() / 1000 || 0;
+        const timeB = b.created_at?.seconds || new Date(b.created_at).getTime() / 1000 || 0;
+        return timeB - timeA;
+    });
 
     listBody.innerHTML = items.map(item => {
         if (item.type === 'deletion_request') {
