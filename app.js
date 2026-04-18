@@ -283,7 +283,14 @@ async function renderSidebar(user) {
     
     categories.forEach(cat => {
         const items = defaultMenuItems.filter(item => item.category === cat && !item.hidden);
-        const allowedItems = items.filter(item => allowed.includes(item.id));
+        const allowedItems = items.filter(item => {
+            if (allowed.includes(item.id)) return true;
+            // 勤怠管理の特例: サブ機能の権限（直接編集 or 修正申請）があれば表示を許可する
+            if (item.id === 'attendance_management') {
+                return allowed.includes('attendance_direct_edit') || allowed.includes('attendance_correction_request');
+            }
+            return false;
+        });
         
         if (allowedItems.length > 0) {
             html += `<div class="menu-category">${cat}</div>`;
