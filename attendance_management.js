@@ -910,9 +910,16 @@ function calculateLateNightHours(start, end, totalBreaks) {
 function startApprovalsListener() {
     if (unsubscribeApprovals) unsubscribeApprovals();
     
-    const q = query(collection(db, "t_attendance_requests"), where("status", "==", "pending"), orderBy("created_at", "desc"));
+    const q = query(collection(db, "t_attendance_requests"), where("status", "==", "pending"));
     unsubscribeApprovals = onSnapshot(q, (snapshot) => {
         const requests = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
+        
+        // メモリ上でソート (最新順)
+        requests.sort((a,b) => {
+            const timeA = a.created_at?.seconds || 0;
+            const timeB = b.created_at?.seconds || 0;
+            return timeB - timeA;
+        });
         
         // ハブ画面のバッジ更新
         const badge = document.getElementById('badge-attn-approvals');

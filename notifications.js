@@ -203,6 +203,18 @@ export const notificationsPageHtml = `
     </style>
 `;
 
+function safeFormatDate(val) {
+    if (!val) return '-';
+    // Firebase Timestamp object
+    if (typeof val.toDate === 'function') return val.toDate().toLocaleString();
+    if (val.seconds !== undefined) return new Date(val.seconds * 1000).toLocaleString();
+    // JS Date object
+    if (val instanceof Date) return val.toLocaleString();
+    // String or number
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? '-' : d.toLocaleString();
+}
+
 let unsubscribeNotifs = null;
 
 export function initNotificationsPage() {
@@ -375,14 +387,18 @@ function renderNotifDetails(items, type) {
         }
 
         if (item.type === 'attendance_correction_request') {
+            const staffName = item.staff_name || '名称不明';
+            const targetDate = item.target_date || item.date || '-';
+            const requester = item.requester_name || item.requested_by_name || '不明';
+
             return `
                 <div class="notif-item">
                     <div class="notif-main-info">
-                        <div class="notif-menu-name"><i class="fas fa-check-double" style="color:var(--secondary); margin-right:0.4rem;"></i>勤怠修正依頼: ${item.staff_name || '名称不明'}</div>
+                        <div class="notif-menu-name"><i class="fas fa-check-double" style="color:var(--secondary); margin-right:0.4rem;"></i>勤怠修正依頼: ${staffName}</div>
                         <div class="notif-meta">
-                            <span><i class="fas fa-calendar"></i> 対象日: ${item.target_date || '-'}</span>
-                            <span><i class="fas fa-user-edit"></i> 申請者: ${item.requester_name || '不明'}</span>
-                            <span><i class="fas fa-clock"></i> ${new Date(item.created_at).toLocaleString()}</span>
+                            <span><i class="fas fa-calendar"></i> 対象日: ${targetDate}</span>
+                            <span><i class="fas fa-user-edit"></i> 申請者: ${requester}</span>
+                            <span><i class="fas fa-clock"></i> ${safeFormatDate(item.created_at)}</span>
                         </div>
                     </div>
                     <div style="display: flex; gap: 0.5rem;">
@@ -401,7 +417,7 @@ function renderNotifDetails(items, type) {
                     <div class="notif-menu-name">${isShift ? item.title : (item.menu_name || '名称不明')}</div>
                     <div class="notif-meta">
                         <span><i class="fas fa-store"></i> ${item.store_name || '店舗情報なし'}</span>
-                        <span><i class="fas fa-calendar"></i> ${new Date(item.created_at).toLocaleDateString()}</span>
+                        <span><i class="fas fa-calendar"></i> ${safeFormatDate(item.created_at)}</span>
                         ${isShift ? `<span><i class="fas fa-bullhorn"></i> ${item.message}</span>` : ''}
                     </div>
                 </div>
