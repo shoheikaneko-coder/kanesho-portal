@@ -167,7 +167,7 @@ function renderGrid() {
             .sort((a, b) => (a.customerFurigana || "").localeCompare(b.customerFurigana || "", 'ja'));
 
         html += `
-            <div class="area-column ${isExpanded ? 'expanded' : ''}" data-id="${area.id}" style="
+            <div class="area-column ${isExpanded ? 'expanded' : ''}" data-area-id="${area.id}" style="
                 flex: 0 0 ${isExpanded ? '350px' : '65px'};
                 background: white;
                 border-radius: 16px;
@@ -287,14 +287,16 @@ function renderSearchResults() {
                     justify-content: space-between;
                     align-items: center;
                 ">
-                    <div>
-                        <div style="font-size: 0.7rem; color: #94a3b8;">${b.customerFurigana || ''}</div>
-                        <div style="font-weight: 800; font-size: 1rem;">${b.customerName}</div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-size: 0.7rem; color: #94a3b8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${b.customerFurigana || ''}</div>
+                        <div style="font-weight: 800; font-size: 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${b.customerName}</div>
                         <div style="font-size: 0.75rem; color: var(--text-secondary);">${brand}</div>
                     </div>
-                    <div style="text-align: right;">
-                        <span class="badge badge-blue">${area}</span>
-                        <i class="fas fa-chevron-right" style="margin-left: 0.5rem; color: #cbd5e1; font-size: 0.8rem;"></i>
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-left: 1rem;">
+                        <span class="badge badge-blue" style="white-space: nowrap;">${area}</span>
+                        <button class="btn btn-primary" onclick="event.stopPropagation(); openBottleModal('${b.id}')" style="padding: 6px 12px; font-size: 0.75rem;">
+                            <i class="fas fa-edit"></i> 編集
+                        </button>
                     </div>
                 </div>
             `;
@@ -306,9 +308,19 @@ function renderSearchResults() {
 window.handleSearchResultClick = (bottleId, areaId) => {
     expandedAreas.add(areaId);
     renderGrid();
+    
+    // Scroll to the area column
     setTimeout(() => {
-        openBottleModal(bottleId);
-    }, 100);
+        const grid = document.getElementById('bottle-grid-scroll-area');
+        const target = document.querySelector(`.area-column[data-area-id="${areaId}"]`);
+        if (grid && target) {
+            grid.scrollTo({
+                left: target.offsetLeft - 20,
+                behavior: 'smooth'
+            });
+        }
+    }, 150);
+
     document.getElementById('bottle-search-results').style.display = 'none';
 };
 
@@ -596,7 +608,9 @@ window.moveArea = async (id, direction) => {
 
     await updateDoc(doc(db, "m_bottle_areas", currentArea.id), { order: newIdx });
     await updateDoc(doc(db, "m_bottle_areas", targetArea.id), { order: idx });
-    // Snapshot will fix view
+    
+    // Refresh the modal to show the new order
+    openAreaModal();
 };
 
 // CSS Injection
