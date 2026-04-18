@@ -932,6 +932,16 @@ function startApprovalsListener() {
     }, (err) => {
         console.error("Approvals listener error:", err);
     });
+function safeFormatDate(val) {
+    if (!val) return '-';
+    // Firebase Timestamp object
+    if (typeof val.toDate === 'function') return val.toDate().toLocaleString();
+    if (val.seconds !== undefined) return new Date(val.seconds * 1000).toLocaleString();
+    // JS Date object
+    if (val instanceof Date) return val.toLocaleString();
+    // String or number
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? '-' : d.toLocaleString();
 }
 
 function renderApprovalList(requests) {
@@ -946,7 +956,8 @@ function renderApprovalList(requests) {
     body.innerHTML = requests.map(req => {
         const punches = req.requested_punches || [];
         const punchDetails = punches.map(p => {
-            const timeStr = p.timestamp ? p.timestamp.substring(11, 16) : '--:--';
+            const ts = p.timestamp || '';
+            const timeStr = (typeof ts === 'string' && ts.length >= 16) ? ts.substring(11, 16) : '--:--';
             if (p.deleteRequest) {
                 return `<div style="color:var(--danger); margin-bottom:0.3rem;">
                     <i class="fas fa-trash-alt"></i> 削除依頼: ${p.type} (${timeStr})
@@ -957,6 +968,9 @@ function renderApprovalList(requests) {
                 </div>`;
             }
         }).join('');
+
+        const targetDate = req.date || req.target_date || '-';
+        const requester = req.requested_by_name || req.requester_name || '店長';
 
         return `
             <tr style="border-bottom: 1px solid #f1f5f9; vertical-align: top;">
@@ -969,7 +983,7 @@ function renderApprovalList(requests) {
                     </button>
                 </td>
                 <td style="padding: 1rem; font-weight: 700; color: #1e293b;">
-                    ${req.date}
+                    ${targetDate}
                 </td>
                 <td style="padding: 1rem;">
                     <div style="font-weight: 700;">${req.staff_name || '不明'}</div>
@@ -977,7 +991,7 @@ function renderApprovalList(requests) {
                 </td>
                 <td style="padding: 1rem; font-size: 0.85rem;">
                     <div style="margin-bottom:0.5rem; font-size: 0.75rem; color:var(--text-secondary);">
-                        <i class="fas fa-user-edit"></i> 申請者: ${req.requested_by_name || '店長'} (${req.created_at ? new Date(req.created_at.seconds * 1000).toLocaleString() : '-'})
+                        <i class="fas fa-user-edit"></i> 申請者: ${requester} (${safeFormatDate(req.created_at)})
                     </div>
                     ${punchDetails}
                 </td>
@@ -1004,8 +1018,10 @@ window.processAttnApproval = async (requestId, action) => {
         if (action === 'approve') {
             // 1. 既存の該当従業員・該当日の打刻を削除
             const staffId = req.staff_id;
-            const dateStr = req.date;
+            const dateStr = req.date || req.target_date;
             
+            if (!dateStr) throw new Error("対象日が不明です。");
+
             // t_attendanceコレクションでは 'date' フィールドを使用している
             const q = query(collection(db, "t_attendance"), 
                 where("staff_id", "==", staffId), 
