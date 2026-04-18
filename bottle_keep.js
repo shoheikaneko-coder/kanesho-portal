@@ -537,7 +537,7 @@ window.moveArea = async (id, direction) => {
 
 // CSS Injection
 const style = document.createElement('style');
-style.textContent = \`
+style.textContent = `
     .area-column.expanded .area-header {
         writing-mode: horizontal-tb;
     }
@@ -556,5 +556,5 @@ style.textContent = \`
             flex: 0 0 85vw !important;
         }
     }
-\`;
+`;
 document.head.appendChild(style);
