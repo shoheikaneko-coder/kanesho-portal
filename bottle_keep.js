@@ -111,9 +111,17 @@ export async function initBottleKeepPage() {
 }
 
 function setupEventListeners() {
-    document.getElementById('btn-new-bottle').onclick = () => openBottleModal();
-    document.getElementById('btn-brand-master').onclick = () => openBrandModal();
-    document.getElementById('btn-area-settings').onclick = () => openAreaModal();
+    const container = document.getElementById('bottle-keep-container');
+    if (container) {
+        container.onclick = (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            
+            if (btn.id === 'btn-new-bottle') openBottleModal();
+            else if (btn.id === 'btn-brand-master') openBrandModal();
+            else if (btn.id === 'btn-area-settings') openAreaModal();
+        };
+    }
 
     const searchInput = document.getElementById('bottle-search-input');
     const searchResults = document.getElementById('bottle-search-results');
@@ -536,6 +544,7 @@ async function openAreaModal() {
 
 window.closeModal = (id) => {
     const modal = document.getElementById(id);
+    if (!modal) return;
     modal.classList.remove('show');
     // Important: Clear inline styles added by ui_utils (important overrides)
     modal.style.display = '';
