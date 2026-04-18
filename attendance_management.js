@@ -939,6 +939,8 @@ function startApprovalsListener() {
     }, (err) => {
         console.error("Approvals listener error:", err);
     });
+}
+
 function safeFormatDate(val) {
     if (!val) return '-';
     // Firebase Timestamp object
