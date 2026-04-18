@@ -636,6 +636,22 @@ async function saveAttendanceEdits() {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
     const loginUser = currentUser?.Name || 'Unknown';
     const loginUserId = currentUser?.id || '';
+    
+    // ─── バリデーション：店長申請時は空のデータを禁止 ───────────
+    if (!canDirectEdit) {
+        const validPunches = currentEditPunches.filter(p => {
+            const hasTime = p.timestamp && p.timestamp.includes('T') && p.timestamp.split('T')[1].substring(0,5) !== '00:00';
+            // 削除依頼があるか、もしくは時刻が入力されている
+            return p.deleteRequest || (p.timestamp && p.timestamp.length >= 16);
+        });
+        
+        if (currentEditPunches.length === 0 || validPunches.length === 0) {
+            showAlert('入力エラー', '打刻データが入力されていません。行を追加して時刻を設定するか、既存の打刻の削除を依頼してください。');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> 申請する';
+            return;
+        }
+    }
 
     try {
         const sorted = [...currentEditPunches].sort((a,b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
@@ -995,19 +1011,25 @@ function renderApprovalList(requests) {
 
     body.innerHTML = requests.map(req => {
         const punches = req.requested_punches || [];
-        const punchDetails = punches.map(p => {
-            const ts = p.timestamp || '';
-            const timeStr = (typeof ts === 'string' && ts.length >= 16) ? ts.substring(11, 16) : '--:--';
-            if (p.deleteRequest) {
-                return `<div style="color:var(--danger); margin-bottom:0.3rem;">
-                    <i class="fas fa-trash-alt"></i> 削除依頼: ${p.type} (${timeStr})
-                </div>`;
-            } else {
-                return `<div style="margin-bottom:0.3rem;">
-                    <i class="fas fa-plus-circle" style="color:var(--secondary);"></i> 修正/追加: <b>${p.type} (${timeStr})</b>
-                </div>`;
-            }
-        }).join('');
+        
+        let punchDetails = '';
+        if (punches.length === 0) {
+            punchDetails = '<div style="color:var(--text-secondary); font-style:italic;">(打刻データなし)</div>';
+        } else {
+            punchDetails = punches.map(p => {
+                const ts = p.timestamp || '';
+                const timeStr = (typeof ts === 'string' && ts.length >= 16) ? ts.substring(11, 16) : '--:--';
+                if (p.deleteRequest) {
+                    return `<div style="color:var(--danger); margin-bottom:0.3rem;">
+                        <i class="fas fa-trash-alt"></i> 削除依頼: ${p.type} (${timeStr})
+                    </div>`;
+                } else {
+                    return `<div style="color:var(--primary); margin-bottom:0.3rem;">
+                        <i class="fas fa-plus-circle"></i> ${p.type} (${timeStr})
+                    </div>`;
+                }
+            }).join('');
+        }
 
         const targetDate = req.date || req.target_date || '-';
         const requester = req.requested_by_name || req.requester_name || '店長';
