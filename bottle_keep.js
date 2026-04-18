@@ -68,18 +68,20 @@ export async function initBottleKeepPage() {
     const loader = showLoader();
 
     // Listen to Areas (Order by order)
-    onSnapshot(query(collection(db, "m_bottle_areas"), where("storeId", "==", storeId), orderBy("order", "asc")), (snap) => {
-        cachedAreas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    onSnapshot(query(collection(db, "m_bottle_areas"), where("storeId", "==", storeId)), (snap) => {
+        cachedAreas = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => (a.order || 0) - (b.order || 0));
         renderGrid();
     }, (err) => {
-        console.error("Areas Snapshot Error (likely missing index):", err);
+        console.error("Areas Snapshot Error:", err);
     });
 
     // Listen to Brands
-    onSnapshot(query(collection(db, "m_bottle_brands"), where("storeId", "==", storeId), orderBy("name", "asc")), (snap) => {
-        cachedBrands = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    onSnapshot(query(collection(db, "m_bottle_brands"), where("storeId", "==", storeId)), (snap) => {
+        cachedBrands = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => (a.name || "").localeCompare(b.name || "", 'ja'));
     }, (err) => {
-        console.error("Brands Snapshot Error (likely missing index):", err);
+        console.error("Brands Snapshot Error:", err);
     });
 
     // Listen to Settings
