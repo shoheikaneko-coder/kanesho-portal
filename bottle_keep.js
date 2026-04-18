@@ -21,7 +21,7 @@ export const bottleKeepPageHtml = `
             <div style="flex: 1; min-width: 300px; position: relative;">
                 <div class="input-group" style="margin-bottom: 0;">
                     <i class="fas fa-search" style="top: 0.8rem;"></i>
-                    <input type="text" id="bottle-search-input" placeholder="お客様名・ふりがな・銘柄で検索..." style="padding: 0.8rem 1rem 0.8rem 2.8rem; height: 44px;">
+                    <input type="text" id="bottle-search-input" placeholder="ボトル名・ふりがな・銘柄で検索..." style="padding: 0.8rem 1rem 0.8rem 2.8rem; height: 44px;">
                 </div>
                 <!-- Continuous Search Results window -->
                 <div id="bottle-search-results" class="glass" style="display: none; position: absolute; top: calc(100% + 8px); left: 0; right: 0; max-height: 400px; overflow-y: auto; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid var(--border); background: white;">
@@ -294,7 +294,7 @@ async function openBottleModal(bottleId = null) {
     const isEdit = !!bottle;
 
     modal.innerHTML = `
-        <div class="modal-content-box animate-scale-in" style="max-width: 500px;">
+        <div class="modal-content-box animate-zoom-fade" style="max-width: 500px;">
             <div style="padding: 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
                 <h3 style="margin: 0;">${isEdit ? 'ボトルの確認・編集' : 'ボトルの新規登録'}</h3>
                 <button class="btn" style="background: transparent;" onclick="closeModal('bottle-modal')"><i class="fas fa-times"></i></button>
@@ -302,7 +302,7 @@ async function openBottleModal(bottleId = null) {
             <div style="padding: 1.5rem; overflow-y: auto;">
                 <form id="bottle-form">
                     <div class="input-group">
-                        <label>お客様名 <span style="color:var(--danger)">*</span></label>
+                        <label>ボトルの名前 <span style="color:var(--danger)">*</span></label>
                         <input type="text" id="cust-name" required value="${bottle?.customerName || ''}" placeholder="例: 佐藤 啓一">
                     </div>
                     <div class="input-group">
@@ -380,7 +380,7 @@ async function openBottleModal(bottleId = null) {
 async function openBrandModal() {
     const modal = document.getElementById('brand-modal');
     modal.innerHTML = `
-        <div class="modal-content-box animate-scale-in" style="max-width: 450px;">
+        <div class="modal-content-box animate-zoom-fade" style="max-width: 450px;">
             <div style="padding: 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
                 <h3 style="margin: 0;">銘柄マスタ管理</h3>
                 <button class="btn" style="background: transparent;" onclick="closeModal('brand-modal')"><i class="fas fa-times"></i></button>
@@ -406,24 +406,32 @@ async function openBrandModal() {
     `;
     modal.classList.add('show');
 
-    document.getElementById('btn-add-brand').onclick = async () => {
+    document.getElementById('btn-add-brand').onclick = async (e) => {
+        const btn = e.currentTarget;
         const name = document.getElementById('new-brand-name').value.trim();
         if (!name) return;
         
-        await addDoc(collection(db, "m_bottle_brands"), {
-            storeId: currentUser.StoreID || currentUser.StoreId,
-            name: name,
-            createdAt: serverTimestamp()
-        });
-        document.getElementById('new-brand-name').value = "";
-        openBrandModal(); // Refresh view
+        btn.disabled = true;
+        try {
+            await addDoc(collection(db, "m_bottle_brands"), {
+                storeId: currentUser.StoreID || currentUser.StoreId,
+                name: name,
+                createdAt: serverTimestamp()
+            });
+            document.getElementById('new-brand-name').value = "";
+            openBrandModal(); // Refresh view
+        } catch (err) {
+            console.error(err);
+            showAlert("エラー", "銘柄の保存に失敗しました。");
+            btn.disabled = false;
+        }
     };
 }
 
 async function openAreaModal() {
     const modal = document.getElementById('area-modal');
     modal.innerHTML = `
-        <div class="modal-content-box animate-scale-in" style="max-width: 550px;">
+        <div class="modal-content-box animate-zoom-fade" style="max-width: 550px;">
             <div style="padding: 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
                 <h3 style="margin: 0;">エリア・保管設定</h3>
                 <button class="btn" style="background: transparent;" onclick="closeModal('area-modal')"><i class="fas fa-times"></i></button>
@@ -469,31 +477,53 @@ async function openAreaModal() {
     `;
     modal.classList.add('show');
 
-    document.getElementById('btn-save-settings').onclick = async () => {
+    document.getElementById('btn-save-settings').onclick = async (e) => {
+        const btn = e.currentTarget;
         const days = parseInt(document.getElementById('setting-expiration').value);
         if (isNaN(days) || days < 0) return;
-        await setDoc(doc(db, "m_bottle_settings", currentUser.StoreID || currentUser.StoreId), {
-            expirationDays: days,
-            updatedAt: serverTimestamp()
-        });
-        showAlert("成功", "設定を保存しました。");
+        
+        btn.disabled = true;
+        try {
+            await setDoc(doc(db, "m_bottle_settings", currentUser.StoreID || currentUser.StoreId), {
+                expirationDays: days,
+                updatedAt: serverTimestamp()
+            });
+            showAlert("成功", "設定を保存しました。");
+        } catch (err) {
+            console.error(err);
+            showAlert("エラー", "設定の保存に失敗しました。");
+        } finally {
+            btn.disabled = false;
+        }
     };
 
-    document.getElementById('btn-add-area').onclick = async () => {
+    document.getElementById('btn-add-area').onclick = async (e) => {
+        const btn = e.currentTarget;
         const name = document.getElementById('new-area-name').value.trim();
         if (!name) return;
-        await addDoc(collection(db, "m_bottle_areas"), {
-            storeId: currentUser.StoreID || currentUser.StoreId,
-            name: name,
-            order: cachedAreas.length,
-            createdAt: serverTimestamp()
-        });
-        openAreaModal();
+        
+        btn.disabled = true;
+        try {
+            await addDoc(collection(db, "m_bottle_areas"), {
+                storeId: currentUser.StoreID || currentUser.StoreId,
+                name: name,
+                order: cachedAreas.length,
+                createdAt: serverTimestamp()
+            });
+            openAreaModal();
+        } catch (err) {
+            console.error(err);
+            showAlert("エラー", "エリアの保存に失敗しました。");
+            btn.disabled = false;
+        }
     };
 }
 
 window.closeModal = (id) => {
-    document.getElementById(id).classList.remove('show');
+    const modal = document.getElementById(id);
+    modal.classList.remove('show');
+    // Important: Clear inline styles added by ui_utils (important overrides)
+    modal.style.display = '';
 };
 
 window.deleteBottle = (id) => {
