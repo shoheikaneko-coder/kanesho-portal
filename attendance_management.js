@@ -616,8 +616,28 @@ async function loadMonthlyData() {
         const staffMap = {};
         userSnap.forEach(d => {
             const data = d.data();
-            const sid = data.EmployeeCode || d.id;
-            staffMap[sid] = { code: sid, name: data.Name, store_id: data.store_id, days: new Set(), totalHours: 0, lateHours: 0 };
+            // 日別データ表示 (line 292) と同様のより堅牢なスタッフ特定ロジックを採用
+            const sid = data.EmployeeCode || data.staff_id || data.staff_code || data.UserId || data.id || d.id;
+            const name = data.Name || data.name || data.staff_name || data.DisplayName || data.name_kanji || '(名前なし)';
+            
+            // ユーザーに紐付く店舗情報を特定
+            const sName = data.Store || data.store_name || "";
+            const matchedStore = cachedStores.find(st => 
+                st.store_name === sName || 
+                st.id === data.StoreID || 
+                st.store_id === data.StoreID
+            );
+            
+            const sidStr = String(sid).trim();
+            staffMap[sidStr] = { 
+                code: sidStr, 
+                name: String(name).trim(), 
+                store_id: matchedStore ? (matchedStore.store_id || matchedStore.id) : (data.StoreID || ""),
+                store_name: matchedStore ? matchedStore.store_name : (data.Store || "不明"),
+                days: new Set(), 
+                totalHours: 0, 
+                lateHours: 0 
+            };
         });
 
         const q = query(collection(db, 't_attendance'), where('year_month', '==', month));
@@ -661,7 +681,9 @@ async function loadMonthlyData() {
         });
 
         let filtered = Object.values(staffMap);
-        if (storeName) filtered = filtered.filter(s => s.store === storeName);
+        if (storeId) {
+            filtered = filtered.filter(s => String(s.store_id) === String(storeId));
+        }
 
         body.innerHTML = '';
         filtered.sort((a,b) => a.code.localeCompare(b.code)).forEach(s => {
@@ -669,19 +691,22 @@ async function loadMonthlyData() {
             tr.innerHTML = `
                 <td>${s.code}</td>
                 <td style="font-weight:600;">${s.name}</td>
-                <td>${s.store}</td>
+                <td>${s.store_name}</td>
                 <td style="text-align:right;">${s.days.size}日</td>
                 <td style="text-align:right; font-weight:700;">${s.totalHours.toFixed(1)}h</td>
                 <td style="text-align:right; color:var(--primary);">${s.lateHours.toFixed(1)}h</td>
                 <td style="text-align:center;">
-                    <button class="btn" style="padding:0.3rem 0.6rem; font-size:0.8rem; background:#e2e8f0;" onclick="window.switchToDailyFromMonthly('${s.store}', '${month}-01')">
+                    <button class="btn" style="padding:0.3rem 0.6rem; font-size:0.8rem; background:#e2e8f0;" onclick="window.switchToDailyFromMonthly('${s.store_name}', '${month}-01')">
                         <i class="fas fa-search"></i> 日別
                     </button>
                 </td>
             `;
             body.appendChild(tr);
         });
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+        console.error(e);
+        body.innerHTML = '<tr><td colspan="7" style="color:var(--danger); text-align:center;">読み込み失敗: ' + e.message + '</td></tr>';
+    }
 }
 
 window.switchToDailyFromMonthly = (store, date) => {

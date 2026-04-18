@@ -1,0 +1,11 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      // 応急処置：期限なしで全公開。
+      // 次のステップで Firebase Auth を導入し、
+      // allow read, write: if request.auth != null; などの制限をかけることを推奨します。
+      allow read, write: if true;
+    }
+  }
+}

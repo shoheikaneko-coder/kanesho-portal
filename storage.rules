@@ -1,0 +1,9 @@
+rules_version = '2';
+service cloud.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      // 応急処置：期限なしで全公開。
+      allow read, write: if true;
+    }
+  }
+}
