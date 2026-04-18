@@ -288,9 +288,14 @@ async function renderSidebar(user) {
         if (allowedItems.length > 0) {
             html += `<div class="menu-category">${cat}</div>`;
             allowedItems.forEach(item => {
+                let displayName = item.name;
+                // 管理者以外で勤怠管理を表示する場合、名称を「勤怠修正申請」に変更する
+                if (item.id === 'attendance_management' && !(role === 'Admin' || role === '管理者')) {
+                    displayName = '勤怠修正申請';
+                }
                 html += `
                     <a href="#" class="menu-item ${state.currentPage === item.id ? 'active' : ''}" data-target="${item.id}">
-                        <i class="fas ${item.icon}"></i> ${item.name}
+                        <i class="fas ${item.icon}"></i> ${displayName}
                     </a>
                 `;
             });
