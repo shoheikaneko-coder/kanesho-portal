@@ -55,7 +55,7 @@ export const attendanceManagementPageHtml = `
                 <button id="btn-attn-monthly-refresh" class="btn btn-primary" style="padding: 0.65rem 1.5rem;">
                     <i class="fas fa-search"></i> 表示
                 </button>
-                <button onclick="window.switchAttnView('hub')" class="btn" style="padding: 0.65rem 1.2rem; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;">
+                <button onclick="window.backToAttnHub()" class="btn" style="padding: 0.65rem 1.2rem; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;">
                     <i class="fas fa-arrow-left"></i> 戻る
                 </button>
             </div>
@@ -98,7 +98,7 @@ export const attendanceManagementPageHtml = `
                 <button id="btn-attn-daily-refresh" class="btn btn-primary" style="padding: 0.65rem 1.5rem;">
                     <i class="fas fa-search"></i> 表示
                 </button>
-                <button onclick="window.switchAttnView('hub')" class="btn" style="padding: 0.65rem 1.2rem; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;">
+                <button onclick="window.backToAttnHub()" class="btn" style="padding: 0.65rem 1.2rem; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;">
                     <i class="fas fa-arrow-left"></i> 戻る
                 </button>
             </div>
@@ -212,6 +212,7 @@ let canRequestCorrection = false;
 export async function initAttendanceManagementPage() {
     window.switchAttnView = switchView;
     window.openStaffEdit = openStaffEdit;
+    window.backToAttnHub = backToAttnHub;
 
     // 権限取得
     const userJson = localStorage.getItem('currentUser');
@@ -242,17 +243,37 @@ export async function initAttendanceManagementPage() {
     const btnError = document.getElementById('btn-attn-error-check');
     if (btnError) btnError.onclick = () => showAlert('情報', 'エラーチェック機能は現在準備中です。');
 
-    switchView('hub');
+    // 画面遷移ロジックの改善
+    if (!canDirectEdit && canRequestCorrection) {
+        // 店長（申請のみ）の場合はハブをスキップして直接日別画面へ
+        switchView('daily');
+        const titleEl = document.getElementById('page-title');
+        if (titleEl) titleEl.textContent = '勤怠修正申請';
+    } else {
+        switchView('hub');
+    }
 }
 
-// ─── 表示切り替え ──────────────────────────────────────────
 function switchView(viewName) {
     document.querySelectorAll('.view-section').forEach(v => v.style.display = 'none');
     const target = document.getElementById(`attn-${viewName}-view`);
-    if (target) target.style.display = 'block';
+    if (target) {
+        target.style.display = 'block';
+        // ページを切り替えたらトップにスクロール
+        window.scrollTo(0, 0);
+    }
 
     if (viewName === 'monthly') loadMonthlyData();
     if (viewName === 'daily') loadDailyData();
+}
+
+function backToAttnHub() {
+    if (!canDirectEdit && canRequestCorrection) {
+        // 店長でハブ画面を持たない場合は、ダッシュボード等に戻るなどの処理
+        window.navigateTo('ops_hub');
+    } else {
+        switchView('hub');
+    }
 }
 
 // ─── マスタ関連 ──────────────────────────────────────────
@@ -260,11 +281,21 @@ async function loadStoreList() {
     try {
         const snap = await getDocs(collection(db, "m_stores"));
         cachedStores = [];
-        snap.forEach(d => cachedStores.push({ id: d.id, ...d.data() }));
-        
-        document.querySelectorAll('.store-selector').forEach(sel => {
+        snap.forEach(d => {
+            const data = d.data();
+            cachedStores.push({ id: d.id, ...data });
+        });
+
+        // セレクターの更新
+        const selectors = document.querySelectorAll('.store-selector');
+        if (selectors.length === 0) {
+            console.warn("No store selectors found during loadStoreList");
+        }
+
+        selectors.forEach(sel => {
             const isMonthly = sel.id === 'attn-mon-store-filter';
             sel.innerHTML = isMonthly ? '<option value="">全店舗</option>' : '';
+            
             cachedStores.forEach(s => {
                 const sid = s.store_id || s.StoreID || s.id;
                 const snm = s.store_name || s.StoreName || s.Store || '名称未設定';
@@ -274,7 +305,12 @@ async function loadStoreList() {
                 sel.appendChild(opt);
             });
         });
-    } catch (e) { console.error(e); }
+        
+        console.log(`Loaded ${cachedStores.length} stores to selectors.`);
+    } catch (e) { 
+        console.error("Store list load failed:", e);
+        showAlert('エラー', '店舗リストの読み込みに失敗しました。');
+    }
 }
 
 // ─── 日別データ表示 ────────────────────────────────────────
