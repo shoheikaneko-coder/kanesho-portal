@@ -1,7 +1,6 @@
-import { db } from './firebase.js';
 import { 
     collection, getDocs, query, where, orderBy, doc, getDoc, 
-    setDoc, deleteDoc, writeBatch, serverTimestamp 
+    setDoc, addDoc, deleteDoc, writeBatch, serverTimestamp 
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { showAlert, showConfirm } from './ui_utils.js';
 
@@ -206,11 +205,23 @@ let cachedStores = [];
 let currentStaff = null;
 let currentTargetDate = null; // YYYY-MM-DD (業務日)
 let currentEditPunches = []; // 編集中の打刻リスト
+let canDirectEdit = false;
+let canRequestCorrection = false;
 
 // ─── 初期化 ──────────────────────────────────────────────────
 export async function initAttendanceManagementPage() {
     window.switchAttnView = switchView;
     window.openStaffEdit = openStaffEdit;
+
+    // 権限取得
+    const userJson = localStorage.getItem('currentUser');
+    if (userJson) {
+        const user = JSON.parse(userJson);
+        const perms = window.appState?.permissions || [];
+        // 管理者ロールまたは明示的な権限がある場合に許可
+        canDirectEdit = (user.Role === 'Admin' || user.Role === '管理者' || perms.includes('attendance_direct_edit'));
+        canRequestCorrection = (perms.includes('attendance_correction_request'));
+    }
 
     await loadStoreList();
 
@@ -357,6 +368,9 @@ async function loadDailyData() {
             }
 
             const tr = document.createElement('tr');
+            const btnLabel = canDirectEdit ? '編集' : '修正依頼';
+            const btnIcon = canDirectEdit ? 'fa-edit' : 'fa-paper-plane';
+            
             tr.innerHTML = `
                 <td style="font-family: monospace;">${s.id || '-'}</td>
                 <td style="font-weight:600;">${s.name}</td>
@@ -365,7 +379,7 @@ async function loadDailyData() {
                 <td style="text-align:right; font-weight:700;">${hours > 0 ? hours.toFixed(2) + 'h' : '-'}</td>
                 <td style="text-align:center;">
                     <button class="btn" style="padding:0.3rem 0.6rem; font-size:0.8rem; background:#e2e8f0;" onclick="window.openStaffEdit('${s.id}', '${s.name}', '${date}')">
-                        <i class="fas fa-edit"></i> 編集
+                        <i class="fas ${btnIcon}"></i> ${btnLabel}
                     </button>
                 </td>
             `;
@@ -383,8 +397,14 @@ async function openStaffEdit(staffId, staffName, date) {
     currentStaff = { id: staffId, name: staffName };
     currentTargetDate = date;
     
-    document.getElementById('attn-edit-title').textContent = `${staffName} さんの実績編集`;
+    const title = canDirectEdit ? '実績編集' : '修正依頼の作成';
+    document.getElementById('attn-edit-title').textContent = `${staffName} さんの${title}`;
     document.getElementById('attn-edit-subtitle').textContent = `対象業務日: ${date}`;
+
+    const saveBtn = document.getElementById('btn-attn-save');
+    if (saveBtn) {
+        saveBtn.innerHTML = canDirectEdit ? '<i class="fas fa-save"></i> 保存' : '<i class="fas fa-paper-plane"></i> 申請する';
+    }
     
     const body = document.getElementById('attn-edit-body');
     body.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:2rem;">読み込み中...</td></tr>';
@@ -455,9 +475,18 @@ function renderEditTable() {
                 </select>
             </td>
             <td style="text-align: center;">
-                <button class="btn" style="color:var(--danger); padding:0.4rem;" onclick="window.removePunchRow(${idx})">
-                    <i class="fas fa-trash"></i>
-                </button>
+                ${canDirectEdit ? `
+                    <button class="btn" style="color:var(--danger); padding:0.4rem;" onclick="window.removePunchRow(${idx})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                ` : `
+                    <div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
+                        <input type="checkbox" style="width:18px; height:18px; cursor:pointer;" 
+                               ${p.deleteRequest ? 'checked' : ''} 
+                               onchange="window.updateLocalPunch(${idx}, 'deleteRequest', this.checked)">
+                        <span style="font-size:0.65rem; color:var(--danger); font-weight:bold;">削除依頼</span>
+                    </div>
+                `}
             </td>
         `;
         body.appendChild(tr);
@@ -506,13 +535,19 @@ window.removePunchRow = (idx) => {
 };
 
 async function saveAttendanceEdits() {
-    if (!showConfirm('保存確認', '勤怠データを更新しますか？\nこの操作は給与集計に直接反映されます。')) return;
+    const confirmMsg = canDirectEdit ? 
+        '勤怠データを更新しますか？\nこの操作は給与集計に直接反映されます。' : 
+        '勤怠の修正申請を送信しますか？\n管理者の承認後に反映されます。';
+    if (!showConfirm('確認', confirmMsg)) return;
 
     const btn = document.getElementById('btn-attn-save');
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
+    const label = canDirectEdit ? '保存中...' : '申請中...';
+    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${label}`;
 
-    const loginUser = JSON.parse(localStorage.getItem('currentUser'))?.Name || 'Admin';
+    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    const loginUser = currentUser?.Name || 'Unknown';
+    const loginUserId = currentUser?.id || '';
 
     try {
         const sorted = [...currentEditPunches].sort((a,b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
@@ -545,53 +580,101 @@ async function saveAttendanceEdits() {
             }
         });
 
-        const nextDay = getNextDateStr(currentTargetDate);
-        const q = query(collection(db, 't_attendance'), 
-            where('date', '>=', currentTargetDate),
-            where('date', '<=', nextDay));
-        const snap = await getDocs(q);
-        
-        const batch = writeBatch(db);
-        snap.forEach(d => {
-            if (String(d.data().staff_id).trim() === String(currentStaff.id).trim()) {
-                batch.delete(d.ref);
-            }
-        });
-
-        sorted.forEach(p => {
-            let finalTs = p.timestamp;
-            if (p.timestamp && p.timestamp.length === 16) {
-                finalTs = p.timestamp + ':00+09:00';
-            }
-
-            const docId = `${p.staff_id}_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`;
-            const docRef = doc(collection(db, 't_attendance'), docId);
+        if (canDirectEdit) {
+            // ─── 管理者用：直接反映 ──────────────────────────────
+            const nextDay = getNextDateStr(currentTargetDate);
+            const qSnap = await getDocs(query(collection(db, 't_attendance'), 
+                where('date', '>=', currentTargetDate),
+                where('date', '<=', nextDay)));
             
-            const data = {
-                ...p,
-                timestamp: finalTs,
-                // Dashboard集計に必須のキー項目を100%の精度でセット
-                store_id: String(p.store_id || "").trim(), 
-                labor_store_id: String(p.labor_store_id || p.store_id || "").trim(), 
-                staff_id: String(p.staff_id || "").trim(),
-                year_month: p.date.substring(0, 7),
-                modifiedBy: loginUser,
-                modifiedAt: serverTimestamp()
+            const batch = writeBatch(db);
+            qSnap.forEach(d => {
+                const pid = d.data().staff_id || d.data().EmployeeCode || d.id;
+                if (String(pid).trim() === String(currentStaff.id).trim()) {
+                    batch.delete(d.ref);
+                }
+            });
+
+            sorted.forEach(p => {
+                let finalTs = p.timestamp;
+                if (p.timestamp && p.timestamp.length === 16) {
+                    finalTs = p.timestamp + ':00+09:00';
+                }
+
+                const docId = `${p.staff_id}_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`;
+                const docRef = doc(collection(db, 't_attendance'), docId);
+                
+                const data = {
+                    ...p,
+                    timestamp: finalTs,
+                    store_id: String(p.store_id || "").trim(), 
+                    labor_store_id: String(p.labor_store_id || p.store_id || "").trim(), 
+                    staff_id: String(p.staff_id || "").trim(),
+                    year_month: p.date.substring(0, 7),
+                    modifiedBy: loginUser,
+                    modifiedAt: serverTimestamp()
+                };
+                if (data.docId) delete data.docId;
+                batch.set(docRef, data);
+            });
+
+            await batch.commit();
+            showAlert('成功', '勤怠実績を更新しました。');
+        } else {
+            // ─── 店長用：修正申請を作成 ──────────────────────────
+            const storeId = document.getElementById('attn-day-store-filter')?.value || '';
+            const requestData = {
+                staff_id: String(currentStaff.id).trim(),
+                staff_name: currentStaff.name,
+                date: currentTargetDate,
+                store_id: storeId,
+                requested_punches: sorted.map(p => {
+                    let finalTs = p.timestamp;
+                    if (p.timestamp && p.timestamp.length === 16) {
+                        finalTs = p.timestamp + ':00+09:00';
+                    }
+                    const cleanP = { ...p };
+                    if (cleanP.docId) delete cleanP.docId;
+
+                    return {
+                        ...cleanP,
+                        timestamp: finalTs,
+                        staff_id: String(p.staff_id || "").trim(),
+                        store_id: String(p.store_id || "").trim(),
+                        deleteRequest: !!p.deleteRequest
+                    };
+                }),
+                requested_by_id: loginUserId,
+                requested_by_name: loginUser,
+                status: 'pending',
+                created_at: serverTimestamp()
             };
-            if (data.docId) delete data.docId;
 
-            batch.set(docRef, data);
-        });
+            await addDoc(collection(db, 't_attendance_requests'), requestData);
 
-        await batch.commit();
-        showAlert('成功', '勤怠実績を更新しました。');
+            // 管理者への通知作成 (既存のnotificationsコレクションを使用)
+            await addDoc(collection(db, 'notifications'), {
+                type: 'attendance_correction_request',
+                title: '勤怠修正申請',
+                message: `${loginUser}さんから ${currentStaff.name}さんの勤怠修正申請（${currentTargetDate}）が届きました。`,
+                status: 'pending',
+                store_id: storeId,
+                target_date: currentTargetDate,
+                staff_id: currentStaff.id,
+                created_at: serverTimestamp()
+            });
+
+            showAlert('申請完了', '管理者に修正申請を送信しました。');
+        }
+
         switchView('daily');
+        loadDailyData();
     } catch (e) {
         console.error(e);
         showAlert('エラー', '保存に失敗しました: ' + e.message);
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-save"></i> 保存';
+        btn.innerHTML = canDirectEdit ? '<i class="fas fa-save"></i> 保存' : '<i class="fas fa-paper-plane"></i> 申請する';
     }
 }
 

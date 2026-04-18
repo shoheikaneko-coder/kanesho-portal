@@ -79,6 +79,8 @@ const menuItems = [
     { id: 'dashboard', name: 'ダッシュボード', icon: 'fa-chart-line' },
     { id: 'attendance', name: '勤怠入力', icon: 'fa-clock' },
     { id: 'attendance_management', name: '勤怠管理', icon: 'fa-user-clock' },
+    { id: 'attendance_direct_edit', name: '[機能] 勤怠の直接編集(管理者用)', icon: 'fa-check-double' },
+    { id: 'attendance_correction_request', name: '[機能] 勤怠の修正申請(店長用)', icon: 'fa-paper-plane' },
     { id: 'attendance_check', name: '勤怠状況確認', icon: 'fa-clipboard-check' },
     { id: 'inventory', name: '在庫管理', icon: 'fa-warehouse' },
     { id: 'procurement', name: '仕入れ', icon: 'fa-shopping-cart' },
