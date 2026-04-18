@@ -613,6 +613,11 @@ window.moveArea = async (id, direction) => {
     openAreaModal();
 };
 
+// Expose modal functions to window for global access (from HTML onclick)
+window.openBottleModal = openBottleModal;
+window.openBrandModal = openBrandModal;
+window.openAreaModal = openAreaModal;
+
 // CSS Injection
 const style = document.createElement('style');
 style.textContent = `
