@@ -709,10 +709,41 @@ async function saveAttendanceEdits() {
             await batch.commit();
             showAlert('成功', '勤怠実績を更新しました。');
         } else {
-            // ─── 店長用：修正申請を作成 ──────────────────────────
+            // ─── 店長用：修正申請を作成（古い申請を自動整理） ──────────
             const storeId = document.getElementById('attn-day-store-filter')?.value || '';
+            const batch = writeBatch(db);
+            const staffId = String(currentStaff.id).trim();
+
+            // 1. 同一スタッフ、同一日の既存の「Pending」申請を検索
+            const oldReqsQuery = query(collection(db, 't_attendance_requests'), 
+                where('staff_id', '==', staffId),
+                where('date', '==', currentTargetDate),
+                where('status', '==', 'pending')
+            );
+            const oldSnap = await getDocs(oldReqsQuery);
+
+            // 見つかった古い申請をすべて「差し替え済み (superseded)」にし、通知も完了させる
+            for (const oldDoc of oldSnap.docs) {
+                batch.update(oldDoc.ref, { 
+                    status: 'superseded', 
+                    superseded_at: serverTimestamp(),
+                    superseded_by: loginUserId
+                });
+
+                // 対応する通知もクリア（バッジ件数を減らす）
+                const notifQuery = query(collection(db, "notifications"), 
+                    where("type", "==", "attendance_correction_request"),
+                    where("target_id", "==", oldDoc.id),
+                    where("status", "==", "pending")
+                );
+                const notifSnap = await getDocs(notifQuery);
+                notifSnap.forEach(nd => batch.update(nd.ref, { status: 'done', processed_at: serverTimestamp() }));
+            }
+
+            // 2. 新しい申請データの構築
+            const newReqRef = doc(collection(db, 't_attendance_requests'));
             const requestData = {
-                staff_id: String(currentStaff.id).trim(),
+                staff_id: staffId,
                 staff_name: currentStaff.name,
                 date: currentTargetDate,
                 store_id: storeId,
@@ -723,7 +754,6 @@ async function saveAttendanceEdits() {
                     }
                     const cleanP = { ...p };
                     if (cleanP.docId) delete cleanP.docId;
-
                     return {
                         ...cleanP,
                         timestamp: finalTs,
@@ -737,25 +767,26 @@ async function saveAttendanceEdits() {
                 status: 'pending',
                 created_at: serverTimestamp()
             };
+            batch.set(newReqRef, requestData);
 
-            const reqRef = await addDoc(collection(db, 't_attendance_requests'), requestData);
-
-            // 管理者への通知作成 (既存のnotificationsコレクションを使用)
-            await addDoc(collection(db, 'notifications'), {
+            // 3. 管理者への新しい通知作成
+            const newNotifRef = doc(collection(db, 'notifications'));
+            batch.set(newNotifRef, {
                 type: 'attendance_correction_request',
                 title: '勤怠修正申請',
                 message: `${loginUser}さんから ${currentStaff.name}さんの勤怠修正申請（${currentTargetDate}）が届きました。`,
                 status: 'pending',
                 store_id: storeId,
                 target_date: currentTargetDate,
-                target_id: reqRef.id, // 申請IDを保持
+                target_id: newReqRef.id,
                 staff_id: currentStaff.id,
                 created_at: serverTimestamp(),
                 staff_name: currentStaff.name,
                 requester_name: loginUser
             });
 
-            showAlert('申請完了', '管理者に修正申請を送信しました。');
+            await batch.commit();
+            showAlert('申請完了', '最新の修正申請を送信しました。以前の未承認分は自動的に取り下げられました。');
         }
 
         switchView('daily');
