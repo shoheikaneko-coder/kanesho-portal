@@ -72,16 +72,20 @@ export async function initBottleKeepPage() {
         cachedAreas = snap.docs.map(d => ({ id: d.id, ...d.data() }))
             .sort((a, b) => (a.order || 0) - (b.order || 0));
         renderGrid();
+        if (loader) loader.remove();
     }, (err) => {
         console.error("Areas Snapshot Error:", err);
+        if (loader) loader.remove();
     });
 
     // Listen to Brands
     onSnapshot(query(collection(db, "m_bottle_brands"), where("storeId", "==", storeId)), (snap) => {
         cachedBrands = snap.docs.map(d => ({ id: d.id, ...d.data() }))
             .sort((a, b) => (a.name || "").localeCompare(b.name || "", 'ja'));
+        if (loader) loader.remove();
     }, (err) => {
         console.error("Brands Snapshot Error:", err);
+        if (loader) loader.remove();
     });
 
     // Listen to Settings
@@ -92,8 +96,10 @@ export async function initBottleKeepPage() {
             bottleSettings = { expirationDays: 180 };
         }
         renderGrid();
+        if (loader) loader.remove();
     }, (err) => {
         console.error("Settings Snapshot Error:", err);
+        if (loader) loader.remove();
     });
 
     // Listen to Bottles
@@ -117,6 +123,7 @@ function setupEventListeners() {
             const btn = e.target.closest('button');
             if (!btn) return;
             
+            console.log("Toolbar button clicked:", btn.id);
             if (btn.id === 'btn-new-bottle') openBottleModal();
             else if (btn.id === 'btn-brand-master') openBrandModal();
             else if (btn.id === 'btn-area-settings') openAreaModal();
@@ -368,6 +375,7 @@ async function openBottleModal(bottleId = null) {
         </div>
     `;
 
+    modal.style.setProperty('display', 'flex', 'important');
     modal.classList.add('show');
 
     document.getElementById('btn-save-bottle').onclick = async () => {
@@ -423,6 +431,7 @@ async function openBrandModal() {
             </div>
         </div>
     `;
+    modal.style.setProperty('display', 'flex', 'important');
     modal.classList.add('show');
 
     document.getElementById('btn-add-brand').onclick = async (e) => {
@@ -496,6 +505,7 @@ async function openAreaModal() {
             </div>
         </div>
     `;
+    modal.style.setProperty('display', 'flex', 'important');
     modal.classList.add('show');
 
     document.getElementById('btn-save-settings').onclick = async (e) => {
