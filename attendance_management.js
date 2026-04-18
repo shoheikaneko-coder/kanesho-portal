@@ -1,7 +1,7 @@
 import { db } from './firebase.js';
 import { 
     collection, getDocs, query, where, orderBy, doc, getDoc, 
-    setDoc, addDoc, deleteDoc, writeBatch, serverTimestamp 
+    setDoc, addDoc, deleteDoc, writeBatch, serverTimestamp, onSnapshot 
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { showAlert, showConfirm } from './ui_utils.js';
 
@@ -946,13 +946,14 @@ function renderApprovalList(requests) {
     body.innerHTML = requests.map(req => {
         const punches = req.requested_punches || [];
         const punchDetails = punches.map(p => {
-            if (p.isDelete) {
+            const timeStr = p.timestamp ? p.timestamp.substring(11, 16) : '--:--';
+            if (p.deleteRequest) {
                 return `<div style="color:var(--danger); margin-bottom:0.3rem;">
-                    <i class="fas fa-trash-alt"></i> 削除依頼: ${p.type} (${p.time})
+                    <i class="fas fa-trash-alt"></i> 削除依頼: ${p.type} (${timeStr})
                 </div>`;
             } else {
                 return `<div style="margin-bottom:0.3rem;">
-                    <i class="fas fa-plus-circle" style="color:var(--secondary);"></i> 修正/追加: <b>${p.type} (${p.time})</b>
+                    <i class="fas fa-plus-circle" style="color:var(--secondary);"></i> 修正/追加: <b>${p.type} (${timeStr})</b>
                 </div>`;
             }
         }).join('');
@@ -968,15 +969,15 @@ function renderApprovalList(requests) {
                     </button>
                 </td>
                 <td style="padding: 1rem; font-weight: 700; color: #1e293b;">
-                    ${req.target_date}
+                    ${req.date}
                 </td>
                 <td style="padding: 1rem;">
                     <div style="font-weight: 700;">${req.staff_name || '不明'}</div>
-                    <div style="font-size: 0.75rem; color: var(--text-secondary);">コード: ${req.staff_code || '-'}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary);">コード: ${req.staff_id || '-'}</div>
                 </td>
                 <td style="padding: 1rem; font-size: 0.85rem;">
                     <div style="margin-bottom:0.5rem; font-size: 0.75rem; color:var(--text-secondary);">
-                        <i class="fas fa-user-edit"></i> 申請者: ${req.requester_name || '店長'} (${new Date(req.created_at).toLocaleString()})
+                        <i class="fas fa-user-edit"></i> 申請者: ${req.requested_by_name || '店長'} (${req.created_at ? new Date(req.created_at.seconds * 1000).toLocaleString() : '-'})
                     </div>
                     ${punchDetails}
                 </td>
@@ -997,32 +998,42 @@ window.processAttnApproval = async (requestId, action) => {
 
     try {
         const batch = writeBatch(db);
+        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+        const adminName = currentUser?.Name || 'Admin';
 
         if (action === 'approve') {
-            // 1. 既存の該当従業員・該当日の打刻を削除 (管理者の直接編集と同じロジック)
+            // 1. 既存の該当従業員・該当日の打刻を削除
             const staffId = req.staff_id;
-            const dateStr = req.target_date;
+            const dateStr = req.date;
             
+            // t_attendanceコレクションでは 'date' フィールドを使用している
             const q = query(collection(db, "t_attendance"), 
                 where("staff_id", "==", staffId), 
-                where("target_date", "==", dateStr)
+                where("date", "==", dateStr)
             );
             const existingSnap = await getDocs(q);
             existingSnap.forEach(d => batch.delete(d.ref));
 
             // 2. 申請された新しい打刻を登録
             req.requested_punches.forEach(p => {
-                if (!p.isDelete) {
-                    const newRef = doc(collection(db, "t_attendance"));
-                    batch.set(newRef, {
+                if (!p.deleteRequest) {
+                    const newId = `${staffId}_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`;
+                    const newRef = doc(collection(db, "t_attendance"), newId);
+                    
+                    // 申請時のデータをベースに管理者の更新情報を付与
+                    const data = {
                         ...p,
                         staff_id: staffId,
                         staff_name: req.staff_name,
-                        target_date: dateStr,
-                        updated_at: serverTimestamp(),
-                        updated_by: JSON.parse(localStorage.getItem('currentUser'))?.name || 'Admin',
+                        date: dateStr,
+                        year_month: dateStr.substring(0, 7),
+                        modifiedAt: serverTimestamp(),
+                        modifiedBy: adminName,
                         is_manual: true
-                    });
+                    };
+                    if (data.deleteRequest) delete data.deleteRequest;
+                    
+                    batch.set(newRef, data);
                 }
             });
             
@@ -1030,30 +1041,31 @@ window.processAttnApproval = async (requestId, action) => {
             batch.update(doc(db, "t_attendance_requests", requestId), {
                 status: 'approved',
                 processed_at: serverTimestamp(),
-                processed_by: JSON.parse(localStorage.getItem('currentUser'))?.name || 'Admin'
+                processed_by: adminName
             });
         } else {
             // 却下処理
             batch.update(doc(db, "t_attendance_requests", requestId), {
                 status: 'rejected',
-                processed_at: serverTimestamp()
+                processed_at: serverTimestamp(),
+                processed_by: adminName
             });
         }
 
         // 4. 対応する「通知」を完了（既読）にする
         const notifQuery = query(collection(db, "notifications"), 
             where("type", "==", "attendance_correction_request"),
-            where("target_id", "==", requestId), // 申請IDが格納されている想定
+            where("target_id", "==", requestId),
             where("status", "==", "pending")
         );
         const notifSnap = await getDocs(notifQuery);
-        notifSnap.forEach(d => batch.update(d.ref, { status: 'done', processed_at: new Date().toISOString() }));
+        notifSnap.forEach(d => batch.update(d.ref, { status: 'done', processed_at: serverTimestamp() }));
 
         await batch.commit();
         showAlert('完了', action === 'approve' ? '申請を承認しました。' : '申請を却下しました。');
     } catch (e) {
         console.error("Approval error:", e);
-        showAlert('エラー', '処理中にエラーが発生しました。');
+        showAlert('エラー', '処理中にエラーが発生しました: ' + e.message);
     }
 };
 
