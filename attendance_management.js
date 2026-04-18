@@ -437,8 +437,8 @@ async function loadDailyData() {
             });
             myPunches.sort((a,b) => a.timestamp.localeCompare(b.timestamp));
 
-            const checkIn = myPunches.find(p => p.type === 'check_in');
-            const checkOut = [...myPunches].reverse().find(p => p.type === 'check_out');
+            const checkIn = myPunches.find(p => p.type === 'check_in' || p.type === '出勤');
+            const checkOut = [...myPunches].reverse().find(p => p.type === 'check_out' || p.type === '退勤');
             
             let hours = 0;
             if (checkIn && checkOut) {
@@ -1031,13 +1031,21 @@ window.processAttnApproval = async (requestId, action) => {
             
             if (!dateStr) throw new Error("対象日が不明です。");
 
-            // t_attendanceコレクションでは 'date' フィールドを使用している
+            // t_attendanceコレクションでは 'date' フィールドを基準にするが、
+            // 深夜跨ぎシフト（日付が翌日になる）も考慮して、現行の直接編集ロジックと同様に 2日分を範囲として削除対象とする
+            const nextDay = getNextDateStr(dateStr);
             const q = query(collection(db, "t_attendance"), 
-                where("staff_id", "==", staffId), 
-                where("date", "==", dateStr)
+                where("date", ">=", dateStr), 
+                where("date", "<=", nextDay)
             );
             const existingSnap = await getDocs(q);
-            existingSnap.forEach(d => batch.delete(d.ref));
+            existingSnap.forEach(d => {
+                // スタッフIDが一致するもののみ削除
+                const pid = d.data().staff_id || d.data().EmployeeCode || d.id;
+                if (String(pid).trim() === String(staffId).trim()) {
+                    batch.delete(d.ref);
+                }
+            });
 
             // 2. 申請された新しい打刻を登録
             req.requested_punches.forEach(p => {

@@ -84,10 +84,10 @@ export const attendancePageHtml = `
             <div>
                 <label style="font-size:0.78rem; color:#64748b; display:block; margin-bottom:0.3rem; font-weight:600;">打刻種別</label>
                 <select id="correction-type" style="width:100%; padding:0.7rem 1rem; border:1px solid #cbd5e1; border-radius:8px; font-size:0.95rem;">
-                    <option value="出勤">出勤</option>
-                    <option value="退勤">退勤</option>
-                    <option value="休憩開始">休憩開始</option>
-                    <option value="休憩終了">休憩終了</option>
+                    <option value="check_in">出勤</option>
+                    <option value="check_out">退勤</option>
+                    <option value="break_start">休憩開始</option>
+                    <option value="break_end">休憩終了</option>
                 </select>
             </div>
             <div>
@@ -731,7 +731,12 @@ async function loadCorrectionList() {
 function openCorrectionModal(docId, record) {
     document.getElementById('correction-doc-id').value = docId;
     document.getElementById('correction-staff-name').value = record.staff_name || '';
-    document.getElementById('correction-type').value = record.type || '出勤';
+    
+    // 日本語の値を英単語キーにマッピングして初期値をセット
+    const typeMap = { '出勤': 'check_in', '退勤': 'check_out', '休憩開始': 'break_start', '休憩終了': 'break_end' };
+    const typeKey = typeMap[record.type] || record.type || 'check_in';
+    
+    document.getElementById('correction-type').value = typeKey;
     document.getElementById('correction-time').value = formatTime(record.timestamp);
     document.getElementById('correction-modal').style.display = 'flex';
 }
