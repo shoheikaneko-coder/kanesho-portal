@@ -455,32 +455,34 @@ p { color: var(--text-secondary); line-height: 1.5; }
   
   .mobile-app-toolbar {
       background: #000000;
-      padding: 0.6rem 1rem;
+      padding: 0.5rem 1.2rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      min-height: 50px;
+      min-height: 46px; /* Filmarksのリズムに合わせたスリム化 */
   }
 
   .mobile-app-brand {
       color: #FFD700;
-      font-weight: 950;
-      font-size: 1.05rem;
-      margin-left: 0.5rem;
+      font-weight: 900;
+      font-size: 0.95rem;
+      margin-left: 0.4rem;
       letter-spacing: -0.01em;
   }
 
   .mobile-app-title-bar {
       background: #FFFFFF;
       border-bottom: 1px solid #E2E8F0;
-      padding: 0.7rem 0.5rem;
+      padding: 0.6rem 0.5rem;
       display: flex;
       justify-content: center;
       align-items: center;
+      min-height: 44px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.02); /* 極めて薄い影 */
   }
 
   #page-title-mobile-central {
-      font-size: 1.05rem;
+      font-size: 0.95rem;
       font-weight: 800;
       color: #1e293b;
       margin: 0;
