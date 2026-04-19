@@ -95,13 +95,13 @@ function renderListViewDesktop(container) {
                 <!-- Search Input -->
                 <div style="flex: 2; min-width: 300px; position: relative;">
                     <i class="fas fa-search" style="position: absolute; left: 1.2rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
-                    <input type="text" id="pc-search-query" class="recipe-pro-input" style="padding-left: 3rem; width: 100%; border: 2px solid #f1f5f9; border-radius: 14px;" placeholder="メニュー名、原材料、開発者で検索..." value="${pcSearchQuery}">
+                    <input type="text" id="pc-search-query" class="recipe-pro-input" style="padding-left: 3rem; width: 100%; border: 2px solid #f1f5f9; border-radius: 14px; height: 48px;" placeholder="メニュー名、原材料、開発者で検索..." value="${pcSearchQuery}">
                 </div>
 
                 <!-- Developer Filter -->
                 <div style="flex: 1; min-width: 200px;">
                     <label style="display: block; font-size: 0.75rem; color: #94a3b8; font-weight: 800; margin-bottom: 0.4rem; margin-left: 0.5rem;">開発者</label>
-                    <select id="pc-filter-developer" class="recipe-pro-input" style="width: 100%; border: 2px solid #f1f5f9; border-radius: 14px; background: white;">
+                    <select id="pc-filter-developer" class="recipe-pro-input" style="width: 100%; border: 2px solid #f1f5f9; border-radius: 14px; background: white; height: 48px;">
                         <option value="all">すべてのスタッフ</option>
                         ${developers.map(d => `<option value="${d}" ${pcFilterDeveloper === d ? 'selected' : ''}>${d}</option>`).join('')}
                     </select>
@@ -110,7 +110,7 @@ function renderListViewDesktop(container) {
                 <!-- Sort Control -->
                 <div style="flex: 1; min-width: 200px;">
                     <label style="display: block; font-size: 0.75rem; color: #94a3b8; font-weight: 800; margin-bottom: 0.4rem; margin-left: 0.5rem;">並び替え</label>
-                    <select id="pc-sort-by" class="recipe-pro-input" style="width: 100%; border: 2px solid #f1f5f9; border-radius: 14px; background: white;">
+                    <select id="pc-sort-by" class="recipe-pro-input" style="width: 100%; border: 2px solid #f1f5f9; border-radius: 14px; background: white; height: 48px;">
                         <option value="updated_at_desc" ${pcSortBy === 'updated_at_desc' ? 'selected' : ''}>更新日が新しい順</option>
                         <option value="name_asc" ${pcSortBy === 'name_asc' ? 'selected' : ''}>名称順 (あ〜わ)</option>
                         <option value="cost_ratio_asc" ${pcSortBy === 'cost_ratio_asc' ? 'selected' : ''}>原価率が低い順 (優秀)</option>
@@ -120,7 +120,7 @@ function renderListViewDesktop(container) {
             </div>
 
             <!-- Grid Content -->
-            <div id="prototype-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 2rem;">
+            <div id="prototype-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem;">
                 ${prototypes.length === 0 ? `
                     <div style="grid-column: 1 / -1; text-align:center; padding: 6rem; color: #94a3b8; background: white; border-radius: 20px; border: 2px dashed #e2e8f0;">
                         <i class="fas fa-search" style="font-size: 3.5rem; margin-bottom: 1.5rem; opacity: 0.2;"></i>
@@ -950,6 +950,10 @@ async function savePrototype(recipe, type) {
 }
 
 async function deletePrototype() {
+    if (!editingPrototype) return;
+    const isOwner = editingPrototype.created_by === (currentUser?.uid || currentUser?.id);
+    if (!isOwner) return showAlert("権限なし", "作成者本人のみ削除できます");
+
     showConfirm("削除", "完全に消しますか？", async () => {
         try {
             await deleteDoc(doc(db, "t_prototype_recipes", editingPrototype.id));
