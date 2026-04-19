@@ -353,39 +353,39 @@ function renderFormViewMobile(container) {
 
     container.innerHTML = `
         <div class="animate-fade-in" style="padding-bottom: 5rem; background: #f8fafc; min-height: 100dvh;">
-            <!-- 1. Mobile Tab Launcher (Sticky Top) -->
-            <div style="position: sticky; top: 0; z-index: 600; background: #f8fafc; padding: 0.8rem 1.2rem 0.5rem; border-bottom: 1px solid #eef2f6;">
-                <div class="proto-mobile-tabs" style="background: #e2e8f0; padding: 4px; border-radius: 14px; display: flex;">
+            <!-- 1. Mobile Tab Tracker (Sticky Top with Blur) -->
+            <div style="position: sticky; top: 0; z-index: 600; background: rgba(248, 250, 252, 0.9); backdrop-filter: blur(10px); padding: 0.8rem 1.2rem 0.6rem;">
+                <div class="proto-mobile-tabs" style="background: rgba(226, 232, 240, 0.6); padding: 4px; border-radius: 14px; display: flex;">
                     <button class="proto-tab-btn ${activeMobileTab === 'info' ? 'active' : ''}" data-tab="info" style="flex:1; border:none; padding: 0.8rem; border-radius: 11px; font-weight: 800; font-size: 0.85rem; transition: 0.3s; background: ${activeMobileTab === 'info' ? 'white' : 'transparent'}; color: ${activeMobileTab === 'info' ? 'var(--primary)' : '#475569'};">基本</button>
                     <button class="proto-tab-btn ${activeMobileTab === 'recipe' ? 'active' : ''}" data-tab="recipe" style="flex:1; border:none; padding: 0.8rem; border-radius: 11px; font-weight: 800; font-size: 0.85rem; transition: 0.3s; background: ${activeMobileTab === 'recipe' ? 'white' : 'transparent'}; color: ${activeMobileTab === 'recipe' ? 'var(--primary)' : '#475569'};">レシピ</button>
                     <button class="proto-tab-btn ${activeMobileTab === 'notes' ? 'active' : ''}" data-tab="notes" style="flex:1; border:none; padding: 0.8rem; border-radius: 11px; font-weight: 800; font-size: 0.85rem; transition: 0.3s; background: ${activeMobileTab === 'notes' ? 'white' : 'transparent'}; color: ${activeMobileTab === 'notes' ? 'var(--primary)' : '#475569'};">メモ</button>
                 </div>
             </div>
 
-            <!-- 2. Sticky Summary Bar (Sticky below Tabs) -->
-            <div style="position: sticky; top: 62px; z-index: 550; background: #ffffff; padding: 0.8rem 1.2rem; border-bottom: 1px solid #e2e8f0; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem;">
-                <div style="text-align: center;">
-                    <span style="display: block; font-size: 0.65rem; color: #94a3b8; font-weight: 800;">総原価</span>
-                    <span id="summary-total-cost" style="font-size: 1rem; font-weight: 900; color: #1e293b;">¥0</span>
+            <!-- 2. Crystal Floating Summary (Right Side Fixed Overlay) -->
+            <div id="crystal-summary" style="position: fixed; top: 110px; right: 1rem; z-index: 1000; width: 130px; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.4); border-radius: 20px; padding: 0.8rem; box-shadow: 0 10px 25px rgba(0,0,0,0.08); pointer-events: none; transition: opacity 0.3s;">
+                <div style="margin-bottom: 0.6rem;">
+                    <span style="display: block; font-size: 0.6rem; color: #94a3b8; font-weight: 800; margin-bottom: 1px;">総原価</span>
+                    <span id="summary-total-cost" style="font-size: 1rem; font-weight: 950; color: #1e293b;">¥0</span>
                 </div>
-                <div style="text-align: center; border-left: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9;">
-                    <span style="display: block; font-size: 0.65rem; color: #94a3b8; font-weight: 800;">原価率</span>
-                    <span id="summary-cost-ratio" style="font-size: 1rem; font-weight: 900; color: #1e293b;">0%</span>
+                <div style="margin-bottom: 0.6rem; padding: 0.4rem 0; border-top: 1px solid rgba(0,0,0,0.05); border-bottom: 1px solid rgba(0,0,0,0.05);">
+                    <span style="display: block; font-size: 0.6rem; color: #94a3b8; font-weight: 800; margin-bottom: 1px;">原価率</span>
+                    <span id="summary-cost-ratio" style="font-size: 0.95rem; font-weight: 950; color: #1e293b;">0%</span>
                 </div>
-                <div style="text-align: center;">
-                    <span style="display: block; font-size: 0.65rem; color: #94a3b8; font-weight: 800;">粗利</span>
-                    <span id="summary-profit" style="font-size: 1rem; font-weight: 900; color: #10b981;">¥0</span>
+                <div>
+                    <span style="display: block; font-size: 0.6rem; color: #94a3b8; font-weight: 800; margin-bottom: 1px;">粗利</span>
+                    <span id="summary-profit" style="font-size: 1rem; font-weight: 950; color: #10b981;">¥0</span>
                 </div>
             </div>
 
-            <div style="padding: 1.2rem;">
+            <div style="padding: 0 1.2rem 1.2rem;">
                 <!-- 3. Header Row -->
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.5rem;">
-                    <button id="btn-proto-back" class="btn" style="background:white; color: #334155; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: none; padding: 0.6rem 0.9rem; border-radius: 12px;">
-                        <i class="fas fa-chevron-left" style="margin-right: 0.3rem;"></i> 戻る
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.2rem; margin-top: 0.5rem;">
+                    <button id="btn-proto-back" class="btn" style="background:white; color: #334155; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: none; padding: 0.5rem 0.8rem; border-radius: 12px; font-size: 0.85rem;">
+                        <i class="fas fa-chevron-left" style="margin-right: 0.2rem;"></i> 戻る
                     </button>
                     <div style="text-align:right;">
-                        <span class="badge ${isOwner ? 'badge-active' : 'badge-pending'}" style="font-size: 0.7rem;">${isEdit ? '試作編集中' : '新規作成中'}</span>
+                        <span class="badge ${isOwner ? 'badge-active' : 'badge-pending'}" style="font-size: 0.65rem;">${isEdit ? '試作編集中' : '新規作成中'}</span>
                     </div>
                 </div>
 
@@ -527,9 +527,13 @@ function setupFormLogic(container, isOwner, isEdit, isMobile) {
     // Keyboard / Viewport Height Fix
     if (isMobile) {
         const inputs = container.querySelectorAll('input, textarea, select');
+        const crystal = document.getElementById('crystal-summary');
         inputs.forEach(el => {
+            el.addEventListener('focus', () => {
+                if (crystal) crystal.style.opacity = '0.3'; // Fade summary when typing
+            });
             el.addEventListener('blur', () => {
-                // Slightly scroll to trigger viewport recalculation and fix 'white area'
+                if (crystal) crystal.style.opacity = '1';
                 setTimeout(() => {
                     window.scrollTo(0, window.scrollY);
                 }, 100);
