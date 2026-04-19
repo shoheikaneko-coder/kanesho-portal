@@ -511,6 +511,15 @@ p { color: var(--text-secondary); line-height: 1.5; }
       text-align: center;
   }
 
+  /* モバイルヘッダー各パーツの配置正常化 */
+  .mobile-toolbar-left {
+      display: flex !important;
+      flex-direction: row !important;
+      align-items: center;
+      flex-shrink: 0;
+      min-width: 140px;
+  }
+
   .mobile-header-btn {
       background: transparent;
       border: none;
@@ -521,6 +530,9 @@ p { color: var(--text-secondary); line-height: 1.5; }
       display: flex;
       align-items: center;
       justify-content: center;
+      z-index: 2100;
+  }
+
   /* 閲覧・ショートカットメニューのスマホ調整 */
   .header-view-menu {
       top: 50px !important; /* 黒いバーのすぐ下に配置 */
@@ -536,6 +548,7 @@ p { color: var(--text-secondary); line-height: 1.5; }
     left: -280px;
     height: 100%;
     z-index: 10000;
+    transition: transform 0.3s ease;
   }
   .sidebar.show {
     transform: translateX(280px);
