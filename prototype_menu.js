@@ -16,7 +16,7 @@ let editingPrototype = null;
 let activeMobileTab = 'info'; // 'info', 'recipe', 'notes'
 
 export const prototypeMenuPageHtml = `
-    <div id="prototype-menu-container" class="animate-fade-in">
+    <div id="prototype-menu-container">
         <!-- Content injected here -->
     </div>
 `;
@@ -65,7 +65,7 @@ function renderView() {
 // --- DESKTOP VIEW (一覧画面) ---
 function renderListViewDesktop(container) {
     container.innerHTML = `
-        <div style="padding: 1.5rem;">
+        <div style="padding: 1.5rem;" class="animate-fade-in">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
                 <h2 style="margin:0; display: flex; align-items: center; gap: 0.8rem;">
                     <i class="fas fa-lightbulb" style="color: #f59e0b;"></i>
@@ -130,7 +130,7 @@ function renderListViewDesktop(container) {
 // --- MOBILE VIEW (一覧画面) ---
 function renderListViewMobile(container) {
     container.innerHTML = `
-        <div style="padding: 1.25rem; background: #f8fafc; min-height: 100%;">
+        <div style="padding: 1.25rem; background: #f8fafc; min-height: 100%;" class="animate-fade-in">
             <div style="margin-bottom: 1.5rem;">
                 <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem;">
                     <div style="width: 38px; height: 38px; background: white; border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
@@ -351,9 +351,10 @@ function renderFormViewMobile(container) {
     const isEdit = !!editingPrototype;
     const isOwner = !isEdit || editingPrototype.created_by === currentUser?.uid || editingPrototype.created_by === currentUser?.id;
 
+    // Use absolute fixed positioning for HUD to avoid parent transform issues
     container.innerHTML = `
-        <div class="animate-fade-in" style="padding-bottom: 5rem; background: #f8fafc; min-height: 100dvh;">
-            <!-- 1. Mobile Tab Tracker (Sticky Top with Blur) -->
+        <div style="padding-bottom: 5rem; background: #f8fafc; min-height: 100dvh;">
+            <!-- 1. Mobile Tab Tracker (Sticky Top) -->
             <div style="position: sticky; top: 0; z-index: 600; background: rgba(248, 250, 252, 0.9); backdrop-filter: blur(10px); padding: 0.8rem 1.2rem 0.6rem;">
                 <div class="proto-mobile-tabs" style="background: rgba(226, 232, 240, 0.6); padding: 4px; border-radius: 14px; display: flex;">
                     <button class="proto-tab-btn ${activeMobileTab === 'info' ? 'active' : ''}" data-tab="info" style="flex:1; border:none; padding: 0.8rem; border-radius: 11px; font-weight: 800; font-size: 0.85rem; transition: 0.3s; background: ${activeMobileTab === 'info' ? 'white' : 'transparent'}; color: ${activeMobileTab === 'info' ? 'var(--primary)' : '#475569'};">基本</button>
@@ -362,19 +363,19 @@ function renderFormViewMobile(container) {
                 </div>
             </div>
 
-            <!-- 2. Crystal Floating Summary (Right Side Fixed Overlay) -->
-            <div id="crystal-summary" style="position: fixed; top: 110px; right: 1rem; z-index: 1000; width: 130px; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.4); border-radius: 20px; padding: 0.8rem; box-shadow: 0 10px 25px rgba(0,0,0,0.08); pointer-events: none; transition: opacity 0.3s;">
+            <!-- 2. Minimalist HUD Summary (Truly Fixed Viewport) -->
+            <div id="crystal-summary" style="position: fixed; top: 110px; right: 1.2rem; z-index: 2000; width: 120px; text-align: right; pointer-events: none; transition: opacity 0.3s;">
                 <div style="margin-bottom: 0.6rem;">
-                    <span style="display: block; font-size: 0.6rem; color: #94a3b8; font-weight: 800; margin-bottom: 1px;">総原価</span>
-                    <span id="summary-total-cost" style="font-size: 1rem; font-weight: 950; color: #1e293b;">¥0</span>
+                    <span style="display: block; font-size: 0.6rem; color: #64748b; font-weight: 900; text-shadow: 0 1px 2px rgba(255,255,255,0.8);">総原価</span>
+                    <span id="summary-total-cost" style="font-size: 1.1rem; font-weight: 950; color: #1e293b; text-shadow: 0 1px 3px rgba(255,255,255,0.9), 0 0 1px rgba(0,0,0,0.1);">¥0</span>
                 </div>
-                <div style="margin-bottom: 0.6rem; padding: 0.4rem 0; border-top: 1px solid rgba(0,0,0,0.05); border-bottom: 1px solid rgba(0,0,0,0.05);">
-                    <span style="display: block; font-size: 0.6rem; color: #94a3b8; font-weight: 800; margin-bottom: 1px;">原価率</span>
-                    <span id="summary-cost-ratio" style="font-size: 0.95rem; font-weight: 950; color: #1e293b;">0%</span>
+                <div style="margin-bottom: 0.6rem;">
+                    <span style="display: block; font-size: 0.6rem; color: #64748b; font-weight: 900; text-shadow: 0 1px 2px rgba(255,255,255,0.8);">原価率</span>
+                    <span id="summary-cost-ratio" style="font-size: 1.05rem; font-weight: 950; color: #1e293b; text-shadow: 0 1px 3px rgba(255,255,255,0.9), 0 0 1px rgba(0,0,0,0.1);">0%</span>
                 </div>
                 <div>
-                    <span style="display: block; font-size: 0.6rem; color: #94a3b8; font-weight: 800; margin-bottom: 1px;">粗利</span>
-                    <span id="summary-profit" style="font-size: 1rem; font-weight: 950; color: #10b981;">¥0</span>
+                    <span style="display: block; font-size: 0.6rem; color: #64748b; font-weight: 900; text-shadow: 0 1px 2px rgba(255,255,255,0.8);">粗利</span>
+                    <span id="summary-profit" style="font-size: 1.1rem; font-weight: 950; color: #10b981; text-shadow: 0 1px 3px rgba(255,255,255,0.9), 0 0 1px rgba(0,0,0,0.1);">¥0</span>
                 </div>
             </div>
 
@@ -530,7 +531,7 @@ function setupFormLogic(container, isOwner, isEdit, isMobile) {
         const crystal = document.getElementById('crystal-summary');
         inputs.forEach(el => {
             el.addEventListener('focus', () => {
-                if (crystal) crystal.style.opacity = '0.3'; // Fade summary when typing
+                if (crystal) crystal.style.opacity = '0.15'; // Very light when typing
             });
             el.addEventListener('blur', () => {
                 if (crystal) crystal.style.opacity = '1';
