@@ -19,37 +19,41 @@ export const prototypeMenuPageHtml = `
         <!-- Content injected here -->
     </div>
     <style>
-        .prototype-floating-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-top: 1.5px solid #e2e8f0;
-            padding: 1rem 1.5rem;
-            z-index: 1000;
+        .proto-sticky-summary {
+            position: sticky;
+            top: -1.5rem;
+            left: -1.5rem;
+            right: -1.5rem;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0.7rem 1.5rem;
+            margin: -1.5rem -1.5rem 1.5rem -1.5rem;
+            z-index: 1100;
             display: flex;
             justify-content: space-around;
-            box-shadow: 0 -10px 25px -5px rgba(0,0,0,0.1);
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
         .proto-summary-item {
             display: flex;
-            flex-direction: column;
             align-items: center;
+            gap: 0.6rem;
         }
         .proto-summary-label {
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             font-weight: 800;
             color: #64748b;
             text-transform: uppercase;
-            margin-bottom: 2px;
+            white-space: nowrap;
         }
         .proto-summary-value {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: 900;
             color: #1e293b;
             font-family: 'Outfit', sans-serif;
+            white-space: nowrap;
         }
         .proto-profit-highlight {
             color: #10b981;
@@ -219,7 +223,23 @@ function renderFormView(container) {
     const primaryColor = '#4f46e5';
 
     container.innerHTML = `
-        <div class="animate-fade-in" style="padding: 1.5rem; padding-bottom: 8rem;">
+        <div class="animate-fade-in" style="padding: 1.5rem; padding-bottom: 5rem; position:relative;">
+            <!-- Sticky Summary Bar -->
+            <div class="proto-sticky-summary">
+                <div class="proto-summary-item">
+                    <span class="proto-summary-label">総原価</span>
+                    <span id="summary-total-cost" class="proto-summary-value">¥0</span>
+                </div>
+                <div class="proto-summary-item">
+                    <span class="proto-summary-label">原価率</span>
+                    <span id="summary-cost-ratio" class="proto-summary-value">0%</span>
+                </div>
+                <div class="proto-summary-item">
+                    <span class="proto-summary-label">想定粗利</span>
+                    <span id="summary-profit" class="proto-summary-value proto-profit-highlight">¥0</span>
+                </div>
+            </div>
+
             <!-- Header -->
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
                 <button id="btn-proto-back" class="btn" style="background:white; border:1px solid #e2e8f0; color:#64748b; font-weight:700;">
@@ -355,22 +375,6 @@ function renderFormView(container) {
                     <i class="fas fa-trash-alt"></i> この試作品を破棄する
                 </button>
             ` : ''}
-        </div>
-
-        <!-- Floating Summary Bar -->
-        <div class="prototype-floating-bar">
-            <div class="proto-summary-item">
-                <span class="proto-summary-label">総原価</span>
-                <span id="summary-total-cost" class="proto-summary-value">¥0</span>
-            </div>
-            <div class="proto-summary-item">
-                <span class="proto-summary-label">原価率</span>
-                <span id="summary-cost-ratio" class="proto-summary-value">0%</span>
-            </div>
-            <div class="proto-summary-item">
-                <span class="proto-summary-label">想定粗利</span>
-                <span id="summary-profit" class="proto-summary-value proto-profit-highlight">¥0</span>
-            </div>
         </div>
     `;
 
