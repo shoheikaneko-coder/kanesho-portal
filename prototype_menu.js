@@ -255,6 +255,14 @@ function renderFormView(container) {
                             <input type="text" id="proto-name" class="recipe-pro-input" value="${isEdit ? editingPrototype.name : ''}" ${!isOwner ? 'readonly' : ''}>
                         </div>
                         <div class="input-group compact-input">
+                            <label>大分類 <span style="color:var(--danger)">*</span></label>
+                            <select id="proto-major-category" class="recipe-pro-input" ${!isOwner ? 'disabled' : ''}>
+                                <option value="">選択...</option>
+                                <option value="フード" ${isEdit && editingPrototype.major_category === 'フード' ? 'selected' : ''}>フード</option>
+                                <option value="ドリンク" ${isEdit && editingPrototype.major_category === 'ドリンク' ? 'selected' : ''}>ドリンク</option>
+                            </select>
+                        </div>
+                        <div class="input-group compact-input">
                             <label>カテゴリー</label>
                             <input type="text" id="proto-category" class="recipe-pro-input" value="${isEdit ? (editingPrototype.category || '') : ''}" ${!isOwner ? 'readonly' : ''}>
                         </div>
@@ -280,6 +288,7 @@ function renderFormView(container) {
                         <label>仕上がり出来高 (自家製時のみ使用)</label>
                         <div style="display:flex; align-items:center; gap:0.5rem;">
                             <input type="number" id="proto-yield" class="recipe-pro-input" value="${isEdit ? (editingPrototype.yield_amount || 1) : 1}" ${!isOwner ? 'readonly' : ''} inputmode="decimal">
+                            <input type="text" id="proto-yield-unit" class="recipe-pro-input" style="width:80px;" placeholder="g/ml" value="${isEdit ? (editingPrototype.yield_unit || '') : ''}" ${!isOwner ? 'readonly' : ''}>
                         </div>
                     </div>
                 </div>
@@ -317,10 +326,10 @@ function renderFormView(container) {
             <div style="margin-top:2rem; display:flex; gap:1rem;">
                 ${isOwner ? `
                     <button id="btn-save-as-menu" class="btn" style="flex:1; height:54px; background:linear-gradient(135deg, #4f46e5, #6366f1); color:white; font-weight:900; border:none; border-radius:12px; box-shadow:0 4px 12px rgba(79, 70, 229, 0.3);">
-                        販売メニューとして保存
+                        メニューの試作品として保存
                     </button>
                     <button id="btn-save-as-homemade" class="btn" style="flex:1; height:54px; background:linear-gradient(135deg, #10b981, #34d399); color:white; font-weight:900; border:none; border-radius:12px; box-shadow:0 4px 12px rgba(16, 185, 129, 0.3);">
-                        自家製原材料として保存
+                        自家製原材料の試作品として保存
                     </button>
                 ` : `
                     <button id="btn-copy-to-me" class="btn btn-primary" style="flex:1; height:54px; font-weight:900; border-radius:12px;">
@@ -369,6 +378,22 @@ function renderFormView(container) {
 
     if (document.getElementById('btn-proto-delete')) {
         document.getElementById('btn-proto-delete').onclick = () => deletePrototype();
+    }
+
+    // Major Category Unit Sync
+    const majorCat = document.getElementById('proto-major-category');
+    const unitInput = document.getElementById('proto-unit');
+    const yieldUnitInput = document.getElementById('proto-yield-unit');
+    if (majorCat && isOwner) {
+        majorCat.onchange = () => {
+            if (majorCat.value === 'フード') {
+                unitInput.value = 'g';
+                yieldUnitInput.value = 'g';
+            } else if (majorCat.value === 'ドリンク') {
+                unitInput.value = 'ml';
+                yieldUnitInput.value = 'ml';
+            }
+        };
     }
 
     // Sell Price Change (Anyone can do)
@@ -621,11 +646,13 @@ async function savePrototype(recipe, type) {
     const data = {
         name,
         furigana: document.getElementById('proto-furigana').value.trim(),
+        major_category: document.getElementById('proto-major-category').value,
         category: document.getElementById('proto-category').value.trim(),
         portion_amount: parseFloat(document.getElementById('proto-portion').value) || 0,
         unit: document.getElementById('proto-unit').value.trim(),
         selling_price: parseFloat(document.getElementById('proto-selling-price').value) || 0,
         yield_amount: parseFloat(document.getElementById('proto-yield').value) || 1,
+        yield_unit: document.getElementById('proto-yield-unit').value.trim(),
         instructions: document.getElementById('proto-instructions').value.trim(),
         type: type,
         recipe: recipe,
