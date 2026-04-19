@@ -53,6 +53,14 @@ const HUB_CONFIG = {
             { id: 'calendar_admin', name: '営業カレンダー作成', icon: 'fa-calendar-plus', color: '#4b5563', desc: '年間休日・イベント設定' },
             { id: 'goals_admin', name: '目標設定 (社長用)', icon: 'fa-bullseye', color: '#4b5563', desc: '全社売上ターゲット' }
         ]
+    },
+    'utility_hub': {
+        title: '便利機能',
+        description: '従業員のナレッジ共有・シミュレーションツール',
+        items: [
+            { id: 'prototype_menu', name: 'メニュー試作', icon: 'fa-flask', color: '#f59e0b', desc: '新メニューの原価計算シミュ' },
+            { id: 'competitor_list', name: '行きたい店リスト', icon: 'fa-map-marked-alt', color: '#3b82f6', desc: '競合店の視察メモ・共有' }
+        ]
     }
 };
 

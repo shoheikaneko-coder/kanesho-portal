@@ -31,6 +31,8 @@ import { hubPageHtml, initHubPage } from './hubs.js?v=116';
 import { inviteNaviPageHtml, initInviteNaviPage } from './invite_navi.js';
 import { attendanceManagementPageHtml, initAttendanceManagementPage } from './attendance_management.js';
 import { bottleKeepPageHtml, initBottleKeepPage } from './bottle_keep.js';
+import { prototypeMenuPageHtml, initPrototypeMenuPage } from './prototype_menu.js';
+import { competitorListPageHtml, initCompetitorListPage } from './competitor_list.js';
 
 
 console.log("AntiGravity Portal: app.js loaded successfully.");
@@ -47,6 +49,7 @@ const defaultMenuItems = [
     { id: 'home', name: 'メインホーム', icon: 'fa-home', category: 'ハブ' },
     { id: 'ops_hub', name: '店舗業務', icon: 'fa-store', category: 'ハブ' },
     { id: 'hr_hub', name: '人事総務業務', icon: 'fa-user-friends', category: 'ハブ' },
+    { id: 'utility_hub', name: '便利機能', icon: 'fa-lightbulb', category: 'ハブ' },
     { id: 'master_hub', name: '設定', icon: 'fa-cog', category: 'ハブ' },
     
     { id: 'dashboard', name: '分析ダッシュボード', icon: 'fa-chart-line', category: 'サブ機能' },
@@ -68,6 +71,7 @@ const hubLabels = {
     'home': 'ホーム',
     'ops_hub': '業務',
     'hr_hub': '人事',
+    'utility_hub': '便利機能',
     'master_hub': '設定'
 };
 
@@ -103,7 +107,9 @@ const pageParentMap = {
     'product_analysis': 'master_hub',
     'calendar_admin': 'master_hub',
     'goals_admin': 'master_hub',
-    'goals_store': 'ops_hub'
+    'goals_store': 'ops_hub',
+    'prototype_menu': 'utility_hub',
+    'competitor_list': 'utility_hub'
 };
 
 /**
@@ -260,6 +266,12 @@ async function renderSidebar(user) {
         }
     }
     
+    // 便利機能Hubは全従業員にデフォルト開放
+    const commonPerms = ['utility_hub', 'prototype_menu', 'competitor_list'];
+    commonPerms.forEach(id => {
+        if (!allowed.includes(id)) allowed.push(id);
+    });
+
     state.permissions = allowed;
 
     const hrNav = document.getElementById('nav-item-hr');
@@ -548,6 +560,21 @@ function showPage(target) {
                 pageTitle.textContent = 'ボトルキープ管理';
                 pageContent.innerHTML = bottleKeepPageHtml;
                 initBottleKeepPage();
+                break;
+            case 'utility_hub':
+                pageTitle.textContent = '便利機能';
+                pageContent.innerHTML = hubPageHtml('便利機能', '従業員のナレッジ共有・シミュレーションツール。');
+                initHubPage('utility_hub');
+                break;
+            case 'prototype_menu':
+                pageTitle.textContent = 'メニュー試作';
+                pageContent.innerHTML = prototypeMenuPageHtml;
+                initPrototypeMenuPage();
+                break;
+            case 'competitor_list':
+                pageTitle.textContent = '行きたい店リスト';
+                pageContent.innerHTML = competitorListPageHtml;
+                initCompetitorListPage();
                 break;
         }
 
