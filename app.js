@@ -852,7 +852,8 @@ function initMobileHeaderEvents() {
     
     const mobileMenuBtn = document.getElementById('mobile-btn-menu');
     if (mobileMenuBtn) {
-        mobileMenuBtn.onclick = () => {
+        mobileMenuBtn.onclick = (e) => {
+            e.stopPropagation();
             const sidebar = document.getElementById('sidebar');
             if (sidebar) sidebar.classList.toggle('show');
         };
@@ -863,11 +864,23 @@ function initMobileHeaderEvents() {
     }
     const mobileSwitcherBtn = document.getElementById('mobile-btn-switcher');
     if (mobileSwitcherBtn) {
-        mobileSwitcherBtn.onclick = () => {
+        mobileSwitcherBtn.onclick = (e) => {
+            e.stopPropagation();
             const menu = document.getElementById('header-view-menu');
-            if (menu) menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
+            if (menu) {
+                const isVisible = menu.offsetParent !== null;
+                menu.style.display = isVisible ? 'none' : 'block';
+            }
         };
     }
+
+    // 画面外タップでメニューを閉じる
+    document.addEventListener('click', (e) => {
+        const menu = document.getElementById('header-view-menu');
+        if (menu && menu.offsetParent !== null && !menu.contains(e.target)) {
+            menu.style.display = 'none';
+        }
+    });
 
     // 初回読み込み時の同期処理
     if (pageTitleMobileCentral && state.currentPage) {

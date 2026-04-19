@@ -521,11 +521,14 @@ p { color: var(--text-secondary); line-height: 1.5; }
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 2100;
-  }
-      display: flex;
-      align-items: center;
-      justify-content: center;
+  /* 閲覧・ショートカットメニューのスマホ調整 */
+  .header-view-menu {
+      top: 50px !important; /* 黒いバーのすぐ下に配置 */
+      right: 1rem !important;
+      left: 1rem !important;
+      width: auto !important;
+      z-index: 3000 !important;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
   }
 
   .sidebar {

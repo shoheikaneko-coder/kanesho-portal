@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>かね将ポータル - プロトタイプ</title>
-    <link rel="stylesheet" href="styles.css?v=120">
+    <link rel="stylesheet" href="styles.css?v=122">
     <script type="module" src="app.js?v=115"></script>
     <!-- FontAwesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -187,6 +187,21 @@
                     <h1 id="page-title-mobile-central">ホーム</h1>
                 </div>
             </header>
+
+            <!-- 閲覧・ショートカットメニュー (復元) -->
+            <div id="header-view-menu" class="header-view-menu glass">
+                <div class="view-menu-header">閲覧・ショートカット</div>
+                <div class="view-menu-content">
+                    <div class="view-menu-item" data-target="shift_viewer" onclick="window.navigateTo('shift_viewer'); document.getElementById('header-view-menu').style.display='none';">
+                        <i class="fas fa-users-rectangle"></i>
+                        <span>シフト表</span>
+                    </div>
+                    <div class="view-menu-item" data-target="calendar_viewer" onclick="window.navigateTo('calendar_viewer'); document.getElementById('header-view-menu').style.display='none';">
+                        <i class="fas fa-calendar-days"></i>
+                        <span>営業カレンダー</span>
+                    </div>
+                </div>
+            </div>
 
             <div class="page-content" id="page-content">
                 <!-- Content injected by JS -->
