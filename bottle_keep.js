@@ -230,7 +230,7 @@ function renderBottleCard(bottle) {
             position: relative;
         ">
             ${bottle.memo ? `
-                <div class="memo-indicator" onclick="event.stopPropagation(); showBottleMemo('${bottle.id}')" title="メモを確認">
+                <div class="memo-indicator" onclick="event.stopPropagation(); showBottleMemo(event, '${bottle.id}')" title="メモを確認">
                     <i class="fas fa-comment-dots"></i>
                 </div>
             ` : ''}
@@ -263,10 +263,56 @@ window.toggleArea = (areaId) => {
     renderGrid();
 };
 
-window.showBottleMemo = (bottleId) => {
+window.showBottleMemo = (event, bottleId) => {
+    const existing = document.querySelector('.memo-popover');
+    if (existing) {
+        existing.remove();
+        if (existing.dataset.bottleId === bottleId) return; // Toggle off if clicking the same icon
+    }
+
     const bottle = cachedBottles.find(b => b.id === bottleId);
     if (!bottle || !bottle.memo) return;
-    showAlert("ボトルのメモ", bottle.memo.replace(/\n/g, '<br>'));
+
+    const target = event.currentTarget;
+    const rect = target.getBoundingClientRect();
+
+    const popover = document.createElement('div');
+    popover.className = 'memo-popover';
+    popover.dataset.bottleId = bottleId;
+    popover.innerHTML = `
+        <div class="memo-popover-content">
+            ${bottle.memo.replace(/\n/g, '<br>')}
+        </div>
+        <div class="memo-popover-arrow"></div>
+    `;
+
+    document.body.appendChild(popover);
+
+    // Position calc
+    const popHeight = popover.offsetHeight;
+    const popWidth = popover.offsetWidth;
+    
+    let left = rect.left + (rect.width / 2) - (popWidth / 2);
+    let top = rect.top - popHeight - 12;
+
+    // Boundary check
+    if (left < 10) left = 10;
+    if (left + popWidth > window.innerWidth - 10) left = window.innerWidth - popWidth - 10;
+    if (top < 10) top = rect.bottom + 12; // Show below if no space above
+
+    popover.style.left = `${left}px`;
+    popover.style.top = `${top}px`;
+    popover.classList.add('show');
+
+    // Click outside to close
+    const closeHandler = (e) => {
+        if (!popover.contains(e.target) && !target.contains(e.target)) {
+            popover.classList.remove('show');
+            setTimeout(() => popover.remove(), 200);
+            document.removeEventListener('click', closeHandler);
+        }
+    };
+    setTimeout(() => document.addEventListener('click', closeHandler), 10);
 };
 
 function renderSearchResults() {
@@ -681,6 +727,45 @@ style.textContent = `
         0% { transform: scale(1); box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3); }
         50% { transform: scale(1.05); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.5); }
         100% { transform: scale(1); box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3); }
+    }
+    .memo-popover {
+        position: fixed;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        padding: 0.8rem 1rem;
+        z-index: 11000;
+        max-width: 250px;
+        min-width: 150px;
+        font-size: 0.85rem;
+        color: var(--text-primary);
+        line-height: 1.5;
+        opacity: 0;
+        transform: translateY(5px);
+        transition: opacity 0.2s, transform 0.2s;
+        pointer-events: auto;
+    }
+    .memo-popover.show {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    .memo-popover-content {
+        word-break: break-all;
+        font-weight: 500;
+    }
+    .memo-popover-arrow {
+        position: absolute;
+        bottom: -6px;
+        left: 50%;
+        transform: translateX(-50%) rotate(45deg);
+        width: 12px;
+        height: 12px;
+        background: rgba(255, 255, 255, 0.95);
+        border-right: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
     }
     .bottle-modal-grid {
         display: grid;
