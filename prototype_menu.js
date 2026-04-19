@@ -245,8 +245,8 @@ function renderFormView(container) {
                             </label>
                         ` : ''}
                     </div>
-                    <div style="flex:1; display:grid; grid-template-columns:1fr 1.5fr; gap:1rem;">
-                        <!-- Left Col: Furigana & Name -->
+                    <div style="flex:1; display:grid; grid-template-columns:1fr 1.3fr; gap:1.2rem;">
+                        <!-- Left Column: Furigana & Name (Stacked) -->
                         <div style="display:flex; flex-direction:column; gap:1rem;">
                             <div class="input-group compact-input">
                                 <label>ふりがな</label>
@@ -258,10 +258,10 @@ function renderFormView(container) {
                             </div>
                         </div>
 
-                        <!-- Right Col: Major & Portion, Category -->
+                        <!-- Right Column: Major Category & Portion Amount (Row 1), Category (Row 2) -->
                         <div style="display:flex; flex-direction:column; gap:1rem;">
                             <div style="display:flex; align-items:flex-end; gap:0.5rem;">
-                                <div class="input-group compact-input" style="flex:1;">
+                                <div class="input-group compact-input" style="flex:0.6;">
                                     <label>大分類 <span style="color:var(--danger)">*</span></label>
                                     <select id="proto-major-category" class="recipe-pro-input" style="padding:0.7rem;" ${!isOwner ? 'disabled' : ''}>
                                         <option value="">選択...</option>
@@ -273,7 +273,9 @@ function renderFormView(container) {
                                     <label>ポーション量 / 販売単位</label>
                                     <div style="display:flex; align-items:center; gap:0.4rem;">
                                         <input type="number" id="proto-portion" class="recipe-pro-input" style="padding:0.7rem;" value="${isEdit ? (editingPrototype.portion_amount || '') : ''}" ${!isOwner ? 'readonly' : ''} inputmode="decimal">
-                                        <span id="proto-unit-display" style="font-weight:900; color:#64748b; min-width:30px; font-size:1.1rem; padding-bottom:5px;">${isEdit ? (editingPrototype.unit || '') : ''}</span>
+                                        <span id="proto-unit-display" style="font-weight:900; color:#64748b; font-size:1.1rem; min-width:30px; line-height:1; display:flex; align-items:center;">
+                                            ${isEdit ? (editingPrototype.unit || '') : ''}
+                                        </span>
                                         <input type="hidden" id="proto-unit" value="${isEdit ? (editingPrototype.unit || '') : ''}">
                                     </div>
                                 </div>
@@ -400,11 +402,12 @@ function renderFormView(container) {
             if (majorCat.value === 'フード') {
                 unitInput.value = 'g';
                 unitDisplay.textContent = 'g';
-                yieldUnitInput.value = 'g';
+                // Note: yield unit is free-text, so we don't force it, but can provide a hint
+                if (!yieldUnitInput.value) yieldUnitInput.value = 'g';
             } else if (majorCat.value === 'ドリンク') {
                 unitInput.value = 'ml';
                 unitDisplay.textContent = 'ml';
-                yieldUnitInput.value = 'ml';
+                if (!yieldUnitInput.value) yieldUnitInput.value = 'ml';
             }
         };
     }
