@@ -376,6 +376,12 @@ function showPage(target) {
     const breadcrumbArea = document.getElementById('breadcrumb-area');
     const backBtn = document.getElementById('header-back-btn');
     const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+
+    // モバイル用の中央タイトル更新補助
+    const updateHeaderTitle = (title) => {
+        if (pageTitle) pageTitle.textContent = title;
+        if (pageTitleMobileCentral) pageTitleMobileCentral.textContent = title;
+    };
     if (!pageContent || !pageTitle) return;
 
     // ナビゲーションUIの生成 (パンくず & 戻るボタン)
@@ -386,65 +392,62 @@ function showPage(target) {
     try {
         switch (target) {
             case 'home':
-                pageTitle.textContent = 'メインホーム';
-                if (pageTitleMobileCentral) pageTitleMobileCentral.textContent = 'メインホーム';
+                updateHeaderTitle('メインホーム');
                 pageContent.innerHTML = homePageHtml;
                 initHomePage();
                 break;
             case 'ops_hub':
-                pageTitle.textContent = '店舗業務';
-                if (pageTitleMobileCentral) pageTitleMobileCentral.textContent = '店舗業務';
+                updateHeaderTitle('店舗業務');
                 pageContent.innerHTML = hubPageHtml('店舗業務', '店舗運営に必要な日次業務。');
                 initHubPage('ops_hub');
                 break;
             case 'hr_hub':
-                pageTitle.textContent = '人事総務業務';
-                if (pageTitleMobileCentral) pageTitleMobileCentral.textContent = '人事総務業務';
+                updateHeaderTitle('人事総務業務');
                 pageContent.innerHTML = hubPageHtml('人事総務業務', '従業員管理、貸与物、勤怠チェック。');
                 initHubPage('hr_hub');
                 break;
             case 'master_hub':
-                pageTitle.textContent = '設定・マスタ';
+                updateHeaderTitle('設定・マスタ');
                 pageContent.innerHTML = hubPageHtml('設定・マスタ', 'システム基盤情報の管理。');
                 initHubPage('master_hub');
                 break;
             case 'dashboard':
-                pageTitle.textContent = 'ダッシュボード';
+                updateHeaderTitle('ダッシュボード');
                 pageContent.innerHTML = dashboardPageHtml;
                 initDashboardPage();
                 break;
             case 'attendance_check':
-                pageTitle.textContent = '勤怠状況確認';
+                updateHeaderTitle('勤怠状況確認');
                 pageContent.innerHTML = attendanceCheckPageHtml;
                 initAttendanceCheckPage();
                 break;
             case 'attendance':
-                pageTitle.textContent = '勤怠入力';
+                updateHeaderTitle('勤怠入力');
                 pageContent.innerHTML = attendancePageHtml;
                 initAttendancePage(state.currentUser);
                 break;
             case 'sales':
-                pageTitle.textContent = '営業実績報告';
+                updateHeaderTitle('営業実績報告');
                 pageContent.innerHTML = salesPageHtml;
                 initSalesPage();
                 break;
             case 'inventory':
-                pageTitle.textContent = '在庫管理';
+                updateHeaderTitle('在庫管理');
                 pageContent.innerHTML = inventoryPageHtml;
                 initInventoryPage(state.currentUser);
                 break;
             case 'procurement':
-                pageTitle.textContent = '仕入れ履歴';
+                updateHeaderTitle('仕入れ履歴');
                 pageContent.innerHTML = procurementPageHtml;
                 initProcurementPage();
                 break;
             case 'stores':
-                pageTitle.textContent = '店舗マスタ';
+                updateHeaderTitle('店舗マスタ');
                 pageContent.innerHTML = storesPageHtml;
                 initStoresPage();
                 break;
             case 'users':
-                pageTitle.textContent = 'ユーザー登録/変更';
+                updateHeaderTitle('ユーザー登録/変更');
                 pageContent.innerHTML = usersPageHtml;
                 initUsersPage();
                 break;
@@ -850,47 +853,69 @@ function initMobileHeaderEvents() {
     const pageTitleMobileCentral = document.getElementById('page-title-mobile-central');
     const pageTitle = document.getElementById('page-title');
     
+    // 三本線メニュー
     const mobileMenuBtn = document.getElementById('mobile-btn-menu');
     if (mobileMenuBtn) {
-        mobileMenuBtn.onclick = (e) => {
-            e.stopPropagation();
-            const sidebar = document.getElementById('sidebar');
-            if (sidebar) sidebar.classList.toggle('show');
-        };
+        mobileMenuBtn.removeEventListener('click', handleMobileMenuClick);
+        mobileMenuBtn.addEventListener('click', handleMobileMenuClick);
     }
+
+    // 通知ボタン
     const mobileNotifyBtn = document.getElementById('mobile-btn-notifications');
     if (mobileNotifyBtn) {
-        mobileNotifyBtn.onclick = () => showPage('notifications');
+        mobileNotifyBtn.removeEventListener('click', handleMobileNotifyClick);
+        mobileNotifyBtn.addEventListener('click', handleMobileNotifyClick);
     }
+
+    // 閲覧切り替え
     const mobileSwitcherBtn = document.getElementById('mobile-btn-switcher');
     if (mobileSwitcherBtn) {
-        mobileSwitcherBtn.onclick = (e) => {
-            e.stopPropagation();
-            const menu = document.getElementById('header-view-menu');
-            if (menu) {
-                const isVisible = menu.offsetParent !== null;
-                menu.style.display = isVisible ? 'none' : 'block';
-            }
-        };
+        mobileSwitcherBtn.removeEventListener('click', handleMobileSwitcherClick);
+        mobileSwitcherBtn.addEventListener('click', handleMobileSwitcherClick);
     }
 
     // 画面外タップでメニューを閉じる
-    document.addEventListener('click', (e) => {
-        const menu = document.getElementById('header-view-menu');
-        if (menu && menu.offsetParent !== null && !menu.contains(e.target)) {
-            menu.style.display = 'none';
-        }
-    });
+    document.removeEventListener('click', handleDocumentClick);
+    document.addEventListener('click', handleDocumentClick);
 
-    // 初回読み込み時の同期処理
+    // タイトル同期
     if (pageTitleMobileCentral && state.currentPage) {
         const titles = { 
             'home': 'メインホーム', 'ops_hub': '店舗業務', 'hr_hub': '人事総務業務', 
             'master_hub': 'マスタ管理', 'system_hub': 'システム設定', 'prototype_menu': 'メニュー試作'
         };
-        pageTitleMobileCentral.textContent = titles[state.currentPage] || pageTitle.textContent;
+        pageTitleMobileCentral.textContent = titles[state.currentPage] || (pageTitle ? pageTitle.textContent : '');
     }
 }
+
+// ハンドラー関数（重複登録防止のため分離）
+function handleMobileMenuClick(e) {
+    e.stopPropagation();
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) sidebar.classList.toggle('show');
+}
+
+function handleMobileNotifyClick(e) {
+    e.stopPropagation();
+    window.navigateTo('notifications');
+}
+
+function handleMobileSwitcherClick(e) {
+    e.stopPropagation();
+    const menu = document.getElementById('header-view-menu');
+    if (menu) {
+        const isVisible = menu.offsetParent !== null;
+        menu.style.display = isVisible ? 'none' : 'block';
+    }
+}
+
+function handleDocumentClick(e) {
+    const menu = document.getElementById('header-view-menu');
+    if (menu && menu.offsetParent !== null && !menu.contains(e.target)) {
+        menu.style.display = 'none';
+    }
+}
+
 window.initMobileHeaderEvents = initMobileHeaderEvents;
 
 // DOMContentLoaded時に実行
