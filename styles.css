@@ -454,35 +454,57 @@ p { color: var(--text-secondary); line-height: 1.5; }
   }
   
   .mobile-app-toolbar {
-      background: #000000;
-      padding: 0.5rem 1.2rem;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0.4rem 1rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      min-height: 46px; /* Filmarksのリズムに合わせたスリム化 */
+      min-height: 50px;
   }
 
   .mobile-app-brand {
-      color: #FFD700;
+      color: var(--primary);
       font-weight: 900;
-      font-size: 0.95rem;
+      font-size: 1rem;
       margin-left: 0.4rem;
       letter-spacing: -0.01em;
+  }
+
+  .mobile-toolbar-right {
+      display: flex !important;
+      flex-direction: row !important;
+      align-items: center;
+      gap: 0.2rem;
   }
 
   .mobile-app-title-bar {
       background: #FFFFFF;
       border-bottom: 1px solid #E2E8F0;
-      padding: 0.6rem 0.5rem;
+      padding: 0.4rem 0.5rem;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
-      min-height: 44px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.02); /* 極めて薄い影 */
+      min-height: 48px;
   }
 
+  .mobile-breadcrumb {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.1rem;
+      display: flex;
+      gap: 0.3rem;
+      align-items: center;
+      opacity: 0.8;
+  }
+
+  .mobile-breadcrumb i { font-size: 0.6rem; }
+
   #page-title-mobile-central {
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       font-weight: 800;
       color: #1e293b;
       margin: 0;

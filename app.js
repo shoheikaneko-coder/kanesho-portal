@@ -837,6 +837,12 @@ function renderNavigationUI(target, titleEl, breadcrumbEl, backBtn, menuBtn) {
     }
     
     breadcrumbEl.innerHTML = breadcrumbHTML;
+    
+    // スマホ用パンくずの更新
+    const mobileBreadcrumbEl = document.getElementById('mobile-breadcrumb-area');
+    if (mobileBreadcrumbEl) {
+        mobileBreadcrumbEl.innerHTML = breadcrumbHTML;
+    }
 }
 
 // モバイル専用ヘッダーボタンのイベント紐付け (Filmarks Style)
