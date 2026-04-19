@@ -13,6 +13,7 @@ let cachedIngredients = []; // 本番用原材料
 let cachedMenus = [];       // 本番用メニュー
 let currentUser = null;
 let editingPrototype = null;
+let activeMobileTab = 'info'; // 'info', 'recipe', 'notes'
 
 export const prototypeMenuPageHtml = `
     <div id="prototype-menu-container" class="animate-fade-in">
@@ -29,7 +30,7 @@ export const prototypeMenuPageHtml = `
             -webkit-backdrop-filter: blur(12px);
             border-bottom: 1px solid #e2e8f0;
             padding: 0.7rem 1.5rem;
-            margin: -1.5rem -1.5rem 1.5rem -1.5rem;
+            margin: -1.5rem -1.5rem 1.2rem -1.5rem;
             z-index: 1100;
             display: flex;
             justify-content: space-around;
@@ -84,18 +85,7 @@ export const prototypeMenuPageHtml = `
         }
         .badge-proto-menu { background: #e0f2fe; color: #0369a1; }
         .badge-proto-homemade { background: #f0fdf4; color: #16a34a; }
-        
-        .sticky-summary {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            background: white;
-            padding: 1rem;
-            border-bottom: 1.5px solid #e2e8f0;
-            margin: -1.5rem -1.5rem 1.5rem -1.5rem;
-        }
 
-        /* products.js から一部スタイルを継承 */
         .recipe-pro-input {
             width: 100%;
             padding: 0.8rem;
@@ -113,7 +103,6 @@ export const prototypeMenuPageHtml = `
         .recipe-pro-input:read-only {
             background-color: #f8fafc;
             color: #64748b;
-            cursor: default;
         }
 
         .search-result-item.selected {
@@ -121,8 +110,48 @@ export const prototypeMenuPageHtml = `
             border-left: 4px solid #0ea5e9;
         }
 
-        /* Mobile Responsive Tweaks */
+        /* Tabs UI (Mobile Only Style Content) */
+        .proto-mobile-tabs {
+            display: none;
+            background: white;
+            padding: 0.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            margin: -0.5rem -1.5rem 1.2rem -1.5rem;
+            position: sticky;
+            top: 2.2rem;
+            z-index: 1050;
+        }
+        .proto-mobile-tabs .tabs-inner {
+            display: flex;
+            gap: 0.3rem;
+        }
+        .proto-tab-btn {
+            flex: 1;
+            padding: 0.6rem 0.2rem;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            color: #64748b;
+            background: #f1f5f9;
+            border: none;
+            cursor: pointer;
+            text-align: center;
+        }
+        .proto-tab-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+
         @media (max-width: 1024px) {
+            .proto-mobile-tabs {
+                display: block;
+            }
+            .proto-section {
+                display: none;
+            }
+            .proto-section.active {
+                display: block;
+            }
             .proto-basic-info-grid {
                 display: flex !important;
                 flex-direction: column !important;
@@ -136,10 +165,6 @@ export const prototypeMenuPageHtml = `
                 flex-direction: column !important;
                 gap: 1rem !important;
                 align-items: stretch !important;
-            }
-            .proto-major-portion-row > div {
-                flex: none !important;
-                width: 100% !important;
             }
             .proto-sticky-summary {
                 top: -1rem;
@@ -254,6 +279,7 @@ function renderListView(container) {
 
     document.getElementById('btn-proto-new').onclick = () => {
         editingPrototype = null;
+        activeMobileTab = 'info';
         currentView = 'form';
         renderView();
     };
@@ -262,7 +288,6 @@ function renderListView(container) {
 function renderFormView(container) {
     const isEdit = !!editingPrototype;
     const isOwner = !isEdit || editingPrototype.created_by === currentUser?.uid || editingPrototype.created_by === currentUser?.id;
-    const primaryColor = '#4f46e5';
 
     container.innerHTML = `
         <div class="animate-fade-in" style="padding: 1.5rem; padding-bottom: 5rem; position:relative;">
@@ -282,7 +307,16 @@ function renderFormView(container) {
                 </div>
             </div>
 
-            <!-- Header -->
+            <!-- Mobile Tabs Toggle (Visible only on <= 1024px) -->
+            <div class="proto-mobile-tabs">
+                <div class="tabs-inner">
+                    <button class="proto-tab-btn ${activeMobileTab === 'info' ? 'active' : ''}" data-tab="info">基本情報</button>
+                    <button class="proto-tab-btn ${activeMobileTab === 'recipe' ? 'active' : ''}" data-tab="recipe">レシピ構成</button>
+                    <button class="proto-tab-btn ${activeMobileTab === 'notes' ? 'active' : ''}" data-tab="notes">工程・メモ</button>
+                </div>
+            </div>
+
+            <!-- Header Row -->
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
                 <button id="btn-proto-back" class="btn" style="background:white; border:1px solid #e2e8f0; color:#64748b; font-weight:700;">
                     <i class="fas fa-arrow-left"></i> 戻る
@@ -295,108 +329,109 @@ function renderFormView(container) {
                 </div>
             </div>
 
-            <!-- Basic Info Card -->
-            <div style="background:white; border-radius:16px; border:1px solid #e2e8f0; padding:1.5rem; margin-bottom:1.5rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);">
-                <div class="proto-form-card" style="display:flex; gap:1.2rem; align-items:start;">
-                    <div class="proto-img-container" style="position:relative;">
-                        <img id="proto-img-preview" src="${isEdit && editingPrototype.image_url ? editingPrototype.image_url : 'https://via.placeholder.com/150'}" style="width:100px; height:100px; border-radius:12px; object-fit:cover; border:2px solid #f1f5f9;">
-                        ${isOwner ? `
-                            <label for="proto-file-input" style="position:absolute; bottom:-5px; right:-5px; width:32px; height:32px; background:var(--primary); color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
-                                <i class="fas fa-camera" style="font-size:0.8rem;"></i>
-                                <input type="file" id="proto-file-input" accept="image/*" style="display:none;">
-                            </label>
-                        ` : ''}
-                    </div>
-                    <div class="proto-basic-info-grid" style="flex:1; display:grid; grid-template-columns:1fr 1.3fr; gap:1.2rem;">
-                        <!-- Left Column: Furigana & Name (Stacked) -->
-                        <div style="display:flex; flex-direction:column; gap:1rem;">
-                            <div class="input-group compact-input">
-                                <label>ふりがな</label>
-                                <input type="text" id="proto-furigana" class="recipe-pro-input" value="${isEdit ? (editingPrototype.furigana || '') : ''}" ${!isOwner ? 'readonly' : ''}>
-                            </div>
-                            <div class="input-group compact-input">
-                                <label>名称 <span style="color:var(--danger)">*</span></label>
-                                <input type="text" id="proto-name" class="recipe-pro-input" value="${isEdit ? editingPrototype.name : ''}" ${!isOwner ? 'readonly' : ''}>
-                            </div>
+            <!-- Section 1: Basic Info -->
+            <div id="proto-section-info" class="proto-section ${activeMobileTab === 'info' ? 'active' : ''}">
+                <div style="background:white; border-radius:16px; border:1px solid #e2e8f0; padding:1.5rem; margin-bottom:1.5rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);">
+                    <div class="proto-form-card" style="display:flex; gap:1.2rem; align-items:start;">
+                        <div class="proto-img-container" style="position:relative;">
+                            <img id="proto-img-preview" src="${isEdit && editingPrototype.image_url ? editingPrototype.image_url : 'https://via.placeholder.com/150'}" style="width:100px; height:100px; border-radius:12px; object-fit:cover; border:2px solid #f1f5f9;">
+                            ${isOwner ? `
+                                <label for="proto-file-input" style="position:absolute; bottom:-5px; right:-5px; width:32px; height:32px; background:var(--primary); color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+                                    <i class="fas fa-camera" style="font-size:0.8rem;"></i>
+                                    <input type="file" id="proto-file-input" accept="image/*" style="display:none;">
+                                </label>
+                            ` : ''}
                         </div>
-
-                        <!-- Right Column: Major Category & Portion Amount (Row 1), Category (Row 2) -->
-                        <div style="display:flex; flex-direction:column; gap:1rem;">
-                            <div class="proto-major-portion-row" style="display:flex; align-items:flex-end; gap:0.5rem;">
-                                <div class="input-group compact-input" style="flex:0.6;">
-                                    <label>大分類 <span style="color:var(--danger)">*</span></label>
-                                    <select id="proto-major-category" class="recipe-pro-input" style="padding:0.7rem;" ${!isOwner ? 'disabled' : ''}>
-                                        <option value="">選択...</option>
-                                        <option value="フード" ${isEdit && editingPrototype.major_category === 'フード' ? 'selected' : ''}>フード</option>
-                                        <option value="ドリンク" ${isEdit && editingPrototype.major_category === 'ドリンク' ? 'selected' : ''}>ドリンク</option>
-                                    </select>
+                        <div class="proto-basic-info-grid" style="flex:1; display:grid; grid-template-columns:1fr 1.3fr; gap:1.2rem;">
+                            <!-- Column 1 -->
+                            <div style="display:flex; flex-direction:column; gap:1rem;">
+                                <div class="input-group compact-input">
+                                    <label>ふりがな</label>
+                                    <input type="text" id="proto-furigana" class="recipe-pro-input" value="${isEdit ? (editingPrototype.furigana || '') : ''}" ${!isOwner ? 'readonly' : ''}>
                                 </div>
-                                <div class="input-group compact-input" style="flex:1;">
-                                    <label>ポーション量 / 販売単位</label>
-                                    <div style="display:flex; align-items:center; gap:0.4rem;">
-                                        <input type="number" id="proto-portion" class="recipe-pro-input" style="padding:0.7rem;" value="${isEdit ? (editingPrototype.portion_amount || '') : ''}" ${!isOwner ? 'readonly' : ''} inputmode="decimal">
-                                        <span id="proto-unit-display" style="font-weight:900; color:#64748b; font-size:1.1rem; min-width:30px; line-height:1; display:flex; align-items:center;">
-                                            ${isEdit ? (editingPrototype.unit || '') : ''}
-                                        </span>
-                                        <input type="hidden" id="proto-unit" value="${isEdit ? (editingPrototype.unit || '') : ''}">
+                                <div class="input-group compact-input">
+                                    <label>名称 <span style="color:var(--danger)">*</span></label>
+                                    <input type="text" id="proto-name" class="recipe-pro-input" value="${isEdit ? editingPrototype.name : ''}" ${!isOwner ? 'readonly' : ''}>
+                                </div>
+                            </div>
+                            <!-- Column 2 -->
+                            <div style="display:flex; flex-direction:column; gap:1rem;">
+                                <div class="proto-major-portion-row" style="display:flex; align-items:flex-end; gap:0.5rem;">
+                                    <div class="input-group compact-input" style="flex:0.6;">
+                                        <label>大分類 <span style="color:var(--danger)">*</span></label>
+                                        <select id="proto-major-category" class="recipe-pro-input" style="padding:0.7rem;" ${!isOwner ? 'disabled' : ''}>
+                                            <option value="">選択...</option>
+                                            <option value="フード" ${isEdit && editingPrototype.major_category === 'フード' ? 'selected' : ''}>フード</option>
+                                            <option value="ドリンク" ${isEdit && editingPrototype.major_category === 'ドリンク' ? 'selected' : ''}>ドリンク</option>
+                                        </select>
+                                    </div>
+                                    <div class="input-group compact-input" style="flex:1;">
+                                        <label>ポーション量 / 販売単位</label>
+                                        <div style="display:flex; align-items:center; gap:0.4rem;">
+                                            <input type="number" id="proto-portion" class="recipe-pro-input" style="padding:0.7rem;" value="${isEdit ? (editingPrototype.portion_amount || '') : ''}" ${!isOwner ? 'readonly' : ''} inputmode="decimal">
+                                            <span id="proto-unit-display" style="font-weight:900; color:#64748b; font-size:1.1rem; min-width:30px;">
+                                                ${isEdit ? (editingPrototype.unit || '') : ''}
+                                            </span>
+                                            <input type="hidden" id="proto-unit" value="${isEdit ? (editingPrototype.unit || '') : ''}">
+                                        </div>
                                     </div>
                                 </div>
+                                <div class="input-group compact-input">
+                                    <label>カテゴリー</label>
+                                    <input type="text" id="proto-category" class="recipe-pro-input" value="${isEdit ? (editingPrototype.category || '') : ''}" ${!isOwner ? 'readonly' : ''}>
+                                </div>
                             </div>
-                            <div class="input-group compact-input">
-                                <label>カテゴリー</label>
-                                <input type="text" id="proto-category" class="recipe-pro-input" value="${isEdit ? (editingPrototype.category || '') : ''}" ${!isOwner ? 'readonly' : ''}>
+                        </div>
+                    </div>
+                    
+                    <div class="proto-basic-info-grid" style="margin-top:1.5rem; padding-top:1.5rem; border-top:1px dashed #e2e8f0; display:grid; grid-template-columns:1fr 1fr; gap:2rem;">
+                        <div class="input-group compact-input">
+                            <label style="color:var(--primary); font-weight:900;">販売想定価格 (自由入力)</label>
+                            <div style="display:flex; align-items:center; gap:0.5rem;">
+                                <span style="font-weight:900; color:#94a3b8;">¥</span>
+                                <input type="number" id="proto-selling-price" class="recipe-pro-input" style="font-size:1.5rem; font-weight:900; color:var(--primary); border-color:var(--primary)44;" value="${isEdit ? (editingPrototype.selling_price || 0) : 0}" inputmode="decimal">
+                            </div>
+                        </div>
+                        <div class="input-group compact-input">
+                            <label>仕上がり出来高 (自家製時のみ使用)</label>
+                            <div style="display:flex; align-items:center; gap:0.5rem;">
+                                <input type="number" id="proto-yield" class="recipe-pro-input" value="${isEdit ? (editingPrototype.yield_amount || 1) : 1}" ${!isOwner ? 'readonly' : ''} inputmode="decimal">
+                                <input type="text" id="proto-yield-unit" class="recipe-pro-input" style="width:80px;" placeholder="g/ml" value="${isEdit ? (editingPrototype.yield_unit || '') : ''}" ${!isOwner ? 'readonly' : ''}>
                             </div>
                         </div>
                     </div>
                 </div>
-                
-                <div class="proto-basic-info-grid" style="margin-top:1.5rem; padding-top:1.5rem; border-top:1px dashed #e2e8f0; display:grid; grid-template-columns:1fr 1fr; gap:2rem;">
-                    <div class="input-group compact-input">
-                        <label style="color:var(--primary); font-weight:900;">販売想定価格 (自由入力)</label>
-                        <div style="display:flex; align-items:center; gap:0.5rem;">
-                            <span style="font-weight:900; color:#94a3b8;">¥</span>
-                            <input type="number" id="proto-selling-price" class="recipe-pro-input" style="font-size:1.5rem; font-weight:900; color:var(--primary); border-color:var(--primary)44;" value="${isEdit ? (editingPrototype.selling_price || 0) : 0}" inputmode="decimal">
-                        </div>
-                    </div>
-                    <div class="input-group compact-input">
-                        <label>仕上がり出来高 (自家製時のみ使用)</label>
-                        <div style="display:flex; align-items:center; gap:0.5rem;">
-                            <input type="number" id="proto-yield" class="recipe-pro-input" value="${isEdit ? (editingPrototype.yield_amount || 1) : 1}" ${!isOwner ? 'readonly' : ''} inputmode="decimal">
-                            <input type="text" id="proto-yield-unit" class="recipe-pro-input" style="width:80px;" placeholder="g/ml" value="${isEdit ? (editingPrototype.yield_unit || '') : ''}" ${!isOwner ? 'readonly' : ''}>
-                        </div>
-                    </div>
-                </div>
             </div>
 
-            <!-- Recipe Section -->
-            <div style="background:white; border-radius:16px; border:1px solid #e2e8f0; overflow:hidden;">
-                <div style="padding:1rem 1.5rem; background:#f8fafc; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
-                    <h4 style="margin:0; font-weight:800; color:#334155;"><i class="fas fa-layer-group"></i> レシピ構成</h4>
-                    ${!isOwner ? '<span style="font-size:0.7rem; color:#ef4444; font-weight:800;"><i class="fas fa-lock"></i> 編集ロック中</span>' : ''}
-                </div>
-                
-                <div style="padding:1.5rem;">
-                    ${isOwner ? `
-                        <div style="position:relative; margin-bottom:1.5rem;">
-                            <i class="fas fa-search" style="position:absolute; left:1rem; top:50%; transform:translateY(-50%); color:#94a3b8;"></i>
-                            <input type="text" id="recipe-search-input" class="recipe-pro-input" style="padding-left:2.8rem;" placeholder="本番マスタまたは試作品を検索...">
-                            <div id="search-results-list" class="incremental-search-results" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:2000; background:white; border:1px solid #e2e8f0; border-radius:0 0 12px 12px; box-shadow:0 10px 15px -3px rgba(0, 0, 0, 0.1); max-height:300px; overflow-y:auto;"></div>
-                        </div>
-                    ` : ''}
-
-                    <div id="recipe-items-container">
-                        <!-- Rows injected here -->
+            <!-- Section 2: Recipe Materials -->
+            <div id="proto-section-recipe" class="proto-section ${activeMobileTab === 'recipe' ? 'active' : ''}">
+                <div style="background:white; border-radius:16px; border:1px solid #e2e8f0; margin-bottom:1.5rem; overflow:visible; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);">
+                    <div style="padding:1rem 1.5rem; background:#f8fafc; border-bottom:1px solid #e2e8f0; border-radius:16px 16px 0 0; display:flex; justify-content:space-between; align-items:center;">
+                        <h4 style="margin:0; font-weight:800; color:#334155;"><i class="fas fa-layer-group"></i> レシピ構成</h4>
+                        ${!isOwner ? '<span style="font-size:0.7rem; color:#ef4444; font-weight:800;"><i class="fas fa-lock"></i> 編集不可</span>' : ''}
+                    </div>
+                    <div style="padding:1.5rem;">
+                        ${isOwner ? `
+                            <div style="position:relative; margin-bottom:1.5rem;">
+                                <i class="fas fa-search" style="position:absolute; left:1rem; top:50%; transform:translateY(-50%); color:#94a3b8;"></i>
+                                <input type="text" id="recipe-search-input" class="recipe-pro-input" style="padding-left:2.8rem;" placeholder="マスタまたは試作品を検索...">
+                                <div id="search-results-list" class="incremental-search-results" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:2000; background:white; border:1px solid #e2e8f0; border-radius:0 0 12px 12px; box-shadow:0 10px 15px -3px rgba(0,0,0,0.1); max-height:300px; overflow-y:auto;"></div>
+                            </div>
+                        ` : ''}
+                        <div id="recipe-items-container"></div>
                     </div>
                 </div>
             </div>
 
-            <!-- Notes -->
-            <div style="margin-top:1.5rem;">
-                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:0.5rem; color:#334155;">工程・盛り付け・試作メモ</label>
-                <textarea id="proto-instructions" class="recipe-pro-input" style="height:120px; resize:none;" placeholder="コツ、懸念点、競合店での気づきなど..." ${!isOwner ? 'readonly' : ''}>${isEdit ? (editingPrototype.instructions || '') : ''}</textarea>
+            <!-- Section 3: Notes -->
+            <div id="proto-section-notes" class="proto-section ${activeMobileTab === 'notes' ? 'active' : ''}">
+                <div style="background:white; border-radius:16px; border:1px solid #e2e8f0; padding:1.5rem; margin-bottom:1.5rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);">
+                    <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:0.5rem; color:#334155;">工程・盛り付け・試作メモ</label>
+                    <textarea id="proto-instructions" class="recipe-pro-input" style="height:220px; resize:none;" placeholder="コツ、懸念点など..." ${!isOwner ? 'readonly' : ''}>${isEdit ? (editingPrototype.instructions || '') : ''}</textarea>
+                </div>
             </div>
 
-            <!-- Actions -->
+            <!-- Permanent Actions (Visible on all tabs or placed at bottom) -->
             <div style="margin-top:2rem; display:flex; gap:1rem;">
                 ${isOwner ? `
                     <button id="btn-save-as-menu" class="btn" style="flex:1; height:54px; background:linear-gradient(135deg, #4f46e5, #6366f1); color:white; font-weight:900; border:none; border-radius:12px; box-shadow:0 4px 12px rgba(79, 70, 229, 0.3);">
@@ -407,38 +442,38 @@ function renderFormView(container) {
                     </button>
                 ` : `
                     <button id="btn-copy-to-me" class="btn btn-primary" style="flex:1; height:54px; font-weight:900; border-radius:12px;">
-                        <i class="fas fa-copy"></i> 自身の試作としてコピーして編集
+                        <i class="fas fa-copy"></i> 自身の試作としてコピー
                     </button>
                 `}
             </div>
             
             ${isEdit && isOwner ? `
-                <button id="btn-proto-delete" class="btn" style="width:100%; margin-top:2rem; background:white; color:#ef4444; border:1.5px solid #fee2e2; font-weight:800; padding:0.8rem;">
+                <button id="btn-proto-delete" class="btn" style="width:100%; margin-top:1.5rem; background:transparent; color:#ef4444; border:none; font-weight:800;">
                     <i class="fas fa-trash-alt"></i> この試作品を破棄する
                 </button>
             ` : ''}
         </div>
     `;
 
-    // Events
-    document.getElementById('btn-proto-back').onclick = () => { currentView = 'list'; renderView(); };
-    
+    // Events Setup
     const recipe = isEdit ? (editingPrototype.recipe || []) : [];
     renderRecipeRows(recipe, isOwner);
+    updateSummary(recipe);
+
+    document.getElementById('btn-proto-back').onclick = () => { currentView = 'list'; renderView(); };
 
     if (isOwner) {
         setupFormEvents(recipe);
         document.getElementById('btn-save-as-menu').onclick = () => savePrototype(recipe, 'sales_menu');
         document.getElementById('btn-save-as-homemade').onclick = () => savePrototype(recipe, 'homemade');
+        if (document.getElementById('btn-proto-delete')) {
+            document.getElementById('btn-proto-delete').onclick = () => deletePrototype();
+        }
     } else {
         document.getElementById('btn-copy-to-me').onclick = () => copyPrototype(editingPrototype.id);
     }
 
-    if (document.getElementById('btn-proto-delete')) {
-        document.getElementById('btn-proto-delete').onclick = () => deletePrototype();
-    }
-
-    // Major Category Unit Sync
+    // Sync units
     const majorCat = document.getElementById('proto-major-category');
     const unitInput = document.getElementById('proto-unit');
     const unitDisplay = document.getElementById('proto-unit-display');
@@ -448,9 +483,8 @@ function renderFormView(container) {
             if (majorCat.value === 'フード') {
                 unitInput.value = 'g';
                 unitDisplay.textContent = 'g';
-                // Note: yield unit is free-text, so we don't force it, but can provide a hint
                 if (!yieldUnitInput.value) yieldUnitInput.value = 'g';
-            } else if (majorCat.value === 'ドリンク') {
+            } else {
                 unitInput.value = 'ml';
                 unitDisplay.textContent = 'ml';
                 if (!yieldUnitInput.value) yieldUnitInput.value = 'ml';
@@ -458,12 +492,23 @@ function renderFormView(container) {
         };
     }
 
-    // Sell Price Change (Anyone can do)
+    // Reactivity
     document.getElementById('proto-selling-price').addEventListener('input', () => updateSummary(recipe));
     document.getElementById('proto-yield').addEventListener('input', () => updateSummary(recipe));
-    
-    // Initial Calc
-    updateSummary(recipe);
+
+    // Tab Logic
+    const tabBtns = container.querySelectorAll('.proto-tab-btn');
+    tabBtns.forEach(btn => {
+        btn.onclick = () => {
+            const tab = btn.dataset.tab;
+            activeMobileTab = tab;
+            tabBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+            container.querySelectorAll('.proto-section').forEach(sec => {
+                sec.classList.toggle('active', sec.id === `proto-section-${tab}`);
+            });
+            window.scrollTo({ top: 0, behavior: 'instant' });
+        };
+    });
 }
 
 function renderRecipeRows(recipe, isOwner) {
@@ -471,12 +516,11 @@ function renderRecipeRows(recipe, isOwner) {
     if (!container) return;
 
     if (recipe.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding:2rem; color:#94a3b8; font-size:0.85rem;">材料が登録されていません。上の検索バーから追加してください。</div>`;
+        container.innerHTML = `<div style="text-align:center; padding:2rem; color:#94a3b8; font-size:0.85rem;">レシピが空です</div>`;
         return;
     }
 
     container.innerHTML = recipe.map((row, idx) => {
-        // Look up from items OR prototypes
         const item = cachedItems.find(i => i.id === row.ingredient_id) || cachedPrototypes.find(p => p.id === row.ingredient_id);
         const unitPrice = getRecursivePrice(row.ingredient_id);
         const rowCost = unitPrice * (row.quantity || 0);
@@ -484,44 +528,33 @@ function renderRecipeRows(recipe, isOwner) {
         return `
             <div style="display:flex; align-items:center; gap:0.5rem; padding:0.8rem 0; border-bottom:1px solid #f1f5f9;">
                 <div style="flex:1;">
-                    <div style="font-weight:800; font-size:0.9rem; color:#1e293b;">${item?.name || '不明な食材'}</div>
-                    <div style="font-size:0.75rem; color:#94a3b8; font-weight:700;">
-                        単価: ¥${unitPrice.toFixed(2)} / ${item?.unit || '単位'}
-                    </div>
+                    <div style="font-weight:800; font-size:0.9rem;">${item?.name || '不明'}</div>
+                    <div style="font-size:0.7rem; color:#94a3b8;">¥${unitPrice.toFixed(2)} / ${item?.unit || '単位'}</div>
                 </div>
-                <div style="display:flex; align-items:center; gap:0.3rem; width:120px;">
-                    <input type="number" step="any" class="recipe-pro-input recipe-qty-input" data-index="${idx}" value="${row.quantity || 0}" ${!isOwner ? 'readonly' : ''} style="text-align:right; font-weight:800;" inputmode="decimal">
-                    <span style="font-size:0.75rem; font-weight:800; color:#64748b; width:30px;">${item?.unit || '個'}</span>
+                <div style="display:flex; align-items:center; gap:0.2rem; width:100px;">
+                    <input type="number" step="any" class="recipe-pro-input recipe-qty-input" data-index="${idx}" value="${row.quantity}" ${!isOwner ? 'readonly' : ''} style="text-align:right;" inputmode="decimal">
+                    <span style="font-size:0.7rem; color:#64748b;">${item?.unit || ''}</span>
                 </div>
-                <div style="width:70px; text-align:right; font-weight:900; color:#475569; font-family:'Outfit';">
-                    ¥${Math.round(rowCost).toLocaleString()}
-                </div>
-                ${isOwner ? `
-                    <button class="btn-icon remove-row-btn" data-index="${idx}" style="color:#ef4444; padding:0.4rem;">
-                        <i class="fas fa-times-circle"></i>
-                    </button>
-                ` : ''}
+                <div style="width:70px; text-align:right; font-weight:900;">¥${Math.round(rowCost).toLocaleString()}</div>
+                ${isOwner ? `<button class="remove-row-btn" data-index="${idx}" style="color:#ef4444; border:none; background:none;"><i class="fas fa-times"></i></button>` : ''}
             </div>
         `;
     }).join('');
 
-    // Attach row events
-    container.querySelectorAll('.recipe-qty-input').forEach(input => {
-        input.addEventListener('input', (e) => {
+    container.querySelectorAll('.recipe-qty-input').forEach(el => {
+        el.oninput = (e) => {
             const idx = e.target.dataset.index;
             recipe[idx].quantity = parseFloat(e.target.value) || 0;
             updateSummary(recipe);
-            // Partial rerender for row cost
+            // Re-render specifically for row costs
             const unitPrice = getRecursivePrice(recipe[idx].ingredient_id);
-            const rowCost = unitPrice * recipe[idx].quantity;
-            e.target.closest('div').nextElementSibling.textContent = `¥${Math.round(rowCost).toLocaleString()}`;
-        });
+            e.target.closest('div').nextElementSibling.textContent = `¥${Math.round(unitPrice * recipe[idx].quantity).toLocaleString()}`;
+        };
     });
 
     container.querySelectorAll('.remove-row-btn').forEach(btn => {
         btn.onclick = () => {
-            const idx = btn.dataset.index;
-            recipe.splice(idx, 1);
+            recipe.splice(btn.dataset.index, 1);
             renderRecipeRows(recipe, isOwner);
             updateSummary(recipe);
         };
@@ -531,17 +564,12 @@ function renderRecipeRows(recipe, isOwner) {
 function getRecursivePrice(itemId, visiting = new Set()) {
     if (visiting.has(itemId)) return 0;
     visiting.add(itemId);
-
-    // 1. まずは本番マスタから価格を取得 (cost_engineのロジックを模倣または流用)
-    // 実装の簡略化のため、自前で計算
-    const cache = { items: cachedItems, ingredients: cachedIngredients, menus: cachedMenus };
     
-    // 本番マスタに存在する場合
-    if (cachedItems.find(i => i.id === itemId)) {
-        return getEffectivePrice(itemId, cache);
-    }
+    // Check m_items
+    const itm = cachedItems.find(i => i.id === itemId);
+    if (itm) return getEffectivePrice(itemId, { items: cachedItems, ingredients: cachedIngredients, menus: cachedMenus });
 
-    // 2. 試作品マスタに存在する場合
+    // Check prototypes
     const proto = cachedPrototypes.find(p => p.id === itemId);
     if (proto) {
         let total = 0;
@@ -551,159 +579,115 @@ function getRecursivePrice(itemId, visiting = new Set()) {
         const yieldAmt = Number(proto.yield_amount) || 1;
         return yieldAmt > 0 ? (total / yieldAmt) : 0;
     }
-
     return 0;
 }
 
 function updateSummary(recipe) {
-    let totalCost = 0;
-    recipe.forEach(r => {
-        totalCost += getRecursivePrice(r.ingredient_id) * (r.quantity || 0);
-    });
+    let total = 0;
+    recipe.forEach(r => total += getRecursivePrice(r.ingredient_id) * (r.quantity || 0));
 
-    const sellPrice = parseFloat(document.getElementById('proto-selling-price')?.value) || 0;
-    const yieldAmt = parseFloat(document.getElementById('proto-yield')?.value) || 1;
-    
-    // 自家製の場合は出来高あたりの単価
-    const unitCost = yieldAmt > 0 ? (totalCost / yieldAmt) : 0;
-    
-    const profit = sellPrice - totalCost;
-    const ratio = sellPrice > 0 ? (totalCost / sellPrice) * 100 : 0;
+    const sell = parseFloat(document.getElementById('proto-selling-price')?.value) || 0;
+    const profit = sell - total;
+    const ratio = sell > 0 ? (total / sell) * 100 : 0;
 
     const costEl = document.getElementById('summary-total-cost');
     const ratioEl = document.getElementById('summary-cost-ratio');
     const profitEl = document.getElementById('summary-profit');
 
-    if (costEl) costEl.textContent = `¥ ${Math.round(totalCost).toLocaleString()}`;
+    if (costEl) costEl.textContent = `¥${Math.round(total).toLocaleString()}`;
     if (ratioEl) ratioEl.textContent = `${ratio.toFixed(1)}%`;
     if (profitEl) {
-        profitEl.textContent = `¥ ${Math.round(profit).toLocaleString()}`;
+        profitEl.textContent = `¥${Math.round(profit).toLocaleString()}`;
         profitEl.className = `proto-summary-value ${profit >= 0 ? 'proto-profit-highlight' : 'text-danger'}`;
     }
 }
 
 function calculatePrototypeStats(p) {
     let total = 0;
-    (p.recipe || []).forEach(r => {
-        total += getRecursivePrice(r.ingredient_id) * (r.quantity || 0);
-    });
+    (p.recipe || []).forEach(r => total += getRecursivePrice(r.ingredient_id) * (r.quantity || 0));
     const yieldAmt = Number(p.yield_amount) || 1;
     return {
-        totalCost: total,
-        unitCost: yieldAmt > 0 ? (total / yieldAmt) : 0,
+        unitCost: yieldAmt > 0 ? total / yieldAmt : total,
         profit: (p.selling_price || 0) - total
     };
 }
 
 function setupFormEvents(recipe) {
-    // Search
     const searchInput = document.getElementById('recipe-search-input');
     const results = document.getElementById('search-results-list');
     let selectedIndex = -1;
-    let filteredResults = [];
+    let items = [];
 
     searchInput.addEventListener('input', () => {
-        const query = searchInput.value.trim().toLowerCase();
-        if (!query) {
-            results.style.display = 'none';
-            return;
-        }
+        const queryStr = searchInput.value.trim().toLowerCase();
+        if (!queryStr) { results.style.display = 'none'; return; }
 
-        // Search 本番アイテム + 試作品(自家製品)
         const combined = [
             ...cachedItems.map(i => ({...i, source: 'real'})),
             ...cachedPrototypes.filter(p => p.type === 'homemade').map(p => ({...p, source: 'proto'}))
         ];
 
-        filteredResults = combined.filter(item => {
-            return (item.name || '').toLowerCase().includes(query) || (item.furigana || '').toLowerCase().includes(query);
-        }).slice(0, 10);
-
-        selectedIndex = -1;
-        renderSearchResults();
+        items = combined.filter(i => (i.name || '').toLowerCase().includes(queryStr) || (i.furigana || '').toLowerCase().includes(queryStr)).slice(0, 10);
+        renderResults();
     });
 
-    function renderSearchResults() {
-        if (filteredResults.length === 0) {
-            results.style.display = 'none';
-            return;
-        }
+    function renderResults() {
+        if (items.length === 0) { results.style.display = 'none'; return; }
         results.style.display = 'block';
-        results.innerHTML = filteredResults.map((item, idx) => `
-            <div class="search-result-item ${idx === selectedIndex ? 'selected' : ''}" data-index="${idx}" style="padding:0.8rem; border-bottom:1px solid #f1f5f9; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+        results.innerHTML = items.map((i, idx) => `
+            <div class="search-result-item ${idx === selectedIndex ? 'selected' : ''}" style="padding:0.8rem; border-bottom:1px solid #f1f5f9; cursor:pointer; display:flex; justify-content:space-between;">
                 <div>
-                    <span style="font-size:0.6rem; color:#94a3b8; font-weight:800;">${item.furigana || ''}</span>
+                    <div style="font-size:0.6rem; color:#94a3b8;">${i.furigana || ''}</div>
                     <div style="font-weight:800; font-size:0.9rem;">
-                        <i class="fas ${item.source === 'real' ? 'fa-box' : 'fa-flask'}" style="color:${item.source === 'real' ? '#64748b' : '#10b981'}; margin-right:0.4rem;"></i>
-                        ${item.name}
+                        <i class="fas ${i.source === 'real' ? 'fa-box' : 'fa-flask'}" style="color:${i.source === 'real' ? '#64748b' : '#10b981'}; margin-right:0.3rem;"></i>
+                        ${i.name}
                     </div>
                 </div>
-                <div style="text-align:right; font-size:0.75rem; font-weight:800; color:var(--primary);">
-                    ¥${getRecursivePrice(item.id).toFixed(1)} / ${item.unit || '個'}
-                </div>
+                <div style="text-align:right; font-size:0.75rem; font-weight:800; color:var(--primary);">¥${getRecursivePrice(i.id).toFixed(1)} / ${i.unit || '個'}</div>
             </div>
         `).join('');
 
-        results.querySelectorAll('.search-result-item').forEach(el => {
-            el.onclick = () => {
-                const idx = el.dataset.index;
-                const item = filteredResults[idx];
-                if (!recipe.some(r => r.ingredient_id === item.id)) {
-                    recipe.push({ ingredient_id: item.id, quantity: 1 });
-                    renderRecipeRows(recipe, true);
-                    updateSummary(recipe);
-                }
-                searchInput.value = '';
-                results.style.display = 'none';
-            };
+        results.querySelectorAll('div[data-index]').forEach((el, idx) => {
+            el.onclick = () => selectItem(items[idx]);
         });
+        // Fixing the click event by adding indexes directly or use standard loop
+        const rows = results.children;
+        for(let i=0; i<rows.length; i++) {
+            rows[i].onclick = () => selectItem(items[i]);
+        }
+    }
+
+    function selectItem(item) {
+        if (!recipe.some(r => r.ingredient_id === item.id)) {
+            recipe.push({ ingredient_id: item.id, quantity: 1 });
+            renderRecipeRows(recipe, true);
+            updateSummary(recipe);
+        }
+        searchInput.value = '';
+        results.style.display = 'none';
     }
 
     searchInput.addEventListener('keydown', (e) => {
         if (results.style.display === 'none') return;
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            selectedIndex = Math.min(selectedIndex + 1, filteredResults.length - 1);
-            renderSearchResults();
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            selectedIndex = Math.max(selectedIndex - 1, 0);
-            renderSearchResults();
-        } else if (e.key === 'Enter') {
-            e.preventDefault();
-            if (selectedIndex >= 0) {
-                const item = filteredResults[selectedIndex];
-                if (!recipe.some(r => r.ingredient_id === item.id)) {
-                    recipe.push({ ingredient_id: item.id, quantity: 1 });
-                    renderRecipeRows(recipe, true);
-                    updateSummary(recipe);
-                }
-                searchInput.value = '';
-                results.style.display = 'none';
-            }
-        }
+        if (e.key === 'ArrowDown') { selectedIndex = Math.min(selectedIndex + 1, items.length - 1); renderResults(); e.preventDefault(); }
+        else if (e.key === 'ArrowUp') { selectedIndex = Math.max(selectedIndex - 1, 0); renderResults(); e.preventDefault(); }
+        else if (e.key === 'Enter') { if (selectedIndex >= 0) selectItem(items[selectedIndex]); e.preventDefault(); }
     });
 
-    // Image Upload
-    const fileInput = document.getElementById('proto-file-input');
-    if (fileInput) {
-        fileInput.onchange = async (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                try {
-                    const dataUrl = await resizeImage(file, 600);
-                    document.getElementById('proto-img-preview').src = dataUrl;
-                } catch (err) {
-                    showAlert("エラー", "画像の読み込みに失敗しました");
-                }
-            }
-        };
-    }
+    document.getElementById('proto-file-input').onchange = async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            try {
+                const dataUrl = await resizeImage(file, 600);
+                document.getElementById('proto-img-preview').src = dataUrl;
+            } catch (err) { showAlert("エラー", "読み込み失敗"); }
+        }
+    };
 }
 
 async function savePrototype(recipe, type) {
     const name = document.getElementById('proto-name').value.trim();
-    if (!name) return showAlert("入力不備", "名称を入力してください");
+    if (!name) return showAlert("入力不備", "名称をいれてください");
 
     const data = {
         name,
@@ -723,84 +707,43 @@ async function savePrototype(recipe, type) {
     };
 
     try {
-        if (editingPrototype) {
-            await updateDoc(doc(db, "t_prototype_recipes", editingPrototype.id), data);
-        } else {
+        if (editingPrototype) await updateDoc(doc(db, "t_prototype_recipes", editingPrototype.id), data);
+        else {
             data.created_at = serverTimestamp();
-            data.created_by = currentUser?.uid || currentUser?.id || 'unknown';
-            data.developer = currentUser?.Name || '不明';
+            data.created_by = currentUser?.uid || currentUser?.id;
+            data.developer = currentUser?.Name || '自分';
             await addDoc(collection(db, "t_prototype_recipes"), data);
         }
-        showAlert("成功", "試作品を保存しました");
+        showAlert("成功", "保存しました");
         await reloadData();
         currentView = 'list';
         renderView();
-    } catch (err) {
-        showAlert("エラー", "保存に失敗しました: " + err.message);
-    }
+    } catch (err) { showAlert("エラー", "保存失敗: " + err.message); }
 }
 
 async function deletePrototype() {
-    showConfirm("破棄の確認", `「${editingPrototype.name}」を完全に削除しますか？`, async () => {
+    showConfirm("削除", "完全に消しますか？", async () => {
         try {
             await deleteDoc(doc(db, "t_prototype_recipes", editingPrototype.id));
-            showAlert("成功", "削除しました");
+            showAlert("消しました");
             await reloadData();
             currentView = 'list';
             renderView();
-        } catch (err) {
-            showAlert("エラー", "削除に失敗しました");
-        }
+        } catch(e) { showAlert("失敗"); }
     });
 }
 
-async function copyPrototype(id) {
-    const target = cachedPrototypes.find(p => p.id === id);
-    if (!target) return;
-
-    showConfirm("コピーの作成", `「${target.name}」をコピーして新しい試作を作成しますか？`, async () => {
-        try {
-            const data = {
-                ...target,
-                name: `${target.name} (コピー)`,
-                created_at: serverTimestamp(),
-                updated_at: serverTimestamp(),
-                created_by: currentUser?.uid || currentUser?.id || 'unknown',
-                developer: currentUser?.Name || '不明',
-                parent_id: id
-            };
-            delete data.id; // Remove old ID
-
-            const newDoc = await addDoc(collection(db, "t_prototype_recipes"), data);
-            showAlert("成功", "コピーを作成しました");
-            await reloadData();
-            editingPrototype = { id: newDoc.id, ...data };
-            currentView = 'form';
-            renderView();
-        } catch (err) {
-            showAlert("エラー", "コピーに失敗しました");
-        }
-    });
-}
-
-// Helper: Resize Image
 function resizeImage(file, maxWidth) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         const reader = new FileReader();
         reader.onload = (e) => {
             const img = new Image();
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                let width = img.width;
-                let height = img.height;
-                if (width > maxWidth) {
-                    height = (height * maxWidth) / width;
-                    width = maxWidth;
-                }
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
+                let w = img.width, h = img.height;
+                if (w > maxWidth) { h = (h * maxWidth) / w; w = maxWidth; }
+                canvas.width = w; canvas.height = h;
+                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
                 resolve(canvas.toDataURL('image/jpeg', 0.7));
             };
             img.src = e.target.result;
@@ -809,12 +752,24 @@ function resizeImage(file, maxWidth) {
     });
 }
 
-// Global exposure for event handlers in HTML strings
+async function copyPrototype(id) {
+    const t = cachedPrototypes.find(p => p.id === id);
+    if (!t) return;
+    showConfirm("コピー", "自分用としてコピーしますか？", async () => {
+        try {
+            const data = { ...t, name: `${t.name} (コピー)`, created_at: serverTimestamp(), updated_at: serverTimestamp(), created_by: currentUser?.uid || currentUser?.id, developer: currentUser?.Name || '自分' };
+            delete data.id;
+            const res = await addDoc(collection(db, "t_prototype_recipes"), data);
+            await reloadData();
+            editingPrototype = {id: res.id, ...data};
+            currentView = 'form';
+            renderView();
+            showAlert("コピー完了");
+        } catch(e) { showAlert("失敗"); }
+    });
+}
+
 window.prototypeMenu = {
-    openEdit: (id) => {
-        editingPrototype = cachedPrototypes.find(p => p.id === id);
-        currentView = 'form';
-        renderView();
-    },
-    copyPrototype: copyPrototype
+    openEdit: (id) => { editingPrototype = cachedPrototypes.find(p => p.id === id); currentView = 'form'; renderView(); },
+    copyPrototype
 };
