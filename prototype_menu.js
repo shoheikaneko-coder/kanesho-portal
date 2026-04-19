@@ -15,6 +15,11 @@ let currentUser = null;
 let editingPrototype = null;
 let activeMobileTab = 'info'; // 'info', 'recipe', 'notes'
 
+// PC List States
+let pcSearchQuery = '';
+let pcFilterDeveloper = 'all';
+let pcSortBy = 'updated_at_desc'; 
+
 export const prototypeMenuPageHtml = `
     <div id="prototype-menu-container">
         <!-- Content injected here -->
@@ -64,54 +69,111 @@ function renderView() {
 
 // --- DESKTOP VIEW (一覧画面) ---
 function renderListViewDesktop(container) {
+    const prototypes = getFilteredSortedPrototypes();
+    const developers = [...new Set(cachedPrototypes.map(p => p.developer).filter(Boolean))].sort();
+
     container.innerHTML = `
-        <div style="padding: 1.5rem;" class="animate-fade-in">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                <h2 style="margin:0; display: flex; align-items: center; gap: 0.8rem;">
-                    <i class="fas fa-lightbulb" style="color: #f59e0b;"></i>
-                    試作メニュー・自家製リスト (PC連携版)
-                </h2>
-                <button id="btn-proto-new" class="btn btn-primary" style="padding: 0.8rem 1.5rem; border-radius: 30px; font-weight: 800;">
+        <div style="padding: 2rem;" class="animate-fade-in">
+            <!-- Header Section -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem;">
+                <div>
+                    <h2 style="margin:0 0 0.5rem 0; display: flex; align-items: center; gap: 0.8rem; font-size: 1.8rem; font-weight: 900;">
+                        <i class="fas fa-lightbulb" style="color: #f59e0b;"></i>
+                        メニュー開発ダッシュボード
+                    </h2>
+                    <p style="margin:0; color: #64748b; font-weight: 500;">
+                        全${cachedPrototypes.length}件の試作アイデア・自家製レシピを管理
+                    </p>
+                </div>
+                <button id="btn-proto-new" class="btn btn-primary" style="padding: 1rem 2rem; border-radius: 16px; font-weight: 900; font-size: 1rem; box-shadow: 0 10px 25px rgba(230, 57, 70, 0.2);">
                     <i class="fas fa-plus-circle"></i> 新規試作を開始
                 </button>
             </div>
 
-            <div id="prototype-list">
-                ${cachedPrototypes.length === 0 ? `
-                    <div style="text-align:center; padding: 4rem; color: #94a3b8;">
-                        <i class="fas fa-flask" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.3;"></i>
-                        <p>まだ試作品がありません。新しいアイデアを形にしましょう！</p>
+            <!-- Control Panel (Search, Filter, Sort) -->
+            <div style="background: white; border-radius: 20px; padding: 1.5rem; margin-bottom: 2rem; border: 1px solid #e2e8f0; display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.03);">
+                <!-- Search Input -->
+                <div style="flex: 2; min-width: 300px; position: relative;">
+                    <i class="fas fa-search" style="position: absolute; left: 1.2rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                    <input type="text" id="pc-search-query" class="recipe-pro-input" style="padding-left: 3rem; width: 100%; border: 2px solid #f1f5f9; border-radius: 14px;" placeholder="メニュー名、原材料、開発者で検索..." value="${pcSearchQuery}">
+                </div>
+
+                <!-- Developer Filter -->
+                <div style="flex: 1; min-width: 200px;">
+                    <label style="display: block; font-size: 0.75rem; color: #94a3b8; font-weight: 800; margin-bottom: 0.4rem; margin-left: 0.5rem;">開発者</label>
+                    <select id="pc-filter-developer" class="recipe-pro-input" style="width: 100%; border: 2px solid #f1f5f9; border-radius: 14px; background: white;">
+                        <option value="all">すべてのスタッフ</option>
+                        ${developers.map(d => `<option value="${d}" ${pcFilterDeveloper === d ? 'selected' : ''}>${d}</option>`).join('')}
+                    </select>
+                </div>
+
+                <!-- Sort Control -->
+                <div style="flex: 1; min-width: 200px;">
+                    <label style="display: block; font-size: 0.75rem; color: #94a3b8; font-weight: 800; margin-bottom: 0.4rem; margin-left: 0.5rem;">並び替え</label>
+                    <select id="pc-sort-by" class="recipe-pro-input" style="width: 100%; border: 2px solid #f1f5f9; border-radius: 14px; background: white;">
+                        <option value="updated_at_desc" ${pcSortBy === 'updated_at_desc' ? 'selected' : ''}>更新日が新しい順</option>
+                        <option value="name_asc" ${pcSortBy === 'name_asc' ? 'selected' : ''}>名称順 (あ〜わ)</option>
+                        <option value="cost_ratio_asc" ${pcSortBy === 'cost_ratio_asc' ? 'selected' : ''}>原価率が低い順 (優秀)</option>
+                        <option value="cost_ratio_desc" ${pcSortBy === 'cost_ratio_desc' ? 'selected' : ''}>原価率が高い順 (要改善)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Grid Content -->
+            <div id="prototype-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 2rem;">
+                ${prototypes.length === 0 ? `
+                    <div style="grid-column: 1 / -1; text-align:center; padding: 6rem; color: #94a3b8; background: white; border-radius: 20px; border: 2px dashed #e2e8f0;">
+                        <i class="fas fa-search" style="font-size: 3.5rem; margin-bottom: 1.5rem; opacity: 0.2;"></i>
+                        <h4 style="margin:0; font-weight: 800; color: #64748b;">該当する試作品が見つかりませんでした</h4>
+                        <p style="font-size: 0.9rem; margin-top: 0.5rem;">条件を変えて検索してみてください</p>
                     </div>
-                ` : cachedPrototypes.map(p => {
+                ` : prototypes.map(p => {
                     const stats = calculatePrototypeStats(p);
+                    const costRatio = stats.costRatio;
+                    const isSales = p.type === 'sales_menu';
+                    
                     return `
-                        <div class="prototype-card" onclick="window.prototypeMenu.openEdit('${p.id}')">
-                            <img src="${p.image_url || 'https://via.placeholder.com/150'}" class="proto-thumb" onerror="this.src='https://via.placeholder.com/150'">
-                            <div style="flex:1;">
-                                <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.2rem;">
-                                    <span class="badge ${p.type === 'sales_menu' ? 'badge-proto-menu' : 'badge-proto-homemade'}" style="font-size: 0.65rem;">
-                                        ${p.type === 'sales_menu' ? '販売メニュー' : '自家製原材料'}
-                                    </span>
-                                    <h4 style="margin:0; font-weight:800; font-size:1rem;">${p.name}</h4>
-                                </div>
-                                <div style="font-size:0.75rem; color:#64748b; font-weight:600;">
-                                    開発者: ${p.developer || '不明'} | 更新: ${p.updated_at ? new Date(p.updated_at.seconds * 1000).toLocaleDateString() : '-'}
+                        <div class="proto-grid-card" onclick="window.prototypeMenu.openEdit('${p.id}')">
+                            <div class="proto-card-media">
+                                <img src="${p.image_url || 'https://via.placeholder.com/400x300'}" class="proto-card-img" onerror="this.src='https://via.placeholder.com/400x300'">
+                                <div class="proto-card-badge ${isSales ? 'badge-sales' : 'badge-homemade'}">
+                                    ${isSales ? '販売メニュー' : '自家製原材料'}
                                 </div>
                             </div>
-                            <div style="text-align:right;">
-                                ${p.type === 'sales_menu' ? `
-                                    <div style="font-size:0.7rem; font-weight:800; color:#94a3b8;">販売想定 / 粗利</div>
-                                    <div style="font-weight:900; color:#1e293b; font-size:1.1rem;">
-                                        ¥${(p.selling_price || 0).toLocaleString()} <span style="color:#10b981; margin-left:0.3rem;">(¥${Math.round(stats.profit).toLocaleString()})</span>
-                                    </div>
-                                ` : `
-                                    <div style="font-size:0.7rem; font-weight:800; color:#94a3b8;">仕込単価原価</div>
-                                    <div style="font-weight:900; color:#1e293b; font-size:1.1rem;">¥${stats.unitCost.toFixed(2)} / ${p.unit || '単位'}</div>
-                                `}
+                            <div class="proto-card-body">
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.8rem;">
+                                    <h4 class="proto-card-title">${p.name}</h4>
+                                    <button class="btn-icon copy-btn" data-id="${p.id}" style="color:#94a3b8; transition: 0.3s;" onclick="event.stopPropagation(); window.prototypeMenu.copyPrototype('${p.id}')">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                                <div class="proto-card-meta">
+                                    <span>作成: ${p.developer}</span>
+                                    <span>${p.updated_at ? new Date(p.updated_at.seconds * 1000).toLocaleDateString() : '-'}</span>
+                                </div>
+
+                                <div class="proto-card-metrics">
+                                    ${isSales ? `
+                                        <div class="metric-item">
+                                            <span class="metric-label">想定価格</span>
+                                            <span class="metric-value">¥${(p.selling_price || 0).toLocaleString()}</span>
+                                        </div>
+                                        <div class="metric-item highlight" style="background: ${costRatio > 40 ? '#fff1f2' : (costRatio > 35 ? '#fffbeb' : '#f0fdf4')}; border-radius: 12px; padding: 0.6rem;">
+                                            <span class="metric-label" style="color: ${costRatio > 40 ? '#be123c' : (costRatio > 35 ? '#b45309' : '#15803d')}">原価率</span>
+                                            <span class="metric-value" style="color: ${costRatio > 40 ? '#e11d48' : (costRatio > 35 ? '#f59e0b' : '#10b981')}">${costRatio.toFixed(1)}%</span>
+                                        </div>
+                                        <div class="metric-item">
+                                            <span class="metric-label">粗利額</span>
+                                            <span class="metric-value" style="color:#10b981;">¥${Math.round(stats.profit).toLocaleString()}</span>
+                                        </div>
+                                    ` : `
+                                        <div class="metric-item" style="grid-column: span 3;">
+                                            <span class="metric-label">仕込単価原価</span>
+                                            <span class="metric-value">¥${stats.unitCost.toFixed(1)} <small style="font-size: 0.7rem; color: #94a3b8;">/ ${p.unit || '単位'}</small></span>
+                                        </div>
+                                    `}
+                                </div>
                             </div>
-                            <button class="btn-icon copy-btn" data-id="${p.id}" style="color:#64748b; padding:0.5rem;" onclick="event.stopPropagation(); window.prototypeMenu.copyPrototype('${p.id}')">
-                                <i class="fas fa-copy"></i>
-                            </button>
                         </div>
                     `;
                 }).join('')}
@@ -119,12 +181,71 @@ function renderListViewDesktop(container) {
         </div>
     `;
 
+    // Events
     document.getElementById('btn-proto-new').onclick = () => {
         editingPrototype = null;
         activeMobileTab = 'info';
         currentView = 'form';
         renderView();
     };
+
+    const searchQueryInput = document.getElementById('pc-search-query');
+    searchQueryInput.oninput = (e) => {
+        pcSearchQuery = e.target.value;
+        renderListViewDesktop(container); // Re-render this part only? Faster this way
+        document.getElementById('pc-search-query').focus(); // Refocus after innerHTML wipe
+    };
+
+    document.getElementById('pc-filter-developer').onchange = (e) => {
+        pcFilterDeveloper = e.target.value;
+        renderListViewDesktop(container);
+    };
+
+    document.getElementById('pc-sort-by').onchange = (e) => {
+        pcSortBy = e.target.value;
+        renderListViewDesktop(container);
+    };
+}
+
+function getFilteredSortedPrototypes() {
+    let list = [...cachedPrototypes];
+
+    // Search
+    if (pcSearchQuery) {
+        const q = pcSearchQuery.toLowerCase();
+        list = list.filter(p => 
+            (p.name || '').toLowerCase().includes(q) || 
+            (p.developer || '').toLowerCase().includes(q) ||
+            (p.category || '').toLowerCase().includes(q)
+        );
+    }
+
+    // Developer Filter
+    if (pcFilterDeveloper !== 'all') {
+        list = list.filter(p => p.developer === pcFilterDeveloper);
+    }
+
+    // Sort
+    list.sort((a, b) => {
+        if (pcSortBy === 'updated_at_desc') {
+            const dateA = a.updated_at?.seconds || 0;
+            const dateB = b.updated_at?.seconds || 0;
+            return dateB - dateA;
+        }
+        if (pcSortBy === 'name_asc') {
+            return (a.name || '').localeCompare(b.name || '', 'ja');
+        }
+        if (pcSortBy === 'cost_ratio_asc' || pcSortBy === 'cost_ratio_desc') {
+            const statsA = calculatePrototypeStats(a);
+            const statsB = calculatePrototypeStats(b);
+            const aVal = statsA.costRatio;
+            const bVal = statsB.costRatio;
+            return pcSortBy === 'cost_ratio_asc' ? aVal - bVal : bVal - aVal;
+        }
+        return 0;
+    });
+
+    return list;
 }
 
 // --- MOBILE VIEW (一覧画面) ---
@@ -712,9 +833,14 @@ function calculatePrototypeStats(p) {
     let total = 0;
     (p.recipe || []).forEach(r => total += getRecursivePrice(r.ingredient_id) * (r.quantity || 0));
     const yieldAmt = Number(p.yield_amount) || 1;
+    const sell = parseFloat(p.selling_price) || 0;
+    const unitCost = yieldAmt > 0 ? total / yieldAmt : total;
+    const costRatio = sell > 0 ? (total / sell) * 100 : 0;
+    
     return {
-        unitCost: yieldAmt > 0 ? total / yieldAmt : total,
-        profit: (p.selling_price || 0) - total
+        unitCost,
+        costRatio,
+        profit: sell - total
     };
 }
 
