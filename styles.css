@@ -511,9 +511,10 @@ p { color: var(--text-secondary); line-height: 1.5; }
       text-align: center;
   }
 
-  /* 親レイアウトのFlex解除（ここが重要：サイドバーが中身を押し出すのを止める） */
+  /* 親レイアウトのFlex制御（スマホでは縦並びにしてスクロールを確保） */
   .dashboard-layout {
-      display: block !important; 
+      display: flex !important; 
+      flex-direction: column !important;
       height: 100dvh;
       overflow: hidden;
   }
@@ -575,12 +576,13 @@ p { color: var(--text-secondary); line-height: 1.5; }
     visibility: visible !important;
   }
   
-  /* 没入型レイアウト: パディング排除 */
+  /* 没入型レイアウト: パディング排除 & スクロール領域の自動確保 */
   .page-content {
+    flex: 1 !important;
     padding: 0 !important;
     background: #FFFFFF !important;
-    height: calc(100vh - 100px); /* ヘッダー約100px分を差し引く */
-    overflow-y: auto;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
   }
 
   .glass-panel, .stat-card, .prototype-card {
