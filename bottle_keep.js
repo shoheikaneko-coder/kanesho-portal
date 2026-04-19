@@ -229,6 +229,11 @@ function renderBottleCard(bottle) {
             transition: transform 0.2s;
             position: relative;
         ">
+            ${bottle.memo ? `
+                <div class="memo-indicator" onclick="event.stopPropagation(); showBottleMemo('${bottle.id}')" title="メモを確認">
+                    <i class="fas fa-comment-dots"></i>
+                </div>
+            ` : ''}
             ${isExpired ? `
                 <div style="position: absolute; top: -8px; right: -8px; background: #f43f5e; color: white; font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; font-weight: 900; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                     期限切れ (${diffDays}日)
@@ -256,6 +261,12 @@ window.toggleArea = (areaId) => {
         expandedAreas.add(areaId);
     }
     renderGrid();
+};
+
+window.showBottleMemo = (bottleId) => {
+    const bottle = cachedBottles.find(b => b.id === bottleId);
+    if (!bottle || !bottle.memo) return;
+    showAlert("ボトルのメモ", bottle.memo.replace(/\n/g, '<br>'));
 };
 
 function renderSearchResults() {
@@ -347,19 +358,27 @@ async function openBottleModal(bottleId = null) {
                         <label>ふりがな</label>
                         <input type="text" id="cust-furigana" value="${bottle?.customerFurigana || ''}" placeholder="例: さとう けいいち">
                     </div>
-                    <div class="input-group">
-                        <label>配置エリア <span style="color:var(--danger)">*</span></label>
-                        <select id="bottle-area" required>
-                            <option value="">選択してください</option>
-                            ${cachedAreas.map(a => `<option value="${a.id}" ${bottle?.areaId === a.id ? 'selected' : ''}>${a.name}</option>`).join('')}
-                        </select>
-                    </div>
-                    <div class="input-group">
-                        <label>銘柄 <span style="color:var(--danger)">*</span></label>
-                        <select id="bottle-brand" required>
-                            <option value="">選択してください</option>
-                            ${cachedBrands.map(b => `<option value="${b.id}" ${bottle?.brandId === b.id ? 'selected' : ''}>${b.name}</option>`).join('')}
-                        </select>
+                    <div class="bottle-modal-grid">
+                        <div>
+                            <div class="input-group" style="margin-bottom: 0.8rem;">
+                                <label>配置エリア <span style="color:var(--danger)">*</span></label>
+                                <select id="bottle-area" required>
+                                    <option value="">選択してください</option>
+                                    ${cachedAreas.map(a => `<option value="${a.id}" ${bottle?.areaId === a.id ? 'selected' : ''}>${a.name}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="input-group" style="margin-bottom: 0;">
+                                <label>銘柄 <span style="color:var(--danger)">*</span></label>
+                                <select id="bottle-brand" required>
+                                    <option value="">選択してください</option>
+                                    ${cachedBrands.map(b => `<option value="${b.id}" ${bottle?.brandId === b.id ? 'selected' : ''}>${b.name}</option>`).join('')}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="input-group" style="margin-bottom: 0; display: flex; flex-direction: column;">
+                            <label>メモ</label>
+                            <textarea id="bottle-memo" placeholder="特徴・お好みなど..." style="flex: 1; min-height: 80px; resize: none; width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 0.8rem; font-size: 0.9rem;">${bottle?.memo || ''}</textarea>
+                        </div>
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                         <div class="input-group">
@@ -399,6 +418,7 @@ async function openBottleModal(bottleId = null) {
             customerFurigana: document.getElementById('cust-furigana').value,
             areaId: document.getElementById('bottle-area').value,
             brandId: document.getElementById('bottle-brand').value,
+            memo: document.getElementById('bottle-memo').value.trim(),
             lastServingDate: new Date(document.getElementById('last-date').value),
             updatedAt: serverTimestamp()
         };
@@ -633,6 +653,45 @@ style.textContent = `
     }
     .search-item:hover {
         background: #f8fafc;
+    }
+    .memo-indicator {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        width: 30px;
+        height: 30px;
+        background: var(--danger);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+        cursor: pointer;
+        box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3);
+        z-index: 10;
+        transition: all 0.2s;
+        animation: pulse-memo 2s infinite;
+    }
+    .memo-indicator:hover {
+        transform: scale(1.15);
+        background: #ff5a5f;
+    }
+    @keyframes pulse-memo {
+        0% { transform: scale(1); box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3); }
+        50% { transform: scale(1.05); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.5); }
+        100% { transform: scale(1); box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3); }
+    }
+    .bottle-modal-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    @media (max-width: 600px) {
+        .bottle-modal-grid {
+            grid-template-columns: 1fr;
+        }
     }
     @media (max-width: 768px) {
         .area-column.expanded {
