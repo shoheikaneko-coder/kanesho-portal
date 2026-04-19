@@ -372,6 +372,7 @@ function showPage(target) {
     state.currentPage = target;
     const pageContent = document.getElementById('page-content');
     const pageTitle = document.getElementById('page-title');
+    const pageTitleMobileCentral = document.getElementById('page-title-mobile-central');
     const breadcrumbArea = document.getElementById('breadcrumb-area');
     const backBtn = document.getElementById('header-back-btn');
     const mobileMenuBtn = document.getElementById('mobile-menu-btn');
@@ -386,16 +387,19 @@ function showPage(target) {
         switch (target) {
             case 'home':
                 pageTitle.textContent = 'メインホーム';
+                if (pageTitleMobileCentral) pageTitleMobileCentral.textContent = 'メインホーム';
                 pageContent.innerHTML = homePageHtml;
                 initHomePage();
                 break;
             case 'ops_hub':
                 pageTitle.textContent = '店舗業務';
+                if (pageTitleMobileCentral) pageTitleMobileCentral.textContent = '店舗業務';
                 pageContent.innerHTML = hubPageHtml('店舗業務', '店舗運営に必要な日次業務。');
                 initHubPage('ops_hub');
                 break;
             case 'hr_hub':
                 pageTitle.textContent = '人事総務業務';
+                if (pageTitleMobileCentral) pageTitleMobileCentral.textContent = '人事総務業務';
                 pageContent.innerHTML = hubPageHtml('人事総務業務', '従業員管理、貸与物、勤怠チェック。');
                 initHubPage('hr_hub');
                 break;
@@ -516,21 +520,25 @@ function showPage(target) {
                 break;
             case 'goals_store':
                 pageTitle.textContent = '月次按分シミュレーション';
+                if (pageTitleMobileCentral) pageTitleMobileCentral.textContent = '月次按分シミュレーション';
                 pageContent.innerHTML = goalsStorePageHtml;
                 initGoalsStorePage();
                 break;
             case 'shift_submission':
                 pageTitle.textContent = 'シフト希望提出';
+                if (pageTitleMobileCentral) pageTitleMobileCentral.textContent = 'シフト希望提出';
                 pageContent.innerHTML = shiftSubmissionPageHtml;
                 initShiftSubmissionPage();
                 break;
             case 'shift_viewer':
                 pageTitle.textContent = '確定シフト閲覧';
+                if (pageTitleMobileCentral) pageTitleMobileCentral.textContent = '確定シフト閲覧';
                 pageContent.innerHTML = shiftViewerPageHtml;
                 initShiftViewerPage();
                 break;
             case 'shift_admin':
                 pageTitle.textContent = 'シフト作成・調整 (コックピット)';
+                if (pageTitleMobileCentral) pageTitleMobileCentral.textContent = 'シフト作成・調整 (コックピット)';
                 pageContent.innerHTML = shiftAdminPageHtml;
                 initShiftAdminPage();
                 break;
@@ -830,3 +838,43 @@ function renderNavigationUI(target, titleEl, breadcrumbEl, backBtn, menuBtn) {
     
     breadcrumbEl.innerHTML = breadcrumbHTML;
 }
+
+// モバイル専用ヘッダーボタンのイベント紐付け (Filmarks Style)
+function initMobileHeaderEvents() {
+    const pageTitleMobileCentral = document.getElementById('page-title-mobile-central');
+    const pageTitle = document.getElementById('page-title');
+    
+    const mobileMenuBtn = document.getElementById('mobile-btn-menu');
+    if (mobileMenuBtn) {
+        mobileMenuBtn.onclick = () => {
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar) sidebar.classList.toggle('show');
+        };
+    }
+    const mobileNotifyBtn = document.getElementById('mobile-btn-notifications');
+    if (mobileNotifyBtn) {
+        mobileNotifyBtn.onclick = () => showPage('notifications');
+    }
+    const mobileSwitcherBtn = document.getElementById('mobile-btn-switcher');
+    if (mobileSwitcherBtn) {
+        mobileSwitcherBtn.onclick = () => {
+            const menu = document.getElementById('header-view-menu');
+            if (menu) menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
+        };
+    }
+
+    // 初回読み込み時の同期処理
+    if (pageTitleMobileCentral && state.currentPage) {
+        const titles = { 
+            'home': 'メインホーム', 'ops_hub': '店舗業務', 'hr_hub': '人事総務業務', 
+            'master_hub': 'マスタ管理', 'system_hub': 'システム設定', 'prototype_menu': 'メニュー試作'
+        };
+        pageTitleMobileCentral.textContent = titles[state.currentPage] || pageTitle.textContent;
+    }
+}
+window.initMobileHeaderEvents = initMobileHeaderEvents;
+
+// DOMContentLoaded時に実行
+document.addEventListener('DOMContentLoaded', () => {
+    if (window.initMobileHeaderEvents) window.initMobileHeaderEvents();
+});
