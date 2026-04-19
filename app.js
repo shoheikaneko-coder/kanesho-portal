@@ -354,9 +354,6 @@ window.navigateTo = (target, pushToHistory = true) => {
         overlay?.classList.remove('show');
     }
     
-    document.querySelectorAll('.bottom-nav-item').forEach(el => {
-        el.classList.toggle('active', el.dataset.target === target);
-    });
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
@@ -376,11 +373,12 @@ function showPage(target) {
     const pageContent = document.getElementById('page-content');
     const pageTitle = document.getElementById('page-title');
     const breadcrumbArea = document.getElementById('breadcrumb-area');
-    const backSlot = document.getElementById('header-back-slot');
+    const backBtn = document.getElementById('header-back-btn');
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
     if (!pageContent || !pageTitle) return;
 
     // ナビゲーションUIの生成 (パンくず & 戻るボタン)
-    renderNavigationUI(target, pageTitle, breadcrumbArea, backSlot);
+    renderNavigationUI(target, pageTitle, breadcrumbArea, backBtn, mobileMenuBtn);
 
     document.querySelectorAll('.menu-item').forEach(el => el.classList.toggle('active', el.dataset.target === target));
 
@@ -580,7 +578,7 @@ function showPage(target) {
 
 
         // ページ読み込み完了後にナビゲーションUIを確定
-        renderNavigationUI(target, pageTitle, breadcrumbArea);
+        renderNavigationUI(target, pageTitle, breadcrumbArea, backBtn, mobileMenuBtn);
         
     } catch (err) {
         console.error(err);
@@ -633,16 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sidebar = document.querySelector('.sidebar');
     const overlay = document.querySelector('.sidebar-overlay');
     
-    document.querySelectorAll('.bottom-nav-item').forEach(item => {
-        item.onclick = (e) => {
-            if (e.currentTarget.id === 'btn-mobile-menu') {
-                sidebar?.classList.toggle('show');
-                overlay?.classList.toggle('show');
-            } else {
-                window.navigateTo(e.currentTarget.dataset.target);
-            }
-        };
-    });
+    // Bottom nav logic removed
 
     const fabBtn = document.getElementById('fab-main-btn');
     const fabMenu = document.getElementById('fab-menu');
@@ -804,36 +793,39 @@ function initNotificationBadge() {
 /**
  * 画面に応じたナビゲーションUI（戻るボタン・パンくず）を描画する
  */
-function renderNavigationUI(target, titleEl, breadcrumbEl) {
+function renderNavigationUI(target, titleEl, breadcrumbEl, backBtn, menuBtn) {
     if (!breadcrumbEl) return;
     
     // リセット
     breadcrumbEl.innerHTML = '';
+    if (backBtn) backBtn.style.display = 'none';
+    if (menuBtn) menuBtn.style.display = 'flex';
 
-    if (target === 'home') {
-        // ホーム画面は何も表示しない
-        return;
-    }
+    if (target === 'home') return;
 
     const parentHubId = pageParentMap[target];
     const hubLabel = hubLabels[parentHubId] || 'メニュー';
     const isHubPage = target === 'ops_hub' || target === 'hr_hub' || target === 'master_hub';
 
-    // 1. パンくずリストの生成
+    // 1. パンくずリスト
     let breadcrumbHTML = `<span onclick="window.navigateTo('home')">ホーム</span>`;
     
     if (isHubPage) {
-        // ハブページ自身の場合は「ホーム > 現在のハブ」
         breadcrumbHTML += ` <i class="fas fa-chevron-right"></i> <span>${hubLabels[target] || titleEl.textContent}</span>`;
     } else if (parentHubId) {
-        // サブ機能の場合は「ホーム > ハブ > 現在の機能」
-        // 子要素（プルダウン等）が含まれる場合の対策：まずspanを探し、なければ最初のテキストノードを試みる
         const spanText = titleEl.querySelector('span')?.textContent;
         const firstNodeText = titleEl.firstChild?.nodeType === 3 ? titleEl.firstChild.textContent : titleEl.textContent;
         const cleanTitle = (spanText || firstNodeText || "").trim().split('\n')[0];
         
         breadcrumbHTML += ` <i class="fas fa-chevron-right"></i> <span onclick="window.navigateTo('${parentHubId}')">${hubLabel}</span>`;
         breadcrumbHTML += ` <i class="fas fa-chevron-right"></i> <span>${cleanTitle}</span>`;
+
+        // 2. 戻るボタンの制御 (サブ機能のみ)
+        if (backBtn && window.innerWidth <= 1024) {
+            backBtn.style.display = 'flex';
+            if (menuBtn) menuBtn.style.display = 'none'; // スペース確保のためハンバーガーを隠す
+            backBtn.onclick = () => window.navigateTo(parentHubId);
+        }
     }
     
     breadcrumbEl.innerHTML = breadcrumbHTML;

@@ -142,6 +142,10 @@
                     <button id="mobile-menu-btn" class="btn" style="background: transparent; color: var(--text-primary); padding: 0.5rem; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; z-index: 1001;">
                         <i class="fas fa-bars" style="font-size: 1.5rem;"></i>
                     </button>
+                    <!-- Header Back Button (Mobile Sub-pages) -->
+                    <button id="header-back-btn" class="btn" style="display: none; background: transparent; color: var(--text-primary); padding: 0.5rem; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; z-index: 1001; margin-left: -0.5rem;">
+                        <i class="fas fa-arrow-left" style="font-size: 1.3rem;"></i>
+                    </button>
                     <!-- 動的ナビゲーションエリア -->
                     <div id="dynamic-nav-container" class="header-nav-group">
                         <div id="breadcrumb-area" class="breadcrumb"></div>
@@ -191,26 +195,6 @@
             <div class="page-content" id="page-content">
                 <!-- Content injected by JS -->
             </div>
-
-            <!-- Bottom Navigation (Mobile Only) -->
-            <nav class="bottom-nav">
-                <div class="bottom-nav-item active" data-target="home">
-                    <i class="fas fa-home"></i>
-                    <span>ホーム</span>
-                </div>
-                <div class="bottom-nav-item" data-target="ops_hub" id="nav-item-ops">
-                    <i class="fas fa-store"></i>
-                    <span>店舗業務</span>
-                </div>
-                <div class="bottom-nav-item" data-target="hr_hub" id="nav-item-hr" style="display:none;">
-                    <i class="fas fa-user-friends"></i>
-                    <span>人事総務</span>
-                </div>
-                <div class="bottom-nav-item" id="btn-mobile-menu">
-                    <i class="fas fa-bars"></i>
-                    <span>メニュー</span>
-                </div>
-            </nav>
 
             <!-- Quick Action FAB (Mobile Only) -->
             <div class="fab-container">
