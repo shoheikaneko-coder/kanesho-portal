@@ -120,6 +120,48 @@ export const prototypeMenuPageHtml = `
             background-color: #f0f9ff;
             border-left: 4px solid #0ea5e9;
         }
+
+        /* Mobile Responsive Tweaks */
+        @media (max-width: 1024px) {
+            .proto-basic-info-grid {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 1.2rem !important;
+            }
+            .proto-basic-info-grid > div {
+                width: 100% !important;
+            }
+            .proto-major-portion-row {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 1rem !important;
+                align-items: stretch !important;
+            }
+            .proto-major-portion-row > div {
+                flex: none !important;
+                width: 100% !important;
+            }
+            .proto-sticky-summary {
+                top: -1rem;
+                padding: 0.5rem 1rem;
+                justify-content: space-between;
+                gap: 0.5rem;
+            }
+            .proto-summary-value {
+                font-size: 0.95rem;
+            }
+            .proto-summary-label {
+                font-size: 0.6rem;
+            }
+            .proto-form-card {
+                flex-direction: column !important;
+                align-items: center !important;
+                text-align: center;
+            }
+            .proto-img-container {
+                margin-bottom: 0.5rem;
+            }
+        }
     </style>
 `;
 
@@ -255,8 +297,8 @@ function renderFormView(container) {
 
             <!-- Basic Info Card -->
             <div style="background:white; border-radius:16px; border:1px solid #e2e8f0; padding:1.5rem; margin-bottom:1.5rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);">
-                <div style="display:flex; gap:1.2rem; align-items:start;">
-                    <div style="position:relative;">
+                <div class="proto-form-card" style="display:flex; gap:1.2rem; align-items:start;">
+                    <div class="proto-img-container" style="position:relative;">
                         <img id="proto-img-preview" src="${isEdit && editingPrototype.image_url ? editingPrototype.image_url : 'https://via.placeholder.com/150'}" style="width:100px; height:100px; border-radius:12px; object-fit:cover; border:2px solid #f1f5f9;">
                         ${isOwner ? `
                             <label for="proto-file-input" style="position:absolute; bottom:-5px; right:-5px; width:32px; height:32px; background:var(--primary); color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
@@ -265,7 +307,7 @@ function renderFormView(container) {
                             </label>
                         ` : ''}
                     </div>
-                    <div style="flex:1; display:grid; grid-template-columns:1fr 1.3fr; gap:1.2rem;">
+                    <div class="proto-basic-info-grid" style="flex:1; display:grid; grid-template-columns:1fr 1.3fr; gap:1.2rem;">
                         <!-- Left Column: Furigana & Name (Stacked) -->
                         <div style="display:flex; flex-direction:column; gap:1rem;">
                             <div class="input-group compact-input">
@@ -280,7 +322,7 @@ function renderFormView(container) {
 
                         <!-- Right Column: Major Category & Portion Amount (Row 1), Category (Row 2) -->
                         <div style="display:flex; flex-direction:column; gap:1rem;">
-                            <div style="display:flex; align-items:flex-end; gap:0.5rem;">
+                            <div class="proto-major-portion-row" style="display:flex; align-items:flex-end; gap:0.5rem;">
                                 <div class="input-group compact-input" style="flex:0.6;">
                                     <label>大分類 <span style="color:var(--danger)">*</span></label>
                                     <select id="proto-major-category" class="recipe-pro-input" style="padding:0.7rem;" ${!isOwner ? 'disabled' : ''}>
@@ -308,7 +350,7 @@ function renderFormView(container) {
                     </div>
                 </div>
                 
-                <div style="margin-top:1.5rem; padding-top:1.5rem; border-top:1px dashed #e2e8f0; display:grid; grid-template-columns:1fr 1fr; gap:2rem;">
+                <div class="proto-basic-info-grid" style="margin-top:1.5rem; padding-top:1.5rem; border-top:1px dashed #e2e8f0; display:grid; grid-template-columns:1fr 1fr; gap:2rem;">
                     <div class="input-group compact-input">
                         <label style="color:var(--primary); font-weight:900;">販売想定価格 (自由入力)</label>
                         <div style="display:flex; align-items:center; gap:0.5rem;">
