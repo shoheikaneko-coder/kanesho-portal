@@ -866,8 +866,7 @@ window.handleMobileSwitcherClick = function(e) {
     if (e) e.stopPropagation();
     const menu = document.getElementById('header-view-menu');
     if (menu) {
-        const isVisible = menu.style.display === 'block';
-        menu.style.display = isVisible ? 'none' : 'block';
+        menu.classList.toggle('show');
     }
 };
 
@@ -882,8 +881,8 @@ window.handleDocumentClick = function(e) {
     
     // スイッチャーメニューの外をタップしたら閉じる
     const menu = document.getElementById('header-view-menu');
-    if (menu && menu.style.display === 'block' && !menu.contains(e.target)) {
-        menu.style.display = 'none';
+    if (menu && menu.classList.contains('show') && !menu.contains(e.target)) {
+        menu.classList.remove('show');
     }
 };
 

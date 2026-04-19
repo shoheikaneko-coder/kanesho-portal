@@ -547,7 +547,7 @@ p { color: var(--text-secondary); line-height: 1.5; }
       z-index: 2100;
   }
 
-  /* モバイルパーツの表示制御強化 */
+  /* モバイルパーツの表示制御強化（閲覧・ショートカットのアニメーション対応） */
   #header-view-menu {
       top: 50px !important;
       right: 1rem !important;
@@ -555,6 +555,19 @@ p { color: var(--text-secondary); line-height: 1.5; }
       width: auto !important;
       z-index: 3000 !important;
       box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      
+      /* アニメーション初期状態: 上に隠す */
+      display: block !important; 
+      visibility: hidden;
+      opacity: 0;
+      transform: translateY(-20px);
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease, visibility 0.3s ease;
+  }
+  
+  #header-view-menu.show {
+      visibility: visible;
+      opacity: 1;
+      transform: translateY(0);
   }
 
   #sidebar {
