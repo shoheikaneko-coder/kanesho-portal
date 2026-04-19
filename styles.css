@@ -514,10 +514,15 @@ p { color: var(--text-secondary); line-height: 1.5; }
   .mobile-header-btn {
       background: transparent;
       border: none;
-      color: #FFFFFF;
+      color: var(--text-primary);
       font-size: 1.25rem;
       padding: 0.5rem;
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2100;
+  }
       display: flex;
       align-items: center;
       justify-content: center;
