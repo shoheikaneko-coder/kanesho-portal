@@ -31,7 +31,7 @@ import { hubPageHtml, initHubPage } from './hubs.js?v=116';
 import { inviteNaviPageHtml, initInviteNaviPage } from './invite_navi.js';
 import { attendanceManagementPageHtml, initAttendanceManagementPage } from './attendance_management.js';
 import { bottleKeepPageHtml, initBottleKeepPage } from './bottle_keep.js';
-import { prototypeMenuPageHtml, initPrototypeMenuPage } from './prototype_menu.js';
+import { prototypeMenuPageHtml, initPrototypeMenuPage } from './prototype_menu.js?v=140';
 import { competitorListPageHtml, initCompetitorListPage } from './competitor_list.js';
 
 

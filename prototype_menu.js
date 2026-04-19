@@ -323,7 +323,7 @@ function renderListViewMobile(container) {
 // --- DESKTOP VIEW (編集フォーム) ---
 function renderFormViewDesktop(container) {
     const isEdit = !!editingPrototype;
-    const isOwner = !isEdit || editingPrototype.created_by === currentUser?.uid || editingPrototype.created_by === currentUser?.id;
+    const isOwner = !isEdit || editingPrototype.created_by === currentUser?.id;
 
     container.innerHTML = `
         <div class="animate-fade-in" style="padding: 1.5rem; position:relative;">
@@ -470,7 +470,7 @@ function renderFormViewDesktop(container) {
 // --- MOBILE VIEW (編集フォーム) ---
 function renderFormViewMobile(container) {
     const isEdit = !!editingPrototype;
-    const isOwner = !isEdit || editingPrototype.created_by === currentUser?.uid || editingPrototype.created_by === currentUser?.id;
+    const isOwner = !isEdit || editingPrototype.created_by === currentUser?.id;
 
     // Use absolute fixed positioning for HUD to avoid parent transform issues
     container.innerHTML = `
@@ -587,10 +587,13 @@ function renderFormViewMobile(container) {
                         <button id="btn-save-as-homemade" class="btn" style="height: 58px; background: #10b981; color: white; border: none; border-radius: 16px; font-weight: 900; font-size: 1rem; box-shadow: 0 6px 15px rgba(16, 185, 129, 0.2);">
                             <i class="fas fa-flask" style="margin-right: 0.4rem;"></i> 自家製原材料の試作として保存
                         </button>
-                    ` : `
-                        <button id="btn-copy-to-me" class="btn btn-primary" style="height: 58px; border-radius: 16px; font-weight: 900;">コピーしてマイ試作に保存</button>
                     `}
                 </div>
+                ${isEdit && isOwner ? `
+                    <button id="btn-proto-delete" class="btn" style="width:100%; margin-top:1rem; color:#ef4444; border:none; background:none; font-weight:800; font-size: 0.9rem;">
+                        <i class="fas fa-trash-alt" style="margin-right: 0.4rem;"></i> この試作品を完全に破棄する
+                    </button>
+                ` : ''}
             </div>
         </div>
     `;
@@ -951,7 +954,7 @@ async function savePrototype(recipe, type) {
 
 async function deletePrototype() {
     if (!editingPrototype) return;
-    const isOwner = editingPrototype.created_by === (currentUser?.uid || currentUser?.id);
+    const isOwner = editingPrototype.created_by === currentUser?.id;
     if (!isOwner) return showAlert("権限なし", "作成者本人のみ削除できます");
 
     showConfirm("削除", "完全に消しますか？", async () => {
