@@ -539,9 +539,9 @@ p { color: var(--text-secondary); line-height: 1.5; }
       z-index: 2100;
   }
 
-  /* 閲覧・ショートカットメニューのスマホ調整 */
-  .header-view-menu {
-      top: 50px !important; /* 黒いバーのすぐ下に配置 */
+  /* モバイルパーツの表示制御強化 */
+  #header-view-menu {
+      top: 50px !important;
       right: 1rem !important;
       left: 1rem !important;
       width: auto !important;
@@ -549,18 +549,19 @@ p { color: var(--text-secondary); line-height: 1.5; }
       box-shadow: 0 10px 25px rgba(0,0,0,0.1);
   }
 
-  .sidebar {
+  #sidebar {
     position: fixed;
     top: 0;
     left: 0;
     height: 100%;
-    z-index: 10000;
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
-    width: 280px;
+    z-index: 10000 !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.3s ease !important;
+    width: 280px !important;
+    display: block !important;
   }
-  .sidebar.show {
-    transform: translateX(0);
+  #sidebar.show {
+    transform: translateX(0) !important;
   }
   
   /* 没入型レイアウト: パディング排除 */

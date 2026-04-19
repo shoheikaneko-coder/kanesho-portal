@@ -848,35 +848,42 @@ function renderNavigationUI(target, titleEl, breadcrumbEl, backBtn, menuBtn) {
     }
 }
 
+// --- モバイル専用グローバルハンドラー (HTMLのonclickから直接呼び出し) ---
+window.handleMobileMenuClick = function(e) {
+    if (e) e.stopPropagation();
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) sidebar.classList.toggle('show');
+};
+
+window.handleMobileNotifyClick = function(e) {
+    if (e) e.stopPropagation();
+    if (window.navigateTo) window.navigateTo('notifications');
+};
+
+window.handleMobileSwitcherClick = function(e) {
+    if (e) e.stopPropagation();
+    const menu = document.getElementById('header-view-menu');
+    if (menu) {
+        const isVisible = menu.style.display === 'block';
+        menu.style.display = isVisible ? 'none' : 'block';
+    }
+};
+
+window.handleDocumentClick = function(e) {
+    const menu = document.getElementById('header-view-menu');
+    if (menu && menu.style.display === 'block' && !menu.contains(e.target)) {
+        menu.style.display = 'none';
+    }
+};
+
 // モバイル専用ヘッダーボタンのイベント紐付け (Filmarks Style)
 function initMobileHeaderEvents() {
     const pageTitleMobileCentral = document.getElementById('page-title-mobile-central');
     const pageTitle = document.getElementById('page-title');
     
-    // 三本線メニュー
-    const mobileMenuBtn = document.getElementById('mobile-btn-menu');
-    if (mobileMenuBtn) {
-        mobileMenuBtn.removeEventListener('click', handleMobileMenuClick);
-        mobileMenuBtn.addEventListener('click', handleMobileMenuClick);
-    }
-
-    // 通知ボタン
-    const mobileNotifyBtn = document.getElementById('mobile-btn-notifications');
-    if (mobileNotifyBtn) {
-        mobileNotifyBtn.removeEventListener('click', handleMobileNotifyClick);
-        mobileNotifyBtn.addEventListener('click', handleMobileNotifyClick);
-    }
-
-    // 閲覧切り替え
-    const mobileSwitcherBtn = document.getElementById('mobile-btn-switcher');
-    if (mobileSwitcherBtn) {
-        mobileSwitcherBtn.removeEventListener('click', handleMobileSwitcherClick);
-        mobileSwitcherBtn.addEventListener('click', handleMobileSwitcherClick);
-    }
-
-    // 画面外タップでメニューを閉じる
-    document.removeEventListener('click', handleDocumentClick);
-    document.addEventListener('click', handleDocumentClick);
+    // 画面外タップの監視のみJSで追加
+    document.removeEventListener('click', window.handleDocumentClick);
+    document.addEventListener('click', window.handleDocumentClick);
 
     // タイトル同期
     if (pageTitleMobileCentral && state.currentPage) {
@@ -887,35 +894,6 @@ function initMobileHeaderEvents() {
         pageTitleMobileCentral.textContent = titles[state.currentPage] || (pageTitle ? pageTitle.textContent : '');
     }
 }
-
-// ハンドラー関数（重複登録防止のため分離）
-function handleMobileMenuClick(e) {
-    e.stopPropagation();
-    const sidebar = document.getElementById('sidebar');
-    if (sidebar) sidebar.classList.toggle('show');
-}
-
-function handleMobileNotifyClick(e) {
-    e.stopPropagation();
-    window.navigateTo('notifications');
-}
-
-function handleMobileSwitcherClick(e) {
-    e.stopPropagation();
-    const menu = document.getElementById('header-view-menu');
-    if (menu) {
-        const isVisible = menu.offsetParent !== null;
-        menu.style.display = isVisible ? 'none' : 'block';
-    }
-}
-
-function handleDocumentClick(e) {
-    const menu = document.getElementById('header-view-menu');
-    if (menu && menu.offsetParent !== null && !menu.contains(e.target)) {
-        menu.style.display = 'none';
-    }
-}
-
 window.initMobileHeaderEvents = initMobileHeaderEvents;
 
 // DOMContentLoaded時に実行
