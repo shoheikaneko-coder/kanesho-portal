@@ -35,10 +35,10 @@ async function reloadData() {
         getDocs(collection(db, "m_menus"))
     ]);
 
-    cachedPrototypes = protoSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    cachedItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    cachedIngredients = ingSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    cachedMenus = menuSnap.docs.mafunction renderView() {
+    cachedMenus = menuSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+function renderView() {
     const container = document.getElementById('prototype-menu-container');
     if (!container) return;
 
