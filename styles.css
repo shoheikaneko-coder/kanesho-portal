@@ -1886,6 +1886,43 @@ input:checked + .toggle-slider:before {
     display: none !important;
 }
 
+/* 集計バー (Summary Bar) - PC/Mobile 両対応だが数値の強調を維持 */
+.proto-sticky-summary {
+    position: sticky;
+    top: -1.2rem;
+    left: -1.2rem;
+    right: -1.2rem;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid #e2e8f0;
+    padding: 0.6rem 1.2rem;
+    margin: -1.2rem -1.2rem 1rem -1.2rem;
+    z-index: 1100;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.proto-summary-item {
+    text-align: center;
+}
+
+.proto-summary-label {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.1rem;
+    font-weight: 500;
+}
+
+.proto-summary-value {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
 @media (max-width: 1024px) {
     .proto-mobile-tabs {
         display: flex !important;
@@ -1896,14 +1933,18 @@ input:checked + .toggle-slider:before {
         position: sticky;
         top: 0;
         z-index: 1050;
-        margin: -1rem -1rem 1.5rem -1rem; /* 親のパディングを打ち消して端まで広げる */
+        margin: -1rem -1rem 1.5rem -1rem;
+    }
+    
+    .proto-sticky-summary {
+        padding: 0.5rem 0.8rem;
     }
 
     .proto-tab-btn {
         flex: 1;
-        padding: 1rem 0.5rem; /* しっかり指で押せるサイズ */
+        padding: 1rem 0.5rem;
         border-radius: 12px;
-        font-size: 0.95rem; /* 読みやすいサイズ */
+        font-size: 0.95rem;
         font-weight: 800;
         color: var(--text-secondary);
         background: #f1f5f9;
@@ -1920,7 +1961,6 @@ input:checked + .toggle-slider:before {
         box-shadow: 0 4px 12px rgba(230, 57, 70, 0.2);
     }
     
-    /* セクションの切り替え制御 */
     .proto-section {
         display: none;
     }
