@@ -245,32 +245,42 @@ function renderFormView(container) {
                             </label>
                         ` : ''}
                     </div>
-                    <div style="flex:1; display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
-                        <div class="input-group compact-input">
-                            <label>ふりがな</label>
-                            <input type="text" id="proto-furigana" class="recipe-pro-input" value="${isEdit ? (editingPrototype.furigana || '') : ''}" ${!isOwner ? 'readonly' : ''}>
+                    <div style="flex:1; display:grid; grid-template-columns:1fr 1.5fr; gap:1rem;">
+                        <!-- Left Col: Furigana & Name -->
+                        <div style="display:flex; flex-direction:column; gap:1rem;">
+                            <div class="input-group compact-input">
+                                <label>ふりがな</label>
+                                <input type="text" id="proto-furigana" class="recipe-pro-input" value="${isEdit ? (editingPrototype.furigana || '') : ''}" ${!isOwner ? 'readonly' : ''}>
+                            </div>
+                            <div class="input-group compact-input">
+                                <label>名称 <span style="color:var(--danger)">*</span></label>
+                                <input type="text" id="proto-name" class="recipe-pro-input" value="${isEdit ? editingPrototype.name : ''}" ${!isOwner ? 'readonly' : ''}>
+                            </div>
                         </div>
-                        <div class="input-group compact-input">
-                            <label>名称 <span style="color:var(--danger)">*</span></label>
-                            <input type="text" id="proto-name" class="recipe-pro-input" value="${isEdit ? editingPrototype.name : ''}" ${!isOwner ? 'readonly' : ''}>
-                        </div>
-                        <div class="input-group compact-input">
-                            <label>大分類 <span style="color:var(--danger)">*</span></label>
-                            <select id="proto-major-category" class="recipe-pro-input" ${!isOwner ? 'disabled' : ''}>
-                                <option value="">選択...</option>
-                                <option value="フード" ${isEdit && editingPrototype.major_category === 'フード' ? 'selected' : ''}>フード</option>
-                                <option value="ドリンク" ${isEdit && editingPrototype.major_category === 'ドリンク' ? 'selected' : ''}>ドリンク</option>
-                            </select>
-                        </div>
-                        <div class="input-group compact-input">
-                            <label>カテゴリー</label>
-                            <input type="text" id="proto-category" class="recipe-pro-input" value="${isEdit ? (editingPrototype.category || '') : ''}" ${!isOwner ? 'readonly' : ''}>
-                        </div>
-                        <div class="input-group compact-input">
-                            <label>ポーション量 / 販売単位</label>
-                            <div style="display:flex; align-items:center; gap:0.5rem;">
-                                <input type="number" id="proto-portion" class="recipe-pro-input" value="${isEdit ? (editingPrototype.portion_amount || '') : ''}" ${!isOwner ? 'readonly' : ''} inputmode="decimal">
-                                <input type="text" id="proto-unit" class="recipe-pro-input" style="width:80px;" placeholder="g/個" value="${isEdit ? (editingPrototype.unit || '') : ''}" ${!isOwner ? 'readonly' : ''}>
+
+                        <!-- Right Col: Major & Portion, Category -->
+                        <div style="display:flex; flex-direction:column; gap:1rem;">
+                            <div style="display:flex; align-items:flex-end; gap:0.5rem;">
+                                <div class="input-group compact-input" style="flex:1;">
+                                    <label>大分類 <span style="color:var(--danger)">*</span></label>
+                                    <select id="proto-major-category" class="recipe-pro-input" style="padding:0.7rem;" ${!isOwner ? 'disabled' : ''}>
+                                        <option value="">選択...</option>
+                                        <option value="フード" ${isEdit && editingPrototype.major_category === 'フード' ? 'selected' : ''}>フード</option>
+                                        <option value="ドリンク" ${isEdit && editingPrototype.major_category === 'ドリンク' ? 'selected' : ''}>ドリンク</option>
+                                    </select>
+                                </div>
+                                <div class="input-group compact-input" style="flex:1;">
+                                    <label>ポーション量 / 販売単位</label>
+                                    <div style="display:flex; align-items:center; gap:0.4rem;">
+                                        <input type="number" id="proto-portion" class="recipe-pro-input" style="padding:0.7rem;" value="${isEdit ? (editingPrototype.portion_amount || '') : ''}" ${!isOwner ? 'readonly' : ''} inputmode="decimal">
+                                        <span id="proto-unit-display" style="font-weight:900; color:#64748b; min-width:30px; font-size:1.1rem; padding-bottom:5px;">${isEdit ? (editingPrototype.unit || '') : ''}</span>
+                                        <input type="hidden" id="proto-unit" value="${isEdit ? (editingPrototype.unit || '') : ''}">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="input-group compact-input">
+                                <label>カテゴリー</label>
+                                <input type="text" id="proto-category" class="recipe-pro-input" value="${isEdit ? (editingPrototype.category || '') : ''}" ${!isOwner ? 'readonly' : ''}>
                             </div>
                         </div>
                     </div>
@@ -383,14 +393,17 @@ function renderFormView(container) {
     // Major Category Unit Sync
     const majorCat = document.getElementById('proto-major-category');
     const unitInput = document.getElementById('proto-unit');
+    const unitDisplay = document.getElementById('proto-unit-display');
     const yieldUnitInput = document.getElementById('proto-yield-unit');
     if (majorCat && isOwner) {
         majorCat.onchange = () => {
             if (majorCat.value === 'フード') {
                 unitInput.value = 'g';
+                unitDisplay.textContent = 'g';
                 yieldUnitInput.value = 'g';
             } else if (majorCat.value === 'ドリンク') {
                 unitInput.value = 'ml';
+                unitDisplay.textContent = 'ml';
                 yieldUnitInput.value = 'ml';
             }
         };
