@@ -852,7 +852,9 @@ function renderNavigationUI(target, titleEl, breadcrumbEl, backBtn, menuBtn) {
 window.handleMobileMenuClick = function(e) {
     if (e) e.stopPropagation();
     const sidebar = document.getElementById('sidebar');
-    if (sidebar) sidebar.classList.toggle('show');
+    if (sidebar) {
+        sidebar.classList.toggle('show');
+    }
 };
 
 window.handleMobileNotifyClick = function(e) {
@@ -870,6 +872,15 @@ window.handleMobileSwitcherClick = function(e) {
 };
 
 window.handleDocumentClick = function(e) {
+    // サイドバーの外をタップしたら閉じる (スマホ版のみ)
+    if (window.innerWidth <= 1024) {
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar && sidebar.classList.contains('show') && !sidebar.contains(e.target)) {
+            sidebar.classList.remove('show');
+        }
+    }
+    
+    // スイッチャーメニューの外をタップしたら閉じる
     const menu = document.getElementById('header-view-menu');
     if (menu && menu.style.display === 'block' && !menu.contains(e.target)) {
         menu.style.display = 'none';

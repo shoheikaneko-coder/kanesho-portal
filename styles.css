@@ -511,6 +511,13 @@ p { color: var(--text-secondary); line-height: 1.5; }
       text-align: center;
   }
 
+  /* 親レイアウトのFlex解除（ここが重要：サイドバーが中身を押し出すのを止める） */
+  .dashboard-layout {
+      display: block !important; 
+      height: 100dvh;
+      overflow: hidden;
+  }
+
   /* モバイルヘッダー各パーツの配置正常化 */
   .mobile-toolbar-left {
       display: flex !important;
@@ -556,18 +563,24 @@ p { color: var(--text-secondary); line-height: 1.5; }
     height: 100%;
     z-index: 10000 !important;
     transform: translateX(-100%) !important;
-    transition: transform 0.3s ease !important;
+    visibility: hidden !important;
+    transition: transform 0.3s ease, visibility 0.3s ease !important;
     width: 280px !important;
-    display: block !important;
+    display: flex !important;
+    flex-direction: column;
+    box-shadow: 10px 0 25px rgba(0,0,0,0.2) !important;
   }
   #sidebar.show {
     transform: translateX(0) !important;
+    visibility: visible !important;
   }
   
   /* 没入型レイアウト: パディング排除 */
   .page-content {
     padding: 0 !important;
     background: #FFFFFF !important;
+    height: calc(100vh - 100px); /* ヘッダー約100px分を差し引く */
+    overflow-y: auto;
   }
 
   .glass-panel, .stat-card, .prototype-card {

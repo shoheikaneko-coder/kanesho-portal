@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>かね将ポータル - プロトタイプ</title>
-    <link rel="stylesheet" href="styles.css?v=125">
+    <link rel="stylesheet" href="styles.css?v=126">
     <script type="module" src="app.js?v=115"></script>
     <!-- FontAwesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -55,9 +55,15 @@
     <!-- Dashboard Layout (Hidden by default) -->
     <div id="dashboard-layout" class="dashboard-layout">
         <!-- Sidebar -->
-        <aside class="sidebar">
+        <aside id="sidebar" class="sidebar">
             <div class="sidebar-header">
                 <i class="fas fa-store" style="color: var(--primary); font-size: 1.5rem;"></i>
+                <span class="mobile-app-brand" style="font-weight: bold; font-size: 1.1rem;">かね将ポータル</span>
+                <!-- スマホ用閉じるボタン -->
+                <button class="mobile-only" style="margin-left: auto; background: transparent; border: none; font-size: 1.5rem; color: var(--text-secondary); cursor: pointer;" onclick="window.handleMobileMenuClick(event)">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
                 <h3>かね将ポータル</h3>
             </div>
             
