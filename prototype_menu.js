@@ -45,20 +45,31 @@ function renderView() {
     const container = document.getElementById('prototype-menu-container');
     if (!container) return;
 
+    const isMobile = window.innerWidth <= 1024;
+
     if (currentView === 'form') {
-        renderFormView(container);
+        if (isMobile) {
+            renderFormViewMobile(container);
+        } else {
+            renderFormViewDesktop(container);
+        }
     } else {
-        renderListView(container);
+        if (isMobile) {
+            renderListViewMobile(container);
+        } else {
+            renderListViewDesktop(container);
+        }
     }
 }
 
-function renderListView(container) {
+// --- DESKTOP VIEW (一覧画面) ---
+function renderListViewDesktop(container) {
     container.innerHTML = `
         <div style="padding: 1.5rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
                 <h2 style="margin:0; display: flex; align-items: center; gap: 0.8rem;">
                     <i class="fas fa-lightbulb" style="color: #f59e0b;"></i>
-                    試作メニュー・自家製リスト
+                    試作メニュー・自家製リスト (PC連携版)
                 </h2>
                 <button id="btn-proto-new" class="btn btn-primary" style="padding: 0.8rem 1.5rem; border-radius: 30px; font-weight: 800;">
                     <i class="fas fa-plus-circle"></i> 新規試作を開始
@@ -116,12 +127,69 @@ function renderListView(container) {
     };
 }
 
-function renderFormView(container) {
+// --- MOBILE VIEW (一覧画面) ---
+function renderListViewMobile(container) {
+    // 初回はPC版と同じ内容をスマホ専用関数として分離
+    container.innerHTML = `
+        <div style="padding: 1rem;">
+            <div style="margin-bottom: 1.5rem;">
+                <h2 style="margin:0; font-size: 1.2rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-lightbulb" style="color: #f59e0b;"></i>
+                    試作メニュー (モバイル専用)
+                </h2>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0.3rem 0 1rem;">スマホでの試作・編集に最適化されています</p>
+                <button id="btn-proto-new-mobile" class="btn btn-primary" style="width: 100%; padding: 1rem; border-radius: 12px; font-weight: 800; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);">
+                    <i class="fas fa-plus-circle"></i> 新規試作を開始
+                </button>
+            </div>
+
+            <div id="prototype-list">
+                ${cachedPrototypes.length === 0 ? `
+                    <div style="text-align:center; padding: 3rem; color: #94a3b8;">
+                        <i class="fas fa-flask" style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                        <p>まだ試作品がありません</p>
+                    </div>
+                ` : cachedPrototypes.map(p => {
+                    const stats = calculatePrototypeStats(p);
+                    return `
+                        <div class="prototype-card" style="padding: 1rem; display: flex; gap: 1rem; margin-bottom: 0.8rem !important;" onclick="window.prototypeMenu.openEdit('${p.id}')">
+                            <img src="${p.image_url || 'https://via.placeholder.com/150'}" style="width: 60px; height: 60px; border-radius: 8px; object-fit: cover;">
+                            <div style="flex:1;">
+                                <div style="display:flex; align-items:center; gap:0.4rem; margin-bottom:0.2rem;">
+                                    <span class="badge ${p.type === 'sales_menu' ? 'badge-proto-menu' : 'badge-proto-homemade'}" style="font-size: 0.6rem; padding: 0.1rem 0.4rem;">
+                                        ${p.type === 'sales_menu' ? '販売' : '自家製'}
+                                    </span>
+                                    <h4 style="margin:0; font-weight:800; font-size:0.95rem;">${p.name}</h4>
+                                </div>
+                                <div style="font-size:0.8rem; font-weight:900; color:#1e293b;">
+                                    ${p.type === 'sales_menu' ? `¥${(p.selling_price || 0).toLocaleString()}` : `¥${stats.unitCost.toFixed(0)} / ${p.unit || ''}`}
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center;">
+                                <i class="fas fa-chevron-right" style="color: #cbd5e1;"></i>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `;
+
+    document.getElementById('btn-proto-new-mobile').onclick = () => {
+        editingPrototype = null;
+        activeMobileTab = 'info';
+        currentView = 'form';
+        renderView();
+    };
+}
+
+// --- DESKTOP VIEW (編集フォーム) ---
+function renderFormViewDesktop(container) {
     const isEdit = !!editingPrototype;
     const isOwner = !isEdit || editingPrototype.created_by === currentUser?.uid || editingPrototype.created_by === currentUser?.id;
 
     container.innerHTML = `
-        <div class="animate-fade-in" style="padding: 1.5rem; padding-bottom: 5rem; position:relative;">
+        <div class="animate-fade-in" style="padding: 1.5rem; position:relative;">
             <!-- Sticky Summary Bar -->
             <div class="proto-sticky-summary">
                 <div class="proto-summary-item">
@@ -138,15 +206,6 @@ function renderFormView(container) {
                 </div>
             </div>
 
-            <!-- Mobile Tabs Toggle (Visible only on <= 1024px) -->
-            <div class="proto-mobile-tabs">
-                <div class="tabs-inner">
-                    <button class="proto-tab-btn ${activeMobileTab === 'info' ? 'active' : ''}" data-tab="info">基本情報</button>
-                    <button class="proto-tab-btn ${activeMobileTab === 'recipe' ? 'active' : ''}" data-tab="recipe">レシピ構成</button>
-                    <button class="proto-tab-btn ${activeMobileTab === 'notes' ? 'active' : ''}" data-tab="notes">工程・メモ</button>
-                </div>
-            </div>
-
             <!-- Header Row -->
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
                 <button id="btn-proto-back" class="btn" style="background:white; border:1px solid #e2e8f0; color:#64748b; font-weight:700;">
@@ -154,139 +213,240 @@ function renderFormView(container) {
                 </button>
                 <div style="text-align:right;">
                     <span class="badge ${isOwner ? 'badge-active' : 'badge-pending'}" style="margin-bottom:0.2rem;">
-                        ${isOwner ? (isEdit ? '自身の試作を編集' : '新規ドラフト') : '他人の試作をシミュレーション中'}
+                        ${isOwner ? (isEdit ? '自身の試作を編集' : '新規ドラフト (PC)') : '他人の試作をシミュレーション中'}
                     </span>
                     <div style="font-size:0.75rem; color:#64748b; font-weight:700;">開発者: ${isEdit ? editingPrototype.developer : (currentUser?.Name || '自分')}</div>
                 </div>
             </div>
 
-            <!-- Section 1: Basic Info -->
-            <div id="proto-section-info" class="proto-section ${activeMobileTab === 'info' ? 'active' : ''}">
-                <div style="background:white; border-radius:16px; border:1px solid #e2e8f0; padding:1.5rem; margin-bottom:1.5rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);">
-                    <div class="proto-form-card" style="display:flex; gap:1.2rem; align-items:start;">
-                        <div class="proto-img-container" style="position:relative;">
-                            <img id="proto-img-preview" src="${isEdit && editingPrototype.image_url ? editingPrototype.image_url : 'https://via.placeholder.com/150'}" style="width:100px; height:100px; border-radius:12px; object-fit:cover; border:2px solid #f1f5f9;">
-                            ${isOwner ? `
-                                <label for="proto-file-input" style="position:absolute; bottom:-5px; right:-5px; width:32px; height:32px; background:var(--primary); color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
-                                    <i class="fas fa-camera" style="font-size:0.8rem;"></i>
-                                    <input type="file" id="proto-file-input" accept="image/*" style="display:none;">
-                                </label>
-                            ` : ''}
-                        </div>
-                        <div class="proto-basic-info-grid" style="flex:1; display:grid; grid-template-columns:1fr 1.3fr; gap:1.2rem;">
-                            <!-- Column 1 -->
-                            <div style="display:flex; flex-direction:column; gap:1rem;">
-                                <div class="input-group compact-input">
-                                    <label>ふりがな</label>
-                                    <input type="text" id="proto-furigana" class="recipe-pro-input" value="${isEdit ? (editingPrototype.furigana || '') : ''}" ${!isOwner ? 'readonly' : ''}>
-                                </div>
-                                <div class="input-group compact-input">
-                                    <label>名称 <span style="color:var(--danger)">*</span></label>
-                                    <input type="text" id="proto-name" class="recipe-pro-input" value="${isEdit ? editingPrototype.name : ''}" ${!isOwner ? 'readonly' : ''}>
-                                </div>
-                            </div>
-                            <!-- Column 2 -->
-                            <div style="display:flex; flex-direction:column; gap:1rem;">
-                                <div class="proto-major-portion-row" style="display:flex; align-items:flex-end; gap:0.5rem;">
-                                    <div class="input-group compact-input" style="flex:0.6;">
-                                        <label>大分類 <span style="color:var(--danger)">*</span></label>
-                                        <select id="proto-major-category" class="recipe-pro-input" style="padding:0.7rem;" ${!isOwner ? 'disabled' : ''}>
-                                            <option value="">選択...</option>
-                                            <option value="フード" ${isEdit && editingPrototype.major_category === 'フード' ? 'selected' : ''}>フード</option>
-                                            <option value="ドリンク" ${isEdit && editingPrototype.major_category === 'ドリンク' ? 'selected' : ''}>ドリンク</option>
-                                        </select>
-                                    </div>
-                                    <div class="input-group compact-input" style="flex:1;">
-                                        <label>ポーション量 / 販売単位</label>
-                                        <div style="display:flex; align-items:center; gap:0.4rem;">
-                                            <input type="number" id="proto-portion" class="recipe-pro-input" style="padding:0.7rem;" value="${isEdit ? (editingPrototype.portion_amount || '') : ''}" ${!isOwner ? 'readonly' : ''} inputmode="decimal">
-                                            <span id="proto-unit-display" style="font-weight:900; color:#64748b; font-size:1.1rem; min-width:30px;">
-                                                ${isEdit ? (editingPrototype.unit || '') : ''}
-                                            </span>
-                                            <input type="hidden" id="proto-unit" value="${isEdit ? (editingPrototype.unit || '') : ''}">
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="input-group compact-input">
-                                    <label>カテゴリー</label>
-                                    <input type="text" id="proto-category" class="recipe-pro-input" value="${isEdit ? (editingPrototype.category || '') : ''}" ${!isOwner ? 'readonly' : ''}>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="proto-basic-info-grid" style="margin-top:1.5rem; padding-top:1.5rem; border-top:1px dashed #e2e8f0; display:grid; grid-template-columns:1fr 1fr; gap:2rem;">
-                        <div class="input-group compact-input">
-                            <label style="color:var(--primary); font-weight:900;">販売想定価格 (自由入力)</label>
-                            <div style="display:flex; align-items:center; gap:0.5rem;">
-                                <span style="font-weight:900; color:#94a3b8;">¥</span>
-                                <input type="number" id="proto-selling-price" class="recipe-pro-input" style="font-size:1.5rem; font-weight:900; color:var(--primary); border-color:var(--primary)44;" value="${isEdit ? (editingPrototype.selling_price || 0) : 0}" inputmode="decimal">
-                            </div>
-                        </div>
-                        <div class="input-group compact-input">
-                            <label>仕上がり出来高 (自家製時のみ使用)</label>
-                            <div style="display:flex; align-items:center; gap:0.5rem;">
-                                <input type="number" id="proto-yield" class="recipe-pro-input" value="${isEdit ? (editingPrototype.yield_amount || 1) : 1}" ${!isOwner ? 'readonly' : ''} inputmode="decimal">
-                                <input type="text" id="proto-yield-unit" class="recipe-pro-input" style="width:80px;" placeholder="g/ml" value="${isEdit ? (editingPrototype.yield_unit || '') : ''}" ${!isOwner ? 'readonly' : ''}>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Section 2: Recipe Materials -->
-            <div id="proto-section-recipe" class="proto-section ${activeMobileTab === 'recipe' ? 'active' : ''}">
-                <div style="background:white; border-radius:16px; border:1px solid #e2e8f0; margin-bottom:1.5rem; overflow:visible; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);">
-                    <div style="padding:1rem 1.5rem; background:#f8fafc; border-bottom:1px solid #e2e8f0; border-radius:16px 16px 0 0; display:flex; justify-content:space-between; align-items:center;">
-                        <h4 style="margin:0; font-weight:800; color:#334155;"><i class="fas fa-layer-group"></i> レシピ構成</h4>
-                        ${!isOwner ? '<span style="font-size:0.7rem; color:#ef4444; font-weight:800;"><i class="fas fa-lock"></i> 編集不可</span>' : ''}
-                    </div>
-                    <div style="padding:1.5rem;">
+            <!-- Section 1: Basic Info (PC) -->
+            <div style="background:white; border-radius:16px; border:1px solid #e2e8f0; padding:1.5rem; margin-bottom:1.5rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);">
+                <div style="display:flex; gap:1.2rem; align-items:start;">
+                    <div class="proto-img-container" style="position:relative;">
+                        <img id="proto-img-preview" src="${isEdit && editingPrototype.image_url ? editingPrototype.image_url : 'https://via.placeholder.com/150'}" style="width:100px; height:100px; border-radius:12px; object-fit:cover; border:2px solid #f1f5f9;">
                         ${isOwner ? `
-                            <div style="position:relative; margin-bottom:1.5rem;">
-                                <i class="fas fa-search" style="position:absolute; left:1rem; top:50%; transform:translateY(-50%); color:#94a3b8;"></i>
-                                <input type="text" id="recipe-search-input" class="recipe-pro-input" style="padding-left:2.8rem;" placeholder="マスタまたは試作品を検索...">
-                                <div id="search-results-list" class="incremental-search-results" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:2000; background:white; border:1px solid #e2e8f0; border-radius:0 0 12px 12px; box-shadow:0 10px 15px -3px rgba(0,0,0,0.1); max-height:300px; overflow-y:auto;"></div>
-                            </div>
+                            <label for="proto-file-input" style="position:absolute; bottom:-5px; right:-5px; width:32px; height:32px; background:var(--primary); color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+                                <i class="fas fa-camera" style="font-size:0.8rem;"></i>
+                                <input type="file" id="proto-file-input" accept="image/*" style="display:none;">
+                            </label>
                         ` : ''}
-                        <div id="recipe-items-container"></div>
+                    </div>
+                    <div class="proto-basic-info-grid" style="flex:1; display:grid; grid-template-columns:1fr 1.3fr; gap:1.2rem;">
+                        <div style="display:flex; flex-direction:column; gap:1rem;">
+                            <div class="input-group compact-input">
+                                <label>ふりがな</label>
+                                <input type="text" id="proto-furigana" class="recipe-pro-input" value="${isEdit ? (editingPrototype.furigana || '') : ''}" ${!isOwner ? 'readonly' : ''}>
+                            </div>
+                            <div class="input-group compact-input">
+                                <label>名称 <span style="color:var(--danger)">*</span></label>
+                                <input type="text" id="proto-name" class="recipe-pro-input" value="${isEdit ? editingPrototype.name : ''}" ${!isOwner ? 'readonly' : ''}>
+                            </div>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:1rem;">
+                            <div class="proto-major-portion-row" style="display:flex; align-items:flex-end; gap:0.5rem;">
+                                <div class="input-group compact-input" style="flex:0.6;">
+                                    <label>大分類 <span style="color:var(--danger)">*</span></label>
+                                    <select id="proto-major-category" class="recipe-pro-input" style="padding:0.7rem;" ${!isOwner ? 'disabled' : ''}>
+                                        <option value="">選択...</option>
+                                        <option value="フード" ${isEdit && editingPrototype.major_category === 'フード' ? 'selected' : ''}>フード</option>
+                                        <option value="ドリンク" ${isEdit && editingPrototype.major_category === 'ドリンク' ? 'selected' : ''}>ドリンク</option>
+                                    </select>
+                                </div>
+                                <div class="input-group compact-input" style="flex:1;">
+                                    <label>ポーション量 / 販売単位</label>
+                                    <div style="display:flex; align-items:center; gap:0.4rem;">
+                                        <input type="number" id="proto-portion" class="recipe-pro-input" style="padding:0.7rem;" value="${isEdit ? (editingPrototype.portion_amount || '') : ''}" ${!isOwner ? 'readonly' : ''} inputmode="decimal">
+                                        <span id="proto-unit-display" style="font-weight:900; color:#64748b; font-size:1.1rem; min-width:30px;">
+                                            ${isEdit ? (editingPrototype.unit || '') : ''}
+                                        </span>
+                                        <input type="hidden" id="proto-unit" value="${isEdit ? (editingPrototype.unit || '') : ''}">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="input-group compact-input">
+                                <label>カテゴリー</label>
+                                <input type="text" id="proto-category" class="recipe-pro-input" value="${isEdit ? (editingPrototype.category || '') : ''}" ${!isOwner ? 'readonly' : ''}>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="proto-basic-info-grid" style="margin-top:1.5rem; padding-top:1.5rem; border-top:1px dashed #e2e8f0; display:grid; grid-template-columns:1fr 1fr; gap:2rem;">
+                    <div class="input-group compact-input">
+                        <label style="color:var(--primary); font-weight:900;">販売想定価格</label>
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <span style="font-weight:900; color:#94a3b8;">¥</span>
+                            <input type="number" id="proto-selling-price" class="recipe-pro-input" style="font-size:1.5rem; font-weight:900; color:var(--primary);" value="${isEdit ? (editingPrototype.selling_price || 0) : 0}" inputmode="decimal">
+                        </div>
+                    </div>
+                    <div class="input-group compact-input">
+                        <label>仕上がり出来高 (自家製時)</label>
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <input type="number" id="proto-yield" class="recipe-pro-input" value="${isEdit ? (editingPrototype.yield_amount || 1) : 1}" ${!isOwner ? 'readonly' : ''} inputmode="decimal">
+                            <input type="text" id="proto-yield-unit" class="recipe-pro-input" style="width:80px;" placeholder="g/ml" value="${isEdit ? (editingPrototype.yield_unit || '') : ''}" ${!isOwner ? 'readonly' : ''}>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Section 3: Notes -->
-            <div id="proto-section-notes" class="proto-section ${activeMobileTab === 'notes' ? 'active' : ''}">
-                <div style="background:white; border-radius:16px; border:1px solid #e2e8f0; padding:1.5rem; margin-bottom:1.5rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);">
-                    <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:0.5rem; color:#334155;">工程・盛り付け・試作メモ</label>
-                    <textarea id="proto-instructions" class="recipe-pro-input" style="height:220px; resize:none;" placeholder="コツ、懸念点など..." ${!isOwner ? 'readonly' : ''}>${isEdit ? (editingPrototype.instructions || '') : ''}</textarea>
+            <!-- Section 2: Recipe (PC) -->
+            <div style="background:white; border-radius:16px; border:1px solid #e2e8f0; margin-bottom:1.5rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);">
+                <div style="padding:1rem 1.5rem; background:#f8fafc; border-bottom:1px solid #e2e8f0; border-radius:16px 16px 0 0; display:flex; justify-content:space-between; align-items:center;">
+                    <h4 style="margin:0; font-weight:800; color:#334155;">レシピ構成</h4>
+                </div>
+                <div style="padding:1.5rem;">
+                    ${isOwner ? `
+                        <div style="position:relative; margin-bottom:1.5rem;">
+                            <i class="fas fa-search" style="position:absolute; left:1rem; top:50%; transform:translateY(-50%); color:#94a3b8;"></i>
+                            <input type="text" id="recipe-search-input" class="recipe-pro-input" style="padding-left:2.8rem;" placeholder="マスタまたは試作品を検索...">
+                            <div id="search-results-list" class="incremental-search-results" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:2000; background:white; border:1px solid #e2e8f0; border-radius:0 0 12px 12px; box-shadow:0 10px 15px -3px rgba(0,0,0,0.1); max-height:300px; overflow-y:auto;"></div>
+                        </div>
+                    ` : ''}
+                    <div id="recipe-items-container"></div>
                 </div>
             </div>
 
-            <!-- Permanent Actions (Visible on all tabs or placed at bottom) -->
-            <div style="margin-top:2rem; display:flex; gap:1rem;">
+            <!-- Section 3: Notes (PC) -->
+            <div style="background:white; border-radius:16px; border:1px solid #e2e8f0; padding:1.5rem; margin-bottom:1.5rem; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);">
+                <label style="display:block; font-size:0.85rem; font-weight:800; margin-bottom:0.5rem;">工程・盛り付け・試作メモ</label>
+                <textarea id="proto-instructions" class="recipe-pro-input" style="height:150px; resize:none;" placeholder="コツ、懸念点など..." ${!isOwner ? 'readonly' : ''}>${isEdit ? (editingPrototype.instructions || '') : ''}</textarea>
+            </div>
+
+            <!-- Actions (PC) -->
+            <div style="display:flex; gap:1rem;">
                 ${isOwner ? `
-                    <button id="btn-save-as-menu" class="btn" style="flex:1; height:54px; background:linear-gradient(135deg, #4f46e5, #6366f1); color:white; font-weight:900; border:none; border-radius:12px; box-shadow:0 4px 12px rgba(79, 70, 229, 0.3);">
-                        メニューの試作品として保存
-                    </button>
-                    <button id="btn-save-as-homemade" class="btn" style="flex:1; height:54px; background:linear-gradient(135deg, #10b981, #34d399); color:white; font-weight:900; border:none; border-radius:12px; box-shadow:0 4px 12px rgba(16, 185, 129, 0.3);">
-                        自家製原材料の試作品として保存
-                    </button>
+                    <button id="btn-save-as-menu" class="btn" style="flex:1; height:48px; background:var(--primary); color:white; font-weight:900; border:none; border-radius:12px;">メニューとして保存</button>
+                    <button id="btn-save-as-homemade" class="btn" style="flex:1; height:48px; background:var(--secondary); color:white; font-weight:900; border:none; border-radius:12px;">自家製材料として保存</button>
                 ` : `
-                    <button id="btn-copy-to-me" class="btn btn-primary" style="flex:1; height:54px; font-weight:900; border-radius:12px;">
-                        <i class="fas fa-copy"></i> 自身の試作としてコピー
-                    </button>
+                    <button id="btn-copy-to-me" class="btn btn-primary" style="flex:1; height:48px; font-weight:900;">自身の試作としてコピー</button>
                 `}
             </div>
-            
             ${isEdit && isOwner ? `
-                <button id="btn-proto-delete" class="btn" style="width:100%; margin-top:1.5rem; background:transparent; color:#ef4444; border:none; font-weight:800;">
-                    <i class="fas fa-trash-alt"></i> この試作品を破棄する
-                </button>
+                <button id="btn-proto-delete" class="btn" style="width:100%; margin-top:1.5rem; color:#ef4444; border:none; background:none; font-weight:800;">試作品を破棄</button>
             ` : ''}
         </div>
     `;
 
-    // Events Setup
+    setupFormLogic(container, isOwner, isEdit);
+}
+
+// --- MOBILE VIEW (編集フォーム) ---
+function renderFormViewMobile(container) {
+    const isEdit = !!editingPrototype;
+    const isOwner = !isEdit || editingPrototype.created_by === currentUser?.uid || editingPrototype.created_by === currentUser?.id;
+
+    container.innerHTML = `
+        <div class="animate-fade-in" style="padding: 1rem; padding-bottom: 5rem; position:relative;">
+            <!-- Sticky Summary Bar (Mobile) -->
+            <div class="proto-sticky-summary" style="top: 10px; border-radius: 12px; margin: 0 0.5rem 1rem;">
+                <div class="proto-summary-item">
+                    <span class="proto-summary-label">総原価</span>
+                    <span id="summary-total-cost" class="proto-summary-value">¥0</span>
+                </div>
+                <div class="proto-summary-item">
+                    <span class="proto-summary-label">原価率</span>
+                    <span id="summary-cost-ratio" class="proto-summary-value">0%</span>
+                </div>
+                <div class="proto-summary-item">
+                    <span class="proto-summary-label">粗利</span>
+                    <span id="summary-profit" class="proto-summary-value proto-profit-highlight">¥0</span>
+                </div>
+            </div>
+
+            <!-- Mobile Tabs -->
+            <div class="proto-mobile-tabs" style="position: sticky; top: 75px; z-index: 100;">
+                <div class="tabs-inner" style="background: #f1f5f9; padding: 4px; border-radius: 10px;">
+                    <button class="proto-tab-btn ${activeMobileTab === 'info' ? 'active' : ''}" data-tab="info" style="flex:1; padding:0.6rem; border-radius:8px; font-size:0.8rem;">基本設定</button>
+                    <button class="proto-tab-btn ${activeMobileTab === 'recipe' ? 'active' : ''}" data-tab="recipe" style="flex:1; padding:0.6rem; border-radius:8px; font-size:0.8rem;">レシピ</button>
+                    <button class="proto-tab-btn ${activeMobileTab === 'notes' ? 'active' : ''}" data-tab="notes" style="flex:1; padding:0.6rem; border-radius:8px; font-size:0.8rem;">メモ</button>
+                </div>
+            </div>
+
+            <!-- Back & Status -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin: 1rem 0;">
+                <button id="btn-proto-back" class="btn" style="background:white; border:1px solid #e2e8f0; padding:0.5rem 1rem;">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <div style="text-align:right; font-size:0.75rem;">
+                    <span class="badge ${isOwner ? 'badge-active' : 'badge-pending'}">モバイル編集</span>
+                </div>
+            </div>
+
+            <!-- Section 1: Info (Mobile) -->
+            <div id="proto-section-info" class="proto-section ${activeMobileTab === 'info' ? 'active' : ''}">
+                <div style="background:white; border-radius:16px; border:1px solid #e2e8f0; padding:1.2rem; margin-bottom:1rem;">
+                    <div style="display:flex; gap:1rem; align-items:center;">
+                        <div style="position:relative;">
+                            <img id="proto-img-preview" src="${isEdit && editingPrototype.image_url ? editingPrototype.image_url : 'https://via.placeholder.com/150'}" style="width:80px; height:80px; border-radius:12px; object-fit:cover;">
+                            ${isOwner ? `<label for="proto-file-input" style="position:absolute; bottom:-5px; right:-5px; width:28px; height:28px; background:var(--primary); color:white; border-radius:50%; display:flex; align-items:center; justify-content:center;"><i class="fas fa-camera" style="font-size:0.7rem;"></i><input type="file" id="proto-file-input" accept="image/*" style="display:none;"></label>` : ''}
+                        </div>
+                        <div style="flex:1;">
+                            <label style="font-size:0.7rem; color:#94a3b8;">名称</label>
+                            <input type="text" id="proto-name" class="recipe-pro-input" value="${isEdit ? editingPrototype.name : ''}" placeholder="メニュー名" ${!isOwner ? 'readonly' : ''}>
+                        </div>
+                    </div>
+                    <div style="margin-top:1rem; display:grid; grid-template-columns:1fr 1fr; gap:0.8rem;">
+                        <div class="input-group compact-input">
+                            <label>大分類</label>
+                            <select id="proto-major-category" class="recipe-pro-input" ${!isOwner ? 'disabled' : ''}>
+                                <option value="">選択...</option>
+                                <option value="フード" ${isEdit && editingPrototype.major_category === 'フード' ? 'selected' : ''}>フード</option>
+                                <option value="ドリンク" ${isEdit && editingPrototype.major_category === 'ドリンク' ? 'selected' : ''}>ドリンク</option>
+                            </select>
+                        </div>
+                        <div class="input-group compact-input">
+                            <label>想定価格</label>
+                            <input type="number" id="proto-selling-price" class="recipe-pro-input" style="font-weight:900; color:var(--primary);" value="${isEdit ? (editingPrototype.selling_price || 0) : 0}" inputmode="decimal">
+                        </div>
+                    </div>
+                    <!-- 隠しフィールド -->
+                    <input type="hidden" id="proto-furigana" value="${isEdit ? (editingPrototype.furigana || '') : ''}">
+                    <input type="hidden" id="proto-category" value="${isEdit ? (editingPrototype.category || '') : ''}">
+                    <input type="hidden" id="proto-portion" value="${isEdit ? (editingPrototype.portion_amount || '') : ''}">
+                    <input type="hidden" id="proto-unit" value="${isEdit ? (editingPrototype.unit || '') : ''}">
+                    <input type="hidden" id="proto-yield" value="${isEdit ? (editingPrototype.yield_amount || 1) : 1}">
+                    <input type="hidden" id="proto-yield-unit" value="${isEdit ? (editingPrototype.yield_unit || '') : ''}">
+                </div>
+            </div>
+
+            <!-- Section 2: Recipe (Mobile) -->
+            <div id="proto-section-recipe" class="proto-section ${activeMobileTab === 'recipe' ? 'active' : ''}">
+                <div style="background:white; border-radius:16px; border:1px solid #e2e8f0; margin-bottom:1rem; padding:1.2rem;">
+                    ${isOwner ? `
+                        <div style="position:relative; margin-bottom:1.5rem;">
+                            <input type="text" id="recipe-search-input" class="recipe-pro-input" style="padding-left:2.5rem;" placeholder="材料を探す...">
+                            <i class="fas fa-search" style="position:absolute; left:0.8rem; top:50%; transform:translateY(-50%); color:#94a3b8;"></i>
+                            <div id="search-results-list" class="incremental-search-results" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:2000; background:white; border:1px solid #e2e8f0; border-radius:0 0 12px 12px; box-shadow:0 10px 15px rgba(0,0,0,0.1); max-height:250px; overflow-y:auto;"></div>
+                        </div>
+                    ` : ''}
+                    <div id="recipe-items-container"></div>
+                </div>
+            </div>
+
+            <!-- Section 3: Notes (Mobile) -->
+            <div id="proto-section-notes" class="proto-section ${activeMobileTab === 'notes' ? 'active' : ''}">
+                <div style="background:white; border-radius:16px; border:1px solid #e2e8f0; padding:1.2rem; margin-bottom:1rem;">
+                    <textarea id="proto-instructions" class="recipe-pro-input" style="height:200px; font-size:0.9rem;" placeholder="試作メモ..." ${!isOwner ? 'readonly' : ''}>${isEdit ? (editingPrototype.instructions || '') : ''}</textarea>
+                </div>
+            </div>
+
+            <!-- Mobile Actions -->
+            <div style="display:grid; grid-template-columns:1fr; gap:0.8rem; margin-top:1rem;">
+                ${isOwner ? `
+                    <button id="btn-save-as-menu" class="btn" style="height:50px; background:var(--primary); color:white; font-weight:800; border:none; border-radius:12px;">メニュー試作として保存</button>
+                    <button id="btn-save-as-homemade" class="btn" style="height:50px; background:var(--secondary); color:white; font-weight:800; border:none; border-radius:12px;">自家製試作として保存</button>
+                ` : `
+                    <button id="btn-copy-to-me" class="btn btn-primary" style="height:50px; font-weight:800; border-radius:12px;">コピーして編集</button>
+                `}
+            </div>
+        </div>
+    `;
+
+    setupFormLogic(container, isOwner, isEdit);
+}
+
+// --- ロジックの共有化 ---
+function setupFormLogic(container, isOwner, isEdit) {
     const recipe = isEdit ? (editingPrototype.recipe || []) : [];
     renderRecipeRows(recipe, isOwner);
     updateSummary(recipe);
@@ -301,33 +461,11 @@ function renderFormView(container) {
             document.getElementById('btn-proto-delete').onclick = () => deletePrototype();
         }
     } else {
-        document.getElementById('btn-copy-to-me').onclick = () => copyPrototype(editingPrototype.id);
+        const copyBtn = document.getElementById('btn-copy-to-me');
+        if (copyBtn) copyBtn.onclick = () => copyPrototype(editingPrototype.id);
     }
 
-    // Sync units
-    const majorCat = document.getElementById('proto-major-category');
-    const unitInput = document.getElementById('proto-unit');
-    const unitDisplay = document.getElementById('proto-unit-display');
-    const yieldUnitInput = document.getElementById('proto-yield-unit');
-    if (majorCat && isOwner) {
-        majorCat.onchange = () => {
-            if (majorCat.value === 'フード') {
-                unitInput.value = 'g';
-                unitDisplay.textContent = 'g';
-                if (!yieldUnitInput.value) yieldUnitInput.value = 'g';
-            } else {
-                unitInput.value = 'ml';
-                unitDisplay.textContent = 'ml';
-                if (!yieldUnitInput.value) yieldUnitInput.value = 'ml';
-            }
-        };
-    }
-
-    // Reactivity
-    document.getElementById('proto-selling-price').addEventListener('input', () => updateSummary(recipe));
-    document.getElementById('proto-yield').addEventListener('input', () => updateSummary(recipe));
-
-    // Tab Logic
+    // Tab Logic (Shared)
     const tabBtns = container.querySelectorAll('.proto-tab-btn');
     tabBtns.forEach(btn => {
         btn.onclick = () => {
@@ -340,6 +478,16 @@ function renderFormView(container) {
             window.scrollTo({ top: 0, behavior: 'instant' });
         };
     });
+}
+
+function renderListView(container) {
+    // 互換性のための残し
+    renderView();
+}
+
+function renderFormView(container) {
+    // 互換性のための残し
+    renderView();
 }
 
 function renderRecipeRows(recipe, isOwner) {
