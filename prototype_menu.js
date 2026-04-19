@@ -587,6 +587,8 @@ function renderFormViewMobile(container) {
                         <button id="btn-save-as-homemade" class="btn" style="height: 58px; background: #10b981; color: white; border: none; border-radius: 16px; font-weight: 900; font-size: 1rem; box-shadow: 0 6px 15px rgba(16, 185, 129, 0.2);">
                             <i class="fas fa-flask" style="margin-right: 0.4rem;"></i> 自家製原材料の試作として保存
                         </button>
+                    ` : `
+                        <button id="btn-copy-to-me" class="btn btn-primary" style="height: 58px; border-radius: 16px; font-weight: 900;">コピーしてマイ試作に保存</button>
                     `}
                 </div>
                 ${isEdit && isOwner ? `
