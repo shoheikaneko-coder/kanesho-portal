@@ -932,6 +932,13 @@ function initPullToRefresh(pageId) {
     const state = window.appState;
     if (!state) return;
 
+    // メインホーム画面以外では機能させない（既存のインジケーターがあれば削除）
+    if (pageId !== 'home') {
+        const old = document.getElementById('ptr-indicator');
+        if (old) old.remove();
+        return;
+    }
+
     // 既存のPTRインスタンスがあればUIレイヤーだけ再初期化
     if (state.ptr) {
         state.ptr.initUI();
@@ -947,11 +954,8 @@ function initPullToRefresh(pageId) {
                         // ホーム画面は「データ更新のみ」を行い、ユーザー体験を優先
                         const { initHomePage } = await import('./home.js?v=' + Date.now());
                         await initHomePage();
-                    } else if (currentPage === 'inventory') {
-                        const { initInventoryPage } = await import('./inventory.js?v=' + Date.now());
-                        await initInventoryPage(state.currentUser);
                     } else {
-                        // その他、または不確実な場合は確実に最新化するためにリロード
+                        // ホーム以外でここに来ることは無いはずだが、念のためのリロード
                         location.reload();
                     }
                 } catch (e) {

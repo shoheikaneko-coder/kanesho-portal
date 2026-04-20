@@ -54,6 +54,13 @@ export class PullToRefresh {
 
     handleTouchStart(e) {
         if (this.isLoading) return;
+
+        // 判定: メインホーム画面以外では機能を完全停止する
+        if (window.appState && window.appState.currentPage !== 'home') {
+            this.isPulling = false;
+            return;
+        }
+
         // 画面の最上部にいない場合は無視
         if (this.container.scrollTop > 5) {
             this.isPulling = false;
