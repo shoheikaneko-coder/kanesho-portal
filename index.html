@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>かね将ポータル - プロトタイプ</title>
     <link rel="stylesheet" href="styles.css?v=140">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="app-icon.png">
+    <meta name="theme-color" content="#E63946">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <script type="module" src="app.js?v=115"></script>
     <!-- FontAwesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -22,7 +27,7 @@
         <!-- Login Screen -->
         <div id="login-screen" class="login-card glass-panel animate-fade-in">
             <div class="logo-container">
-                <i class="fas fa-store logo-icon"></i>
+                <img src="app-icon.png" alt="かね将ロゴ" class="logo-img" style="width: 120px; height: 120px; margin-bottom: 1rem; border-radius: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.1);">
                 <h2>かね将ポータル</h2>
                 <p>業務管理システム（開発版）</p>
             </div>
@@ -57,7 +62,7 @@
         <!-- Sidebar -->
         <aside id="sidebar" class="sidebar">
             <div class="sidebar-header">
-                <i class="fas fa-store" style="color: var(--primary); font-size: 1.5rem;"></i>
+                <img src="app-icon.png" alt="Logo" style="width: 32px; height: 32px; border-radius: 6px;">
                 <span class="mobile-app-brand" style="font-weight: bold; font-size: 1.1rem;">かね将ポータル</span>
                 <!-- スマホ用閉じるボタン -->
                 <button class="mobile-only" style="margin-left: auto; background: transparent; border: none; font-size: 1.5rem; color: var(--text-secondary); cursor: pointer;" onclick="window.handleMobileMenuClick(event)">
@@ -171,7 +176,7 @@
             <header class="mobile-app-header">
                 <div class="mobile-app-toolbar">
                     <div class="mobile-toolbar-left" onclick="window.navigateTo('home')">
-                        <i class="fas fa-fire" style="color: var(--primary); font-size: 1.1rem;"></i>
+                        <img src="app-icon.png" alt="Logo" style="width: 24px; height: 24px; border-radius: 4px;">
                         <span class="mobile-app-brand">かね将ポータル</span>
                     </div>
                     <div class="mobile-toolbar-right">

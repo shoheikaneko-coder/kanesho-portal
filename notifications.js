@@ -223,7 +223,13 @@ export function initNotificationsPage() {
     const btnBack = document.getElementById('btn-notif-back');
     const panelCategories = document.getElementById('notifications-categories');
     const panelDetail = document.getElementById('notifications-detail');
-    const user = JSON.parse(localStorage.getItem('currentUser'));
+    const user = JSON.parse(localStorage.getItem('currentUser') || 'null');
+
+    if (!user) {
+        console.error("initNotificationsPage: User not found in localStorage.");
+        // エラーで画面を止めないよう、空の状態でレンダリングするか、警告を表示
+        return;
+    }
 
     if (catRecipe) {
         catRecipe.onclick = () => {

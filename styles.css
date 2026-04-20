@@ -2189,3 +2189,42 @@ input:checked + .toggle-slider:before {
 .metric-item.highlight .metric-label { color: inherit; }
 .metric-item.highlight .metric-value { font-size: 1rem; }
 
+
+/* Pull to Refresh */
+.ptr-container {
+    height: 0;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    transition: height 0.2s ease;
+    z-index: 5;
+    width: 100%;
+}
+.ptr-icon-box {
+    width: 40px;
+    height: 40px;
+    background: white;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    transform: translateY(-20px);
+    transition: transform 0.2s ease, opacity 0.2s ease;
+    opacity: 0;
+}
+.ptr-active .ptr-icon-box {
+    transform: translateY(0);
+    opacity: 1;
+}
+.ptr-loading .ptr-icon-box i {
+    animation: fa-spin 1s infinite linear;
+}
+.ptr-icon-box i {
+    font-size: 1.2rem;
+    transition: transform 0.2s;
+}

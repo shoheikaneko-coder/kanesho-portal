@@ -33,6 +33,8 @@ import { attendanceManagementPageHtml, initAttendanceManagementPage } from './at
 import { bottleKeepPageHtml, initBottleKeepPage } from './bottle_keep.js';
 import { prototypeMenuPageHtml, initPrototypeMenuPage } from './prototype_menu.js?v=141';
 import { competitorListPageHtml, initCompetitorListPage } from './competitor_list.js';
+import { PullToRefresh } from './ptr_logic.js';
+
 
 
 console.log("AntiGravity Portal: app.js loaded successfully.");
@@ -41,9 +43,11 @@ const state = {
     currentUser: null,
     currentPage: 'home',
     permissions: [],
-    menuOrder: []
+    menuOrder: [],
+    ptr: null
 };
 window.appState = state;
+
 
 const defaultMenuItems = [
     { id: 'home', name: 'メインホーム', icon: 'fa-home', category: 'ハブ' },
@@ -502,7 +506,7 @@ function showPage(target) {
                 initCsvImportPage();
                 break;
             case 'notifications':
-                pageTitle.textContent = '通知センター';
+                updateHeaderTitle('通知センター');
                 pageContent.innerHTML = notificationsPageHtml;
                 initNotificationsPage();
                 break;
@@ -590,8 +594,12 @@ function showPage(target) {
 
         // ページ読み込み完了後にナビゲーションUIを確定
         renderNavigationUI(target, pageTitle, breadcrumbArea, backBtn, mobileMenuBtn);
+
+        // Pull-to-Refresh の初期化
+        initPullToRefresh(target);
         
     } catch (err) {
+
         console.error(err);
         pageContent.innerHTML = '<div style="padding:2rem;color:red;">Error loading page</div>';
     }
@@ -909,4 +917,48 @@ window.initMobileHeaderEvents = initMobileHeaderEvents;
 // DOMContentLoaded時に実行
 document.addEventListener('DOMContentLoaded', () => {
     if (window.initMobileHeaderEvents) window.initMobileHeaderEvents();
+    
+    // 初回のPTR初期化
+    const state = window.appState;
+    if (state && !state.ptr) {
+        initPullToRefresh(state.currentPage);
+    }
 });
+
+/**
+ * Pull-to-Refresh の初期化とコールバック登録
+ */
+function initPullToRefresh(pageId) {
+    const state = window.appState;
+    if (!state) return;
+
+    // 既存のPTRインスタンスがあればUIレイヤーだけ再初期化
+    if (state.ptr) {
+        state.ptr.initUI();
+    } else {
+        state.ptr = new PullToRefresh('page-content', {
+            threshold: 70,
+            onRefresh: async () => {
+                const currentPage = state.currentPage;
+                console.log(`Refreshing page: ${currentPage}`);
+                
+                try {
+                    if (currentPage === 'home') {
+                        // ホーム画面は「データ更新のみ」を行い、ユーザー体験を優先
+                        const { initHomePage } = await import('./home.js?v=' + Date.now());
+                        await initHomePage();
+                    } else if (currentPage === 'inventory') {
+                        const { initInventoryPage } = await import('./inventory.js?v=' + Date.now());
+                        await initInventoryPage(state.currentUser);
+                    } else {
+                        // その他、または不確実な場合は確実に最新化するためにリロード
+                        location.reload();
+                    }
+                } catch (e) {
+                    console.error("Manual refresh failed, falling back to reload.", e);
+                    location.reload();
+                }
+            }
+        });
+    }
+}
