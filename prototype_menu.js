@@ -455,54 +455,51 @@ function renderFormViewDesktop(container) {
                     <button id="btn-save-as-menu" class="btn" style="flex:1; height:48px; background:var(--primary); color:white; font-weight:900; border:none; border-radius:12px;">メニューとして保存</button>
                     <button id="btn-save-as-homemade" class="btn" style="flex:1; height:48px; background:var(--secondary); color:white; font-weight:900; border:none; border-radius:12px;">自家製材料として保存</button>
                 ` : `
-                    <button id="btn-copy-to-me" class="btn btn-primary" style="flex:1; height:48px; font-weight:900;">自身の試作としてコピー</button>
+                    <button id="btn-copy-to-me" class="btn btn-primary" style="flex:1; height:48px; font-weight:900;">コピーしてマイ試作に保存</button>
                 `}
             </div>
-            ${isEdit && isOwner ? `
-                <button id="btn-proto-delete" class="btn" style="width:100%; margin-top:1.5rem; color:#ef4444; border:none; background:none; font-weight:800;">試作品を破棄</button>
-            ` : ''}
         </div>
     `;
 
     setupFormLogic(container, isOwner, isEdit, false);
 }
 
-// --- MOBILE VIEW (編集フォーム) ---
 function renderFormViewMobile(container) {
     const isEdit = !!editingPrototype;
     const isOwner = !isEdit || editingPrototype.created_by === currentUser?.id;
 
-    // Use absolute fixed positioning for HUD to avoid parent transform issues
     container.innerHTML = `
-        <div style="padding-bottom: 5rem; background: #f8fafc; min-height: 100dvh;">
-            <!-- 1. Mobile Tab Tracker (Sticky Top) -->
-            <div style="position: sticky; top: 0; z-index: 600; background: rgba(248, 250, 252, 0.9); backdrop-filter: blur(10px); padding: 0.8rem 1.2rem 0.6rem;">
-                <div class="proto-mobile-tabs" style="background: rgba(226, 232, 240, 0.6); padding: 4px; border-radius: 14px; display: flex;">
+        <div style="background: #f8fafc; min-height: 100dvh;">
+            <!-- 1. Mobile Tab Tracker (Sticky Top) with HUD -->
+            <div style="position: sticky; top: 0; z-index: 600; background: rgba(248, 250, 252, 0.95); backdrop-filter: blur(10px); padding: 0.8rem 1.2rem 0.8rem; box-shadow: 0 4px 15px rgba(0,0,0,0.03);">
+                <div class="proto-mobile-tabs" style="background: rgba(226, 232, 240, 0.6); padding: 4px; border-radius: 14px; display: flex; margin-bottom: 0.8rem;">
                     <button class="proto-tab-btn ${activeMobileTab === 'info' ? 'active' : ''}" data-tab="info" style="flex:1; border:none; padding: 0.8rem; border-radius: 11px; font-weight: 800; font-size: 0.85rem; transition: 0.3s; background: ${activeMobileTab === 'info' ? 'white' : 'transparent'}; color: ${activeMobileTab === 'info' ? 'var(--primary)' : '#475569'};">基本</button>
                     <button class="proto-tab-btn ${activeMobileTab === 'recipe' ? 'active' : ''}" data-tab="recipe" style="flex:1; border:none; padding: 0.8rem; border-radius: 11px; font-weight: 800; font-size: 0.85rem; transition: 0.3s; background: ${activeMobileTab === 'recipe' ? 'white' : 'transparent'}; color: ${activeMobileTab === 'recipe' ? 'var(--primary)' : '#475569'};">レシピ</button>
                     <button class="proto-tab-btn ${activeMobileTab === 'notes' ? 'active' : ''}" data-tab="notes" style="flex:1; border:none; padding: 0.8rem; border-radius: 11px; font-weight: 800; font-size: 0.85rem; transition: 0.3s; background: ${activeMobileTab === 'notes' ? 'white' : 'transparent'}; color: ${activeMobileTab === 'notes' ? 'var(--primary)' : '#475569'};">メモ</button>
                 </div>
+
+                <!-- Horizontal Dynamic HUD -->
+                <div id="crystal-summary" style="display: flex; justify-content: space-between; align-items: center; padding: 0 0.5rem;">
+                    <div style="text-align: center; flex: 1;">
+                        <span style="display: block; font-size: 0.65rem; color: #64748b; font-weight: 950; margin-bottom: 0.1rem;">総原価</span>
+                        <span id="summary-total-cost" style="font-size: 1.15rem; font-weight: 950; color: #ef4444; letter-spacing: -0.5px;">¥0</span>
+                    </div>
+                    <div style="width: 1px; height: 20px; background: #e2e8f0; margin: 0 0.5rem; opacity: 0.5;"></div>
+                    <div style="text-align: center; flex: 1;">
+                        <span style="display: block; font-size: 0.65rem; color: #64748b; font-weight: 950; margin-bottom: 0.1rem;">原価率</span>
+                        <span id="summary-cost-ratio" style="font-size: 1.15rem; font-weight: 950; color: #ef4444; letter-spacing: -0.5px;">0%</span>
+                    </div>
+                    <div style="width: 1px; height: 20px; background: #e2e8f0; margin: 0 0.5rem; opacity: 0.5;"></div>
+                    <div style="text-align: center; flex: 1;">
+                        <span style="display: block; font-size: 0.65rem; color: #64748b; font-weight: 950; margin-bottom: 0.1rem;">粗利額</span>
+                        <span id="summary-profit" style="font-size: 1.15rem; font-weight: 950; color: #10b981; letter-spacing: -0.5px;">¥0</span>
+                    </div>
+                </div>
             </div>
 
-            <!-- 2. Minimalist HUD Summary (Truly Fixed Viewport) -->
-            <div id="crystal-summary" style="position: fixed; top: 110px; right: 1.2rem; z-index: 2000; width: 120px; text-align: right; pointer-events: none; transition: opacity 0.3s;">
-                <div style="margin-bottom: 0.6rem;">
-                    <span style="display: block; font-size: 0.6rem; color: #64748b; font-weight: 900; text-shadow: 0 1px 2px rgba(255,255,255,0.8);">総原価</span>
-                    <span id="summary-total-cost" style="font-size: 1.1rem; font-weight: 950; color: #1e293b; text-shadow: 0 1px 3px rgba(255,255,255,0.9), 0 0 1px rgba(0,0,0,0.1);">¥0</span>
-                </div>
-                <div style="margin-bottom: 0.6rem;">
-                    <span style="display: block; font-size: 0.6rem; color: #64748b; font-weight: 900; text-shadow: 0 1px 2px rgba(255,255,255,0.8);">原価率</span>
-                    <span id="summary-cost-ratio" style="font-size: 1.05rem; font-weight: 950; color: #1e293b; text-shadow: 0 1px 3px rgba(255,255,255,0.9), 0 0 1px rgba(0,0,0,0.1);">0%</span>
-                </div>
-                <div>
-                    <span style="display: block; font-size: 0.6rem; color: #64748b; font-weight: 900; text-shadow: 0 1px 2px rgba(255,255,255,0.8);">粗利</span>
-                    <span id="summary-profit" style="font-size: 1.1rem; font-weight: 950; color: #10b981; text-shadow: 0 1px 3px rgba(255,255,255,0.9), 0 0 1px rgba(0,0,0,0.1);">¥0</span>
-                </div>
-            </div>
-
-            <div style="padding: 0 1.2rem 1.2rem;">
+            <div style="padding: 1rem 1.2rem 1.2rem;">
                 <!-- 3. Header Row -->
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.2rem; margin-top: 0.5rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
                     <button id="btn-proto-back" class="btn" style="background:white; color: #334155; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: none; padding: 0.5rem 0.8rem; border-radius: 12px; font-size: 0.85rem;">
                         <i class="fas fa-chevron-left" style="margin-right: 0.2rem;"></i> 戻る
                     </button>
@@ -513,7 +510,6 @@ function renderFormViewMobile(container) {
 
                 <!-- SECTION 1: INFO -->
                 <div id="proto-section-info" class="proto-section ${activeMobileTab === 'info' ? 'active' : ''}">
-                    <!-- Hero Card -->
                     <div style="background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.04); margin-bottom: 1.5rem;">
                         <div style="position: relative; height: 160px; background: #f1f5f9;">
                             <img id="proto-img-preview" src="${isEdit && editingPrototype.image_url ? editingPrototype.image_url : 'https://via.placeholder.com/150'}" style="width: 100%; height: 100%; object-fit: cover;">
@@ -548,7 +544,6 @@ function renderFormViewMobile(container) {
                             </div>
                         </div>
                     </div>
-                    <!-- Hidden Fields for Compatibility -->
                     <input type="hidden" id="proto-furigana" value="${isEdit ? (editingPrototype.furigana || '') : ''}">
                     <input type="hidden" id="proto-category" value="${isEdit ? (editingPrototype.category || '') : ''}">
                     <input type="hidden" id="proto-portion" value="${isEdit ? (editingPrototype.portion_amount || '') : ''}">
