@@ -208,7 +208,7 @@ export async function initSalesPage() {
     const numInputs = ['report-amount', 'report-customers', 'report-diff', 'report-tip', 'report-petty-cash'];
     numInputs.forEach(id => {
         const el = document.getElementById(id);
-        const rawEl = document.getElementById('raw-' + id.split('-')[1]);
+        const rawEl = document.getElementById(id.replace('report-', 'raw-'));
         if (el) {
             el.oninput = (e) => {
                 let val = e.target.value.replace(/[^0-9]/g, ''); // 符号はセレクトボックスで制御するので除去
