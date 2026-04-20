@@ -57,7 +57,7 @@ export const salesCorrectionPageHtml = `
 </div>
 
 <!-- 修正モーダル -->
-<div id="performance-edit-modal" class="sidebar-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1100; align-items:center; justify-content:center; padding:1rem;">
+<div id="performance-edit-modal" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1100; align-items:center; justify-content:center; padding:1rem;">
     <div class="glass-panel" style="width:100%; max-width:600px; padding:2rem; max-height:90vh; overflow-y:auto; position:relative;">
         <button id="close-edit-modal" style="position:absolute; right:1.5rem; top:1.5rem; background:none; border:none; font-size:1.2rem; cursor:pointer; color:var(--text-secondary);"><i class="fas fa-times"></i></button>
         
