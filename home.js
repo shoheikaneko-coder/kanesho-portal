@@ -886,7 +886,7 @@ async function renderPerformanceSummary(user, isMobile = false) {
             });
         }
 
-        // 2. 目標と指数の取得 (加重平均による日次目標算出)
+        // 2. 目標と指数（shift.js の loadDailyGoalData と完全に同期したロジック）
         let target = { sales: 0 };
         const goalSnap = await getDoc(doc(db, "t_monthly_goals", `${ym}_${storeId}`));
         
@@ -897,22 +897,21 @@ async function renderPerformanceSummary(user, isMobile = false) {
                 mon_thu: 1.0, fri: 1.2, sat: 1.5, sun: 1.4, holiday: 1.5, day_before_holiday: 1.6 
             };
 
+            const daysInMonthCnt = new Date(lastWorkDate.getFullYear(), lastWorkDate.getMonth() + 1, 0).getDate();
             let totalMonthPoints = 0;
-            let yesterdayPoint = 0;
-            const yesterdayYmd = lastWorkDate.toISOString().split("T")[0];
+            const pointsByDay = {}; 
 
-            for (let d = 1; d <= daysInMonth; d++) {
+            for (let d = 1; d <= daysInMonthCnt; d++) {
                 const date = new Date(lastWorkDate.getFullYear(), lastWorkDate.getMonth(), d);
                 const loopYmd = date.toISOString().split("T")[0];
-                const cal = calendarData[loopYmd] || { type: 'work', is_holiday: false };
+                const cal = calendarData[loopYmd] || { type: 'work' };
 
-                if (cal.type !== 'work') {
-                    if (loopYmd === yesterdayYmd) yesterdayPoint = 0;
+                if (cal.type === 'off') {
+                    pointsByDay[loopYmd] = 0;
                     continue;
                 }
 
                 const dow = date.getDay();
-                // 祝前日判定
                 const nextDate = new Date(lastWorkDate.getFullYear(), lastWorkDate.getMonth(), d + 1);
                 const nextYmd = nextDate.toISOString().split("T")[0];
                 const nextCal = calendarData[nextYmd] || {};
@@ -928,12 +927,39 @@ async function renderPerformanceSummary(user, isMobile = false) {
                 if (isDayBeforeH) indices.push(weights.day_before_holiday || 1.0);
 
                 const dayPoint = Math.max(...indices);
+                pointsByDay[loopYmd] = dayPoint;
                 totalMonthPoints += dayPoint;
-                if (loopYmd === ymd) yesterdayPoint = dayPoint;
             }
 
             const unitValue = totalMonthPoints > 0 ? (monthlyTarget / totalMonthPoints) : 0;
-            target.sales = Math.round(unitValue * yesterdayPoint);
+            const fullMonthRounded = {};
+            let monthCheckSum = 0;
+            for (const dayYmd in pointsByDay) {
+                const val = Math.round(unitValue * pointsByDay[dayYmd]);
+                fullMonthRounded[dayYmd] = val;
+                monthCheckSum += val;
+            }
+            
+            // 1円単位のズレ調整ロジック (shift.js 同期)
+            const diff = monthlyTarget - monthCheckSum;
+            if (diff !== 0) {
+                const workDays = Object.keys(pointsByDay).filter(k => pointsByDay[k] > 0).sort();
+                if (workDays.length > 0) {
+                    const lastWorkDay = workDays[workDays.length - 1];
+                    fullMonthRounded[lastWorkDay] += diff;
+                }
+            }
+            target.sales = fullMonthRounded[ymd] || 0;
+        }
+
+        // 定休日判定による実績・目標の強制ゼロクリア
+        const yesterdayCal = calendarData[ymd] || { type: 'work' };
+        if (yesterdayCal.type === 'off') {
+            target.sales = 0;
+            actual.sales = 0;
+            actual.sales_ex_tax = 0;
+            actual.customers = 0;
+            actual.total_labor_hours = 0;
         }
 
         // 予算目標 (m_annual_budgets) から客単価目標と人時売上目標を算出
@@ -1021,11 +1047,23 @@ async function renderPerformanceSummary(user, isMobile = false) {
  * スマホ用KPIカードの個別描画 (進捗リング付き)
  */
 function renderKpiCardMobile(label, actual, target, unit, rate, extraInfo = null) {
-    const safeRate = Math.min(100, Math.max(0, rate || 0));
+    // 目標・実績ともに0の場合は「店休日（達成扱い）」として 100% とする
+    let displayRate = Math.round(rate || 0);
+    let color = rate >= 100 ? '#10b981' : '#e11d48';
+    
+    if (target === 0 && actual === 0) {
+        displayRate = 100;
+        color = '#10b981';
+    } else if (target === 0 && actual > 0) {
+        displayRate = 999; // 目標0で実績ありは特殊表示（ひとまず振り切らせる）
+    }
+
+    const safeRate = Math.min(100, Math.max(0, displayRate));
     const radius = 15;
     const circumference = 2 * Math.PI * radius;
     const offset = circumference - (safeRate / 100) * circumference;
-    const color = rate >= 100 ? '#10b981' : '#e11d48';
+
+    const isPrefix = unit === '¥';
 
     return `
         <div class="kpi-card-mobile">
@@ -1036,15 +1074,15 @@ function renderKpiCardMobile(label, actual, target, unit, rate, extraInfo = null
                     <circle class="progress-ring__circle" stroke="${color}" stroke-width="4" stroke-dasharray="${circumference} ${circumference}" style="stroke-dashoffset: ${offset}" fill="transparent" r="${radius}" cx="18" cy="18"/>
                 </svg>
             </div>
-            <div class="value" style="color: ${color}">${Math.round(rate)}%</div>
+            <div class="value" style="color: ${color}">${displayRate > 500 ? 'over' : displayRate}%</div>
             <div class="sub-info">
-                <div>実績: ${unit}${Math.round(actual).toLocaleString()}</div>
-                <div>目標: ${unit}${Math.round(target).toLocaleString()}</div>
+                <div>実績: ${isPrefix ? unit : ''}${Math.round(actual).toLocaleString()}${!isPrefix ? unit : ''}</div>
+                <div>目標: ${isPrefix ? unit : ''}${Math.round(target).toLocaleString()}${!isPrefix ? unit : ''}</div>
                 ${extraInfo !== null ? `<div style="margin-top:2px; font-size:0.55rem; opacity:0.7;">(労働時間: ${extraInfo.toFixed(1)}h)</div>` : ''}
             </div>
-            <div class="trend-tag ${rate >= 100 ? 'trend-up' : 'trend-down'}">
-                <i class="fas ${rate >= 100 ? 'fa-arrow-up' : 'fa-arrow-down'}"></i>
-                ${rate >= 100 ? '達成' : '未達'}
+            <div class="trend-tag ${displayRate >= 100 ? 'trend-up' : 'trend-down'}">
+                <i class="fas ${displayRate >= 100 ? 'fa-arrow-up' : 'fa-arrow-down'}"></i>
+                ${displayRate >= 100 ? '達成' : '未達'}
             </div>
         </div>
     `;
