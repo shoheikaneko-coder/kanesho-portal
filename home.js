@@ -383,17 +383,13 @@ export const homePageMobileHtml = `
             </div>
         </div>
 
-        <!-- 4. KPIセクション (2x2) -->
-        <div id="mobile-kpi-section">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
-                <h3 style="font-size: 0.85rem; font-weight: 850; margin: 0; color: var(--text-primary);">
-                    <i class="fas fa-chart-line" style="color: var(--primary); margin-right: 0.4rem;"></i> 昨日実績サマリー
-                </h3>
-                <span id="mobile-yesterday-label" style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); background: #fff; padding: 2px 8px; border-radius: 10px; border: 1px solid #eee;">----</span>
-            </div>
-            <div class="kpi-grid-mobile" id="mobile-kpi-grid">
                 <!-- KPI 2x2 がここに描画される -->
             </div>
+        </div>
+
+        <!-- 5. 本日の目標セクション (バナー形式) -->
+        <div id="mobile-today-target-section" style="display: none; margin-bottom: 2rem;">
+            <!-- バナーがここに描画される -->
         </div>
 
         <!-- ターゲットコンテナ（アコーディオンの中身の流し込み先） -->
@@ -469,7 +465,12 @@ async function renderHomePageMobile(user) {
     // クイックナビの設定
     setupMobileShortcuts(user, permissions);
 
-    // KPI描画
+    // 1. 今日の目標バナー (管理者・店長・社員のみ)
+    if (permissions.includes('home_performance')) {
+        await renderTodayTargetBanner(user);
+    }
+
+    // 2. 昨日のKPI描画
     if (permissions.includes('home_performance')) {
         await renderPerformanceSummary(user, true); // true = mobile mode
     }
@@ -830,16 +831,13 @@ async function renderPerformanceSummary(user, isMobile = false) {
         // 昨日の判定 (店舗の営業終了時間を考慮)
         const storeSnap = await getDoc(doc(db, "m_stores", storeId));
         const storeData = storeSnap.exists() ? storeSnap.data() : {};
-        // 現在時刻（JST）から、業務上の「昨日（集計対象日）」を特定する
+        
+        // --- 目標値算出の共通処理を実行 ---
         const now = new Date();
-        // JST基準の時間を取得 (0-23)
         const jstHour = (now.getUTCHours() + 9) % 24;
-        
-        // 基準日 (本日の00:00 JST)
         let lastWorkDate = new Date(now.getTime() + (9 * 60 * 60 * 1000));
-        lastWorkDate.setUTCHours(0, 0, 0, 0); // 時刻を00:00に固定
-        
-        // 5時（day_change_time）以前なら、一昨日、それ以降なら昨日
+        lastWorkDate.setUTCHours(0, 0, 0, 0); 
+
         const changeHour = storeData.day_change_time || 5;
         if (jstHour < changeHour) {
             lastWorkDate.setUTCDate(lastWorkDate.getUTCDate() - 2);
@@ -847,8 +845,9 @@ async function renderPerformanceSummary(user, isMobile = false) {
             lastWorkDate.setUTCDate(lastWorkDate.getUTCDate() - 1);
         }
         
-        // JST基準での ymd (YYYY-MM-DD) を生成
         const ymd = formatDateJST(lastWorkDate);
+        const dailyTargets = await calculateDailyTargets(storeId, ymd);
+
         const ym = ymd.substring(0, 7);
         
         if (dateLabel) {
@@ -881,124 +880,24 @@ async function renderPerformanceSummary(user, isMobile = false) {
             actual.total_labor_hours += (d.total_labor_hours || 0);
         });
 
-        // 1. カレンダーデータの収集
-        const daysInMonth = new Date(lastWorkDate.getFullYear(), lastWorkDate.getMonth() + 1, 0).getDate();
-        let calendarData = {};
-        const [commonCalSnap, storeCalSnap] = await Promise.all([
-            getDoc(doc(db, "m_calendars", `${ym}_common`)),
-            getDoc(doc(db, "m_calendars", `${ym}_${storeId}`))
-        ]);
-
-        if (commonCalSnap.exists()) {
-            commonCalSnap.data().days?.forEach(d => {
-                const calYmd = `${ym}-${String(d.day).padStart(2, '0')}`;
-                calendarData[calYmd] = { type: d.type || 'work', is_holiday: d.is_holiday || false };
-            });
-        }
-        if (storeCalSnap.exists()) {
-            storeCalSnap.data().days?.forEach(d => {
-                const calYmd = `${ym}-${String(d.day).padStart(2, '0')}`;
-                if (!calendarData[calYmd]) calendarData[calYmd] = { type: 'work', is_holiday: false };
-                calendarData[calYmd].type = d.type;
-            });
-        }
-
-        // 2. 目標と指数（shift.js の loadDailyGoalData と完全に同期したロジック）
-        let target = { sales: 0 };
-        const goalSnap = await getDoc(doc(db, "t_monthly_goals", `${ym}_${storeId}`));
+        // 共通関数から取得した目標値を変数に展開
+        const targetSales = dailyTargets.sales;
+        const targetCustomers = dailyTargets.customers;
+        const targetAvgSpend = dailyTargets.customeravg;
         
-        if (goalSnap.exists()) {
-            const g = goalSnap.data();
-            const monthlyTarget = g.sales_target || 0;
-            const weights = g.weights || { 
-                mon_thu: 1.0, fri: 1.2, sat: 1.5, sun: 1.4, holiday: 1.5, day_before_holiday: 1.6 
-            };
-
-            const daysInMonthCnt = new Date(lastWorkDate.getFullYear(), lastWorkDate.getMonth() + 1, 0).getDate();
-            let totalMonthPoints = 0;
-            const pointsByDay = {}; 
-
-            for (let d = 1; d <= daysInMonthCnt; d++) {
-                const date = new Date(lastWorkDate.getFullYear(), lastWorkDate.getMonth(), d);
-                const loopYmd = formatDateJST(date);
-                const cal = calendarData[loopYmd] || { type: 'work' };
-
-                if (cal.type === 'off') {
-                    pointsByDay[loopYmd] = 0;
-                    continue;
-                }
-
-                const dow = date.getDay();
-                const nextDate = new Date(lastWorkDate.getFullYear(), lastWorkDate.getMonth(), d + 1);
-                const nextYmd = formatDateJST(nextDate);
-                const nextCal = calendarData[nextYmd] || {};
-                const isDayBeforeH = nextCal.is_holiday || false;
-
-                const indices = [];
-                if (dow >= 1 && dow <= 4) indices.push(weights.mon_thu);
-                else if (dow === 5) indices.push(weights.fri);
-                else if (dow === 6) indices.push(weights.sat);
-                else if (dow === 0) indices.push(weights.sun);
-
-                if (cal.is_holiday) indices.push(weights.holiday);
-                if (isDayBeforeH) indices.push(weights.day_before_holiday || 1.0);
-
-                const dayPoint = Math.max(...indices);
-                pointsByDay[loopYmd] = dayPoint;
-                totalMonthPoints += dayPoint;
-            }
-
-            const unitValue = totalMonthPoints > 0 ? (monthlyTarget / totalMonthPoints) : 0;
-            const fullMonthRounded = {};
-            let monthCheckSum = 0;
-            for (const dayYmd in pointsByDay) {
-                const val = Math.round(unitValue * pointsByDay[dayYmd]);
-                fullMonthRounded[dayYmd] = val;
-                monthCheckSum += val;
-            }
-            
-            // 1円単位のズレ調整ロジック (shift.js 同期)
-            const diff = monthlyTarget - monthCheckSum;
-            if (diff !== 0) {
-                const workDays = Object.keys(pointsByDay).filter(k => pointsByDay[k] > 0).sort();
-                if (workDays.length > 0) {
-                    const lastWorkDay = workDays[workDays.length - 1];
-                    fullMonthRounded[lastWorkDay] += diff;
-                }
-            }
-            target.sales = fullMonthRounded[ymd] || 0;
-        }
-
-        // 定休日判定による実績・目標の強制ゼロクリア
-        const yesterdayCal = calendarData[ymd] || { type: 'work' };
-        if (yesterdayCal.type === 'off') {
-            target.sales = 0;
-            actual.sales = 0;
-            actual.sales_ex_tax = 0;
-            actual.customers = 0;
-            actual.total_labor_hours = 0;
-        }
-
-        // 予算目標 (m_annual_budgets) から客単価目標と人時売上目標を算出
-        let targetAvgSpend = 4500;
+        // 予算目標 (m_annual_budgets) から人時売上目標のみ追加取得 (sphのみcalculateDailyTargetsに未実装のため)
         let targetSPH = 0;
         try {
             const now = new Date();
             let fy = now.getFullYear();
             if (now.getMonth() < 6) fy--; 
-            
             const budgetSnap = await getDoc(doc(db, "m_annual_budgets", `${fy}_${storeId}`));
             if (budgetSnap.exists()) {
-                const b = budgetSnap.data();
-                if (b.total_sales_target && b.total_cust_target) {
-                    targetAvgSpend = Math.round(b.total_sales_target / b.total_cust_target);
-                }
-                targetSPH = b.target_sales_per_hour_op || 0;
+                targetSPH = budgetSnap.data().target_sales_per_hour_op || 0;
             }
-        } catch (e) { console.error("Annual budget fetch error:", e); }
+        } catch (e) {}
 
-        const salesRate = target.sales > 0 ? (actual.sales_ex_tax / target.sales) * 100 : 0;
-        const targetCustomers = targetAvgSpend > 0 ? (target.sales / targetAvgSpend) : 0;
+        const salesRate = targetSales > 0 ? (actual.sales_ex_tax / targetSales) * 100 : 0;
         const custRate = targetCustomers > 0 ? (actual.customers / targetCustomers) * 100 : 0;
         
         const avgSpend = actual.customers > 0 ? Math.round(actual.sales_ex_tax / actual.customers) : 0;
@@ -1009,7 +908,7 @@ async function renderPerformanceSummary(user, isMobile = false) {
 
         if (isMobile) {
             grid.innerHTML = `
-                ${renderKpiCardMobile('昨日の売上 (税抜)', actual.sales_ex_tax, target.sales, '¥', salesRate)}
+                ${renderKpiCardMobile('昨日の売上 (税抜)', actual.sales_ex_tax, targetSales, '¥', salesRate)}
                 ${renderKpiCardMobile('来客数', actual.customers, targetCustomers, '名', custRate)}
                 ${renderKpiCardMobile('客単価 (税抜)', avgSpend, targetAvgSpend, '¥', avgSpendRate)}
                 ${renderKpiCardMobile('人時売上', sph, targetSPH, '¥', sphRate, actual.total_labor_hours)}
@@ -1021,7 +920,7 @@ async function renderPerformanceSummary(user, isMobile = false) {
                     <div class="cockpit-kpi-val ${salesRate >= 100 ? 'status-success' : 'status-danger'}">${Math.round(salesRate)}%</div>
                     <div class="cockpit-kpi-sub">
                         <div>実績: ¥${Math.round(actual.sales_ex_tax).toLocaleString()}</div>
-                        <div>目標: ¥${Math.round(target.sales).toLocaleString()}</div>
+                        <div>目標: ¥${Math.round(targetSales).toLocaleString()}</div>
                     </div>
                 </div>
                 <div class="cockpit-kpi-card">
@@ -1264,5 +1163,183 @@ async function renderPersonalShiftsSemimonthly(user) {
     } catch (e) {
         console.error("Personal Shift Summary Error:", e);
         container.innerHTML = '<div style="color:var(--danger); padding:1rem;">シフトデータの読み込みに失敗しました。</div>';
+    }
+}
+
+/**
+ * 指定された日付の按分目標値を計算する
+ */
+async function calculateDailyTargets(storeId, targetYmd) {
+    const ym = targetYmd.substring(0, 7);
+    const [commonCalSnap, storeCalSnap] = await Promise.all([
+        getDoc(doc(db, "m_calendars", `${ym}_common`)),
+        getDoc(doc(db, "m_calendars", `${ym}_${storeId}`))
+    ]);
+
+    const commonCal = commonCalSnap.exists() ? commonCalSnap.data() : { days: [] };
+    const storeCal = storeCalSnap.exists() ? storeCalSnap.data() : { days: [] };
+    const calendarData = {};
+    const ymDate = new Date(targetYmd);
+    const year = ymDate.getFullYear();
+    const month = ymDate.getMonth() + 1;
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    for (let d = 1; d <= daysInMonth; d++) {
+        const calYmd = `${ym}-${String(d).padStart(2, '0')}`;
+        const c = commonCal.days?.find(i => i.day === d) || { type: 'work' };
+        const s = storeCal.days?.find(i => i.day === d);
+        calendarData[calYmd] = { 
+            type: s ? s.type : c.type, 
+            is_holiday: c.is_holiday || false 
+        };
+    }
+
+    const goalSnap = await getDoc(doc(db, "t_monthly_goals", `${ym}_${storeId}`));
+    const goalData = goalSnap.exists() ? goalSnap.data() : {};
+    
+    // シフト表と同じ重み係数 (weights) を取得
+    const weights = goalData.weights || { 
+        mon_thu: 1.0, fri: 1.2, sat: 1.5, sun: 1.4, holiday: 1.5, day_before_holiday: 1.6 
+    };
+
+    const keys = ['sales']; // 他に客数などが必要なら拡張可能
+    const totalPoints = { sales: 0 };
+
+    for (let d = 1; d <= daysInMonth; d++) {
+        const loopDate = new Date(year, month - 1, d);
+        const loopYmd = formatDateJST(loopDate);
+        const cal = calendarData[loopYmd] || { type: 'work' };
+        if (cal.type === 'off') continue;
+
+        const dow = loopDate.getDay();
+        const nextDate = new Date(year, month - 1, d + 1);
+        const nextYmd = formatDateJST(nextDate);
+        const nextCal = calendarData[nextYmd] || {};
+        const isDayBeforeH = nextCal.is_holiday || false;
+
+        const indices = [];
+        if (dow >= 1 && dow <= 4) indices.push(weights.mon_thu);
+        else if (dow === 5) indices.push(weights.fri);
+        else if (dow === 6) indices.push(weights.sat);
+        else if (dow === 0) indices.push(weights.sun);
+
+        if (cal.is_holiday) indices.push(weights.holiday);
+        if (isDayBeforeH) indices.push(weights.day_before_holiday || 1.0);
+
+        totalPoints.sales += Math.max(...indices);
+    }
+
+    const monthlyTarget = goalData.sales_target || 0;
+    const unitValue = totalPoints.sales > 0 ? (monthlyTarget / totalPoints.sales) : 0;
+    
+    const fullMonthRounded = {};
+    let monthCheckSum = 0;
+    const workDays = [];
+
+    for (let d = 1; d <= daysInMonth; d++) {
+        const loopDate = new Date(year, month - 1, d);
+        const loopYmd = formatDateJST(loopDate);
+        const cal = calendarData[loopYmd] || { type: 'work' };
+        
+        if (cal.type === 'off') {
+            fullMonthRounded[loopYmd] = 0;
+            continue;
+        }
+
+        workDays.push(loopYmd);
+        const dow = loopDate.getDay();
+        const nextDate = new Date(year, month - 1, d + 1);
+        const nextYmd = formatDateJST(nextDate);
+        const nextCal = calendarData[nextYmd] || {};
+        const isDayBeforeH = nextCal.is_holiday || false;
+
+        const indices = [];
+        if (dow >= 1 && dow <= 4) indices.push(weights.mon_thu);
+        else if (dow === 5) indices.push(weights.fri);
+        else if (dow === 6) indices.push(weights.sat);
+        else if (dow === 0) indices.push(weights.sun);
+
+        if (cal.is_holiday) indices.push(weights.holiday);
+        if (isDayBeforeH) indices.push(weights.day_before_holiday || 1.0);
+
+        const dayPoint = Math.max(...indices);
+        const val = Math.round(unitValue * dayPoint);
+        fullMonthRounded[loopYmd] = val;
+        monthCheckSum += val;
+    }
+
+    // 1円単位のズレ調整
+    const diff = monthlyTarget - monthCheckSum;
+    if (diff !== 0 && workDays.length > 0) {
+        const lastWorkDay = workDays[workDays.length - 1];
+        fullMonthRounded[lastWorkDay] += diff;
+    }
+
+    // 他の指標（客数目標など）の算出
+    // 予算目標 (m_annual_budgets) から客単価目標を算出
+    let targetAvgSpend = 4500;
+    try {
+        let fy = year;
+        if (month < 7) fy--; 
+        const budgetSnap = await getDoc(doc(db, "m_annual_budgets", `${fy}_${storeId}`));
+        if (budgetSnap.exists()) {
+            const b = budgetSnap.data();
+            if (b.total_sales_target && b.total_cust_target) {
+                targetAvgSpend = Math.round(b.total_sales_target / b.total_cust_target);
+            }
+        }
+    } catch (e) {}
+
+    const salesTarget = fullMonthRounded[targetYmd] || 0;
+    const customerTarget = targetAvgSpend > 0 ? Math.round(salesTarget / targetAvgSpend) : 0;
+
+    return {
+        sales: salesTarget,
+        customers: customerTarget,
+        customeravg: targetAvgSpend,
+        labor: 0 // 必要に応じて追加
+    };
+}
+
+/**
+ * 「本日の目標」バナーを描画
+ */
+async function renderTodayTargetBanner(user) {
+    const section = document.getElementById('mobile-today-target-section');
+    if (!section) return;
+
+    const me = JSON.parse(localStorage.getItem('currentUser'));
+    const storeId = user.StoreID || user.StoreId || window.currentAdminStoreId || (me ? (me.StoreID || me.StoreId) : null) || "ALL";
+    if (storeId === 'ALL') return;
+
+    try {
+        const now = new Date();
+        const todayYmd = formatDateJST(now);
+        const targets = await calculateDailyTargets(storeId, todayYmd);
+
+        section.style.display = 'block';
+        section.innerHTML = `
+            <div style="background: linear-gradient(135deg, #fff5f5 0%, #fff0f0 100%); border: 1px solid #fee2e2; border-radius: 20px; padding: 1rem 1.2rem; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 6px -1px rgba(230, 57, 70, 0.05);">
+                <div style="display: flex; align-items: center; gap: 0.8rem;">
+                    <div style="width: 36px; height: 36px; background: white; color: var(--primary); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 0 2px 4px rgba(230, 57, 70, 0.1);">
+                        <i class="fas fa-bullseye"></i>
+                    </div>
+                    <span style="font-size: 0.9rem; font-weight: 850; color: var(--text-primary);">今日の目標</span>
+                </div>
+                <div style="display: flex; gap: 1.2rem; align-items: center;">
+                    <div style="display: flex; flex-direction: column; align-items: flex-end;">
+                        <span style="font-size: 0.65rem; color: var(--text-secondary); font-weight: 800;">売上目標</span>
+                        <span style="font-size: 1.1rem; font-weight: 900; color: var(--text-primary);">¥${targets.sales.toLocaleString()}</span>
+                    </div>
+                    <div style="width: 1px; height: 24px; background: #fee2e2;"></div>
+                    <div style="display: flex; flex-direction: column; align-items: flex-end;">
+                        <span style="font-size: 0.65rem; color: var(--text-secondary); font-weight: 800;">来客目標</span>
+                        <span style="font-size: 1.1rem; font-weight: 900; color: var(--text-primary);">${targets.customers}名</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    } catch (e) {
+        console.error("Today Target Banner Error:", e);
     }
 }
