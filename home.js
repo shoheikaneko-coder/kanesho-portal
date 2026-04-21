@@ -145,6 +145,7 @@ export const homePageHtml = `
             border: 1px solid var(--border);
             box-shadow: var(--shadow-sm);
             transition: transform 0.2s;
+            position: relative;
         }
         .cockpit-kpi-card:hover { transform: translateY(-3px); }
         .cockpit-kpi-label { font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem; }
@@ -602,18 +603,18 @@ async function renderPerformanceSummary(user) {
         });
 
         // 目標取得
-        let target = { sales: 0, customers: 0 };
+        let target = { sales: 0 };
         const goalSnap = await getDoc(doc(db, "t_monthly_goals", `${ym}_${storeId}`));
         if (goalSnap.exists()) {
             const g = goalSnap.data();
             const calSnap = await getDoc(doc(db, "m_calendars", `${ym}_common`));
             const workDays = calSnap.exists() ? calSnap.data().days.filter(d => d.type === 'work').length : 25;
             target.sales = (g.sales_target || 0) / (workDays || 25);
-            target.customers = (g.sales_target / 4500) / (workDays || 25);
         }
 
-        // 予算目標 (m_annual_budgets) から客単価目標を算出
+        // 予算目標 (m_annual_budgets) から客単価目標と人時売上目標を算出
         let targetAvgSpend = 4500;
+        let targetSPH = 0;
         try {
             const now = new Date();
             let fy = now.getFullYear();
@@ -625,33 +626,55 @@ async function renderPerformanceSummary(user) {
                 if (b.total_sales_target && b.total_cust_target) {
                     targetAvgSpend = Math.round(b.total_sales_target / b.total_cust_target);
                 }
+                targetSPH = b.target_sales_per_hour_op || 0;
             }
         } catch (e) { console.error("Annual budget fetch error:", e); }
 
         const salesRate = target.sales > 0 ? (actual.sales_ex_tax / target.sales) * 100 : 0;
+        const targetCustomers = targetAvgSpend > 0 ? (target.sales / targetAvgSpend) : 0;
+        const custRate = targetCustomers > 0 ? (actual.customers / targetCustomers) * 100 : 0;
+        
         const avgSpend = actual.customers > 0 ? Math.round(actual.sales_ex_tax / actual.customers) : 0;
+        const avgSpendRate = targetAvgSpend > 0 ? (avgSpend / targetAvgSpend) * 100 : 0;
+        
         const sph = actual.total_labor_hours > 0 ? Math.round(actual.sales_ex_tax / actual.total_labor_hours) : 0;
+        const sphRate = targetSPH > 0 ? (sph / targetSPH) * 100 : 0;
 
         grid.innerHTML = `
             <div class="cockpit-kpi-card">
                 <div class="cockpit-kpi-label">昨日の売上進捗 (税抜)</div>
                 <div class="cockpit-kpi-val ${salesRate >= 100 ? 'status-success' : 'status-danger'}">${Math.round(salesRate)}%</div>
-                <div class="cockpit-kpi-sub">実績: ¥${Math.round(actual.sales_ex_tax).toLocaleString()}</div>
+                <div class="cockpit-kpi-sub">
+                    <div>実績: ¥${Math.round(actual.sales_ex_tax).toLocaleString()}</div>
+                    <div>目標: ¥${Math.round(target.sales).toLocaleString()}</div>
+                </div>
             </div>
             <div class="cockpit-kpi-card">
-                <div class="cockpit-kpi-label">来客数</div>
-                <div class="cockpit-kpi-val">${actual.customers}名</div>
-                <div class="cockpit-kpi-sub">昨対比: --%</div>
+                <div class="cockpit-kpi-label">来客進捗</div>
+                <div class="cockpit-kpi-val ${custRate >= 100 ? 'status-success' : 'status-danger'}">${Math.round(custRate)}%</div>
+                <div class="cockpit-kpi-sub">
+                    <div>実績: ${actual.customers}名</div>
+                    <div>目標: ${Math.round(targetCustomers)}名</div>
+                </div>
             </div>
             <div class="cockpit-kpi-card">
                 <div class="cockpit-kpi-label">客単価 (税抜)</div>
-                <div class="cockpit-kpi-val">¥${avgSpend.toLocaleString()}</div>
-                <div class="cockpit-kpi-sub">目標: ¥${targetAvgSpend.toLocaleString()}</div>
+                <div class="cockpit-kpi-val ${avgSpendRate >= 100 ? 'status-success' : 'status-danger'}">${Math.round(avgSpendRate)}%</div>
+                <div class="cockpit-kpi-sub">
+                    <div>実績: ¥${avgSpend.toLocaleString()}</div>
+                    <div>目標: ¥${targetAvgSpend.toLocaleString()}</div>
+                </div>
             </div>
             <div class="cockpit-kpi-card">
                 <div class="cockpit-kpi-label">営業人時売上</div>
-                <div class="cockpit-kpi-val">¥${sph.toLocaleString()}</div>
-                <div class="cockpit-kpi-sub">労働h: ${actual.total_labor_hours.toFixed(1)}h</div>
+                <div class="cockpit-kpi-val ${sphRate >= 100 ? 'status-success' : 'status-danger'}">${Math.round(sphRate)}%</div>
+                <div class="cockpit-kpi-sub">
+                    <div>実績: ¥${sph.toLocaleString()}</div>
+                    <div>目標: ¥${targetSPH.toLocaleString()}</div>
+                </div>
+                <div style="position: absolute; bottom: 0.8rem; right: 1rem; font-size: 0.65rem; color: var(--text-secondary); font-weight: 700; opacity: 0.8;">
+                    労働h: ${actual.total_labor_hours.toFixed(1)}h
+                </div>
             </div>
         `;
 
