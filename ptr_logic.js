@@ -61,6 +61,12 @@ export class PullToRefresh {
             return;
         }
 
+        // 判定: ボタンなどのインタラクティブ要素上でのタッチ開始はPTRを無効化する
+        if (e.target.closest('button') || e.target.closest('.mobile-ops-tile') || e.target.closest('.quick-nav-bar')) {
+            this.isPulling = false;
+            return;
+        }
+
         // 画面の最上部にいない場合は無視
         if (this.container.scrollTop > 5) {
             this.isPulling = false;

@@ -485,6 +485,11 @@ async function renderHomePageMobile(user) {
 
     // アコーディオンのグローバル関数化
     window.toggleMobileAccordion = (type) => toggleMobileAccordion(type, user, permissions);
+
+    // PTRインジケーターを復活させる
+    if (window.appState && window.appState.ptr) {
+        window.appState.ptr.initUI();
+    }
 }
 
 /**
