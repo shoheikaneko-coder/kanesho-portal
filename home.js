@@ -281,6 +281,84 @@ export const homePageHtml = `
 `;
 
 export const homePageMobileHtml = `
+    <style>
+        /* 【緊急回避】モバイル専用スタイルをインライン化 */
+        .mobile-mode {
+            padding: 1rem 0.8rem !important;
+            background: #f8fafc;
+        }
+        .mobile-profile-mini {
+            padding: 0.2rem;
+            margin-bottom: 0.8rem;
+        }
+        .mobile-profile-mini h2 { font-size: 1.1rem; font-weight: 850; margin: 0; color: var(--text-primary); }
+        .mobile-profile-mini p { font-size: 0.75rem; margin: 0; font-weight: 600; color: var(--text-secondary); }
+
+        .quick-nav-bar {
+            display: flex;
+            justify-content: flex-start;
+            gap: 1.2rem;
+            padding: 0.8rem 0.2rem;
+            margin-bottom: 1.2rem;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .quick-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.4rem;
+            flex-shrink: 0;
+        }
+        .quick-nav-icon {
+            width: 60px;
+            height: 60px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            color: var(--primary);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+            border: 1px solid var(--border);
+        }
+        .quick-nav-item.active .quick-nav-icon {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 6px 15px rgba(230, 57, 70, 0.25);
+        }
+        .quick-nav-label { font-size: 0.65rem; font-weight: 800; color: var(--text-secondary); }
+
+        .kpi-grid-mobile {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.8rem;
+            margin-bottom: 1.5rem;
+        }
+        .kpi-card-mobile {
+            background: white;
+            border-radius: 20px;
+            padding: 1rem;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 140px;
+            position: relative;
+        }
+        .kpi-card-mobile .label { font-size: 0.65rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; }
+        .kpi-card-mobile .value { font-size: 1.4rem; font-weight: 900; }
+        .kpi-card-mobile .sub-info { font-size: 0.6rem; font-weight: 700; color: var(--text-secondary); margin-top: 0.5rem; }
+        
+        .ring-container { position: absolute; top: 10px; right: 10px; width: 36px; height: 36px; }
+        .progress-ring { transform: rotate(-90deg); }
+        .progress-ring__circle { transition: stroke-dashoffset 0.35s; transform-origin: 50% 50%; }
+
+        .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease, opacity 0.2s ease; opacity: 0; }
+        .accordion-content.show { max-height: 2000px; opacity: 1; margin-bottom: 1.5rem; }
+    </style>
     <div class="mobile-mode animate-fade-in">
         <!-- 1. コンパクトプロフィール -->
         <div class="mobile-profile-mini">
