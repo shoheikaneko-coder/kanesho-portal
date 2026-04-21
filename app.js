@@ -397,7 +397,6 @@ function showPage(target) {
         switch (target) {
             case 'home':
                 updateHeaderTitle('メインホーム');
-                pageContent.innerHTML = homePageHtml;
                 initHomePage();
                 break;
             case 'ops_hub':

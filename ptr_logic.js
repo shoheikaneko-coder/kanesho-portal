@@ -61,6 +61,13 @@ export class PullToRefresh {
             return;
         }
 
+        // 判定: アコーディオンが表示されている間はPTRを無効化する
+        const accordion = document.getElementById('mobile-accordion-container');
+        if (accordion && accordion.classList.contains('active')) {
+            this.isPulling = false;
+            return;
+        }
+
         // 判定: ボタンなどのインタラクティブ要素上でのタッチ開始はPTRを無効化する
         if (e.target.closest('button') || e.target.closest('.mobile-ops-tile') || e.target.closest('.quick-nav-bar')) {
             this.isPulling = false;
