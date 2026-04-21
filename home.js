@@ -280,6 +280,53 @@ export const homePageHtml = `
     </style>
 `;
 
+export const homePageMobileHtml = `
+    <div class="mobile-mode animate-fade-in">
+        <!-- 1. コンパクトプロフィール -->
+        <div class="mobile-profile-mini">
+            <h2 id="mobile-user-name">----</h2>
+            <p id="mobile-user-meta" style="color: var(--text-secondary);">----</p>
+        </div>
+
+        <!-- 2. クイック・ナビゲーション・バー -->
+        <div class="quick-nav-bar" id="mobile-quick-nav">
+            <!-- ボタンが動的に生成される -->
+        </div>
+
+        <!-- 3. アコーディオン表示エリア -->
+        <div id="mobile-accordion-container" class="accordion-content">
+            <div id="mobile-accordion-inner" class="glass-panel" style="padding: 1rem; position: relative;">
+                <button onclick="window.toggleMobileAccordion(null)" style="position: absolute; top: 10px; right: 10px; border: none; background: #f1f5f9; width: 28px; height: 28px; border-radius: 50%; color: #64748b; font-size: 0.8rem;"><i class="fas fa-times"></i></button>
+                <div id="mobile-accordion-body"></div>
+            </div>
+        </div>
+
+        <!-- 4. KPIセクション (2x2) -->
+        <div id="mobile-kpi-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
+                <h3 style="font-size: 0.85rem; font-weight: 850; margin: 0; color: var(--text-primary);">
+                    <i class="fas fa-chart-line" style="color: var(--primary); margin-right: 0.4rem;"></i> 昨日実績サマリー
+                </h3>
+                <span id="mobile-yesterday-label" style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); background: #fff; padding: 2px 8px; border-radius: 10px; border: 1px solid #eee;">----</span>
+            </div>
+            <div class="kpi-grid-mobile" id="mobile-kpi-grid">
+                <!-- KPI 2x2 がここに描画される -->
+            </div>
+        </div>
+
+        <!-- ターゲットコンテナ（アコーディオンの中身の流し込み先） -->
+        <div id="target-today-shifts" style="display:none;"></div>
+        <div id="target-ops-hub" style="display:none;"></div>
+        <div id="target-personal-assets" style="display:none;"></div>
+    </div>
+
+    <!-- PC版と共通のモーダルなどは維持 -->
+    <div id="inventory-alert-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:99999; backdrop-filter:blur(8px); align-items:center; justify-content:center; padding:20px;">
+        <!-- ... (PC版と同じモーダル内容) ... -->
+    </div>
+`;
+
+
 export async function initHomePage() {
     const user = JSON.parse(localStorage.getItem('currentUser'));
     if (!user) return;
@@ -323,8 +370,96 @@ async function renderHomePageMobile(user) {
     const pageContent = document.getElementById('page-content');
     if (!pageContent) return;
 
-    pageContent.innerHTML = homePageHtml;
-    await setupCommonHomeElements(user);
+    pageContent.innerHTML = homePageMobileHtml;
+
+    // コンパクトプロフィールの設定
+    const nameEl = document.getElementById('mobile-user-name');
+    const metaEl = document.getElementById('mobile-user-meta');
+    if (nameEl) nameEl.textContent = user.Name || user.name || 'User';
+    if (metaEl) {
+        const roleMap = { 'Admin': '管理者', 'Manager': '店長', 'Staff': '一般社員', 'Tablet': '店舗タブレット', 'PartTimer': 'アルバイト' };
+        const roleName = roleMap[user.Role] || user.Role || '一般';
+        metaEl.textContent = `${user.Store || ''} ｜ ${roleName}`;
+    }
+
+    const permissions = window.appState ? window.appState.permissions : [];
+    
+    // クイックナビの設定
+    setupMobileShortcuts(user, permissions);
+
+    // KPI描画
+    if (permissions.includes('home_performance')) {
+        await renderPerformanceSummary(user, true); // true = mobile mode
+    }
+
+    // アコーディオンのグローバル関数化
+    window.toggleMobileAccordion = (type) => toggleMobileAccordion(type, user, permissions);
+}
+
+/**
+ * スマホ用クイックナビゲーションのセットアップ
+ */
+function setupMobileShortcuts(user, permissions) {
+    const navBar = document.getElementById('mobile-quick-nav');
+    if (!navBar) return;
+
+    const allShortcuts = [
+        { id: 'shifts', name: '出勤布陣', icon: 'fa-users-rectangle', role: ['Admin', 'Manager', 'Staff'] },
+        { id: 'ops', name: '業務ハブ', icon: 'fa-rocket', role: ['Admin', 'Manager', 'Staff'] },
+        { id: 'assets', name: 'マイ・アセット', icon: 'fa-hand-holding-heart', role: ['Admin', 'Manager', 'Staff', 'PartTimer'] },
+        { id: 'attendance', name: '勤怠', icon: 'fa-clock', role: ['PartTimer'] }
+    ];
+
+    navBar.innerHTML = allShortcuts
+        .filter(s => s.role.includes(user.Role))
+        .map(s => `
+            <div class="quick-nav-item" onclick="window.toggleMobileAccordion('${s.id}')" id="nav-${s.id}">
+                <div class="quick-nav-icon"><i class="fas ${s.icon}"></i></div>
+                <div class="quick-nav-label">${s.name}</div>
+            </div>
+        `).join('');
+}
+
+/**
+ * アコーディオンの開閉制御
+ */
+let currentAccordionType = null;
+async function toggleMobileAccordion(type, user, permissions) {
+    const container = document.getElementById('mobile-accordion-container');
+    const body = document.getElementById('mobile-accordion-body');
+    
+    // 全てのナビアイテムから active クラスを外す
+    document.querySelectorAll('.quick-nav-item').forEach(el => el.classList.remove('active'));
+
+    if (!type || currentAccordionType === type) {
+        container.classList.remove('show');
+        currentAccordionType = null;
+        return;
+    }
+
+    // アクティブクラス付与
+    const navItem = document.getElementById(`nav-${type}`);
+    if (navItem) navItem.classList.add('active');
+
+    // コンテンツの読み込み
+    body.innerHTML = '<div style="text-align:center; padding:2rem;"><i class="fas fa-spinner fa-spin"></i> 読み込み中...</div>';
+    container.classList.add('show');
+    currentAccordionType = type;
+
+    try {
+        if (type === 'shifts') {
+            body.innerHTML = '<div id="home-shift-grid" style="display:grid; grid-template-columns:1fr; gap:0.8rem;"></div>';
+            await renderTodayShifts(user);
+        } else if (type === 'ops') {
+            body.innerHTML = '<div id="home-ops-grid" class="ops-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 1rem;"></div>';
+            renderOperationCards(permissions, user.Role);
+        } else if (type === 'assets') {
+            body.innerHTML = '<div id="home-assets-list"></div>';
+            await renderPersonalAssets(user);
+        }
+    } catch (e) {
+        body.innerHTML = '<div style="color:var(--danger); padding:1rem;">読み込みに失敗しました。</div>';
+    }
 }
 
 /**
@@ -593,10 +728,10 @@ async function renderTodayShifts(user) {
 /**
  * 昨日の営業実績サマリーを描画
  */
-async function renderPerformanceSummary(user) {
-    const container = document.getElementById('yesterday-summary-container');
-    const grid = document.getElementById('home-kpi-grid');
-    const dateLabel = document.getElementById('yesterday-date-label');
+async function renderPerformanceSummary(user, isMobile = false) {
+    const container = document.getElementById(isMobile ? 'mobile-kpi-section' : 'yesterday-summary-container');
+    const grid = document.getElementById(isMobile ? 'mobile-kpi-grid' : 'home-kpi-grid');
+    const dateLabel = document.getElementById(isMobile ? 'mobile-yesterday-label' : 'yesterday-date-label');
     if (!container || !grid) return;
 
     container.style.display = 'block';
@@ -751,49 +886,92 @@ async function renderPerformanceSummary(user) {
         const sph = actual.total_labor_hours > 0 ? Math.round(actual.sales_ex_tax / actual.total_labor_hours) : 0;
         const sphRate = targetSPH > 0 ? (sph / targetSPH) * 100 : 0;
 
-        grid.innerHTML = `
-            <div class="cockpit-kpi-card">
-                <div class="cockpit-kpi-label">昨日の売上進捗 (税抜)</div>
-                <div class="cockpit-kpi-val ${salesRate >= 100 ? 'status-success' : 'status-danger'}">${Math.round(salesRate)}%</div>
-                <div class="cockpit-kpi-sub">
-                    <div>実績: ¥${Math.round(actual.sales_ex_tax).toLocaleString()}</div>
-                    <div>目標: ¥${Math.round(target.sales).toLocaleString()}</div>
+        if (isMobile) {
+            grid.innerHTML = `
+                ${renderKpiCardMobile('昨日の売上 (税抜)', actual.sales_ex_tax, target.sales, '¥', salesRate)}
+                ${renderKpiCardMobile('来客数', actual.customers, targetCustomers, '名', custRate)}
+                ${renderKpiCardMobile('客単価 (税抜)', avgSpend, targetAvgSpend, '¥', avgSpendRate)}
+                ${renderKpiCardMobile('人時売上', sph, targetSPH, '¥', sphRate, actual.total_labor_hours)}
+            `;
+        } else {
+            grid.innerHTML = `
+                <div class="cockpit-kpi-card">
+                    <div class="cockpit-kpi-label">昨日の売上進捗 (税抜)</div>
+                    <div class="cockpit-kpi-val ${salesRate >= 100 ? 'status-success' : 'status-danger'}">${Math.round(salesRate)}%</div>
+                    <div class="cockpit-kpi-sub">
+                        <div>実績: ¥${Math.round(actual.sales_ex_tax).toLocaleString()}</div>
+                        <div>目標: ¥${Math.round(target.sales).toLocaleString()}</div>
+                    </div>
                 </div>
-            </div>
-            <div class="cockpit-kpi-card">
-                <div class="cockpit-kpi-label">来客進捗</div>
-                <div class="cockpit-kpi-val ${custRate >= 100 ? 'status-success' : 'status-danger'}">${Math.round(custRate)}%</div>
-                <div class="cockpit-kpi-sub">
-                    <div>実績: ${actual.customers}名</div>
-                    <div>目標: ${Math.round(targetCustomers)}名</div>
+                <div class="cockpit-kpi-card">
+                    <div class="cockpit-kpi-label">来客進捗</div>
+                    <div class="cockpit-kpi-val ${custRate >= 100 ? 'status-success' : 'status-danger'}">${Math.round(custRate)}%</div>
+                    <div class="cockpit-kpi-sub">
+                        <div>実績: ${actual.customers}名</div>
+                        <div>目標: ${Math.round(targetCustomers)}名</div>
+                    </div>
                 </div>
-            </div>
-            <div class="cockpit-kpi-card">
-                <div class="cockpit-kpi-label">客単価 (税抜)</div>
-                <div class="cockpit-kpi-val ${avgSpendRate >= 100 ? 'status-success' : 'status-danger'}">${Math.round(avgSpendRate)}%</div>
-                <div class="cockpit-kpi-sub">
-                    <div>実績: ¥${avgSpend.toLocaleString()}</div>
-                    <div>目標: ¥${targetAvgSpend.toLocaleString()}</div>
+                <div class="cockpit-kpi-card">
+                    <div class="cockpit-kpi-label">客単価 (税抜)</div>
+                    <div class="cockpit-kpi-val ${avgSpendRate >= 100 ? 'status-success' : 'status-danger'}">${Math.round(avgSpendRate)}%</div>
+                    <div class="cockpit-kpi-sub">
+                        <div>実績: ¥${avgSpend.toLocaleString()}</div>
+                        <div>目標: ¥${targetAvgSpend.toLocaleString()}</div>
+                    </div>
                 </div>
-            </div>
-            <div class="cockpit-kpi-card">
-                <div class="cockpit-kpi-label">営業人時売上</div>
-                <div class="cockpit-kpi-val ${sphRate >= 100 ? 'status-success' : 'status-danger'}">${Math.round(sphRate)}%</div>
-                <div class="cockpit-kpi-sub">
-                    <div>実績: ¥${sph.toLocaleString()}</div>
-                    <div>目標: ¥${targetSPH.toLocaleString()}</div>
+                <div class="cockpit-kpi-card">
+                    <div class="cockpit-kpi-label">営業人時売上</div>
+                    <div class="cockpit-kpi-val ${sphRate >= 100 ? 'status-success' : 'status-danger'}">${Math.round(sphRate)}%</div>
+                    <div class="cockpit-kpi-sub">
+                        <div>実績: ¥${sph.toLocaleString()}</div>
+                        <div>目標: ¥${targetSPH.toLocaleString()}</div>
+                    </div>
+                    <div style="position: absolute; bottom: 0.8rem; right: 1rem; font-size: 0.65rem; color: var(--text-secondary); font-weight: 700; opacity: 0.8;">
+                        労働h: ${actual.total_labor_hours.toFixed(1)}h
+                    </div>
                 </div>
-                <div style="position: absolute; bottom: 0.8rem; right: 1rem; font-size: 0.65rem; color: var(--text-secondary); font-weight: 700; opacity: 0.8;">
-                    労働h: ${actual.total_labor_hours.toFixed(1)}h
-                </div>
-            </div>
-        `;
+            `;
+        }
 
     } catch (e) {
         console.error("Performance Summary Error:", e);
         grid.innerHTML = '<p style="color:red; font-weight:800;">実績データの読み込みに失敗しました。</p>';
     }
 }
+
+/**
+ * スマホ用KPIカードの個別描画 (進捗リング付き)
+ */
+function renderKpiCardMobile(label, actual, target, unit, rate, extraInfo = null) {
+    const safeRate = Math.min(100, Math.max(0, rate || 0));
+    const radius = 15;
+    const circumference = 2 * Math.PI * radius;
+    const offset = circumference - (safeRate / 100) * circumference;
+    const color = rate >= 100 ? '#10b981' : '#e11d48';
+
+    return `
+        <div class="kpi-card-mobile">
+            <div class="label">${label}</div>
+            <div class="ring-container">
+                <svg class="progress-ring" width="36" height="36">
+                    <circle stroke="#f1f5f9" stroke-width="4" fill="transparent" r="${radius}" cx="18" cy="18"/>
+                    <circle class="progress-ring__circle" stroke="${color}" stroke-width="4" stroke-dasharray="${circumference} ${circumference}" style="stroke-dashoffset: ${offset}" fill="transparent" r="${radius}" cx="18" cy="18"/>
+                </svg>
+            </div>
+            <div class="value" style="color: ${color}">${Math.round(rate)}%</div>
+            <div class="sub-info">
+                <div>実績: ${unit}${Math.round(actual).toLocaleString()}</div>
+                <div>目標: ${unit}${Math.round(target).toLocaleString()}</div>
+                ${extraInfo !== null ? `<div style="margin-top:2px; font-size:0.55rem; opacity:0.7;">(労働時間: ${extraInfo.toFixed(1)}h)</div>` : ''}
+            </div>
+            <div class="trend-tag ${rate >= 100 ? 'trend-up' : 'trend-down'}">
+                <i class="fas ${rate >= 100 ? 'fa-arrow-up' : 'fa-arrow-down'}"></i>
+                ${rate >= 100 ? '達成' : '未達'}
+            </div>
+        </div>
+    `;
+}
+
 
 function renderOperationCards(permissions, role) {
     const isTablet = role === 'Tablet';
