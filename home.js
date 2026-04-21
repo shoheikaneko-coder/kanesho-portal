@@ -377,13 +377,13 @@ export const homePageMobileHtml = `
 
         <!-- 3. アコーディオン表示エリア -->
         <div id="mobile-accordion-container" class="accordion-content">
-            <div id="mobile-accordion-inner" class="glass-panel" style="padding: 1rem; position: relative;">
+            <div id="mobile-accordion-inner" class="glass-panel" style="padding: 0.8rem; position: relative;">
                 <button onclick="window.toggleMobileAccordion(null)" style="position: absolute; top: 10px; right: 10px; border: none; background: #f1f5f9; width: 28px; height: 28px; border-radius: 50%; color: #64748b; font-size: 0.8rem;"><i class="fas fa-times"></i></button>
                 <div id="mobile-accordion-body"></div>
             </div>
         </div>
         <!-- 5. 本日の目標セクション (バナー形式) -->
-        <div id="mobile-today-target-section" style="display: none; margin-bottom: 1.5rem;">
+        <div id="mobile-today-target-section" style="display: none; margin-bottom: 1rem;">
             <!-- バナーがここに描画される -->
         </div>
 
@@ -1339,9 +1339,9 @@ async function renderTodayTargetBanner(user) {
 
         section.style.display = 'block';
         section.innerHTML = `
-            <div style="background: linear-gradient(135deg, #fff5f5 0%, #fff0f0 100%); border: 1px solid #fee2e2; border-radius: 20px; padding: 1.2rem; display: flex; flex-direction: column; align-items: center; box-shadow: 0 4px 6px -1px rgba(230, 57, 70, 0.05); position: relative;">
+            <div style="background: linear-gradient(135deg, #fff5f5 0%, #fff0f0 100%); border: 1px solid #fee2e2; border-radius: 20px; padding: 0.8rem 1.2rem; display: flex; flex-direction: column; align-items: center; box-shadow: 0 4px 6px -1px rgba(230, 57, 70, 0.05); position: relative;">
                 <!-- 上段: センタータイトル -->
-                <div style="font-size: 0.7rem; font-weight: 850; color: var(--text-secondary); margin-bottom: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em;">
+                <div style="font-size: 0.65rem; font-weight: 850; color: var(--text-secondary); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.1em;">
                     今日の目標
                 </div>
 
