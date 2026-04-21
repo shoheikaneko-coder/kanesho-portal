@@ -5,6 +5,10 @@ import {
     initAttendancePage, refreshData, startClock, renderUnclockedDropdown, 
     renderGallery, renderTodayHistory, setupEventListeners 
 } from './attendance.js';
+const formatDateJST = (d) => {
+    const jst = new Date(d.getTime() + (9 * 60 * 60 * 1000));
+    return jst.toISOString().split('T')[0];
+};
 
 export const homePageHtml = `
     <div class="animate-fade-in" style="max-width: 1200px; margin: 0 auto; padding-bottom: 3rem;">
@@ -814,7 +818,8 @@ async function renderPerformanceSummary(user, isMobile = false) {
 
     container.style.display = 'block';
 
-    const storeId = user.StoreID || user.StoreId || "ALL";
+    const me = JSON.parse(localStorage.getItem('currentUser'));
+    const storeId = user.StoreID || user.StoreId || window.currentAdminStoreId || (me ? (me.StoreID || me.StoreId) : null) || "ALL";
 
     try {
         if (!storeId || storeId === 'undefined') {
@@ -827,17 +832,18 @@ async function renderPerformanceSummary(user, isMobile = false) {
         const storeData = storeSnap.exists() ? storeSnap.data() : {};
         const nowJst = new Date(Date.now() + (9 * 60 * 60 * 1000));
         let lastWorkDate = new Date(nowJst.getTime());
-        if (nowJst.getHours() < (storeData.day_change_time || 5)) {
+        if (nowJst.getUTCHours() < (storeData.day_change_time || 5)) {
             lastWorkDate.setDate(lastWorkDate.getDate() - 2);
         } else {
             lastWorkDate.setDate(lastWorkDate.getDate() - 1);
         }
         
         // JST基準での ymd (YYYY-MM-DD) を生成
-        const ymd = lastWorkDate.toISOString().split('T')[0];
+        const ymd = formatDateJST(lastWorkDate);
         const ym = ymd.substring(0, 7);
         if (dateLabel) {
-            dateLabel.textContent = `${lastWorkDate.getMonth() + 1}月${lastWorkDate.getDate()}日(${['日','月','火','水','木','金','土'][lastWorkDate.getDay()]})`;
+            const dow = ['日','月','火','水','木','金','土'][new Date(ymd).getDay()];
+            dateLabel.textContent = `${parseInt(ymd.split('-')[1])}月${parseInt(ymd.split('-')[2])}日(${dow})`;
         }
 
         // 実績取得 (t_performance)
@@ -903,7 +909,7 @@ async function renderPerformanceSummary(user, isMobile = false) {
 
             for (let d = 1; d <= daysInMonthCnt; d++) {
                 const date = new Date(lastWorkDate.getFullYear(), lastWorkDate.getMonth(), d);
-                const loopYmd = date.toISOString().split("T")[0];
+                const loopYmd = formatDateJST(date);
                 const cal = calendarData[loopYmd] || { type: 'work' };
 
                 if (cal.type === 'off') {
@@ -913,7 +919,7 @@ async function renderPerformanceSummary(user, isMobile = false) {
 
                 const dow = date.getDay();
                 const nextDate = new Date(lastWorkDate.getFullYear(), lastWorkDate.getMonth(), d + 1);
-                const nextYmd = nextDate.toISOString().split("T")[0];
+                const nextYmd = formatDateJST(nextDate);
                 const nextCal = calendarData[nextYmd] || {};
                 const isDayBeforeH = nextCal.is_holiday || false;
 
