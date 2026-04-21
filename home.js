@@ -830,20 +830,31 @@ async function renderPerformanceSummary(user, isMobile = false) {
         // 昨日の判定 (店舗の営業終了時間を考慮)
         const storeSnap = await getDoc(doc(db, "m_stores", storeId));
         const storeData = storeSnap.exists() ? storeSnap.data() : {};
-        const nowJst = new Date(Date.now() + (9 * 60 * 60 * 1000));
-        let lastWorkDate = new Date(nowJst.getTime());
-        if (nowJst.getUTCHours() < (storeData.day_change_time || 5)) {
-            lastWorkDate.setDate(lastWorkDate.getDate() - 2);
+        // 現在時刻（JST）から、業務上の「昨日（集計対象日）」を特定する
+        const now = new Date();
+        // JST基準の時間を取得 (0-23)
+        const jstHour = (now.getUTCHours() + 9) % 24;
+        
+        // 基準日 (本日の00:00 JST)
+        let lastWorkDate = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+        lastWorkDate.setUTCHours(0, 0, 0, 0); // 時刻を00:00に固定
+        
+        // 5時（day_change_time）以前なら、一昨日、それ以降なら昨日
+        const changeHour = storeData.day_change_time || 5;
+        if (jstHour < changeHour) {
+            lastWorkDate.setUTCDate(lastWorkDate.getUTCDate() - 2);
         } else {
-            lastWorkDate.setDate(lastWorkDate.getDate() - 1);
+            lastWorkDate.setUTCDate(lastWorkDate.getUTCDate() - 1);
         }
         
         // JST基準での ymd (YYYY-MM-DD) を生成
         const ymd = formatDateJST(lastWorkDate);
         const ym = ymd.substring(0, 7);
+        
         if (dateLabel) {
             const dow = ['日','月','火','水','木','金','土'][new Date(ymd).getDay()];
-            dateLabel.textContent = `${parseInt(ymd.split('-')[1])}月${parseInt(ymd.split('-')[2])}日(${dow})`;
+            const [y, m, d] = ymd.split('-');
+            dateLabel.textContent = `${parseInt(m)}月${parseInt(d)}日(${dow})`;
         }
 
         // 実績取得 (t_performance)
