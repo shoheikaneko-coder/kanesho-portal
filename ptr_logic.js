@@ -78,15 +78,18 @@ export class PullToRefresh {
         const diff = this.currentY - this.startY;
         
         // 下方向への引っ張りのみ処理
-        if (diff > 0 && this.container.scrollTop <= 5) {
+        if (diff > 30 && this.container.scrollTop <= 5) {
             // ブラウザ標準のバウンスやリフレッシュを抑制
             if (e.cancelable) e.preventDefault();
             
-            this.ptrElement.style.height = `${Math.min(diff * 0.4, this.options.threshold + 30)}px`;
+            this.isPullingActive = true; // 明確な引っ張りが開始された
+            const pullDistance = diff - 30; // 30px分を差し引いて計算開始
+            
+            this.ptrElement.style.height = `${Math.min(pullDistance * 0.4, this.options.threshold + 30)}px`;
             this.ptrElement.classList.add('ptr-active');
             
             const icon = this.ptrElement.querySelector('i');
-            if (diff * 0.4 > this.options.threshold) {
+            if (pullDistance * 0.4 > this.options.threshold) {
                 icon.style.transform = 'rotate(180deg)';
                 icon.style.color = 'var(--primary)';
             } else {
@@ -102,13 +105,22 @@ export class PullToRefresh {
     handleTouchEnd() {
         if (!this.isPulling || this.isLoading) return;
         
+        if (!this.isPullingActive) {
+            this.reset();
+            this.isPulling = false;
+            return;
+        }
+        
         const diff = this.currentY - this.startY;
-        if (diff * 0.4 > this.options.threshold) {
+        const pullDistance = diff - 30;
+        
+        if (pullDistance * 0.4 > this.options.threshold) {
             this.triggerRefresh();
         } else {
             this.reset();
         }
         this.isPulling = false;
+        this.isPullingActive = false;
     }
 
     async triggerRefresh() {

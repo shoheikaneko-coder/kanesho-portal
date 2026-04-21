@@ -1031,6 +1031,9 @@ function renderOperationCards(permissions, role) {
     const grid = document.getElementById(gridId);
     if (!grid) return;
 
+    // モバイルホーム画面でのアコーディオン表示判定
+    const isMobileHub = grid.id === 'standard-ops-grid' && !document.querySelector('.pc-only:not([style*="display: none"])');
+
     let cards = [
         { id: 'sales', name: '営業実績報告', icon: 'fa-calculator', desc: '売上・客数・各種経費の入力報告を行います。' },
         { id: 'attendance', name: '勤怠入力', icon: 'fa-clock', desc: 'スタッフの出勤・退勤打刻、シフトの確認。' },
@@ -1048,10 +1051,25 @@ function renderOperationCards(permissions, role) {
         cards = cards.filter(c => c.id !== 'attendance');
     }
 
+    // グリッドクラスの適用（モバイルハブ時は3列タイル、それ以外は標準）
+    if (isMobileHub) {
+        grid.className = 'mobile-ops-grid';
+    } else if (!isTablet) {
+        grid.className = 'ops-grid';
+    }
+
     grid.innerHTML = cards
         .filter(c => permissions.includes(c.id))
         .map(c => {
-            if (isTablet) {
+            if (isMobileHub) {
+                // モイル専用：説明文なし、3列タイル
+                return `
+                    <div class="mobile-ops-tile" onclick="window.navigateTo('${c.id}')">
+                        <i class="fas ${c.icon}"></i>
+                        <span>${c.name}</span>
+                    </div>
+                `;
+            } else if (isTablet) {
                 return `
                     <div class="ops-action-btn" onclick="window.navigateTo('${c.id}')">
                         <i class="fas ${c.icon}"></i>

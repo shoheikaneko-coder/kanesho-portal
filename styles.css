@@ -2200,14 +2200,14 @@ input:checked + .toggle-slider:before {
     justify-content: center;
     background: transparent;
     transition: height 0.2s ease;
-    z-index: 5;
+    z-index: 999; /* 最前面へ */
     width: 100%;
 }
 .ptr-icon-box {
     width: 40px;
     height: 40px;
     background: white;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -2223,10 +2223,49 @@ input:checked + .toggle-slider:before {
 }
 .ptr-loading .ptr-icon-box i {
     animation: fa-spin 1s infinite linear;
+    color: var(--primary);
 }
 .ptr-icon-box i {
     font-size: 1.2rem;
     transition: transform 0.2s;
+    visibility: visible !important;
+}
+
+/* Mobile Operations Tiles (3-columns) */
+.mobile-ops-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.8rem;
+    padding: 0.5rem 0;
+}
+.mobile-ops-tile {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1rem 0.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    transition: transform 0.1s ease, background 0.2s;
+    -webkit-tap-highlight-color: transparent;
+}
+.mobile-ops-tile:active {
+    transform: scale(0.95);
+    background: #f1f5f9;
+}
+.mobile-ops-tile i {
+    font-size: 1.4rem;
+    color: var(--primary);
+}
+.mobile-ops-tile span {
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1.2;
 }
 
 /* =========================================
