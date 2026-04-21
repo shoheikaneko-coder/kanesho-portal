@@ -548,7 +548,7 @@ async function toggleMobileAccordion(type, user, permissions) {
         } else if (type === 'ops') {
             body.innerHTML = `
                 <div id="tablet-cockpit-container">
-                    <div id="home-ops-grid" class="ops-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 1rem;"></div>
+                    <div id="standard-ops-grid" class="ops-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 1rem;"></div>
                 </div>
             `;
             renderOperationCards(permissions, user.Role);
@@ -1339,9 +1339,9 @@ async function renderTodayTargetBanner(user) {
 
         section.style.display = 'block';
         section.innerHTML = `
-            <div style="background: linear-gradient(135deg, #fff5f5 0%, #fff0f0 100%); border: 1px solid #fee2e2; border-radius: 20px; padding: 0.8rem 1.2rem; display: flex; flex-direction: column; align-items: center; box-shadow: 0 4px 6px -1px rgba(230, 57, 70, 0.05); position: relative;">
+            <div style="background: linear-gradient(135deg, #fff5f5 0%, #fff0f0 100%); border: 1px solid #fee2e2; border-radius: 20px; padding: 0.4rem 1.2rem; display: flex; flex-direction: column; align-items: center; box-shadow: 0 4px 6px -1px rgba(230, 57, 70, 0.05); position: relative;">
                 <!-- 上段: センタータイトル -->
-                <div style="font-size: 0.65rem; font-weight: 850; color: var(--text-secondary); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.1em;">
+                <div style="font-size: 0.65rem; font-weight: 850; color: var(--text-secondary); margin-bottom: 0.2rem; text-transform: uppercase; letter-spacing: 0.1em;">
                     今日の目標
                 </div>
 
