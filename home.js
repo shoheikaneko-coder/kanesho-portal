@@ -515,7 +515,10 @@ async function renderTodayShifts(user) {
     if (!storeId || storeId === 'ALL') return;
 
     container.style.display = 'block';
-    const todayYmd = new Date().toISOString().split('T')[0];
+    
+    // 今日（JST）の判定
+    const nowJst = new Date(Date.now() + (9 * 60 * 60 * 1000));
+    const todayYmd = nowJst.toISOString().split('T')[0];
 
     try {
         const q = query(collection(db, "t_shifts"), 
@@ -523,11 +526,6 @@ async function renderTodayShifts(user) {
             where("date", "==", todayYmd),
             where("status", "==", "confirmed"));
         
-        if (!storeId || storeId === 'undefined') {
-            console.warn("renderTodayShifts: storeId is invalid for where query.", storeId);
-            return;
-        }
-
         const snap = await getDocs(q);
         if (snap.empty) {
             grid.innerHTML = '<div style="grid-column: 1/-1; padding: 1.5rem; background: #f8fafc; border-radius: 16px; text-align: center; color: var(--text-secondary); border: 1px dashed var(--border); font-size: 0.9rem;">本日の確定済みシフトはありません。</div>';
@@ -540,7 +538,7 @@ async function renderTodayShifts(user) {
             html += `
                 <div style="display: flex; align-items: center; gap: 1rem; padding: 1.2rem; background: white; border-radius: 20px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); border-left: 5px solid #8b5cf6;">
                     <div style="width: 44px; height: 44px; background: #f5f3ff; color: #7c3aed; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.1rem;">
-                        ${s.userName.substring(0,1)}
+                        ${s.userName ? s.userName.substring(0,1) : '?'}
                     </div>
                     <div>
                         <div style="font-weight: 800; color: var(--text-primary); font-size: 1rem; margin-bottom: 0.1rem;">${s.userName}</div>
@@ -556,6 +554,9 @@ async function renderTodayShifts(user) {
     }
 }
 
+/**
+ * 昨日の営業実績サマリーを描画
+ */
 async function renderPerformanceSummary(user) {
     const container = document.getElementById('yesterday-summary-container');
     const grid = document.getElementById('home-kpi-grid');
@@ -564,18 +565,30 @@ async function renderPerformanceSummary(user) {
 
     container.style.display = 'block';
 
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const ymd = yesterday.toISOString().split('T')[0];
-    const ym = ymd.substring(0, 7);
-    dateLabel.textContent = `${yesterday.getMonth() + 1}月${yesterday.getDate()}日(${['日','月','火','水','木','金','土'][yesterday.getDay()]})`;
-
     const storeId = user.StoreID || user.StoreId || "ALL";
 
     try {
         if (!storeId || storeId === 'undefined') {
             console.warn("renderPerformanceSummary: storeId is invalid.", storeId);
             return;
+        }
+
+        // 昨日の判定 (店舗の営業終了時間を考慮)
+        const storeSnap = await getDoc(doc(db, "m_stores", storeId));
+        const storeData = storeSnap.exists() ? storeSnap.data() : {};
+        const nowJst = new Date(Date.now() + (9 * 60 * 60 * 1000));
+        let lastWorkDate = new Date(nowJst.getTime());
+        if (nowJst.getHours() < (storeData.day_change_time || 5)) {
+            lastWorkDate.setDate(lastWorkDate.getDate() - 2);
+        } else {
+            lastWorkDate.setDate(lastWorkDate.getDate() - 1);
+        }
+        
+        // JST基準での ymd (YYYY-MM-DD) を生成
+        const ymd = lastWorkDate.toISOString().split('T')[0];
+        const ym = ymd.substring(0, 7);
+        if (dateLabel) {
+            dateLabel.textContent = `${lastWorkDate.getMonth() + 1}月${lastWorkDate.getDate()}日(${['日','月','火','水','木','金','土'][lastWorkDate.getDay()]})`;
         }
 
         // 実績取得 (t_performance)
@@ -592,7 +605,7 @@ async function renderPerformanceSummary(user) {
         
         perfSnap.forEach(doc => {
             const d = doc.data();
-            actual.sales += (d.amount || d.sales || 0); // amount が POS等からの標準
+            actual.sales += (d.amount || d.sales || 0);
             actual.sales_ex_tax += (d.amount_ex_tax || (actual.sales / 1.1));
             actual.customers += (d.customer_count || d.customers || 0);
         });
@@ -603,16 +616,8 @@ async function renderPerformanceSummary(user) {
         });
 
         // 1. カレンダーデータの収集
-        const ym = String(lastWorkDate.getFullYear()) + "-" + String(lastWorkDate.getMonth() + 1).padStart(2, '0');
         const daysInMonth = new Date(lastWorkDate.getFullYear(), lastWorkDate.getMonth() + 1, 0).getDate();
-        
         let calendarData = {};
-        const formatDateJSTLocal = (d) => {
-            const jst = new Date(d.getTime() + (9 * 60 * 60 * 1000));
-            return jst.toISOString().split("T")[0];
-        };
-
-        // 共通・店舗別カレンダーの取得
         const [commonCalSnap, storeCalSnap] = await Promise.all([
             getDoc(doc(db, "m_calendars", `${ym}_common`)),
             getDoc(doc(db, "m_calendars", `${ym}_${storeId}`))
@@ -620,15 +625,15 @@ async function renderPerformanceSummary(user) {
 
         if (commonCalSnap.exists()) {
             commonCalSnap.data().days?.forEach(d => {
-                const ymd = `${ym}-${String(d.day).padStart(2, '0')}`;
-                calendarData[ymd] = { type: d.type || 'work', is_holiday: d.is_holiday || false };
+                const calYmd = `${ym}-${String(d.day).padStart(2, '0')}`;
+                calendarData[calYmd] = { type: d.type || 'work', is_holiday: d.is_holiday || false };
             });
         }
         if (storeCalSnap.exists()) {
             storeCalSnap.data().days?.forEach(d => {
-                const ymd = `${ym}-${String(d.day).padStart(2, '0')}`;
-                if (!calendarData[ymd]) calendarData[ymd] = { type: 'work', is_holiday: false };
-                calendarData[ymd].type = d.type;
+                const calYmd = `${ym}-${String(d.day).padStart(2, '0')}`;
+                if (!calendarData[calYmd]) calendarData[calYmd] = { type: 'work', is_holiday: false };
+                calendarData[calYmd].type = d.type;
             });
         }
 
@@ -645,16 +650,15 @@ async function renderPerformanceSummary(user) {
 
             let totalMonthPoints = 0;
             let yesterdayPoint = 0;
-            // lastWorkDate は既に日付のみの Date オブジェクトだが、確実に比較するため文字列化
-            const yesterdayYmd = lastWorkDate.toISOString().split("T")[0]; 
+            const yesterdayYmd = lastWorkDate.toISOString().split("T")[0];
 
             for (let d = 1; d <= daysInMonth; d++) {
                 const date = new Date(lastWorkDate.getFullYear(), lastWorkDate.getMonth(), d);
-                const ymd = date.toISOString().split("T")[0];
-                const cal = calendarData[ymd] || { type: 'work', is_holiday: false };
+                const loopYmd = date.toISOString().split("T")[0];
+                const cal = calendarData[loopYmd] || { type: 'work', is_holiday: false };
 
                 if (cal.type !== 'work') {
-                    if (ymd === yesterdayYmd) yesterdayPoint = 0;
+                    if (loopYmd === yesterdayYmd) yesterdayPoint = 0;
                     continue;
                 }
 
@@ -676,7 +680,7 @@ async function renderPerformanceSummary(user) {
 
                 const dayPoint = Math.max(...indices);
                 totalMonthPoints += dayPoint;
-                if (ymd === yesterdayYmd) yesterdayPoint = dayPoint;
+                if (loopYmd === ymd) yesterdayPoint = dayPoint;
             }
 
             const unitValue = totalMonthPoints > 0 ? (monthlyTarget / totalMonthPoints) : 0;
@@ -689,7 +693,7 @@ async function renderPerformanceSummary(user) {
         try {
             const now = new Date();
             let fy = now.getFullYear();
-            if (now.getMonth() < 6) fy--; // 7月開始の年度
+            if (now.getMonth() < 6) fy--; 
             
             const budgetSnap = await getDoc(doc(db, "m_annual_budgets", `${fy}_${storeId}`));
             if (budgetSnap.exists()) {
@@ -710,7 +714,6 @@ async function renderPerformanceSummary(user) {
         
         const sph = actual.total_labor_hours > 0 ? Math.round(actual.sales_ex_tax / actual.total_labor_hours) : 0;
         const sphRate = targetSPH > 0 ? (sph / targetSPH) * 100 : 0;
-
 
         grid.innerHTML = `
             <div class="cockpit-kpi-card">
@@ -750,10 +753,9 @@ async function renderPerformanceSummary(user) {
             </div>
         `;
 
-
     } catch (e) {
-        console.error("Home KPI Fetch Error:", e);
-        grid.innerHTML = '<p style="color:red;">実績データの読み込みに失敗しました。</p>';
+        console.error("Performance Summary Error:", e);
+        grid.innerHTML = '<p style="color:red; font-weight:800;">実績データの読み込みに失敗しました。</p>';
     }
 }
 
@@ -813,22 +815,20 @@ async function renderPersonalShiftsSemimonthly(user) {
 
     const today = new Date();
     const day = today.getDate();
-    const month = today.getMonth(); // 0-11
+    const month = today.getMonth(); 
     const year = today.getFullYear();
 
     let p1_start, p1_end, p2_start, p2_end;
     let label1, label2;
 
     if (day <= 15) {
-        // 今月前半(1-15) と 今月後半(16-末)
         p1_start = new Date(year, month, 1);
         p1_end = new Date(year, month, 15);
         p2_start = new Date(year, month, 16);
-        p2_end = new Date(year, month + 1, 0); // 末日
+        p2_end = new Date(year, month + 1, 0); 
         label1 = `${month + 1}月前半 (1日〜15日)`;
         label2 = `${month + 1}月後半 (16日〜末日)`;
     } else {
-        // 今月後半(16-末) と 翌月前半(1-15)
         p1_start = new Date(year, month, 16);
         p1_end = new Date(year, month + 1, 0);
         p2_start = new Date(year, month + 1, 1);
@@ -853,7 +853,6 @@ async function renderPersonalShiftsSemimonthly(user) {
             return;
         }
 
-        // インデックス設定なしでも動作するように、ユーザーIDのみで取得してからアプリ側で日付フィルタリングを行う
         const q = query(collection(db, "t_shifts"), where("userId", "==", userId));
         const snap = await getDocs(q);
         const allMyShifts = [];
