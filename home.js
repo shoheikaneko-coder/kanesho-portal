@@ -284,14 +284,58 @@ export async function initHomePage() {
     const user = JSON.parse(localStorage.getItem('currentUser'));
     if (!user) return;
 
-    // 名前を表示
+    // 役職と画面幅を判定
+    const isTabletRole = user.Role === 'Tablet';
+    // タブレットロール以外で、1024px未満ならモバイル表示
+    const isMobileLayout = !isTabletRole && window.innerWidth < 1024;
+
+    if (isMobileLayout) {
+        await renderHomePageMobile(user);
+    } else {
+        await renderHomePagePC(user);
+    }
+
+    // ウィンドウサイズ変更時に、PC/モバイルのレイアウト境界をまたいだ場合のみ再描画
+    window.onresize = () => {
+        const currentIsMobile = !isTabletRole && window.innerWidth < 1024;
+        if (currentIsMobile !== isMobileLayout) {
+            initHomePage();
+        }
+    };
+}
+
+/**
+ * 【PC版・店舗タブレット用】メインホーム描画
+ */
+async function renderHomePagePC(user) {
+    const pageContent = document.getElementById('page-content');
+    if (!pageContent) return;
+
+    pageContent.innerHTML = homePageHtml;
+    await setupCommonHomeElements(user);
+}
+
+/**
+ * 【スマホ版】メインホーム描画
+ * 現状はPC版と同じ構造ですが、ここでIDやクラスを調整してスマホ専用UIを即座に構築可能です。
+ */
+async function renderHomePageMobile(user) {
+    const pageContent = document.getElementById('page-content');
+    if (!pageContent) return;
+
+    pageContent.innerHTML = homePageHtml;
+    await setupCommonHomeElements(user);
+}
+
+/**
+ * 共通のホーム要素（名前、KPI、各ロール専用機能）のセットアップ
+ */
+async function setupCommonHomeElements(user) {
     const nameEl = document.getElementById('cockpit-user-name');
     if (nameEl) nameEl.textContent = user.Name || user.name || 'User';
 
-    // 店舗名と役職を表示
     const metaEl = document.getElementById('cockpit-user-meta');
     if (metaEl) {
-        // フォールバック付きの店舗名取得
         let storeName = user.Store || '店舗情報なし'; 
         const storeId = user.StoreID || user.StoreId;
 
@@ -299,7 +343,6 @@ export async function initHomePage() {
             try {
                 const storeSnap = await getDoc(doc(db, "m_stores", storeId));
                 if (storeSnap.exists()) {
-                    // store_name または name フィールドのいずれかを取得
                     storeName = storeSnap.data().store_name || storeSnap.data().name || storeName;
                 } else if (storeId === 'ALL') {
                     storeName = '統括・全店舗';
@@ -326,45 +369,38 @@ export async function initHomePage() {
 
     const permissions = window.appState ? window.appState.permissions : [];
     
-    // 実績サマリーの描画
     if (permissions.includes('home_performance')) {
         await renderPerformanceSummary(user);
     }
  
     if (user.Role === 'Tablet') {
-        // 店舗タブレット専用レイアウト
         document.getElementById('standard-cockpit-section').style.display = 'none';
         document.getElementById('tablet-cockpit-container').style.display = 'block';
         renderOperationCards(permissions, 'Tablet'); 
         await initTabletHomeAttendance(user); 
     } else {
-        // 通常レイアウト
         document.getElementById('tablet-cockpit-container').style.display = 'none';
         
-        // アルバイトスタッフ以外は「本日の出勤メンバー」を表示
         if (user.Role !== 'PartTimer') {
             await renderTodayShifts(user);
         }
 
         renderOperationCards(permissions, user.Role); 
 
-        // アルバイトスタッフの場合は業務コックピットを非表示にし、個人のシフトサマリーを表示する
         if (user.Role === 'PartTimer') {
             const cockpit = document.getElementById('standard-cockpit-section');
             if (cockpit) cockpit.style.display = 'none';
             
-            // 「本日の出勤メンバー」セクションも非表示（明示的）
             const shifts = document.getElementById('today-shifts-container');
             if (shifts) shifts.style.display = 'none';
 
-            // 個人シフトサマリーの描画
             await renderPersonalShiftsSemimonthly(user);
         }
     }
 
-    // スタッフ用マイアセットと棚卸しアラート
     await renderPersonalAssets(user);
 }
+
 
 /**
  * 店舗タブレットのホーム画面に勤怠機能をセットアップ
