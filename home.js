@@ -602,14 +602,85 @@ async function renderPerformanceSummary(user) {
             actual.total_labor_hours += (d.total_labor_hours || 0);
         });
 
-        // 目標取得
+        // 1. カレンダーデータの収集
+        const ym = String(lastWorkDate.getFullYear()) + "-" + String(lastWorkDate.getMonth() + 1).padStart(2, '0');
+        const daysInMonth = new Date(lastWorkDate.getFullYear(), lastWorkDate.getMonth() + 1, 0).getDate();
+        
+        let calendarData = {};
+        const formatDateJSTLocal = (d) => {
+            const jst = new Date(d.getTime() + (9 * 60 * 60 * 1000));
+            return jst.toISOString().split("T")[0];
+        };
+
+        // 共通・店舗別カレンダーの取得
+        const [commonCalSnap, storeCalSnap] = await Promise.all([
+            getDoc(doc(db, "m_calendars", `${ym}_common`)),
+            getDoc(doc(db, "m_calendars", `${ym}_${storeId}`))
+        ]);
+
+        if (commonCalSnap.exists()) {
+            commonCalSnap.data().days?.forEach(d => {
+                const ymd = `${ym}-${String(d.day).padStart(2, '0')}`;
+                calendarData[ymd] = { type: d.type || 'work', is_holiday: d.is_holiday || false };
+            });
+        }
+        if (storeCalSnap.exists()) {
+            storeCalSnap.data().days?.forEach(d => {
+                const ymd = `${ym}-${String(d.day).padStart(2, '0')}`;
+                if (!calendarData[ymd]) calendarData[ymd] = { type: 'work', is_holiday: false };
+                calendarData[ymd].type = d.type;
+            });
+        }
+
+        // 2. 目標と指数の取得 (加重平均による日次目標算出)
         let target = { sales: 0 };
         const goalSnap = await getDoc(doc(db, "t_monthly_goals", `${ym}_${storeId}`));
+        
         if (goalSnap.exists()) {
             const g = goalSnap.data();
-            const calSnap = await getDoc(doc(db, "m_calendars", `${ym}_common`));
-            const workDays = calSnap.exists() ? calSnap.data().days.filter(d => d.type === 'work').length : 25;
-            target.sales = (g.sales_target || 0) / (workDays || 25);
+            const monthlyTarget = g.sales_target || 0;
+            const weights = g.weights || { 
+                mon_thu: 1.0, fri: 1.2, sat: 1.5, sun: 1.4, holiday: 1.5, day_before_holiday: 1.6 
+            };
+
+            let totalMonthPoints = 0;
+            let yesterdayPoint = 0;
+            // lastWorkDate は既に日付のみの Date オブジェクトだが、確実に比較するため文字列化
+            const yesterdayYmd = lastWorkDate.toISOString().split("T")[0]; 
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                const date = new Date(lastWorkDate.getFullYear(), lastWorkDate.getMonth(), d);
+                const ymd = date.toISOString().split("T")[0];
+                const cal = calendarData[ymd] || { type: 'work', is_holiday: false };
+
+                if (cal.type !== 'work') {
+                    if (ymd === yesterdayYmd) yesterdayPoint = 0;
+                    continue;
+                }
+
+                const dow = date.getDay();
+                // 祝前日判定
+                const nextDate = new Date(lastWorkDate.getFullYear(), lastWorkDate.getMonth(), d + 1);
+                const nextYmd = nextDate.toISOString().split("T")[0];
+                const nextCal = calendarData[nextYmd] || {};
+                const isDayBeforeH = nextCal.is_holiday || false;
+
+                const indices = [];
+                if (dow >= 1 && dow <= 4) indices.push(weights.mon_thu);
+                else if (dow === 5) indices.push(weights.fri);
+                else if (dow === 6) indices.push(weights.sat);
+                else if (dow === 0) indices.push(weights.sun);
+
+                if (cal.is_holiday) indices.push(weights.holiday);
+                if (isDayBeforeH) indices.push(weights.day_before_holiday || 1.0);
+
+                const dayPoint = Math.max(...indices);
+                totalMonthPoints += dayPoint;
+                if (ymd === yesterdayYmd) yesterdayPoint = dayPoint;
+            }
+
+            const unitValue = totalMonthPoints > 0 ? (monthlyTarget / totalMonthPoints) : 0;
+            target.sales = Math.round(unitValue * yesterdayPoint);
         }
 
         // 予算目標 (m_annual_budgets) から客単価目標と人時売上目標を算出
@@ -639,6 +710,7 @@ async function renderPerformanceSummary(user) {
         
         const sph = actual.total_labor_hours > 0 ? Math.round(actual.sales_ex_tax / actual.total_labor_hours) : 0;
         const sphRate = targetSPH > 0 ? (sph / targetSPH) * 100 : 0;
+
 
         grid.innerHTML = `
             <div class="cockpit-kpi-card">
