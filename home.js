@@ -382,14 +382,22 @@ export const homePageMobileHtml = `
                 <div id="mobile-accordion-body"></div>
             </div>
         </div>
-
-                <!-- KPI 2x2 がここに描画される -->
-            </div>
+        <!-- 5. 本日の目標セクション (バナー形式) -->
+        <div id="mobile-today-target-section" style="display: none; margin-bottom: 1.5rem;">
+            <!-- バナーがここに描画される -->
         </div>
 
-        <!-- 5. 本日の目標セクション (バナー形式) -->
-        <div id="mobile-today-target-section" style="display: none; margin-bottom: 2rem;">
-            <!-- バナーがここに描画される -->
+        <!-- 4. KPIセクション (2x2) -->
+        <div id="mobile-kpi-section" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
+                <h3 style="font-size: 0.85rem; font-weight: 850; margin: 0; color: var(--text-primary);">
+                    <i class="fas fa-chart-line" style="color: var(--primary); margin-right: 0.4rem;"></i> 昨日実績サマリー
+                </h3>
+                <span id="mobile-yesterday-label" style="font-size: 0.65rem; font-weight: 700; color: var(--text-secondary); background: #fff; padding: 2px 8px; border-radius: 10px; border: 1px solid #eee;">----</span>
+            </div>
+            <div class="kpi-grid-mobile" id="mobile-kpi-grid">
+                <!-- KPI 2x2 がここに描画される -->
+            </div>
         </div>
 
         <!-- ターゲットコンテナ（アコーディオンの中身の流し込み先） -->
@@ -487,7 +495,7 @@ function setupMobileShortcuts(user, permissions) {
     if (!navBar) return;
 
     const allShortcuts = [
-        { id: 'shifts', name: '出勤布陣', icon: 'fa-users-rectangle', role: ['Admin', 'Manager', 'Staff'] },
+        { id: 'shifts', name: '今日のスタッフ', icon: 'fa-users-rectangle', role: ['Admin', 'Manager', 'Staff'] },
         { id: 'ops', name: '業務ハブ', icon: 'fa-rocket', role: ['Admin', 'Manager', 'Staff'] },
         { id: 'assets', name: 'マイ・アセット', icon: 'fa-hand-holding-heart', role: ['Admin', 'Manager', 'Staff', 'PartTimer'] },
         { id: 'attendance', name: '勤怠', icon: 'fa-clock', role: ['PartTimer'] }
@@ -1326,15 +1334,15 @@ async function renderTodayTargetBanner(user) {
                     </div>
                     <span style="font-size: 0.9rem; font-weight: 850; color: var(--text-primary);">今日の目標</span>
                 </div>
-                <div style="display: flex; gap: 1.2rem; align-items: center;">
-                    <div style="display: flex; flex-direction: column; align-items: flex-end;">
-                        <span style="font-size: 0.65rem; color: var(--text-secondary); font-weight: 800;">売上目標</span>
-                        <span style="font-size: 1.1rem; font-weight: 900; color: var(--text-primary);">¥${targets.sales.toLocaleString()}</span>
+                <div style="display: flex; gap: 1.5rem; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-coins" style="font-size: 0.8rem; color: #f59e0b;"></i>
+                        <span style="font-size: 1.15rem; font-weight: 900; color: var(--text-primary);">¥${targets.sales.toLocaleString()}</span>
                     </div>
-                    <div style="width: 1px; height: 24px; background: #fee2e2;"></div>
-                    <div style="display: flex; flex-direction: column; align-items: flex-end;">
-                        <span style="font-size: 0.65rem; color: var(--text-secondary); font-weight: 800;">来客目標</span>
-                        <span style="font-size: 1.1rem; font-weight: 900; color: var(--text-primary);">${targets.customers}名</span>
+                    <div style="width: 1px; height: 20px; background: #fecaca;"></div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-users" style="font-size: 0.8rem; color: #3b82f6;"></i>
+                        <span style="font-size: 1.15rem; font-weight: 900; color: var(--text-primary);">${targets.customers}名</span>
                     </div>
                 </div>
             </div>
