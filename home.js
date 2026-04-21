@@ -539,13 +539,25 @@ async function toggleMobileAccordion(type, user, permissions) {
 
     try {
         if (type === 'shifts') {
-            body.innerHTML = '<div id="home-shift-grid" style="display:grid; grid-template-columns:1fr; gap:0.8rem;"></div>';
+            body.innerHTML = `
+                <div id="today-shifts-container">
+                    <div id="home-shift-grid" style="display:grid; grid-template-columns:1fr; gap:0.8rem;"></div>
+                </div>
+            `;
             await renderTodayShifts(user);
         } else if (type === 'ops') {
-            body.innerHTML = '<div id="home-ops-grid" class="ops-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 1rem;"></div>';
+            body.innerHTML = `
+                <div id="tablet-cockpit-container">
+                    <div id="home-ops-grid" class="ops-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 1rem;"></div>
+                </div>
+            `;
             renderOperationCards(permissions, user.Role);
         } else if (type === 'assets') {
-            body.innerHTML = '<div id="home-assets-list"></div>';
+            body.innerHTML = `
+                <div id="personal-assets-container">
+                    <div id="home-assets-list"></div>
+                </div>
+            `;
             await renderPersonalAssets(user);
         }
     } catch (e) {
@@ -1327,22 +1339,28 @@ async function renderTodayTargetBanner(user) {
 
         section.style.display = 'block';
         section.innerHTML = `
-            <div style="background: linear-gradient(135deg, #fff5f5 0%, #fff0f0 100%); border: 1px solid #fee2e2; border-radius: 20px; padding: 1rem 1.2rem; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 6px -1px rgba(230, 57, 70, 0.05);">
-                <div style="display: flex; align-items: center; gap: 0.8rem;">
-                    <div style="width: 36px; height: 36px; background: white; color: var(--primary); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 0 2px 4px rgba(230, 57, 70, 0.1);">
-                        <i class="fas fa-bullseye"></i>
-                    </div>
-                    <span style="font-size: 0.9rem; font-weight: 850; color: var(--text-primary);">今日の目標</span>
+            <div style="background: linear-gradient(135deg, #fff5f5 0%, #fff0f0 100%); border: 1px solid #fee2e2; border-radius: 20px; padding: 1.2rem; display: flex; flex-direction: column; align-items: center; box-shadow: 0 4px 6px -1px rgba(230, 57, 70, 0.05); position: relative;">
+                <!-- 上段: センタータイトル -->
+                <div style="font-size: 0.7rem; font-weight: 850; color: var(--text-secondary); margin-bottom: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em;">
+                    今日の目標
                 </div>
-                <div style="display: flex; gap: 1.5rem; align-items: center;">
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <i class="fas fa-coins" style="font-size: 0.8rem; color: #f59e0b;"></i>
-                        <span style="font-size: 1.15rem; font-weight: 900; color: var(--text-primary);">¥${targets.sales.toLocaleString()}</span>
+
+                <!-- 下段: アイコンと数値 -->
+                <div style="display: flex; gap: 2rem; align-items: center; justify-content: center; width: 100%;">
+                    <div style="display: flex; align-items: center; gap: 0.6rem;">
+                        <div style="width: 32px; height: 32px; background: rgba(245, 158, 11, 0.1); color: #f59e0b; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.9rem;">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                        <span style="font-size: 1.2rem; font-weight: 900; color: var(--text-primary); white-space: nowrap;">¥${targets.sales.toLocaleString()}</span>
                     </div>
-                    <div style="width: 1px; height: 20px; background: #fecaca;"></div>
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <i class="fas fa-users" style="font-size: 0.8rem; color: #3b82f6;"></i>
-                        <span style="font-size: 1.15rem; font-weight: 900; color: var(--text-primary);">${targets.customers}名</span>
+                    
+                    <div style="width: 1px; height: 30px; background: #fecaca; opacity: 0.5;"></div>
+                    
+                    <div style="display: flex; align-items: center; gap: 0.6rem;">
+                        <div style="width: 32px; height: 32px; background: rgba(59, 130, 246, 0.1); color: #3b82f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.9rem;">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <span style="font-size: 1.2rem; font-weight: 900; color: var(--text-primary); white-space: nowrap;">${targets.customers}<small style="font-size: 0.7rem; font-weight: 800; margin-left: 2px;">名</small></span>
                     </div>
                 </div>
             </div>
