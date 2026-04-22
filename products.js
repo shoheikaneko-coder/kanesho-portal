@@ -99,7 +99,7 @@ function renderFormViewMobile(container) {
 
     container.innerHTML = `
         <div class="animate-fade-in" style="padding-bottom: 100px;">
-            <div style="padding: 1rem; background: ${primaryColor}f2; color: white; margin-bottom: 1rem; border-radius: 0 0 20px 20px;">
+            <div style="padding: 1rem; background: ${primaryColor}; border-bottom: 2px solid rgba(0,0,0,0.1); color: white; margin-bottom: 1rem; border-radius: 0 0 20px 20px;">
                 <div style="font-size: 0.75rem; font-weight: 800; opacity: 0.9; margin-bottom: 2px;">${isRecipe ? (isMenu ? 'SALES MENU' : 'HOMEMADE') : 'INGREDIENT'}</div>
                 <h2 style="margin: 0; font-size: 1.25rem; font-weight: 900;">${isEdit ? editingItemData.name : '新規登録'}</h2>
             </div>
@@ -1174,9 +1174,9 @@ function renderCardsMobile(filter = "", containerId = 'mobile-card-list') {
     const itemsToShow = filteredItems.slice(startIndex, startIndex + pageSize);
 
     if (totalItems === 0) {
-        countLabel.textContent = `0 件`;
+        if (countLabel) countLabel.textContent = `0 件`;
     } else {
-        countLabel.textContent = `${startIndex + 1}-${Math.min(startIndex + pageSize, totalItems)} / ${totalItems} 件`;
+        if (countLabel) countLabel.textContent = `${startIndex + 1}-${Math.min(startIndex + pageSize, totalItems)} / ${totalItems} 件`;
     }
 
     listContainer.innerHTML = '';
@@ -1287,8 +1287,9 @@ function renderCardsMobile(filter = "", containerId = 'mobile-card-list') {
         listContainer.appendChild(card);
     });
 
-    paginationContainer.innerHTML = '';
-    if (totalPages > 1) {
+    if (paginationContainer) {
+        paginationContainer.innerHTML = '';
+        if (totalPages > 1) {
         const prevBtn = document.createElement('button');
         prevBtn.className = 'btn';
         prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
@@ -1320,6 +1321,7 @@ function setupMobileListListeners() {
     if (trigger && overlay) {
         trigger.onclick = () => {
             overlay.classList.add('show');
+            document.body.style.overflow = 'hidden'; // 背景スクロール禁止
             searchInput.focus();
         };
     }
@@ -1327,6 +1329,7 @@ function setupMobileListListeners() {
     if (closeBtn && overlay) {
         closeBtn.onclick = () => {
             overlay.classList.remove('show');
+            document.body.style.overflow = ''; // スクロール復帰
         };
     }
 
