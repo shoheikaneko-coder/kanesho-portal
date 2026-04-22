@@ -18,8 +18,22 @@ let currentSearchQuery = ''; // 検索条件の永続化用
 let missingRecipeOnly = false; // レシピ未登録のみ表示フィルタ
 
 export const productsPageHtml = `
-    <div id="products-page-container" class="animate-fade-in">
+    <div id="products-page-container" class="animate-fade-in product-master-v2">
         <!-- Content will be swapped here -->
+    </div>
+`;
+
+// Desktop layout template
+const productsPageHtmlDesktop = `
+    <div id="products-desktop-view">
+        <!-- Desktop specific view logic container -->
+    </div>
+`;
+
+// Mobile layout template
+const productsPageHtmlMobile = `
+    <div id="products-mobile-view">
+        <!-- Mobile specific view logic container -->
     </div>
 `;
 
@@ -27,25 +41,63 @@ function renderView() {
     const container = document.getElementById('products-page-container');
     if (!container) return;
 
-    if (currentView === 'form') {
-        renderFormView(container);
+    const isMobile = window.innerWidth <= 1024;
+    
+    if (isMobile) {
+        renderViewMobile(container);
     } else {
-        renderListView(container);
+        renderViewPC(container);
     }
 }
 
-function renderFormView(container) {
+/**
+ * PC版描画エントリーポイント
+ */
+function renderViewPC(container) {
+    if (currentView === 'form') {
+        renderFormViewPC(container);
+    } else {
+        renderListViewPC(container);
+    }
+}
+
+/**
+ * スマホ版描画エントリーポイント (独立構築用)
+ */
+function renderViewMobile(container) {
+    // 初期状態はPC版と同じロジックを呼び出しますが、将来的にここを独自実装に差し替えます
+    if (currentView === 'form') {
+        renderFormViewMobile(container);
+    } else {
+        renderListViewMobile(container);
+    }
+}
+
+function renderFormViewPC(container) {
     const itemMenu = editingItemData ? cachedMenus.find(m => m.item_id === editingItemData.id) : null;
     // 自家製原材料（サブレシピ）はどこから編集してもレシピエディタを表示する
     if (itemMenu?.is_sub_recipe || currentTab === 'sub_recipes' || currentTab === 'menus') {
         const type = itemMenu?.is_sub_recipe ? 'sub_recipes' : currentTab;
-        renderRecipeEditor(container, type);
+        renderRecipeEditorPC(container, type);
     } else {
-        renderStandardForm(container);
+        renderStandardFormPC(container);
     }
 }
 
-function renderRecipeEditor(container, type) {
+/**
+ * スマホ版：フォーム（編集）画面の描画
+ */
+function renderFormViewMobile(container) {
+    const itemMenu = editingItemData ? cachedMenus.find(m => m.item_id === editingItemData.id) : null;
+    if (itemMenu?.is_sub_recipe || currentTab === 'sub_recipes' || currentTab === 'menus') {
+        const type = itemMenu?.is_sub_recipe ? 'sub_recipes' : currentTab;
+        renderRecipeEditorMobile(container, type); // スマホ版エディタを呼ぶ
+    } else {
+        renderStandardFormMobile(container); // スマホ版標準フォームを呼ぶ
+    }
+}
+
+function renderRecipeEditorPC(container, type) {
     const isEdit = !!editingItemData;
     const menuData = isEdit ? cachedMenus.find(m => m.item_id === editingItemData.id) : null;
     const isMenu = type === 'menus';
@@ -266,8 +318,16 @@ function renderRecipeEditor(container, type) {
     attachGlobalFormEvents();
 }
 
+/**
+ * スマホ版：レシピエディタの描画 (独立構築用)
+ */
+function renderRecipeEditorMobile(container, type) {
+    // 独立構築の初期段階としてPC版と同じ構造を使用します
+    renderRecipeEditorPC(container, type);
+}
 
-function renderStandardForm(container) {
+
+function renderStandardFormPC(container) {
     const isEdit = !!editingItemData;
     container.innerHTML = `
         <div class="animate-fade-in" style="background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); overflow: hidden;">
@@ -423,6 +483,14 @@ function renderStandardForm(container) {
     `;
 
     attachGlobalFormEvents();
+}
+
+/**
+ * スマホ版：標準フォームの描画 (独立構築用)
+ */
+function renderStandardFormMobile(container) {
+    // 独立構築の初期段階としてPC版と同じ構造を使用します
+    renderStandardFormPC(container);
 }
 
 function renderFormActions(isEdit) {
@@ -791,7 +859,7 @@ function setupIncrementalSearch() {
     });
 }
 
-function renderListView(container) {
+function renderListViewPC(container) {
     container.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
             <div>
@@ -859,6 +927,14 @@ function renderListView(container) {
     // Re-attach listeners for list view
     setupListViewListeners();
     renderTable(currentSearchQuery);
+}
+
+/**
+ * スマホ版：一覧画面の描画 (独立構築用)
+ */
+function renderListViewMobile(container) {
+    // 独立構築の初期段階としてPC版と同じ構造を使用します
+    renderListViewPC(container);
 }
 
 function setupListViewListeners() {
