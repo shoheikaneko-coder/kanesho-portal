@@ -2525,13 +2525,16 @@ input:checked + .toggle-slider:before {
 /* Focus Search Overlay */
 .search-overlay-mobile {
     position: fixed;
-    inset: 0;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
     background: white;
-    z-index: 10100;
+    z-index: 99999; /* 完全に最前面へ */
     display: none;
     flex-direction: column;
     padding-top: env(safe-area-inset-top);
-    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: fadeIn 0.2s ease-out;
 }
 
 .search-overlay-mobile.show {

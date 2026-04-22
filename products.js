@@ -1119,10 +1119,10 @@ function renderListViewMobile(container) {
 /**
  * スマホ版：カード形式でのリスト描画
  */
-function renderCardsMobile(filter = "") {
-    const listContainer = document.getElementById('mobile-card-list');
-    const countLabel = document.getElementById('mobile-count-label');
-    const paginationContainer = document.getElementById('mobile-pagination');
+function renderCardsMobile(filter = "", containerId = 'mobile-card-list') {
+    const listContainer = document.getElementById(containerId);
+    const countLabel = containerId === 'mobile-card-list' ? document.getElementById('mobile-count-label') : null;
+    const paginationContainer = containerId === 'mobile-card-list' ? document.getElementById('mobile-pagination') : null;
     if (!listContainer) return;
 
     const query = filter.toLowerCase();
@@ -1256,6 +1256,9 @@ function renderCardsMobile(filter = "") {
         card.onclick = () => {
             editingItemData = item;
             currentView = 'form';
+            // 検索オーバーレイ経由の場合は閉じる
+            const overlay = document.getElementById('search-overlay');
+            if (overlay) overlay.classList.remove('show');
             renderView();
         };
         listContainer.appendChild(card);
@@ -1306,9 +1309,17 @@ function setupMobileListListeners() {
 
     if (searchInput) {
         searchInput.oninput = (e) => {
-            const query = e.target.value;
+            const query = e.target.value.trim();
+            // オーバーレイ内での検索時は常にオーバーレイの結果コンテナをターゲットにする
+            if (query.length > 0) {
+                renderCardsMobile(query, 'search-results-mobile');
+            } else {
+                const resultsContainer = document.getElementById('search-results-mobile');
+                if (resultsContainer) resultsContainer.innerHTML = '';
+            }
+            // ついでに背後のリストも同期（任意ですが、直感的なため継続）
             currentPage = 1; 
-            renderCardsMobile(query);
+            renderCardsMobile(query, 'mobile-card-list');
         };
     }
 }
