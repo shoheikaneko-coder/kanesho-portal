@@ -64,12 +64,245 @@ function renderViewPC(container) {
 /**
  * スマホ版描画エントリーポイント (独立構築用)
  */
-function renderViewMobile(container) {
-    // 初期状態はPC版と同じロジックを呼び出しますが、将来的にここを独自実装に差し替えます
-    if (currentView === 'form') {
-        renderFormViewMobile(container);
+function renderListViewMobile(container) {
+    container.innerHTML = `
+        <div class="animate-fade-in" style="padding-bottom: 80px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem;">
+                <h2 style="margin: 0; font-size: 1.25rem; font-weight: 850; color: var(--text-primary);">商品・レシピマスタ</h2>
+                <button id="mobile-search-trigger" style="background: #f1f5f9; border: none; width: 42px; height: 42px; border-radius: 12px; color: var(--text-secondary); cursor: pointer;">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+
+            <div class="mobile-category-tabs">
+                <div class="mobile-cat-tab ${currentTab === 'menus' ? 'active' : ''}" onclick="switchTab('menus')">販売メニュー</div>
+                <div class="mobile-cat-tab ${currentTab === 'sub_recipes' ? 'active' : ''}" onclick="switchTab('sub_recipes')">自家製原材料</div>
+                <div class="mobile-cat-tab ${currentTab === 'ingredients' ? 'active' : ''}" onclick="switchTab('ingredients')">食材・仕入品</div>
+            </div>
+
+            <div id="mobile-card-list" style="padding: 0 1rem;">
+                <!-- Cards will be rendered here -->
+            </div>
+
+            <div id="mobile-count-label" style="text-align: center; padding: 1rem; font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;"></div>
+            <div id="mobile-pagination" style="display: flex; justify-content: center; gap: 0.5rem; padding-bottom: 2rem;"></div>
+
+            <!-- Focus Search Overlay -->
+            <div id="search-overlay" class="search-overlay-mobile">
+                <div class="search-header-mobile">
+                    <div class="search-input-wrapper-mobile">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="mobile-search-input" class="search-input-mobile" placeholder="名称やカテゴリで検索..." autocomplete="off">
+                    </div>
+                    <button id="search-close-btn" class="search-cancel-btn">キャンセル</button>
+                </div>
+                <div id="search-results-mobile" class="search-results-mobile">
+                    <!-- Dynamic search results here -->
+                </div>
+            </div>
+        </div>
+    `;
+
+    renderCardsMobile();
+    setupMobileListListeners();
+}
+
+/**
+ * スマホ版：カード形式でのリスト描画
+ */
+function renderCardsMobile(filter = "") {
+    const listContainer = document.getElementById('mobile-card-list');
+    const countLabel = document.getElementById('mobile-count-label');
+    const paginationContainer = document.getElementById('mobile-pagination');
+    if (!listContainer) return;
+
+    const query = filter.toLowerCase();
+    const queryHira = toHiragana(query);
+
+    const filteredItems = cachedItems.filter(item => {
+        const nameHira = toHiragana((item.name || "").toLowerCase());
+        const catHira = toHiragana((item.category || "").toLowerCase());
+        const majHira = toHiragana((item.major_category || "").toLowerCase());
+        const furiHira = (item.furigana || "").toLowerCase();
+        
+        const store = (cachedStores || []).find(s => (s.store_id || s.id) === item.store_id);
+        const snHira = toHiragana((store?.store_name || "").toLowerCase());
+
+        const isMatch = (item.name && item.name.toLowerCase().includes(query)) ||
+                      nameHira.includes(queryHira) ||
+                      (item.category && item.category.toLowerCase().includes(query)) ||
+                      catHira.includes(queryHira) ||
+                      (item.major_category && item.major_category.toLowerCase().includes(query)) ||
+                      majHira.includes(queryHira) ||
+                      (store?.store_name && store.store_name.toLowerCase().includes(query)) ||
+                      snHira.includes(queryHira) ||
+                      furiHira.includes(queryHira);
+        
+        if (!isMatch && filter !== "") return false;
+
+        const menu = cachedMenus.find(m => m.item_id === item.id);
+        if (currentTab === 'menus') {
+            return menu && (menu.is_sub_recipe !== true);
+        } else if (currentTab === 'sub_recipes') {
+            return menu && (menu.is_sub_recipe === true);
+        } else {
+            return cachedIngredients.some(ing => ing.item_id === item.id) || (!menu);
+        }
+    });
+
+    const totalItems = filteredItems.length;
+    let totalPages = Math.ceil(totalItems / pageSize);
+    if (totalPages === 0) totalPages = 1;
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+
+    const startIndex = (currentPage - 1) * pageSize;
+    const itemsToShow = filteredItems.slice(startIndex, startIndex + pageSize);
+
+    if (totalItems === 0) {
+        countLabel.textContent = `0 件`;
     } else {
-        renderListViewMobile(container);
+        countLabel.textContent = `${startIndex + 1}-${Math.min(startIndex + pageSize, totalItems)} / ${totalItems} 件`;
+    }
+
+    listContainer.innerHTML = '';
+    if (itemsToShow.length === 0) {
+        listContainer.innerHTML = '<div style="text-align:center; padding: 4rem; color: var(--text-secondary);">該当するデータがありません</div>';
+        return;
+    }
+
+    itemsToShow.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'product-card-mobile';
+        
+        if (currentTab === 'menus' || currentTab === 'sub_recipes') {
+            const menu = cachedMenus.find(m => m.item_id === item.id);
+            const salesPrice = menu?.sales_price || 0;
+            const cost = getEffectivePrice(item.id, { items: cachedItems, ingredients: cachedIngredients, menus: cachedMenus });
+            const profit = salesPrice - cost;
+            const margin = salesPrice > 0 ? (profit / salesPrice) * 100 : 0;
+            const hasRecipe = (menu?.recipe?.length || 0) > 0;
+            const store = (cachedStores || []).find(s => (s.store_id || s.id) === item.store_id);
+
+            card.innerHTML = `
+                <div class="product-card-header">
+                    <div class="product-card-title">${item.name}</div>
+                    <div class="badge-modern ${hasRecipe ? 'badge-status-ok' : 'badge-status-missing'}">
+                        ${hasRecipe ? 'レシピ済' : '未登録'}
+                    </div>
+                </div>
+                <div class="product-card-badges">
+                    ${store ? `<span class="badge-modern" style="background:#e2e8f0; color:#475569;">${store.store_name}</span>` : ''}
+                    <span class="badge-modern" style="background:#eff6ff; color:#2563eb;">${item.category || '未分類'}</span>
+                </div>
+                <div class="product-card-metrics">
+                    <div class="metric-box">
+                        <span class="metric-label">${currentTab === 'menus' ? '販売単価' : '原価（算出）'}</span>
+                        <span class="metric-val">¥${Math.round(currentTab === 'menus' ? salesPrice : cost).toLocaleString()}</span>
+                    </div>
+                    ${currentTab === 'menus' ? `
+                    <div class="metric-box">
+                        <span class="metric-label">原価率</span>
+                        <span class="metric-val" style="color:${margin > 70 ? 'var(--primary)' : 'inherit'}">${Math.round(margin)}%</span>
+                    </div>
+                    ` : `
+                    <div class="metric-box">
+                        <span class="metric-label">備考</span>
+                        <span class="metric-val" style="font-size:0.75rem; color:var(--text-secondary); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${item.notes || '-'}</span>
+                    </div>
+                    `}
+                </div>
+            `;
+        } else {
+            const ing = cachedIngredients.find(i => i.item_id === item.id);
+            const vendor = cachedVendors.find(v => (v.vendor_id || v.id) === ing?.vendor_id);
+            const purchasePrice = ing?.purchase_price || 0;
+            const yieldRate = ing?.yield_rate || 1.0;
+            const contentAmount = item.content_amount || 0;
+            const netUnitPrice = (contentAmount > 0 && yieldRate > 0) ? purchasePrice / (yieldRate * contentAmount) : 0;
+
+            card.innerHTML = `
+                <div class="product-card-header">
+                    <div class="product-card-title">${item.name}</div>
+                    <div class="badge-modern ${vendor ? 'badge-status-ok' : 'badge-status-missing'}">
+                        ${vendor ? (vendor.vendor_name.length > 8 ? vendor.vendor_name.substring(0,8)+'..' : vendor.vendor_name) : '業者未登録'}
+                    </div>
+                </div>
+                <div class="product-card-badges">
+                    <span class="badge-modern" style="background:#f0fdf4; color:#10b981;">${item.category || '未分'}</span>
+                    <span class="badge-modern" style="background:#f1f5f9; color:#64748b;">${contentAmount}${item.unit} / ${Math.round(yieldRate*100)}%</span>
+                </div>
+                <div class="product-card-metrics">
+                    <div class="metric-box">
+                        <span class="metric-label">仕入単価</span>
+                        <span class="metric-val">¥${purchasePrice.toLocaleString()}</span>
+                    </div>
+                    <div class="metric-box">
+                        <span class="metric-label">正味単価</span>
+                        <span class="metric-val" style="color:var(--primary)">¥${netUnitPrice.toFixed(2)}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        card.onclick = () => {
+            editingItemData = item;
+            currentView = 'form';
+            renderView();
+        };
+        listContainer.appendChild(card);
+    });
+
+    // Pagination (Simple version for mobile)
+    paginationContainer.innerHTML = '';
+    if (totalPages > 1) {
+        const prevBtn = document.createElement('button');
+        prevBtn.className = 'btn';
+        prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+        prevBtn.disabled = currentPage === 1;
+        prevBtn.onclick = (e) => { e.stopPropagation(); currentPage--; renderCardsMobile(filter); };
+        paginationContainer.appendChild(prevBtn);
+
+        const pageIndicator = document.createElement('span');
+        pageIndicator.style.alignSelf = 'center';
+        pageIndicator.style.fontWeight = '800';
+        pageIndicator.textContent = `${currentPage} / ${totalPages}`;
+        paginationContainer.appendChild(pageIndicator);
+
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'btn';
+        nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+        nextBtn.disabled = currentPage === totalPages;
+        nextBtn.onclick = (e) => { e.stopPropagation(); currentPage++; renderCardsMobile(filter); };
+        paginationContainer.appendChild(nextBtn);
+    }
+}
+
+function setupMobileListListeners() {
+    const trigger = document.getElementById('mobile-search-trigger');
+    const overlay = document.getElementById('search-overlay');
+    const closeBtn = document.getElementById('search-close-btn');
+    const searchInput = document.getElementById('mobile-search-input');
+
+    if (trigger && overlay) {
+        trigger.onclick = () => {
+            overlay.classList.add('show');
+            searchInput.focus();
+        };
+    }
+
+    if (closeBtn && overlay) {
+        closeBtn.onclick = () => {
+            overlay.classList.remove('show');
+        };
+    }
+
+    if (searchInput) {
+        searchInput.oninput = (e) => {
+            const query = e.target.value;
+            currentPage = 1; 
+            renderCardsMobile(query);
+        };
     }
 }
 
@@ -87,14 +320,168 @@ function renderFormViewPC(container) {
 /**
  * スマホ版：フォーム（編集）画面の描画
  */
+/**
+ * スマホ版：フォーム（編集）画面の描画
+ */
 function renderFormViewMobile(container) {
     const itemMenu = editingItemData ? cachedMenus.find(m => m.item_id === editingItemData.id) : null;
-    if (itemMenu?.is_sub_recipe || currentTab === 'sub_recipes' || currentTab === 'menus') {
-        const type = itemMenu?.is_sub_recipe ? 'sub_recipes' : currentTab;
-        renderRecipeEditorMobile(container, type); // スマホ版エディタを呼ぶ
-    } else {
-        renderStandardFormMobile(container); // スマホ版標準フォームを呼ぶ
-    }
+    const isEdit = !!editingItemData;
+    const isRecipe = itemMenu?.is_sub_recipe || currentTab === 'sub_recipes' || currentTab === 'menus';
+    const type = itemMenu?.is_sub_recipe ? 'sub_recipes' : currentTab;
+    const isMenu = type === 'menus';
+    const primaryColor = isMenu ? 'var(--recipe-menu-primary)' : 'var(--recipe-homemade-primary)';
+
+    container.innerHTML = `
+        <div class="animate-fade-in" style="padding-bottom: 100px;">
+            <div style="padding: 1rem; background: ${primaryColor}f2; color: white; margin-bottom: 1rem; border-radius: 0 0 20px 20px;">
+                <div style="font-size: 0.75rem; font-weight: 800; opacity: 0.9; margin-bottom: 2px;">${isRecipe ? (isMenu ? 'SALES MENU' : 'HOMEMADE') : 'INGREDIENT'}</div>
+                <h2 style="margin: 0; font-size: 1.25rem; font-weight: 900;">${isEdit ? editingItemData.name : '新規登録'}</h2>
+            </div>
+
+            <form id="item-form">
+                <!-- 基本情報セクション -->
+                <div class="smart-accordion open">
+                    <div class="accordion-header" onclick="toggleAccordion(this)">
+                        <span class="accordion-title"><i class="fas fa-info-circle"></i> 基本情報</span>
+                        <i class="fas fa-chevron-down accordion-icon"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="input-group">
+                            <label>ふりがな</label>
+                            <input type="text" id="item-furigana" value="${isEdit ? (editingItemData.furigana || '') : ''}" class="recipe-pro-input">
+                        </div>
+                        <div class="input-group">
+                            <label>表示名称 <span style="color:var(--danger)">*</span></label>
+                            <input type="text" id="item-name" required value="${isEdit ? editingItemData.name : ''}" class="recipe-pro-input">
+                        </div>
+                        <div class="input-group">
+                            <label>カテゴリー</label>
+                            <input type="text" id="item-category" value="${isEdit ? (editingItemData.category || '') : ''}" class="recipe-pro-input">
+                        </div>
+                        ${isRecipe ? `
+                            <div class="input-group">
+                                <label>販売店舗</label>
+                                <select id="item-store-id" class="recipe-pro-input">
+                                    <option value="">選択...</option>
+                                    ${cachedStores.filter(s => s.store_type !== 'CK').map(s => `<option value="${s.store_id || s.id}" ${isEdit && editingItemData.store_id === (s.store_id || s.id) ? 'selected' : ''}>${s.store_name}</option>`).join('')}
+                                </select>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+
+                ${isRecipe ? `
+                <!-- レシピ構成セクション -->
+                <div class="smart-accordion open">
+                    <div class="accordion-header" onclick="toggleAccordion(this)">
+                        <span class="accordion-title"><i class="fas fa-layer-group"></i> レシピ構成</span>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                             <span id="display-total-cost" style="font-size: 0.85rem; font-weight: 800; color: var(--primary);">¥ 0</span>
+                             <i class="fas fa-chevron-down accordion-icon"></i>
+                        </div>
+                    </div>
+                    <div class="accordion-content" style="padding: 1rem 0;">
+                        <!-- レシピ明細部分はPC版と同じ要素構成を維持 -->
+                        <div class="incremental-search-v2" style="margin: 0 1rem 1rem; border: 1px solid var(--border); border-radius: 12px; overflow: hidden;">
+                             <input type="text" id="recipe-search-input" placeholder="材料を検索..." style="width: 100%; border: none; padding: 0.8rem 1rem; font-size: 1rem; outline: none;">
+                        </div>
+                        <div id="recipe-items-container" style="padding: 0 0.5rem;">
+                            <!-- recipe rows will be rendered here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 工程・メモセクション -->
+                <div class="smart-accordion">
+                    <div class="accordion-header" onclick="toggleAccordion(this)">
+                        <span class="accordion-title"><i class="fas fa-sticky-note"></i> 工程・メモ</span>
+                        <i class="fas fa-chevron-down accordion-icon"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <textarea id="recipe-instructions" class="recipe-pro-input" style="min-height: 150px; line-height: 1.6;">${isEdit ? (itemMenu?.notes || editingItemData?.notes || '') : ''}</textarea>
+                    </div>
+                </div>
+                ` : `
+                <!-- 食材詳細セクション -->
+                <div class="smart-accordion open">
+                    <div class="accordion-header" onclick="toggleAccordion(this)">
+                        <span class="accordion-title"><i class="fas fa-box"></i> 仕入・内容量</span>
+                        <i class="fas fa-chevron-down accordion-icon"></i>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="input-group">
+                            <label>仕入業者</label>
+                            <select id="ing-vendor-id" class="recipe-pro-input"></select>
+                        </div>
+                        <div class="grid-2">
+                            <div class="input-group">
+                                <label>管理単位 (g/ml等)</label>
+                                <input type="text" id="item-unit" value="${isEdit ? (editingItemData.unit || '') : ''}" class="recipe-pro-input">
+                            </div>
+                            <div class="input-group">
+                                <label>内容量</label>
+                                <input type="number" id="item-content-amount" value="${isEdit ? (editingItemData.content_amount || 0) : 0}" step="any" class="recipe-pro-input">
+                            </div>
+                        </div>
+                        <div class="grid-2">
+                            <div class="input-group">
+                                <label>仕入単価 (税込)</label>
+                                <input type="number" id="ing-purchase-price" value="0" step="any" class="recipe-pro-input">
+                            </div>
+                            <div class="input-group">
+                                <label>歩留 (0.0~1.0)</label>
+                                <input type="number" id="ing-yield-rate" value="1.0" step="any" class="recipe-pro-input">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                `}
+
+                <button type="submit" id="btn-form-submit" style="display:none;"></button>
+            </form>
+
+            <!-- Sticky Bottom Navigation -->
+            <div class="mobile-sticky-footer">
+                <button id="btn-form-back" class="btn" style="flex: 1; background: #f1f5f9; color: #64748b; font-weight: 800; border: none; height: 55px; border-radius: 14px;">キャンセル</button>
+                <button id="btn-form-submit-proxy" class="btn" style="flex: 2; background: var(--primary); color: white; font-weight: 800; border: none; height: 55px; border-radius: 14px; box-shadow: 0 8px 20px rgba(230, 57, 70, 0.3);">
+                    <i class="fas fa-save"></i> 保存する
+                </button>
+            </div>
+        </div>
+    `;
+
+    // 既存のフォームロジックを再利用するための初期化
+    setTimeout(() => {
+        setupFormLogic();
+        // 戻るボタンの挙動
+        const backBtn = document.getElementById('btn-form-back');
+        if (backBtn) {
+            backBtn.onclick = (e) => {
+                e.preventDefault();
+                currentView = 'list';
+                renderView();
+            };
+        }
+        // プロキシボタンの連動
+        const proxyBtn = document.getElementById('btn-form-submit-proxy');
+        const realSubmit = document.getElementById('btn-form-submit');
+        if (proxyBtn && realSubmit) {
+            proxyBtn.onclick = () => {
+                const form = document.getElementById('item-form');
+                if (form.reportValidity()) {
+                    form.dispatchEvent(new Event('submit'));
+                }
+            };
+        }
+    }, 0);
+}
+
+/**
+ * スマホ版専用のアコーディオン開閉トグル
+ */
+function toggleAccordion(header) {
+    const accordion = header.parentElement;
+    accordion.classList.toggle('open');
 }
 
 function renderRecipeEditorPC(container, type) {
@@ -1441,7 +1828,9 @@ function renderTable(filter = "") {
                         <span style="color:var(--text-secondary); font-weight:500; font-size: 0.75rem; margin-left: 0.6rem;">単位: ${item.unit || '-'}</span>
                     </div>
                 </td>
-                <td style="padding: 1rem; color:var(--text-secondary); font-size: 0.85rem;">${vendor?.vendor_name || '-'}</td>
+                <td style="padding: 1rem; color:var(--text-secondary); font-size: 0.85rem;">
+                    ${vendor ? vendor.vendor_name : '<span class="badge" style="background:#fef2f2; color:#ef4444; border:1px solid #fee2e2; font-size:0.75rem;">未登録</span>'}
+                </td>
                 <td style="padding: 1rem; color:var(--text-secondary); font-family: monospace;">${contentAmount.toLocaleString()}${item.unit}</td>
                 <td style="padding: 1rem; font-weight: 600; font-family: monospace;">¥${purchasePrice.toLocaleString()}</td>
                 <td style="padding: 1rem; font-weight: 700; color: var(--primary); font-family: monospace;">¥${netUnitPrice.toFixed(2)}</td>
