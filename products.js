@@ -240,10 +240,13 @@ function renderFormViewMobile(container) {
 /**
  * スマホ版専用のアコーディオン開閉トグル
  */
-function toggleAccordion(header) {
+/**
+ * グローバル：アコーディオンの開閉用
+ */
+window.toggleAccordion = function(header) {
     const accordion = header.parentElement;
     accordion.classList.toggle('open');
-}
+};
 
 function renderRecipeEditorPC(container, type) {
     const isEdit = !!editingItemData;
@@ -1146,7 +1149,10 @@ function renderCardsMobile(filter = "", containerId = 'mobile-card-list') {
                       snHira.includes(queryHira) ||
                       furiHira.includes(queryHira);
         
+        const isGlobalSearch = containerId === 'search-results-mobile';
         if (!isMatch && filter !== "") return false;
+
+        if (isGlobalSearch) return true; // 検索オーバーレイでは全種別を表示
 
         const menu = cachedMenus.find(m => m.item_id === item.id);
         if (currentTab === 'menus') {
@@ -1183,8 +1189,13 @@ function renderCardsMobile(filter = "", containerId = 'mobile-card-list') {
         const card = document.createElement('div');
         card.className = 'product-card-mobile';
         
-        if (currentTab === 'menus' || currentTab === 'sub_recipes') {
-            const menu = cachedMenus.find(m => m.item_id === item.id);
+        // 個別アイテムの種別を判定 (検索結果で混在するため)
+        const menu = cachedMenus.find(m => m.item_id === item.id);
+        const itemType = menu ? (menu.is_sub_recipe ? 'sub_recipes' : 'menus') : 'ingredients';
+        const isRecipe = itemType === 'menus' || itemType === 'sub_recipes';
+        const isGlobalSearch = containerId === 'search-results-mobile';
+
+        if (isRecipe) {
             const salesPrice = menu?.sales_price || 0;
             const cost = getEffectivePrice(item.id, { items: cachedItems, ingredients: cachedIngredients, menus: cachedMenus });
             const profit = salesPrice - cost;
@@ -1194,7 +1205,14 @@ function renderCardsMobile(filter = "", containerId = 'mobile-card-list') {
 
             card.innerHTML = `
                 <div class="product-card-header">
-                    <div class="product-card-title">${item.name}</div>
+                    <div style="flex:1;">
+                        ${isGlobalSearch ? `
+                            <span class="badge-modern" style="background:#fef2f2; color:#ef4444; margin-bottom:4px; display:inline-block; font-size:0.6rem;">
+                                ${itemType === 'menus' ? '販売メニュー' : '自家製原材料'}
+                            </span>
+                        ` : ''}
+                        <div class="product-card-title">${item.name}</div>
+                    </div>
                     <div class="badge-modern ${hasRecipe ? 'badge-status-ok' : 'badge-status-missing'}">
                         ${hasRecipe ? 'レシピ済' : '未登録'}
                     </div>
@@ -1205,10 +1223,10 @@ function renderCardsMobile(filter = "", containerId = 'mobile-card-list') {
                 </div>
                 <div class="product-card-metrics">
                     <div class="metric-box">
-                        <span class="metric-label">${currentTab === 'menus' ? '販売単価' : '原価（算出）'}</span>
-                        <span class="metric-val">¥${Math.round(currentTab === 'menus' ? salesPrice : cost).toLocaleString()}</span>
+                        <span class="metric-label">${itemType === 'menus' ? '販売単価' : '原価（算出）'}</span>
+                        <span class="metric-val">¥${Math.round(itemType === 'menus' ? salesPrice : cost).toLocaleString()}</span>
                     </div>
-                    ${currentTab === 'menus' ? `
+                    ${itemType === 'menus' ? `
                     <div class="metric-box">
                         <span class="metric-label">原価率</span>
                         <span class="metric-val" style="color:${margin > 70 ? 'var(--primary)' : 'inherit'}">${Math.round(margin)}%</span>
@@ -1231,7 +1249,12 @@ function renderCardsMobile(filter = "", containerId = 'mobile-card-list') {
 
             card.innerHTML = `
                 <div class="product-card-header">
-                    <div class="product-card-title">${item.name}</div>
+                    <div style="flex:1;">
+                        ${isGlobalSearch ? `
+                            <span class="badge-modern" style="background:#f0fdf4; color:#10b981; margin-bottom:4px; display:inline-block; font-size:0.6rem;">原材料</span>
+                        ` : ''}
+                        <div class="product-card-title">${item.name}</div>
+                    </div>
                     <div class="badge-modern ${vendor ? 'badge-status-ok' : 'badge-status-missing'}">
                         ${vendor ? (vendor.vendor_name.length > 8 ? vendor.vendor_name.substring(0,8)+'..' : vendor.vendor_name) : '業者未登録'}
                     </div>
@@ -1270,7 +1293,7 @@ function renderCardsMobile(filter = "", containerId = 'mobile-card-list') {
         prevBtn.className = 'btn';
         prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
         prevBtn.disabled = currentPage === 1;
-        prevBtn.onclick = (e) => { e.stopPropagation(); currentPage--; renderCardsMobile(filter); };
+        prevBtn.onclick = (e) => { e.stopPropagation(); currentPage--; renderCardsMobile(filter, containerId); };
         paginationContainer.appendChild(prevBtn);
 
         const pageIndicator = document.createElement('span');
@@ -1283,7 +1306,7 @@ function renderCardsMobile(filter = "", containerId = 'mobile-card-list') {
         nextBtn.className = 'btn';
         nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
         nextBtn.disabled = currentPage === totalPages;
-        nextBtn.onclick = (e) => { e.stopPropagation(); currentPage++; renderCardsMobile(filter); };
+        nextBtn.onclick = (e) => { e.stopPropagation(); currentPage++; renderCardsMobile(filter, containerId); };
         paginationContainer.appendChild(nextBtn);
     }
 }
