@@ -3,7 +3,7 @@ import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy,
 import { showConfirm, showAlert } from './ui_utils.js';
 import { getEffectivePrice } from './cost_engine.js?v=9';
 
-let currentTab = 'menus'; // 'menus', 'sub_recipes', or 'ingredients'
+let currentTab = 'ingredients'; // 'menus', 'sub_recipes', or 'ingredients'
 let currentView = 'list'; // 'list' or 'form'
 let currentPage = 1;
 const pageSize = 30;
@@ -1011,14 +1011,14 @@ function renderListViewPC(container) {
         </div>
 
         <div class="tabs-container" style="margin-bottom: 2rem;">
-            <div class="tab-item ${currentTab === 'menus' ? 'active' : ''}" data-tab="menus">
-                <i class="fas fa-utensils"></i> 販売メニュー
+            <div class="tab-item ${currentTab === 'ingredients' ? 'active' : ''}" data-tab="ingredients">
+                <i class="fas fa-leaf"></i> 原材料
             </div>
             <div class="tab-item ${currentTab === 'sub_recipes' ? 'active' : ''}" data-tab="sub_recipes">
                 <i class="fas fa-mortar-pestle"></i> 自家製原材料
             </div>
-            <div class="tab-item ${currentTab === 'ingredients' ? 'active' : ''}" data-tab="ingredients">
-                <i class="fas fa-leaf"></i> 食材・仕入品
+            <div class="tab-item ${currentTab === 'menus' ? 'active' : ''}" data-tab="menus">
+                <i class="fas fa-utensils"></i> 販売メニュー
             </div>
         </div>
         
@@ -1064,6 +1064,15 @@ function renderListViewPC(container) {
 }
 
 /**
+ * グローバル：スマホ版タブ切り替え用
+ */
+window.switchTab = function(tab) {
+    currentTab = tab;
+    currentPage = 1;
+    renderView();
+};
+
+/**
  * スマホ版：一覧画面の描画 (独立構築用)
  */
 function renderListViewMobile(container) {
@@ -1077,9 +1086,9 @@ function renderListViewMobile(container) {
             </div>
 
             <div class="mobile-category-tabs">
-                <div class="mobile-cat-tab ${currentTab === 'menus' ? 'active' : ''}" onclick="switchTab('menus')">販売メニュー</div>
+                <div class="mobile-cat-tab ${currentTab === 'ingredients' ? 'active' : ''}" onclick="switchTab('ingredients')">原材料</div>
                 <div class="mobile-cat-tab ${currentTab === 'sub_recipes' ? 'active' : ''}" onclick="switchTab('sub_recipes')">自家製原材料</div>
-                <div class="mobile-cat-tab ${currentTab === 'ingredients' ? 'active' : ''}" onclick="switchTab('ingredients')">食材・仕入品</div>
+                <div class="mobile-cat-tab ${currentTab === 'menus' ? 'active' : ''}" onclick="switchTab('menus')">販売メニュー</div>
             </div>
 
             <div id="mobile-card-list" style="padding: 0 1rem;">
