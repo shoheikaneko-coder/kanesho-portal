@@ -466,13 +466,6 @@ function renderRecipeEditorPC(container, type) {
     attachGlobalFormEvents();
 }
 
-/**
- * スマホ版：レシピエディタの描画 (独立構築用)
- */
-function renderRecipeEditorMobile(container, type) {
-    // 独立構築の初期段階としてPC版と同じ構造を使用します
-    renderRecipeEditorPC(container, type);
-}
 
 
 function renderStandardFormPC(container) {
@@ -633,13 +626,6 @@ function renderStandardFormPC(container) {
     attachGlobalFormEvents();
 }
 
-/**
- * スマホ版：標準フォームの描画 (独立構築用)
- */
-function renderStandardFormMobile(container) {
-    // 独立構築の初期段階としてPC版と同じ構造を使用します
-    renderStandardFormPC(container);
-}
 
 function renderFormActions(isEdit) {
     const isAdmin = currentUser?.Role === 'Admin' || currentUser?.Role === '管理者';
@@ -1318,17 +1304,6 @@ function setupMobileListListeners() {
     }
 }
 
-function renderRecipeEditorMobile(container, type) {
-    if (currentView === 'form') {
-        renderFormViewMobile(container);
-    }
-}
-
-function renderStandardFormMobile(container) {
-    if (currentView === 'form') {
-        renderFormViewMobile(container);
-    }
-}
 
 function setupListViewListeners() {
     const container = document.getElementById('products-page-container');
