@@ -258,7 +258,7 @@ async function renderSidebar(user) {
     if (role === 'Admin' || role === '管理者') {
         allowed = defaultMenuItems.map(m => m.id);
         // 全般的な権限を付与
-        const adminPerms = ['sales','attendance','inventory','procurement','product_analysis','home_performance','shift_admin','shift_submission','attendance_check','users','invite_navi','loans','role_permissions','stores','products','suppliers','sales_correction','csv_export','csv_import','calendar_admin','goals_admin','goals_store','line_share','daily_sakes','bottle_keep'];
+        const adminPerms = ['sales','attendance','inventory','procurement','stocktake','inventory_history','store_items','product_analysis','home_performance','shift_admin','shift_submission','attendance_check','users','invite_navi','loans','role_permissions','stores','products','suppliers','sales_correction','csv_export','csv_import','calendar_admin','goals_admin','goals_store','line_share','daily_sakes','bottle_keep'];
         adminPerms.forEach(id => { if (!allowed.includes(id)) allowed.push(id); });
     } else {
         try {
