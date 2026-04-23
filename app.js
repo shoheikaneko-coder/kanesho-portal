@@ -7,8 +7,10 @@ import { attendancePageHtml, initAttendancePage } from './attendance.js?v=63';
 import { salesPageHtml, initSalesPage } from './sales.js?v=63';
 import { storesPageHtml, initStoresPage } from './stores.js?v=31';
 import { usersPageHtml, initUsersPage } from './users.js?v=31';
-import { inventoryPageHtml, initInventoryPage } from './inventory.js?v=31';
-import { procurementPageHtml, initProcurementPage } from './procurement.js?v=7';
+import { inventoryPageHtml, initInventoryPage } from './inventory.js?v=32';
+import { procurementPageHtml, initProcurementPage } from './procurement.js?v=8';
+import { stocktakePageHtml, initStocktakePage } from './stocktake.js?v=1';
+import { inventoryHistoryPageHtml, initInventoryHistoryPage } from './inventory_history.js?v=1';
 import { productsPageHtml, initProductsPage } from './products.js?v=20260422_2255';
 import { suppliersPageHtml, initSuppliersPage } from './suppliers.js?v=36';
 import { storeItemsPageHtml, initStoreItemsPage } from './store_items.js?v=31';
@@ -83,6 +85,8 @@ const hubLabels = {
  * ページIDと親ハブの紐付けマッピング
  */
 const pageParentMap = {
+    'stocktake': 'ops_hub',
+    'inventory_history': 'ops_hub',
     'dashboard': 'ops_hub',
     'attendance': 'ops_hub',
     'sales': 'ops_hub',
@@ -435,14 +439,24 @@ function showPage(target) {
                 initSalesPage();
                 break;
             case 'inventory':
-                updateHeaderTitle('在庫管理');
+                updateHeaderTitle('在庫チェック');
                 pageContent.innerHTML = inventoryPageHtml;
                 initInventoryPage(state.currentUser);
                 break;
             case 'procurement':
-                updateHeaderTitle('仕入れ履歴');
+                updateHeaderTitle('仕入れ・仕込み');
                 pageContent.innerHTML = procurementPageHtml;
-                initProcurementPage();
+                initProcurementPage(state.currentUser);
+                break;
+            case 'stocktake':
+                updateHeaderTitle('棚卸し履歴');
+                pageContent.innerHTML = stocktakePageHtml;
+                initStocktakePage(state.currentUser);
+                break;
+            case 'inventory_history':
+                updateHeaderTitle('在庫履歴');
+                pageContent.innerHTML = inventoryHistoryPageHtml;
+                initInventoryHistoryPage(state.currentUser);
                 break;
             case 'stores':
                 updateHeaderTitle('店舗マスタ');

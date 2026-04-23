@@ -242,6 +242,16 @@ function isConfirmedToday(updatedAt, resetTime) {
     return update >= lastReset;
 }
 
+// Helper: Get current business date string "YYYY-MM-DD" based on store reset time
+function getBusinessDate(resetTime = "05:00") {
+    const now = new Date();
+    const [h, m] = (resetTime || "05:00").split(':').map(Number);
+    let cutoff = new Date(now);
+    cutoff.setHours(h, m, 0, 0);
+    if (now < cutoff) cutoff.setDate(cutoff.getDate() - 1);
+    return cutoff.toISOString().split('T')[0];
+}
+
 function render() {
     const main = document.getElementById('inv-main-content');
     const tabs = document.getElementById('inv-tabs');
@@ -441,26 +451,31 @@ function renderItemsInGroups(container, items, hideIndicators) {
         }
 
         const isConfirmed = isConfirmedToday(item.updated_at, selectedStore.resetTime);
-        const theoryQty = theoreticalStockCache[item.ProductID] !== undefined ? Math.round(theoreticalStockCache[item.ProductID] * 10) / 10 : '-';
+        const displayUnit = item.display_unit || '';
+        const currentQty = item.個数 !== undefined ? item.個数 : '';
+        const parStock = item.定数 || 0;
+        const isShort = (parStock > 0) && (Number(currentQty) < parStock);
+        const shortfall = isShort ? (parStock - Number(currentQty)).toFixed(1) : 0;
 
         html += `
-            <div class="inventory-item ${isConfirmed ? 'completed' : ''}" data-id="${item.id}" style="padding: 0.6rem 0.8rem; margin-bottom: 0.5rem; gap: 0.5rem; display: flex; align-items: center; border-radius: 10px;">
+            <div class="inventory-item ${isConfirmed ? 'completed' : ''}" data-id="${item.id}" style="padding: 0.6rem 0.8rem; margin-bottom: 0.5rem; gap: 0.5rem; display: flex; align-items: center; border-radius: 10px; ${isShort && !isConfirmed ? 'border-left: 3px solid var(--danger);' : ''}">
                 <div style="flex: 1; min-width: 0;">
                     <div class="item-name" style="${isConfirmed ? 'color: var(--primary); font-weight:700;' : ''}; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                        ${productMap[item.ProductID] || '不明'} 
+                        ${productMap[item.ProductID] || '不明'}
                         ${isConfirmed ? '<i class="fas fa-check-circle"></i>' : ''}
                         <i class="fas fa-cog btn-edit-loc" data-id="${item.id}" style="margin-left: 0.4rem; font-size: 0.75rem; color: #cbd5e1; cursor: pointer;"></i>
                     </div>
-                    <div style="font-size: 0.65rem; color: var(--text-secondary);">
-                        理論: <span style="font-weight: 600; color: var(--primary);">${theoryQty}</span>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.2rem;">
+                        ${displayUnit ? `<span style="font-size: 0.7rem; background: #eff6ff; color: #2563eb; border: 1px solid #dbeafe; border-radius: 4px; padding: 0.1rem 0.4rem; font-weight: 600;">${displayUnit}</span>` : ''}
+                        ${isShort && !isConfirmed ? `<span style="font-size: 0.7rem; background: #fef2f2; color: #ef4444; border: 1px solid #fee2e2; border-radius: 4px; padding: 0.1rem 0.4rem; font-weight: 700;">不足 -${shortfall}</span>` : ''}
                     </div>
                 </div>
                 <div style="display: flex; align-items: center; gap: 0.4rem;">
                     <div style="text-align: right; min-width: 32px; display: ${hideIndicators ? 'none' : 'block'};">
                         <div style="font-size: 0.6rem; color: var(--text-secondary); line-height: 1;">定数</div>
-                        <div style="font-weight: 700; font-size: 0.8rem;">${item.定数 || 0}</div>
+                        <div style="font-weight: 700; font-size: 0.8rem;">${parStock}</div>
                     </div>
-                    <input type="number" step="any" class="item-qty-input" value="${item.個数 || ''}" placeholder="0" readonly data-id="${item.id}" style="width: 55px; padding: 0.4rem; font-size: 0.9rem;">
+                    <input type="number" step="any" class="item-qty-input" value="${currentQty}" placeholder="0" readonly data-id="${item.id}" style="width: 55px; padding: 0.4rem; font-size: 0.9rem;">
                     <button class="btn btn-primary btn-confirm-qty" data-id="${item.id}" style="padding: 0.5rem; min-width: 38px; height: 38px;">
                         <i class="fas fa-check" style="font-size: 0.8rem;"></i>
                     </button>
@@ -545,13 +560,17 @@ async function saveItemQty(item) {
         const docRef = doc(db, "m_store_items", item.id);
         const now = new Date().toISOString();
         const finalQty = Number(item.個数);
+        const businessDate = getBusinessDate(selectedStore.resetTime);
 
         await updateDoc(docRef, {
             個数: finalQty,
             updated_at: now,
-            is_confirmed: true
+            is_confirmed: true,
+            confirmed_at: now,
+            confirmed_by: currentUser?.Name || currentUser?.Email || 'unknown'
         });
 
+        // 旧ログはそのまま維持（stock_logic.jsへの影響防止）
         await addDoc(collection(db, "t_inventory_logs"), {
             InvID: item.id,
             CountValue: finalQty,
@@ -559,12 +578,28 @@ async function saveItemQty(item) {
             ProductID: item.ProductID,
             Timing: item.確認タイミング,
             InputAt: now,
-            StaffEmail: 'admin@kaneshow.jp'
+            StaffEmail: currentUser?.Email || 'unknown'
+        });
+
+        // 新履歴コレクションに追加記録
+        await addDoc(collection(db, "t_inventory_history"), {
+            store_id: selectedStore.code,
+            item_id: item.ProductID,
+            store_item_id: item.id,
+            change_qty: finalQty,
+            qty_after: finalQty,
+            reason_type: 'stock_check',
+            source_route: '',
+            note: '',
+            executed_by: currentUser?.Name || currentUser?.Email || 'unknown',
+            executed_at: now,
+            related_id: '',
+            business_date: businessDate
         });
 
         item.updated_at = now;
         item.個数 = finalQty;
-        render(); // Re-render to show confirmed status
+        render();
     } catch (err) {
         alert("保存エラー: " + err.message);
     } finally {

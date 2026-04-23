@@ -37,8 +37,10 @@ export const storeItemsPageHtml = `
                         <tr style="background: var(--surface-darker); border-bottom: 2px solid var(--border); color: var(--text-secondary);">
                             <th style="padding: 1.2rem;">品目名</th>
                             <th style="padding: 1.2rem;">確認タイミング</th>
-                            <th style="padding: 1.2rem; text-align: center;">定数 (Par Stock)</th>
-                            <th style="padding: 1.2rem;">保管場所ラベル</th>
+                            <th style="padding: 1.2rem; text-align: center;">定数</th>
+                            <th style="padding: 1.2rem;">管理単位</th>
+                            <th style="padding: 1.2rem;">不足時</th>
+                            <th style="padding: 1.2rem;">保管場所</th>
                             <th style="padding: 1.2rem; text-align: right;">操作</th>
                         </tr>
                     </thead>
@@ -127,8 +129,10 @@ function renderTableView(container) {
                     <tr style="background: var(--surface-darker); border-bottom: 2px solid var(--border); color: var(--text-secondary);">
                         <th style="padding: 1.2rem;">品目名</th>
                         <th style="padding: 1.2rem;">確認タイミング</th>
-                        <th style="padding: 1.2rem; text-align: center;">定数 (Par Stock)</th>
-                        <th style="padding: 1.2rem;">保管場所ラベル</th>
+                        <th style="padding: 1.2rem; text-align: center;">定数</th>
+                        <th style="padding: 1.2rem;">管理単位</th>
+                        <th style="padding: 1.2rem;">不足時</th>
+                        <th style="padding: 1.2rem;">保管場所</th>
                         <th style="padding: 1.2rem; text-align: right;">操作</th>
                     </tr>
                 </thead>
@@ -169,7 +173,45 @@ function renderFormView(container) {
                         <input type="text" id="si-location" placeholder="例: 冷蔵庫A..." style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem;">
                     </div>
                 </div>
-                <div style="display: flex; gap: 1rem; margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1.5rem;">
+
+                <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; gap: 1.2rem;">
+                    <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-sliders-h" style="color: var(--primary);"></i> 在庫管理設定
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem;">
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.85rem; color: var(--text-secondary);">店舗管理単位名</label>
+                            <input type="text" id="si-display-unit" placeholder="例: 小タッパ, ケース" style="width: 100%; padding: 0.7rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem;">
+                            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.3rem;">空欄の場合はマスタの単位をそのまま使用</div>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.85rem; color: var(--text-secondary);">換算量</label>
+                            <input type="number" id="si-unit-conv" step="any" placeholder="例: 180" style="width: 100%; padding: 0.7rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem;">
+                            <div id="si-unit-conv-hint" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.3rem;">管理単位1個 = ?? マスタ単位</div>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem;">
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.85rem; color: var(--text-secondary);">不足時のアクション</label>
+                            <div style="display: flex; gap: 0.8rem; margin-top: 0.3rem;">
+                                <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; font-size: 0.9rem;">
+                                    <input type="radio" name="si-shortage-action" id="si-action-purchase" value="purchase" checked> 仕入れ
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; font-size: 0.9rem;">
+                                    <input type="radio" name="si-shortage-action" id="si-action-prep" value="prep"> 仕込み
+                                </label>
+                            </div>
+                        </div>
+                        <div>
+                            <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; margin-top: 1.5rem;">
+                                <input type="checkbox" id="si-auto-add" style="width: 18px; height: 18px;">
+                                <span style="font-size: 0.9rem;">入力時に即時在庫反映する</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 1rem; margin-top: 0.5rem; border-top: 1px solid var(--border); padding-top: 1.5rem;">
                     <button type="button" class="btn" id="btn-si-cancel" style="flex: 1; background: #f1f5f9; color: var(--text-secondary); font-weight: 600;">キャンセル</button>
                     <button type="submit" class="btn btn-primary" style="flex: 2; padding: 1rem; font-weight: 700;">
                         <i class="fas fa-save"></i> 店舗在庫として追加する
@@ -279,6 +321,10 @@ function renderTableRows() {
         
         const tr = document.createElement('tr');
         tr.style.borderBottom = '1px solid var(--border)';
+        const displayUnit = si.display_unit || item?.unit || '-';
+        const convAmt = si.unit_conversion_amount || 1;
+        const unitLabel = si.display_unit ? `${si.display_unit} (×${convAmt})` : (item?.unit || '-');
+        const actionLabel = si.shortage_action_type === 'prep' ? '<span class="badge" style="background:#eff6ff;color:#2563eb;border:1px solid #dbeafe;">仕込み</span>' : '<span class="badge" style="background:#f0fdf4;color:#10b981;border:1px solid #bbf7d0;">仕入れ</span>';
         tr.innerHTML = `
             <td style="padding: 1.2rem;">
                 <div style="font-weight: 600;">${item?.name || '不明'}</div>
@@ -286,6 +332,8 @@ function renderTableRows() {
             </td>
             <td style="padding: 1.2rem;"><span class="badge badge-blue">${timing?.確認タイミング || si.確認タイミング}</span></td>
             <td style="padding: 1.2rem; text-align: center; font-family: monospace; font-weight: 700;">${si.定数 || 0}</td>
+            <td style="padding: 1.2rem; font-size: 0.85rem; color: var(--text-secondary);">${unitLabel}</td>
+            <td style="padding: 1.2rem;">${actionLabel}</td>
             <td style="padding: 1.2rem; color: var(--text-secondary);">${si.location_label || si.保管場所 || '-'}</td>
             <td style="padding: 1.2rem; text-align: right;">
                 <button class="btn btn-delete-si" style="padding: 0.5rem; background: transparent; color: var(--danger);"><i class="fas fa-trash-alt"></i></button>
@@ -311,6 +359,10 @@ async function saveStoreItem() {
     const timingId = document.getElementById('si-timing-select').value;
     const parStock = Number(document.getElementById('si-par-stock').value) || 0;
     const locationLabel = document.getElementById('si-location').value;
+    const displayUnit = document.getElementById('si-display-unit')?.value?.trim() || '';
+    const unitConv = Number(document.getElementById('si-unit-conv')?.value) || 1;
+    const shortageAction = document.querySelector('input[name="si-shortage-action"]:checked')?.value || 'purchase';
+    const autoAdd = document.getElementById('si-auto-add')?.checked || false;
 
     if (!selectedStoreId || checkedBoxes.length === 0) {
         showAlert('エラー', "品目を選択してください。");
@@ -344,6 +396,11 @@ async function saveStoreItem() {
                 location_label: locationLabel,
                 is_confirmed: false,
                 個数: 0,
+                display_unit: displayUnit,
+                unit_conversion_amount: unitConv,
+                shortage_action_type: shortageAction,
+                auto_add_on_order: autoAdd,
+                is_active: true,
                 updated_at: new Date().toISOString()
             };
 
