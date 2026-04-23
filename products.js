@@ -16,6 +16,7 @@ let currentUser = null;
 let editingItemData = null;
 let currentSearchQuery = ''; // 検索条件の永続化用
 let missingRecipeOnly = false; // レシピ未登録のみ表示フィルタ
+let missingVendorOnly = false; // 業者未登録のみ表示フィルタ
 
 export const productsPageHtml = `
     <div id="products-page-container" class="animate-fade-in product-master-v2">
@@ -98,7 +99,38 @@ function renderFormViewMobile(container) {
     const primaryColor = isMenu ? 'var(--recipe-menu-primary)' : 'var(--recipe-homemade-primary)';
 
     container.innerHTML = `
+        <style>
+            #products-mobile-view .pro-form-field {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: stretch !important;
+                margin-bottom: 1.25rem !important;
+                width: 100% !important;
+            }
+            #products-mobile-view .pro-form-label {
+                display: block !important;
+                width: 100% !important;
+                text-align: left !important;
+                font-size: 0.75rem !important;
+                font-weight: 800 !important;
+                color: #64748b !important;
+                margin-bottom: 6px !important;
+                text-transform: uppercase !important;
+            }
+            #products-mobile-view .recipe-pro-input {
+                display: block !important;
+                width: 100% !important;
+                min-height: 48px !important;
+                box-sizing: border-box !important;
+            }
+        </style>
         <div class="animate-fade-in" style="padding-bottom: 100px;">
+            <!-- Debug Info -->
+            <div style="background: #1e293b; color: #38bdf8; font-size: 10px; padding: 4px 10px; font-family: monospace; display: flex; justify-content: space-between;">
+                <span>VER: 20260422_2255_FORCE</span>
+                <span id="debug-data-status">DATA: LOADING...</span>
+            </div>
+
             <div style="padding: 1rem; background: ${primaryColor}; border-bottom: 2px solid rgba(0,0,0,0.1); color: white; margin-bottom: 1rem; border-radius: 0 0 20px 20px;">
                 <div style="font-size: 0.75rem; font-weight: 800; opacity: 0.9; margin-bottom: 2px;">${isRecipe ? (isMenu ? 'SALES MENU' : 'HOMEMADE') : 'INGREDIENT'}</div>
                 <h2 style="margin: 0; font-size: 1.25rem; font-weight: 900;">${isEdit ? editingItemData.name : '新規登録'}</h2>
@@ -107,28 +139,32 @@ function renderFormViewMobile(container) {
             <form id="item-form">
                 <!-- 基本情報セクション -->
                 <div class="smart-accordion open">
-                    <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <div class="accordion-header" onclick="toggleAccordion(this, event)">
                         <span class="accordion-title"><i class="fas fa-info-circle"></i> 基本情報</span>
                         <i class="fas fa-chevron-down accordion-icon"></i>
                     </div>
-                    <div class="accordion-content">
-                        <div class="input-group">
-                            <label>ふりがな</label>
-                            <input type="text" id="item-furigana" value="${isEdit ? (editingItemData.furigana || '') : ''}" class="recipe-pro-input">
+                    <div class="smart-accordion-content">
+                        <div class="pro-form-field">
+                            <label class="pro-form-label">表示名称 <span style="color:var(--danger)">*</span></label>
+                            <input type="text" id="item-name" required value="${isEdit ? editingItemData.name : ''}" class="recipe-pro-input" placeholder="例: 冷凍ばちまぐろ">
                         </div>
-                        <div class="input-group">
-                            <label>表示名称 <span style="color:var(--danger)">*</span></label>
-                            <input type="text" id="item-name" required value="${isEdit ? editingItemData.name : ''}" class="recipe-pro-input">
+                        
+                        <div class="pro-form-grid">
+                            <div class="pro-form-field">
+                                <label class="pro-form-label">ふりがな</label>
+                                <input type="text" id="item-furigana" value="${isEdit ? (editingItemData.furigana || '') : ''}" class="recipe-pro-input" placeholder="れいとうばち...">
+                            </div>
+                            <div class="pro-form-field">
+                                <label class="pro-form-label">カテゴリー</label>
+                                <input type="text" id="item-category" value="${isEdit ? (editingItemData.category || '') : ''}" class="recipe-pro-input" placeholder="魚介類">
+                            </div>
                         </div>
-                        <div class="input-group">
-                            <label>カテゴリー</label>
-                            <input type="text" id="item-category" value="${isEdit ? (editingItemData.category || '') : ''}" class="recipe-pro-input">
-                        </div>
+
                         ${isRecipe ? `
-                            <div class="input-group">
-                                <label>販売店舗</label>
+                            <div class="pro-form-field">
+                                <label class="pro-form-label">販売店舗</label>
                                 <select id="item-store-id" class="recipe-pro-input">
-                                    <option value="">選択...</option>
+                                    <option value="">店舗を選択...</option>
                                     ${cachedStores.filter(s => s.store_type !== 'CK').map(s => `<option value="${s.store_id || s.id}" ${isEdit && editingItemData.store_id === (s.store_id || s.id) ? 'selected' : ''}>${s.store_name}</option>`).join('')}
                                 </select>
                             </div>
@@ -139,18 +175,24 @@ function renderFormViewMobile(container) {
                 ${isRecipe ? `
                 <!-- レシピ構成セクション -->
                 <div class="smart-accordion open">
-                    <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <div class="accordion-header" onclick="toggleAccordion(this, event)">
                         <span class="accordion-title"><i class="fas fa-layer-group"></i> レシピ構成</span>
                         <div style="display: flex; align-items: center; gap: 0.5rem;">
                              <span id="display-total-cost" style="font-size: 0.85rem; font-weight: 800; color: var(--primary);">¥ 0</span>
                              <i class="fas fa-chevron-down accordion-icon"></i>
                         </div>
                     </div>
-                    <div class="accordion-content" style="padding: 1rem 0;">
-                        <div class="incremental-search-v2" style="margin: 0 1rem 1rem; border: 1px solid var(--border); border-radius: 12px; overflow: hidden;">
-                             <input type="text" id="recipe-search-input" placeholder="材料を検索..." style="width: 100%; border: none; padding: 0.8rem 1rem; font-size: 1rem; outline: none;">
+                    <div class="smart-accordion-content">
+                        <!-- Incremental Search -->
+                        <div class="incremental-search-v2" style="position: relative; overflow: visible; margin: 0 0 1rem 0;">
+                            <div style="position: relative;">
+                                <i class="fas fa-search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                                <input type="text" id="recipe-search-input" placeholder="材料を検索..." style="width: 100%; border: none; padding: 0.8rem 1rem 0.8rem 2.8rem; font-size: 1rem; outline: none; background: transparent; font-weight: 600;">
+                            </div>
+                            <div id="search-results-list" class="incremental-search-results" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 2000; background: white; border: 1px solid #e2e8f0; border-radius: 0 0 12px 12px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); max-height: 250px; overflow-y: auto;"></div>
                         </div>
-                        <div id="recipe-items-container" style="padding: 0 0.5rem;">
+
+                        <div id="recipe-items-container">
                             <!-- recipe rows -->
                         </div>
                     </div>
@@ -158,44 +200,48 @@ function renderFormViewMobile(container) {
 
                 <!-- 工程・メモセクション -->
                 <div class="smart-accordion">
-                    <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <div class="accordion-header" onclick="toggleAccordion(this, event)">
                         <span class="accordion-title"><i class="fas fa-sticky-note"></i> 工程・メモ</span>
                         <i class="fas fa-chevron-down accordion-icon"></i>
                     </div>
-                    <div class="accordion-content">
-                        <textarea id="recipe-instructions" class="recipe-pro-input" style="min-height: 150px; line-height: 1.6;">${isEdit ? (itemMenu?.notes || editingItemData?.notes || '') : ''}</textarea>
+                    <div class="smart-accordion-content">
+                        <textarea id="recipe-instructions" class="recipe-pro-input" style="min-height: 180px; line-height: 1.6; border-radius: 12px;" placeholder="調理のコツ、盛り付けの注意点などを入力してください...">${isEdit ? (itemMenu?.notes || editingItemData?.notes || '') : ''}</textarea>
                     </div>
                 </div>
                 ` : `
                 <!-- 食材詳細セクション -->
                 <div class="smart-accordion open">
-                    <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <div class="accordion-header" onclick="toggleAccordion(this, event)">
                         <span class="accordion-title"><i class="fas fa-box"></i> 仕入・内容量</span>
                         <i class="fas fa-chevron-down accordion-icon"></i>
                     </div>
-                    <div class="accordion-content">
-                        <div class="input-group">
-                            <label>仕入業者</label>
-                            <select id="ing-vendor-id" class="recipe-pro-input"></select>
+                    <div class="smart-accordion-content">
+                        <div class="pro-form-field">
+                            <label class="pro-form-label">仕入業者</label>
+                            <select id="ing-vendor-id" class="recipe-pro-input">
+                                <option value="">業者を選択...</option>
+                            </select>
                         </div>
-                        <div class="grid-2">
-                            <div class="input-group">
-                                <label>管理単位 (g/ml等)</label>
-                                <input type="text" id="item-unit" value="${isEdit ? (editingItemData.unit || '') : ''}" class="recipe-pro-input">
+                        
+                        <div class="pro-form-grid">
+                            <div class="pro-form-field">
+                                <label class="pro-form-label">管理単位 (g/ml等)</label>
+                                <input type="text" id="item-unit" value="${isEdit ? (editingItemData.unit || '') : ''}" class="recipe-pro-input" placeholder="例: g">
                             </div>
-                            <div class="input-group">
-                                <label>内容量</label>
-                                <input type="number" id="item-content-amount" value="${isEdit ? (editingItemData.content_amount || 0) : 0}" step="any" class="recipe-pro-input">
+                            <div class="pro-form-field">
+                                <label class="pro-form-label">内容量</label>
+                                <input type="number" id="item-content-amount" value="${isEdit ? (editingItemData.content_amount || 0) : 0}" step="any" class="recipe-pro-input" placeholder="0">
                             </div>
                         </div>
-                        <div class="grid-2">
-                            <div class="input-group">
-                                <label>仕入単価 (税込)</label>
-                                <input type="number" id="ing-purchase-price" value="0" step="any" class="recipe-pro-input">
+
+                        <div class="pro-form-grid">
+                            <div class="pro-form-field">
+                                <label class="pro-form-label">仕入単価 (税込)</label>
+                                <input type="number" id="ing-purchase-price" value="0" step="any" class="recipe-pro-input" placeholder="0">
                             </div>
-                            <div class="input-group">
-                                <label>歩留 (0.0~1.0)</label>
-                                <input type="number" id="ing-yield-rate" value="1.0" step="any" class="recipe-pro-input">
+                            <div class="pro-form-field">
+                                <label class="pro-form-label">歩留 (0.0~1.0)</label>
+                                <input type="number" id="ing-yield-rate" value="1.0" step="any" class="recipe-pro-input" placeholder="1.0">
                             </div>
                         </div>
                     </div>
@@ -216,6 +262,10 @@ function renderFormViewMobile(container) {
 
     setTimeout(() => {
         setupFormLogic();
+        const debugStatus = document.getElementById('debug-data-status');
+        if (debugStatus) {
+            debugStatus.textContent = `DATA: ING(${cachedIngredients.length}) MENU(${cachedMenus.length})`;
+        }
         const backBtn = document.getElementById('btn-form-back');
         if (backBtn) {
             backBtn.onclick = (e) => {
@@ -243,9 +293,34 @@ function renderFormViewMobile(container) {
 /**
  * グローバル：アコーディオンの開閉用
  */
-window.toggleAccordion = function(header) {
+/**
+ * グローバル：アコーディオンの開閉用
+ */
+window.toggleAccordion = function(header, event) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
     const accordion = header.parentElement;
-    accordion.classList.toggle('open');
+    const content = accordion.querySelector('.smart-accordion-content');
+    const isOpen = accordion.classList.toggle('open');
+    
+    console.log(`[Diagnostic] Accordion Toggled. New State: ${isOpen ? 'OPEN' : 'CLOSED'}`);
+    console.log(`[Diagnostic] Element ID: ${header.id || 'no-id'}, Parent Class: ${accordion.className}`);
+    
+    if (content) {
+        if (isOpen) {
+            content.style.setProperty('display', 'block', 'important');
+            content.style.setProperty('visibility', 'visible', 'important');
+            content.style.setProperty('height', 'auto', 'important');
+            content.style.setProperty('opacity', '1', 'important');
+        } else {
+            content.style.setProperty('display', 'none', 'important');
+        }
+        console.log(`[Diagnostic] Content Inline Style: ${content.style.display}`);
+    } else {
+        console.warn("[Diagnostic] Content element (.smart-accordion-content) not found!");
+    }
 };
 
 function renderRecipeEditorPC(container, type) {
@@ -856,6 +931,9 @@ function setupIncrementalSearch() {
     const input = document.getElementById('recipe-search-input');
     const results = document.getElementById('search-results-list');
     
+    console.log("[Diagnostic] setupIncrementalSearch started.");
+    console.log("[Diagnostic] Elements found:", !!input, !!results);
+    
     if (!input || !results) return;
 
     // 二重初期化防止: すでに初期化済みの場合はスキップ
@@ -1039,6 +1117,12 @@ function renderListViewPC(container) {
                     <div style="display: flex; align-items: center; gap: 0.5rem; background: #fff5f5; padding: 0.4rem 0.8rem; border-radius: 8px; border: 1px solid #fee2e2;">
                         <input type="checkbox" id="filter-missing-recipe" ${missingRecipeOnly ? 'checked' : ''} style="cursor: pointer;">
                         <label for="filter-missing-recipe" style="font-size: 0.85rem; font-weight: 700; color: #e53e3e; cursor: pointer;">未登録のみ表示</label>
+                    </div>
+                    ` : ''}
+                    ${currentTab === 'ingredients' ? `
+                    <div style="display: flex; align-items: center; gap: 0.5rem; background: #fff5f5; padding: 0.4rem 0.8rem; border-radius: 8px; border: 1px solid #fee2e2;">
+                        <input type="checkbox" id="filter-missing-vendor" ${missingVendorOnly ? 'checked' : ''} style="cursor: pointer;">
+                        <label for="filter-missing-vendor" style="font-size: 0.85rem; font-weight: 700; color: #e53e3e; cursor: pointer;">未登録のみ表示</label>
                     </div>
                     ` : ''}
                 </div>
@@ -1279,6 +1363,8 @@ function renderCardsMobile(filter = "", containerId = 'mobile-card-list') {
         card.onclick = () => {
             editingItemData = item;
             currentView = 'form';
+            // アイテム種別に応じて currentTab を正しく設定（これがないと setupIncrementalSearch が起動しない）
+            currentTab = itemType; // 'menus' / 'sub_recipes' / 'ingredients'
             // 検索オーバーレイ経由の場合は閉じる
             const overlay = document.getElementById('search-overlay');
             if (overlay) overlay.classList.remove('show');
@@ -1310,6 +1396,7 @@ function renderCardsMobile(filter = "", containerId = 'mobile-card-list') {
         nextBtn.onclick = (e) => { e.stopPropagation(); currentPage++; renderCardsMobile(filter, containerId); };
         paginationContainer.appendChild(nextBtn);
     }
+}
 }
 
 function setupMobileListListeners() {
@@ -1390,6 +1477,15 @@ function setupListViewListeners() {
             renderTable(currentSearchQuery);
         };
     }
+
+    const missingVendorFilter = container.querySelector('#filter-missing-vendor');
+    if (missingVendorFilter) {
+        missingVendorFilter.onchange = () => {
+            missingVendorOnly = missingVendorFilter.checked;
+            currentPage = 1;
+            renderTable(currentSearchQuery);
+        };
+    }
 }
 
 export async function initProductsPage(user) {
@@ -1457,10 +1553,10 @@ function setupFormLogic() {
         return;
     }
 
-    const newForm = form.cloneNode(true);
-    form.parentNode.replaceChild(newForm, form);
-    const hardenedForm = newForm;
-    console.log("Form cloned and replaced.");
+    // const newForm = form.cloneNode(true);
+    // form.parentNode.replaceChild(newForm, form);
+    const hardenedForm = form;
+    console.log("Form initialization starting (Cloning disabled for stability).");
 
     // メニューレコードを特定（ダイニー由来のレコードを優先するため、variants または dinii_id があるものを優先的に探す）
     const itemMenu = editingItemData ? 
@@ -1736,6 +1832,13 @@ function renderTable(filter = "") {
         if (currentTab === 'menus' && missingRecipeOnly) {
             const hasRecipe = menu && menu.recipe && menu.recipe.length > 0;
             if (hasRecipe) return false;
+        }
+
+        // 業者未登録フィルタ
+        if (currentTab === 'ingredients' && missingVendorOnly) {
+            const ing = cachedIngredients.find(i => i.item_id === item.id);
+            const vendor = cachedVendors.find(v => (v.vendor_id || v.id) === ing?.vendor_id);
+            if (vendor) return false;
         }
 
         if (currentTab === 'menus') {

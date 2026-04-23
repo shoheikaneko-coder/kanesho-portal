@@ -1423,13 +1423,33 @@ p { color: var(--text-secondary); line-height: 1.5; }
     }
 }
 
-/* Modern Input refinements inside Recipe Editor */
 .recipe-pro-input {
+    display: block !important;
+    width: 100% !important;
     border: 1.5px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 0.6rem 0.8rem;
+    border-radius: 12px;
+    padding: 0.8rem 1rem !important;
     font-weight: 600;
-    transition: all 0.2s;
+    font-size: 1rem;
+    color: #1e293b;
+    background: #ffffff;
+    min-height: 48px;
+    margin-top: 4px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-sizing: border-box !important;
+    appearance: none;
+}
+
+/* Chrome, Safari, Edge, Opera */
+.recipe-pro-input::-webkit-outer-spin-button,
+.recipe-pro-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+.recipe-pro-input[type=number] {
+  -moz-appearance: textfield;
 }
 
 .recipe-pro-input:focus {
@@ -1438,14 +1458,47 @@ p { color: var(--text-secondary); line-height: 1.5; }
     background: #fdfdfd;
 }
 
-/* Item Selection Enhancement */
 .incremental-search-v2 {
     background: white;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 0.5rem;
-    margin-bottom: 1.5rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    border: 1.5px solid var(--primary);
+    border-radius: 14px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+/* Form Helper Classes */
+.pro-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.pro-form-field {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    margin-bottom: 1.25rem !important;
+    width: 100% !important;
+}
+
+.pro-form-label {
+    display: block !important;
+    width: 100% !important;
+    text-align: left !important;
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: #64748b;
+    margin-bottom: 6px;
+    margin-left: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+/* 検索結果の重なりを最前面にする */
+.incremental-search-results {
+    z-index: 20000 !important;
+    background: white !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2) !important;
 }
 
 /* -----------------------------------------
@@ -2354,10 +2407,11 @@ input:checked + .toggle-slider:before {
     margin-bottom: 0;
 }
 .accordion-content.show {
-    max-height: 2000px; /* 十分に大きい値 */
+    max-height: 2000px;
     opacity: 1;
     margin-bottom: 1.5rem;
     padding-top: 0.5rem;
+    overflow: visible;
 }
 
 /* 2x2 KPI グリッド */
@@ -2614,8 +2668,8 @@ input:checked + .toggle-slider:before {
     margin-bottom: 1rem;
     border: 1px solid var(--border);
     border-radius: 16px;
-    overflow: hidden;
     background: white;
+    /* overflow: hidden; を削除して、中身のクリッピングを防止 */
 }
 
 .accordion-header {
@@ -2647,16 +2701,19 @@ input:checked + .toggle-slider:before {
     text-align: center;
 }
 
-.accordion-content {
+.smart-accordion-content {
     display: none;
     padding: 1.2rem 1.2rem 2rem;
     border-top: 1px solid var(--border);
     background: white;
+    overflow: visible !important; /* 検索結果がはみ出せるようにする */
 }
 
-.smart-accordion.open .accordion-content {
-    display: block;
-    animation: fadeIn 0.3s ease;
+.smart-accordion.open .smart-accordion-content {
+    display: block !important;
+    visibility: visible !important;
+    height: auto !important;
+    opacity: 1 !important;
 }
 
 .smart-accordion.open .accordion-icon {

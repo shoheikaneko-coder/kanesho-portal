@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>かね将ポータル - プロトタイプ</title>
-    <link rel="stylesheet" href="styles.css?v=16">
+    <link rel="stylesheet" href="styles.css?v=20260422_2255">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="app-icon.png">
     <meta name="theme-color" content="#E63946">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <script type="module" src="app.js?v=153"></script>
+    <script type="module" src="app.js?v=20260422_2255"></script>
     <!-- FontAwesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- SheetJS for Excel/CSV processing -->
@@ -26,6 +26,16 @@
         
         <!-- Login Screen -->
         <div id="login-screen" class="login-card glass-panel animate-fade-in">
+            <style>
+                .incremental-search-v2 {
+                    background: white;
+                    border: 1.5px solid var(--primary);
+                    border-radius: 14px;
+                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+                    overflow: visible !important;
+                    position: relative;
+                }
+            </style>
             <div class="logo-container">
                 <img src="app-icon.png" alt="かね将ロゴ" class="logo-img" style="width: 120px; height: 120px; margin-bottom: 1rem; border-radius: 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.1);">
                 <h2>かね将ポータル</h2>
