@@ -1838,7 +1838,10 @@ function renderTable(filter = "") {
         if (currentTab === 'ingredients' && missingVendorOnly) {
             const ing = cachedIngredients.find(i => i.item_id === item.id);
             const vendor = cachedVendors.find(v => (v.vendor_id || v.id) === ing?.vendor_id);
-            if (vendor) return false;
+            const menu = cachedMenus.find(m => m.item_id === item.id);
+            const isSub = menu?.is_sub_recipe === true;
+            // 業者が登録されている、または自家製原材料の場合は除外
+            if (vendor || isSub) return false;
         }
 
         if (currentTab === 'menus') {
@@ -1959,7 +1962,7 @@ function renderTable(filter = "") {
                     </div>
                 </td>
                 <td style="padding: 1rem; color:var(--text-secondary); font-size: 0.85rem;">
-                    ${vendor ? vendor.vendor_name : '<span class="badge" style="background:#fef2f2; color:#ef4444; border:1px solid #fee2e2; font-size:0.75rem;">未登録</span>'}
+                    ${vendor ? vendor.vendor_name : (isSub ? '<span class="badge" style="background:#eff6ff; color:#2563eb; border:1px solid #dbeafe; font-size:0.75rem;">自家製原材料</span>' : '<span class="badge" style="background:#fef2f2; color:#ef4444; border:1px solid #fee2e2; font-size:0.75rem;">未登録</span>')}
                 </td>
                 <td style="padding: 1rem; color:var(--text-secondary); font-family: monospace;">${contentAmount.toLocaleString()}${item.unit}</td>
                 <td style="padding: 1rem; font-weight: 600; font-family: monospace;">¥${purchasePrice.toLocaleString()}</td>
