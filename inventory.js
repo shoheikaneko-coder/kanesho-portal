@@ -1,48 +1,56 @@
 import { db } from './firebase.js';
-import { collection, getDocs, addDoc, updateDoc, doc, getDoc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, getDocs, addDoc, updateDoc, doc, getDoc, query, where, orderBy, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { calculateAllTheoreticalStocks } from './stock_logic.js';
 
 export const inventoryPageHtml = `
-    <div id="inventory-app" class="animate-fade-in" style="max-width: 900px; margin: 0 auto; padding-bottom: 250px;">
-        <!-- New Sticky Header -->
-        <div class="glass-panel" style="position: sticky; top: 1rem; z-index: 100; padding: 1rem; margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <a href="javascript:void(0)" onclick="window.navigateTo('products')" style="font-size: 0.75rem; color: var(--primary); text-decoration: none; border-bottom: 1px solid var(--primary); padding-bottom: 2px; font-weight: 700;">
-                        <i class="fas fa-mortar-pestle" style="font-size: 0.7rem;"></i> 商品・レシピマスタ 🔗
-                    </a>
+    <div id="inventory-app" class="animate-fade-in" style="display: flex; height: calc(100vh - 120px); gap: 1rem; overflow: hidden; padding: 0 1rem;">
+        
+        <!-- Sidebar: Store & Timing Selection -->
+        <aside id="inv-sidebar" class="glass-panel" style="width: 260px; display: flex; flex-direction: column; gap: 1rem; padding: 1.2rem; flex-shrink: 0;">
+            <div>
+                <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem;">拠点選択</label>
+                <select id="inv-store-select" class="btn" style="width: 100%; background: white; border: 1px solid var(--border); font-size: 0.9rem;">
+                    <option value="">店舗を選択...</option>
+                </select>
+            </div>
+
+            <div style="flex: 1; overflow-y: auto;">
+                <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem; margin-top: 1rem;">確認タイミング</label>
+                <div id="inv-timing-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <!-- Timings injected here -->
                 </div>
-                <div style="display: flex; gap: 0.5rem; align-items: center;">
-                    <select id="inv-store-select" class="btn" style="background: white; border: 1px solid var(--border); min-width: 180px;">
-                        <option value="">店舗を選択...</option>
-                    </select>
-                    <button id="btn-inv-settings" class="btn" style="display: none; padding: 0.6rem 1rem; background: var(--surface-darker); color: var(--text-secondary); border: 1px solid var(--border); font-size: 0.85rem; font-weight: 600;" title="店舗別品目設定">
-                        <i class="fas fa-cog"></i> 在庫設定
-                    </button>
-                    <button id="btn-inv-back-from-settings" class="btn" style="display: none; padding: 0.6rem 1rem; background: white; color: var(--text-primary); border: 1px solid var(--border); font-size: 0.85rem; font-weight: 600;">
-                        <i class="fas fa-arrow-left"></i> 戻る
-                    </button>
+            </div>
+
+            <div style="border-top: 1px solid var(--border); padding-top: 1rem;">
+                <button id="btn-inv-settings" class="btn" style="width: 100%; padding: 0.6rem; background: var(--surface-darker); color: var(--text-secondary); border: 1px solid var(--border); font-size: 0.8rem; font-weight: 600;">
+                    <i class="fas fa-cog"></i> 在庫マスタ設定
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Area: Inventory Table -->
+        <main class="glass-panel" style="flex: 1; display: flex; flex-direction: column; padding: 0; overflow: hidden;">
+            <div id="inv-table-header" style="padding: 1rem 1.5rem; border-bottom: 2px solid var(--border); background: var(--surface-darker); display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 0.8rem;">
+                    <i class="fas fa-warehouse" style="color: var(--primary);"></i>
+                    <h3 id="inv-current-title" style="margin: 0; font-size: 1rem; font-weight: 800;">在庫チェック</h3>
                 </div>
+                <div id="inv-stats" style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;"></div>
             </div>
             
-            <div id="inv-tabs" class="tabs-container" style="margin-bottom: 0; display: none;">
-                <div class="tab-item active" data-tab="tiles"><i class="fas fa-th-large"></i> タイミング別</div>
-                <div class="tab-item" data-tab="list"><i class="fas fa-list"></i> 全件表示</div>
+            <div id="inv-main-content" style="flex: 1; overflow-y: auto; padding: 0;">
+                <!-- Table injected here -->
             </div>
-        </div>
+        </main>
 
-        <!-- Main Content Area -->
-        <div id="inv-main-content">
-            <!-- Content dynamic -->
-        </div>
-
-        <!-- Custom Numeric Keypad (Slide-up) -->
-        <div id="inv-keypad" style="position: fixed; bottom: -300px; left: 0; right: 0; background: #f8fafc; border-top: 1px solid var(--border); z-index: 2000; transition: bottom 0.3s ease; box-shadow: 0 -5px 20px rgba(0,0,0,0.1); padding: 1rem; display: none; flex-direction: column; gap: 0.5rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; padding: 0 0.5rem;">
-                <span id="keypad-item-name" style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary);">商品名</span>
-                <button id="btn-keypad-close" class="btn" style="padding: 0.4rem; background: #eee;"><i class="fas fa-times"></i></button>
+        <!-- Right Side: Docked Numeric Keypad -->
+        <aside id="inv-keypad-dock" class="glass-panel" style="width: 280px; display: flex; flex-direction: column; gap: 1rem; padding: 1.2rem; flex-shrink: 0;">
+            <div style="padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);">
+                <div id="keypad-item-name" style="font-weight: 800; font-size: 1rem; color: var(--primary); margin-bottom: 0.2rem; min-height: 1.2rem;">項目を選択</div>
+                <div id="keypad-item-unit" style="font-size: 0.75rem; color: var(--text-secondary);">--</div>
             </div>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
+            
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-top: 0.5rem;">
                 <button class="keypad-btn" data-val="1">1</button>
                 <button class="keypad-btn" data-val="2">2</button>
                 <button class="keypad-btn" data-val="3">3</button>
@@ -56,91 +64,55 @@ export const inventoryPageHtml = `
                 <button class="keypad-btn" data-val="0">0</button>
                 <button class="keypad-btn" data-val="BS"><i class="fas fa-backspace"></i></button>
             </div>
-            <button id="btn-keypad-confirm" class="btn btn-primary" style="margin-top: 0.5rem; padding: 1.25rem;">確定</button>
-        </div>
+            
+            <button id="btn-keypad-confirm" class="btn btn-primary" style="margin-top: auto; padding: 1.2rem; font-size: 1.1rem; font-weight: 800; box-shadow: var(--shadow-md);">
+                <i class="fas fa-check-circle"></i> 確定 (Enter)
+            </button>
+        </aside>
 
-        <!-- Location Edit Popup -->
+        <!-- Modals and Overlays (Same as before but hidden) -->
+        <div id="inv-keypad" style="display: none;"></div> <!-- Deprecated mobile keypad wrapper -->
+        
         <div id="loc-edit-modal" class="modal-overlay" style="display: none; position: fixed !important; inset: 0 !important; background: rgba(0,0,0,0.5) !important; z-index: 10000 !important; align-items: center; justify-content: center;">
             <div class="glass-panel animate-scale-in" style="width: 100%; max-width: 350px; padding: 1.5rem;">
                 <h3 style="margin-top: 0; margin-bottom: 1.2rem; font-size: 1.1rem; color: var(--text-primary);">
                     <i class="fas fa-cog" style="color: var(--primary); margin-right: 0.5rem;"></i>品目設定
                 </h3>
-                
-                <div class="input-group" style="margin-bottom: 1rem;">
-                    <label style="font-size: 0.8rem;">保管場所ラベル</label>
-                    <input type="text" id="loc-edit-input" list="loc-datalist" placeholder="例: 冷蔵庫A, 乾物棚" style="font-size: 0.9rem; padding: 0.6rem 0.6rem 0.6rem 2rem;">
-                    <i class="fas fa-map-marker-alt" style="top: 2rem; font-size: 0.8rem;"></i>
-                    <datalist id="loc-datalist"></datalist>
-                </div>
-
-                <div class="input-group" style="margin-bottom: 1.5rem;">
-                    <label style="font-size: 0.8rem;">定数 (Par Stock)</label>
-                    <input type="number" id="loc-par-stock-input" step="any" placeholder="0" style="font-size: 0.9rem; padding: 0.6rem 0.6rem 0.6rem 2rem;">
-                    <i class="fas fa-layer-group" style="top: 2rem; font-size: 0.8rem;"></i>
-                </div>
-
-                <div style="display: flex; gap: 0.75rem;">
-                    <button id="btn-loc-cancel" class="btn" style="flex: 1; background: #f1f5f9; color: var(--text-secondary); font-size: 0.85rem;">キャンセル</button>
-                    <button id="btn-loc-save" class="btn btn-primary" style="flex: 1; font-size: 0.85rem;">保存</button>
-                </div>
+                <div class="input-group" style="margin-bottom: 1rem;"><label style="font-size: 0.8rem;">保管場所ラベル</label><input type="text" id="loc-edit-input" list="loc-datalist" placeholder="例: 冷蔵庫A..." style="font-size: 0.9rem; padding: 0.6rem 0.6rem 0.6rem 2rem;"><i class="fas fa-map-marker-alt" style="top: 2rem; font-size: 0.8rem;"></i><datalist id="loc-datalist"></datalist></div>
+                <div class="input-group" style="margin-bottom: 1.5rem;"><label style="font-size: 0.8rem;">定数 (Par Stock)</label><input type="number" id="loc-par-stock-input" step="any" placeholder="0" style="font-size: 0.9rem; padding: 0.6rem 0.6rem 0.6rem 2rem;"><i class="fas fa-layer-group" style="top: 2rem; font-size: 0.8rem;"></i></div>
+                <div style="display: flex; gap: 0.75rem;"><button id="btn-loc-cancel" class="btn" style="flex: 1; background: #f1f5f9; color: var(--text-secondary); font-size: 0.85rem;">キャンセル</button><button id="btn-loc-save" class="btn btn-primary" style="flex: 1; font-size: 0.85rem;">保存</button></div>
             </div>
         </div>
 
-        <!-- Loading Overlay -->
         <div id="inv-loading-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.7); z-index:9999; justify-content:center; align-items:center;">
-             <div class="glass-panel" style="padding: 2rem; text-align:center;">
-                <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary);"></i>
-                <p style="margin-top:1rem; font-weight:600;">処理中...</p>
-             </div>
+             <div class="glass-panel" style="padding: 2rem; text-align:center;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary);"></i><p style="margin-top:1rem; font-weight:600;">処理中...</p></div>
         </div>
-
     </div>
 
     <style>
-        .keypad-btn {
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1.25rem 0;
-            font-size: 1.5rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: background 0.1s;
-        }
-        .keypad-btn:active {
-            background: #e2e8f0;
-        }
-        .location-header {
-            background: #f1f5f9;
-            padding: 0.5rem 1rem;
-            font-size: 0.85rem;
-            font-weight: 700;
-            color: var(--text-secondary);
-            border-radius: 8px;
-            margin: 1.5rem 0 0.75rem 0;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .location-header:first-of-type {
-            margin-top: 0;
-        }
-        .chip {
-            padding: 0.3rem 0.7rem;
-            background: #fff;
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            cursor: pointer;
-            white-space: nowrap;
-            transition: all 0.2s;
-            color: var(--text-secondary);
-        }
-        .chip.active {
-            background: var(--primary);
-            color: white;
-            border-color: var(--primary);
+        .inventory-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .inventory-table th { position: sticky; top: 0; background: white; z-index: 10; padding: 0.8rem 1rem; text-align: left; font-size: 0.75rem; color: var(--text-secondary); border-bottom: 1px solid var(--border); }
+        .inventory-table td { padding: 0.8rem 1rem; border-bottom: 1px solid var(--border); transition: background 0.2s; }
+        .inventory-row:hover { background: #f8fafc; }
+        .inventory-row.confirmed { background: #f0fdf4 !important; }
+        .inventory-row.shortage:not(.confirmed) { background: #fef2f2; border-left: 4px solid #ef4444; }
+        
+        .timing-item { padding: 0.8rem 1rem; border-radius: 10px; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; display: flex; align-items: center; gap: 0.6rem; font-weight: 600; color: var(--text-secondary); }
+        .timing-item:hover { background: #f1f5f9; color: var(--text-primary); }
+        .timing-item.active { background: white; color: var(--primary); border-color: var(--primary); box-shadow: var(--shadow-sm); }
+        
+        .qty-input { width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 6px; font-weight: 700; text-align: right; font-size: 1.1rem; color: var(--primary); }
+        .qty-input:focus { outline: 2px solid var(--primary); background: #fff; }
+        
+        .keypad-btn { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem 0; font-size: 1.3rem; font-weight: 700; cursor: pointer; transition: all 0.1s; box-shadow: var(--shadow-sm); }
+        .keypad-btn:active { transform: scale(0.95); background: #f1f5f9; }
+        
+        @media (max-width: 1024px) {
+            #inv-sidebar { width: 200px; }
+            #inv-keypad-dock { width: 240px; }
         }
     </style>
+`;
 `;
 
 // Global State
@@ -254,24 +226,36 @@ function getBusinessDate(resetTime = "05:00") {
 
 function render() {
     const main = document.getElementById('inv-main-content');
-    const tabs = document.getElementById('inv-tabs');
+    const sidebarTimings = document.getElementById('inv-timing-list');
     const storeSelect = document.getElementById('inv-store-select');
 
-    if (!main || !storeSelect) return;
+    if (!main || !storeSelect || !sidebarTimings) return;
 
-    // Populate Store Select
+    // 1. Populate Store Select (Only once or if changed)
     if (storeSelect.options.length <= 1) {
-        allStores.forEach(s => {
+        allStores.sort((a,b) => a.name.localeCompare(b.name)).forEach(s => {
             const opt = document.createElement('option');
             opt.value = s.id;
             opt.textContent = s.name;
             if (selectedStore && selectedStore.id === s.id) opt.selected = true;
             storeSelect.appendChild(opt);
         });
+        
+        // Auto-select store for users with a fixed StoreID
+        if (!selectedStore && currentUser?.StoreID) {
+            const myStore = allStores.find(s => s.id === currentUser.StoreID || s.code === currentUser.StoreID);
+            if (myStore) {
+                selectedStore = myStore;
+                storeSelect.value = myStore.id;
+                loadStoreInventory(myStore.code).then(() => render());
+            }
+        }
+
         storeSelect.onchange = async (e) => {
             const val = e.target.value;
             if (!val) {
                 selectedStore = null;
+                inventoryData = [];
             } else {
                 const s = allStores.find(x => x.id === val);
                 selectedStore = s;
@@ -283,7 +267,7 @@ function render() {
     }
 
     if (!selectedStore) {
-        tabs.style.display = 'none';
+        sidebarTimings.innerHTML = '<div style="font-size:0.8rem;color:var(--text-secondary);padding:1rem;">店舗を選択してください</div>';
         main.innerHTML = `
             <div style="text-align:center; padding: 5rem; color: var(--text-secondary);">
                 <i class="fas fa-store-slash" style="font-size: 3rem; margin-bottom: 1.5rem; opacity: 0.3;"></i>
@@ -293,142 +277,161 @@ function render() {
         return;
     }
 
-    const btnSettings = document.getElementById('btn-inv-settings');
-    const btnBack = document.getElementById('btn-inv-back-from-settings');
-    const pageTitle = document.getElementById('page-title');
-
-    if (currentTab === 'settings') {
-        tabs.style.display = 'none';
-        btnSettings.style.display = 'none';
-        btnBack.style.display = 'flex';
-        if (pageTitle) pageTitle.textContent = '在庫設定';
-        renderSettingsView(main);
-        
-        btnBack.onclick = () => {
-            currentTab = 'tiles';
-            render();
-        };
-    } else {
-        tabs.style.display = 'flex';
-        btnSettings.style.display = (currentUser?.Role === 'Admin' || currentUser?.Role === '管理者' || currentUser?.Role === 'Manager' || currentUser?.Role === '店長') ? 'flex' : 'none';
-        btnBack.style.display = 'none';
-        if (pageTitle) pageTitle.textContent = '在庫管理';
-
-        tabs.querySelectorAll('.tab-item').forEach(tab => {
-            tab.onclick = () => {
-                currentTab = tab.dataset.tab;
-                tabs.querySelectorAll('.tab-item').forEach(t => t.classList.toggle('active', t === tab));
-                selectedTiming = null;
-                render();
-            };
-        });
-
-        if (currentTab === 'tiles') {
-            if (selectedTiming) {
-                renderChecklist(main);
-            } else {
-                renderTimingTiles(main);
-            }
-        } else {
-            renderFullList(main);
-        }
-    }
-}
-
-function renderTimingTiles(container) {
+    // 2. Render Sidebar Timings
     const rawTimings = [...new Set(inventoryData.map(d => d.確認タイミング))].filter(t => t).sort();
-
-    if (rawTimings.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding: 3rem; color: var(--text-secondary);">この店舗に設定された品目はありません。</div>`;
-        return;
-    }
-
-    let html = `<div class="menu-grid animate-fade-in" style="grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 0.8rem;">`;
-    rawTimings.forEach(tCode => {
+    sidebarTimings.innerHTML = rawTimings.map(tCode => {
         const tName = timingMaster[tCode] || tCode;
         const itemsInTiming = inventoryData.filter(d => d.確認タイミング === tCode);
         const confirmedItems = itemsInTiming.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime));
-        const progress = itemsInTiming.length > 0 ? (confirmedItems.length / itemsInTiming.length) * 100 : 0;
-        const isAllDone = progress === 100;
-
-        html += `
-            <div class="glass-panel timing-card ${isAllDone ? 'completed' : ''}" 
-                 data-code="${tCode}" data-name="${tName}"
-                 style="display: flex; flex-direction: column; align-items: center; gap: 0.4rem; padding: 1rem; border-width: 2px; ${isAllDone ? 'border-color: var(--primary);' : ''}">
-                <i class="fas ${isAllDone ? 'fa-check-circle' : 'fa-clock'}" style="font-size: 1.5rem; color: ${isAllDone ? 'var(--primary)' : 'var(--text-secondary)'};"></i>
-                <h3 style="margin: 0; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">${tName}</h3>
-                <div style="width: 100%; height: 6px; background: #f1f5f9; border-radius: 3px; overflow: hidden; margin-top: 0.2rem;">
-                    <div style="width: ${progress}%; height: 100%; background: ${isAllDone ? 'var(--primary)' : 'var(--secondary)'}; transition: width 0.3s ease;"></div>
-                </div>
-                <div style="font-size: 0.7rem; font-weight: 700; color: ${isAllDone ? 'var(--primary)' : 'var(--text-secondary)'};">
-                    ${Math.round(progress)}% (${confirmedItems.length}/${itemsInTiming.length})
-                </div>
+        const isAllDone = itemsInTiming.length > 0 && confirmedItems.length === itemsInTiming.length;
+        const isActive = selectedTiming && selectedTiming.id === tCode;
+        
+        return `
+            <div class="timing-item ${isActive ? 'active' : ''}" data-code="${tCode}" data-name="${tName}">
+                <i class="fas ${isAllDone ? 'fa-check-circle' : 'fa-clock'}" style="${isAllDone ? 'color:var(--primary)' : ''}"></i>
+                <span style="flex:1">${tName}</span>
+                <span style="font-size:0.7rem;opacity:0.7">${confirmedItems.length}/${itemsInTiming.length}</span>
             </div>
         `;
+    }).join('');
+
+    sidebarTimings.querySelectorAll('.timing-item').forEach(item => {
+        item.onclick = () => {
+            selectedTiming = { id: item.dataset.code, name: item.dataset.name };
+            render();
+        };
     });
-    html += `</div>`;
+
+    // 3. Render Main Content
+    if (currentTab === 'settings') {
+        renderSettingsView(main);
+    } else {
+        if (!selectedTiming) {
+            main.innerHTML = `
+                <div style="text-align:center; padding: 5rem; color: var(--text-secondary);">
+                    <i class="fas fa-arrow-left" style="font-size: 3rem; margin-bottom: 1.5rem; opacity: 0.3;"></i>
+                    <p>左メニューからタイミングを選択してください</p>
+                </div>
+            `;
+        } else {
+            renderChecklist(main);
+        }
+    }
+
+    // Settings Toggle
+    const btnSettings = document.getElementById('btn-inv-settings');
+    if (btnSettings) {
+        const canManage = currentUser?.Role === 'Admin' || currentUser?.Role === '管理者' || currentUser?.Role === 'Manager' || currentUser?.Role === '店長';
+        btnSettings.style.display = canManage ? 'block' : 'none';
+        btnSettings.onclick = () => {
+            if (currentTab === 'settings') {
+                currentTab = 'tiles';
+                btnSettings.innerHTML = '<i class="fas fa-cog"></i> 在庫マスタ設定';
+            } else {
+                currentTab = 'settings';
+                btnSettings.innerHTML = '<i class="fas fa-arrow-left"></i> 戻る';
+            }
+            render();
+        };
+    }
+}
+
+function renderChecklist(container) {
+    const items = inventoryData.filter(d => d.確認タイミング === selectedTiming.id);
+    document.getElementById('inv-current-title').textContent = `${selectedStore.name} / ${selectedTiming.name}`;
+    
+    const confirmedCount = items.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime)).length;
+    document.getElementById('inv-stats').textContent = `完了: ${confirmedCount} / ${items.length}`;
+
+    renderInventoryTable(container, items);
+}
+
+function renderInventoryTable(container, items) {
+    // Sort items by location_label then name
+    items.sort((a, b) => {
+        const locA = a.location_label || a.保管場所 || '未設定';
+        const locB = b.location_label || b.保管場所 || '未設定';
+        if (locA !== locB) return locA.localeCompare(locB);
+        return (productMap[a.ProductID] || '').localeCompare(productMap[b.ProductID] || '');
+    });
+
+    let html = `
+        <table class="inventory-table">
+            <thead>
+                <tr>
+                    <th style="width: 40px; padding: 0.8rem 0.5rem;"></th>
+                    <th>品目名 / 保管場所</th>
+                    <th style="width: 80px; text-align: center;">定数</th>
+                    <th style="width: 120px; text-align: right;">現在庫入力</th>
+                    <th style="width: 80px; text-align: left; padding-left: 1rem;">単位</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    items.forEach((item, index) => {
+        const isConfirmed = isConfirmedToday(item.updated_at, selectedStore.resetTime);
+        const currentQty = item.個数 !== undefined ? item.個数 : '';
+        const parStock = item.定数 || 0;
+        const isShort = (parStock > 0) && (Number(currentQty) < parStock);
+        const loc = item.location_label || item.保管場所 || '-';
+
+        html += `
+            <tr class="inventory-row ${isConfirmed ? 'confirmed' : ''} ${isShort && !isConfirmed ? 'shortage' : ''}" data-id="${item.id}">
+                <td style="text-align: center; color: var(--text-secondary);">
+                    ${isConfirmed ? '<i class="fas fa-check-circle" style="color:var(--primary)"></i>' : (index + 1)}
+                </td>
+                <td>
+                    <div style="font-weight: 700; font-size: 0.95rem;">${productMap[item.ProductID] || '不明'}</div>
+                    <div style="font-size: 0.7rem; color: var(--text-secondary);"><i class="fas fa-map-marker-alt" style="font-size: 0.6rem;"></i> ${loc}</div>
+                </td>
+                <td style="text-align: center; font-family: monospace; font-weight: 700;">${parStock}</td>
+                <td>
+                    <input type="number" step="any" class="qty-input" 
+                           value="${currentQty}" placeholder="0" 
+                           data-id="${item.id}" data-index="${index}"
+                           onfocus="this.select()">
+                </td>
+                <td style="padding-left: 1rem; font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">
+                    ${item.display_unit || ''}
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `</tbody></table>`;
     container.innerHTML = html;
 
-    container.querySelectorAll('.timing-card').forEach(card => {
-        card.onclick = () => {
-            selectedTiming = { id: card.dataset.code, name: card.dataset.name };
-            render();
+    // Listeners for keyboard navigation and docked keypad
+    const inputs = container.querySelectorAll('.qty-input');
+    inputs.forEach(input => {
+        input.onfocus = () => {
+            editingItem = items.find(i => i.id === input.dataset.id);
+            updateKeypadDisplay();
+        };
+        
+        input.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                saveItemQty(editingItem);
+                const next = container.querySelector(`.qty-input[data-index="${parseInt(input.dataset.index) + 1}"]`);
+                if (next) next.focus();
+            }
+        };
+        
+        input.oninput = (e) => {
+            editingItem.個数 = e.target.value === "" ? 0 : Number(e.target.value);
         };
     });
 }
 
-function renderFullList(container) {
-    let html = `
-        <div class="glass-panel animate-fade-in" style="padding: 1rem; margin-bottom: 2rem;">
-            <div class="input-group" style="margin-bottom: 0;">
-                <i class="fas fa-search"></i>
-                <input type="text" id="inv-search" placeholder="品目名で検索..." style="padding-left: 2.5rem;">
-            </div>
-        </div>
-        <div id="inv-list-container"></div>
-    `;
-    container.innerHTML = html;
-
-    const searchInput = document.getElementById('inv-search');
-    searchInput.oninput = (e) => renderFilteredList(e.target.value);
-
-    renderFilteredList('');
-}
-
-function renderFilteredList(query) {
-    const listContainer = document.getElementById('inv-list-container');
-    if (!listContainer) return;
-
-    let filtered = inventoryData;
-    if (query) {
-        filtered = inventoryData.filter(i => (productMap[i.ProductID] || '').toLowerCase().includes(query.toLowerCase()));
+function updateKeypadDisplay() {
+    const nameEl = document.getElementById('keypad-item-name');
+    const unitEl = document.getElementById('keypad-item-unit');
+    if (editingItem) {
+        nameEl.textContent = productMap[editingItem.ProductID] || '不明';
+        unitEl.textContent = editingItem.display_unit || '単位未設定';
     }
-
-    renderItemsInGroups(listContainer, filtered, true);
-}
-
-function renderChecklist(container) {
-    let items = inventoryData.filter(d => d.確認タイミング === selectedTiming.id);
-
-    const confirmedCount = items.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime)).length;
-    const totalCount = items.length;
-
-    let html = `
-        <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
-            <button class="btn btn-secondary btn-sm" id="btn-back-to-tiles"><i class="fas fa-chevron-left"></i> 戻る</button>
-            <div style="text-align: right;">
-                <div style="font-weight: 700; font-size: 1rem;">${selectedTiming.name}</div>
-                <div style="font-size: 0.85rem; color: var(--text-secondary);">進捗: ${confirmedCount} / ${totalCount}</div>
-            </div>
-        </div>
-        <div id="inv-checklist-items"></div>
-    `;
-    container.innerHTML = html;
-
-    document.getElementById('btn-back-to-tiles').onclick = () => { selectedTiming = null; render(); };
-
-    const countContainer = document.getElementById('inv-checklist-items');
-    renderItemsInGroups(countContainer, items, false);
 }
 
 function renderItemsInGroups(container, items, hideIndicators) {
@@ -509,34 +512,19 @@ function renderItemsInGroups(container, items, hideIndicators) {
 // Keypad System
 function showKeypad(item) {
     editingItem = item;
-    const keypad = document.getElementById('inv-keypad');
-    const nameLabel = document.getElementById('keypad-item-name');
-    nameLabel.textContent = productMap[item.ProductID] || '在庫入力';
-    keypad.style.display = 'flex';
-    setTimeout(() => keypad.style.bottom = '0', 10);
-
-    // Set up keypad buttons
-    const btns = document.querySelectorAll('.keypad-btn');
-    btns.forEach(btn => {
-        btn.onclick = () => handleKeypadInput(btn.dataset.val);
-    });
-
-    document.getElementById('btn-keypad-close').onclick = hideKeypad;
-    document.getElementById('btn-keypad-confirm').onclick = () => {
-        saveItemQty(editingItem);
-        hideKeypad();
-    };
+    updateKeypadDisplay();
+    // In the new UI, we focus the input and use the docked keypad
+    const input = document.querySelector(`.qty-input[data-id="${item.id}"]`);
+    if (input) input.focus();
 }
 
 function hideKeypad() {
-    const keypad = document.getElementById('inv-keypad');
-    if (!keypad) return;
-    keypad.style.bottom = '-300px';
-    setTimeout(() => keypad.style.display = 'none', 300);
+    // Deprecated in docked UI
 }
 
 function handleKeypadInput(val) {
-    const input = document.querySelector(`.item-qty-input[data-id="${editingItem.id}"]`);
+    if (!editingItem) return;
+    const input = document.querySelector(`.qty-input[data-id="${editingItem.id}"]`);
     if (!input) return;
 
     let current = input.value;
@@ -548,6 +536,8 @@ function handleKeypadInput(val) {
         input.value = current + val;
     }
     editingItem.個数 = input.value === "" ? 0 : Number(input.value);
+    
+    // Auto-update Firestore if needed or wait for confirm
 }
 
 async function saveItemQty(item) {
@@ -661,7 +651,7 @@ async function saveLocationChange() {
 
 export async function initInventoryPage(user) {
     currentUser = user;
-    console.log("Initializing Inventory Page (V2)...");
+    console.log("Initializing Inventory Page (V3 - Hybrid)...");
     selectedStore = null;
     selectedTiming = null;
     inventoryData = [];
@@ -670,12 +660,24 @@ export async function initInventoryPage(user) {
     await loadInitialData();
     render();
 
-    // 権限チェック (Manager以上のみ⚙️を表示)
-    const canManage = user?.Role === 'Admin' || user?.Role === '管理者' || user?.Role === 'Manager' || user?.Role === '店長';
-    const btnSettings = document.getElementById('btn-inv-settings');
-    if (btnSettings) {
-        btnSettings.style.display = canManage ? 'flex' : 'none';
-        btnSettings.onclick = openInvSettings;
+    // Keypad listeners (Docked)
+    document.querySelectorAll('.keypad-btn').forEach(btn => {
+        btn.onclick = () => handleKeypadInput(btn.dataset.val);
+    });
+
+    const btnConfirm = document.getElementById('btn-keypad-confirm');
+    if (btnConfirm) {
+        btnConfirm.onclick = () => {
+            if (editingItem) {
+                saveItemQty(editingItem);
+                // Move focus to next
+                const currentInput = document.querySelector(`.qty-input[data-id="${editingItem.id}"]`);
+                if (currentInput) {
+                    const next = document.querySelector(`.qty-input[data-index="${parseInt(currentInput.dataset.index) + 1}"]`);
+                    if (next) next.focus();
+                }
+            }
+        };
     }
 }
 
