@@ -85,7 +85,11 @@ export const inventoryPageHtml = `
         .inventory-table th { position: sticky; top: 0; background: white; z-index: 10; padding: 0.8rem 1rem; text-align: left; font-size: 0.75rem; color: var(--text-secondary); border-bottom: 1px solid var(--border); }
         .inventory-table td { padding: 0.8rem 1rem; border-bottom: 1px solid var(--border); transition: background 0.2s; }
         .inventory-row:hover { background: #f8fafc; }
-        .inventory-row.confirmed { background: #f0fdf4 !important; }
+        
+        .inventory-row.confirmed { 
+            background: #f0fdf4 !important; 
+            border-left: 4px solid #10b981 !important;
+        }
         .inventory-row.shortage:not(.confirmed) { background: #fef2f2; border-left: 4px solid #ef4444; }
         
         .timing-item { padding: 0.8rem 1rem; border-radius: 10px; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; display: flex; align-items: center; gap: 0.6rem; font-weight: 600; color: var(--text-secondary); }
@@ -138,35 +142,62 @@ export const inventoryPageHtml = `
             transition: all 0.2s;
             font-size: 1rem;
         }
-        .stepper-btn:hover { 
-            background: #f8fafc; 
-            color: var(--primary); 
+        .stepper-btn:hover { background: #f8fafc; color: var(--primary); }
+        .stepper-btn:active { background: #f1f5f9; transform: scale(0.9); }
+
+        .confirm-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #e2e8f0;
+            background: white;
+            color: #cbd5e1;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .stepper-btn:active { 
-            background: #f1f5f9;
-            transform: scale(0.9); 
+        .confirm-btn.active {
+            background: #10b981;
+            border-color: #10b981;
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
         }
-        .stepper-btn.minus { border-radius: 0; }
-        .stepper-btn.plus { border-radius: 0; }
+        .confirm-btn:active { transform: scale(0.9); }
+
+        .section-confirm-btn {
+            font-size: 0.7rem;
+            padding: 0.3rem 0.8rem;
+            background: white;
+            color: #059669;
+            border: 1px solid #bbf7d0;
+            border-radius: 20px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        .section-confirm-btn:hover { background: #f0fdf4; border-color: #10b981; }
 
         @media (max-width: 1024px) {
             #inv-sidebar { width: 220px; }
         }
 
-        /* Inventory Optimized UI Styles */
         .location-banner {
-            background: #e2e8f0; /* Slate 200 */
-            border-top: 1px solid #cbd5e1;
-            border-bottom: 1px solid #cbd5e1;
+            background: #f1f5f9;
+            border-top: 1px solid #e2e8f0;
+            border-bottom: 1px solid #e2e8f0;
             padding: 0;
             cursor: pointer;
             user-select: none;
-            transition: background 0.2s;
         }
-        .location-banner:hover { background: #cbd5e1; }
-        .location-banner.completed { background: #dcfce7; }
+        .location-banner:hover { background: #e2e8f0; }
+        .location-banner.completed { background: #ecfdf5; }
         
-        .location-banner td { padding: 0.5rem 1rem !important; border-left: 5px solid #94a3b8; }
+        .location-banner td { padding: 0.6rem 1rem !important; border-left: 5px solid #cbd5e1; }
         .location-banner.completed td { border-left-color: #10b981; }
 
         .location-banner .banner-content {
@@ -174,50 +205,18 @@ export const inventoryPageHtml = `
             justify-content: space-between;
             align-items: center;
             width: 100%;
-            white-space: nowrap;
-            color: #334155; /* Slate 700 */
         }
 
-        .location-banner .title { 
-            font-weight: 800; 
-            font-size: 0.95rem; 
-            display: flex; 
-            align-items: center; 
-            gap: 0.8rem; 
-        }
-        .location-banner .progress { 
-            font-size: 0.75rem; 
-            font-weight: 800; 
-            color: #64748b; 
-            background: rgba(255,255,255,0.5); 
-            padding: 0.2rem 0.7rem; 
-            border-radius: 12px; 
-            border: 1px solid rgba(0,0,0,0.05);
-        }
+        .location-banner .title { font-weight: 800; font-size: 0.9rem; display: flex; align-items: center; gap: 0.8rem; color: #334155; }
+        .location-banner .progress { font-size: 0.7rem; font-weight: 800; color: #64748b; background: white; padding: 0.2rem 0.6rem; border-radius: 12px; border: 1px solid #e2e8f0; }
         .location-banner.completed .progress { color: #059669; border-color: #bbf7d0; }
 
         .inventory-table tr.hidden { display: none; }
         
-        .sort-handle { cursor: grab; color: #cbd5e1; padding: 0.5rem; transition: color 0.2s; }
-        .inventory-table.sort-mode-active .sort-handle { color: var(--primary); }
-        .inventory-table.sort-mode-active .qty-input, .inventory-table.sort-mode-active .stepper-btn { display: none !important; }
-        
-        .drag-over { border-top: 3px solid var(--primary) !important; background: rgba(230, 57, 70, 0.05); }
-    /* Item Detail Settings Modal */
-    .modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.4);
-        backdrop-filter: blur(4px);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 2100;
-        opacity: 0;
-        transition: opacity 0.2s ease;
+        #inv-loading-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
     }
     .modal-overlay.active {
         display: flex;
@@ -432,8 +431,8 @@ async function loadTheoreticalStocks(storeCode) {
 }
 
 // Helper: Check if the entry is from the current "business day"
-function isConfirmedToday(updatedAt, resetTime) {
-    if (!updatedAt) return false;
+function isConfirmedToday(updatedAt, resetTime, isConfirmedFlag) {
+    if (!updatedAt || isConfirmedFlag === false) return false;
     const now = new Date();
     const update = new Date(updatedAt);
 
@@ -531,7 +530,7 @@ function render() {
     sidebarTimings.innerHTML = rawTimings.map(tCode => {
         const tName = timingMaster[tCode] || tCode;
         const itemsInTiming = inventoryData.filter(d => d.確認タイミング === tCode);
-        const confirmedItems = itemsInTiming.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime));
+        const confirmedItems = itemsInTiming.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed));
         const isAllDone = itemsInTiming.length > 0 && confirmedItems.length === itemsInTiming.length;
         const isActive = selectedTiming && selectedTiming.id === tCode;
         
@@ -547,7 +546,12 @@ function render() {
     sidebarTimings.querySelectorAll('.timing-item').forEach(item => {
         item.onclick = () => {
             selectedTiming = { id: item.dataset.code, name: item.dataset.name };
-            inventorySearchQuery = ''; // タイミング切り替え時に検索をリセット
+            inventorySearchQuery = ''; 
+            
+            // 全てのアコーディオンを閉じる
+            const allLocs = [...new Set(inventoryData.filter(d => d.確認タイミング === selectedTiming.id).map(d => d.location_label || d.保管場所 || '未設定'))];
+            collapsedSections = new Set(allLocs);
+            
             render();
         };
     });
@@ -647,7 +651,7 @@ function renderChecklist(container) {
 
     document.getElementById('inv-current-title').textContent = `${selectedStore.name} / ${selectedTiming.name}`;
     
-    const confirmedCount = items.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime)).length;
+    const confirmedCount = items.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed)).length;
     document.getElementById('inv-stats').textContent = `完了: ${confirmedCount} / ${items.length}`;
 
     renderInventoryTable(container, items);
@@ -683,6 +687,7 @@ function renderInventoryTable(container, items) {
                     <th>品目名</th>
                     <th style="width: 180px; text-align: center;">現在庫入力</th>
                     <th style="width: 90px; text-align: center;">単位</th>
+                    <th style="width: 60px; text-align: center;">完了</th>
                     <th style="width: 80px; text-align: center;">定数</th>
                     <th style="width: 50px; text-align: center;"><i class="fas fa-cog"></i></th>
                 </tr>
@@ -692,7 +697,7 @@ function renderInventoryTable(container, items) {
 
     Object.keys(groupedItems).forEach(loc => {
         const locItems = groupedItems[loc];
-        const confirmedCount = locItems.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime)).length;
+        const confirmedCount = locItems.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed)).length;
         const totalCount = locItems.length;
         const isCompleted = confirmedCount === totalCount;
         const isCollapsed = collapsedSections.has(loc);
@@ -708,13 +713,16 @@ function renderInventoryTable(container, items) {
                             ${isCompleted ? '<i class="fas fa-check-circle" style="color:var(--primary); font-size: 0.9rem;"></i>' : ''}
                         </div>
                         <div class="progress">${confirmedCount} / ${totalCount}</div>
+                        <button class="section-confirm-btn" data-loc="${loc}" onclick="event.stopPropagation(); handleSectionConfirm('${loc}')">
+                            <i class="fas fa-check-double"></i> この棚を完了
+                        </button>
                     </div>
                 </td>
             </tr>
         `;
 
         locItems.forEach((item, index) => {
-            const isConfirmed = isConfirmedToday(item.updated_at, selectedStore.resetTime);
+            const isConfirmed = isConfirmedToday(item.updated_at, selectedStore.resetTime, item.is_confirmed);
             const currentQty = item.個数 !== undefined ? item.個数 : '';
             const parStock = item.定数 || 0;
             const isShort = (parStock > 0) && (Number(currentQty) < parStock);
@@ -750,6 +758,11 @@ function renderInventoryTable(container, items) {
                     </td>
                     <td style="text-align: center; font-size: 0.8rem; color: var(--text-secondary); font-weight: 600; white-space: nowrap;">
                         ${item.display_unit || ''}
+                    </td>
+                    <td style="text-align: center;">
+                        <button class="confirm-btn ${isConfirmed ? 'active' : ''}" data-id="${item.id}" title="確定">
+                            <i class="fas fa-check"></i>
+                        </button>
                     </td>
                     <td style="text-align: center; font-family: monospace; font-weight: 700;">${parStock}</td>
                     <td style="text-align: center;">
@@ -813,6 +826,14 @@ function renderInventoryTable(container, items) {
         btn.onclick = (e) => {
             e.stopPropagation();
             showItemSettingsModal(btn.dataset.id);
+        };
+    });
+
+    // 完了トグルボタンのリスナー
+    container.querySelectorAll('.confirm-btn').forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            toggleItemConfirmation(btn.dataset.id);
         };
     });
 
@@ -1019,7 +1040,7 @@ async function handleManualReset() {
 
     const itemsToReset = inventoryData.filter(d => 
         d.確認タイミング === selectedTiming.id && 
-        isConfirmedToday(d.updated_at, selectedStore.resetTime)
+        isConfirmedToday(d.updated_at, selectedStore.resetTime, d.is_confirmed)
     );
 
     if (itemsToReset.length === 0) {
@@ -1101,10 +1122,7 @@ async function saveItemQty(item) {
 
         await updateDoc(docRef, {
             個数: finalQty,
-            updated_at: now,
-            is_confirmed: true,
-            confirmed_at: now,
-            confirmed_by: currentUser?.Name || currentUser?.Email || 'unknown'
+            updated_at: now
         });
 
         // 旧ログはそのまま維持
@@ -1193,6 +1211,101 @@ async function saveLocationChange() {
         alert("保存エラー: " + err.message);
     } finally {
         overlay.style.setProperty('display', 'none', 'important');
+    }
+}
+
+async function toggleItemConfirmation(id) {
+    const item = inventoryData.find(i => i.id === id);
+    if (!item) return;
+
+    const isConfirmed = isConfirmedToday(item.updated_at, selectedStore.resetTime, item.is_confirmed);
+    const newConfirmed = !isConfirmed;
+    const now = new Date().toISOString();
+
+    const overlay = document.getElementById('inv-loading-overlay');
+    if (overlay) overlay.style.display = 'flex';
+
+    try {
+        const docRef = doc(db, "m_store_items", id);
+        await updateDoc(docRef, {
+            is_confirmed: newConfirmed,
+            updated_at: now,
+            confirmed_at: newConfirmed ? now : null,
+            confirmed_by: newConfirmed ? (currentUser?.Name || 'unknown') : null
+        });
+
+        // 履歴ログ
+        await addDoc(collection(db, "t_inventory_history"), {
+            store_id: selectedStore.code,
+            item_id: item.ProductID,
+            store_item_id: item.id,
+            reason_type: 'confirmation_toggle',
+            note: newConfirmed ? '確定' : '未確定に戻す',
+            executed_by: currentUser?.Name || 'unknown',
+            executed_at: now,
+            business_date: getBusinessDate(selectedStore.resetTime)
+        });
+
+        await loadStoreInventory(selectedStore.code);
+        render();
+    } catch (err) {
+        console.error("Toggle confirmation failed:", err);
+        alert("確定状態の変更に失敗しました");
+    } finally {
+        if (overlay) overlay.style.display = 'none';
+    }
+}
+
+async function handleSectionConfirm(locationName) {
+    const itemsInSection = inventoryData.filter(d => 
+        d.確認タイミング === selectedTiming.id && 
+        (d.location_label || d.保管場所 || '未設定') === locationName
+    );
+
+    if (itemsInSection.length === 0) return;
+
+    const confirmed = confirm(`「${locationName}」の全 ${itemsInSection.length} 品目を完了にしますか？`);
+    if (!confirmed) return;
+
+    const overlay = document.getElementById('inv-loading-overlay');
+    if (overlay) overlay.style.display = 'flex';
+
+    try {
+        const batch = writeBatch(db);
+        const now = new Date().toISOString();
+        const bizDate = getBusinessDate(selectedStore.resetTime);
+
+        itemsInSection.forEach(item => {
+            const docRef = doc(db, "m_store_items", item.id);
+            batch.update(docRef, {
+                is_confirmed: true,
+                updated_at: now,
+                confirmed_at: now,
+                confirmed_by: currentUser?.Name || 'unknown'
+            });
+        });
+
+        // 履歴ログ（一括）
+        const historyRef = doc(collection(db, "t_inventory_history"));
+        batch.set(historyRef, {
+            store_id: selectedStore.code,
+            item_id: 'SECTION_CONFIRM',
+            store_item_id: locationName,
+            reason_type: 'section_confirm',
+            note: `棚 [${locationName}] を一括完了`,
+            executed_by: currentUser?.Name || 'unknown',
+            executed_at: now,
+            business_date: bizDate
+        });
+
+        await batch.commit();
+        await loadStoreInventory(selectedStore.code);
+        render();
+    } catch (err) {
+        console.error("Section confirm failed:", err);
+        alert("一括完了に失敗しました");
+    } finally {
+        if (overlay) overlay.style.display = 'none';
     }
 }
 
