@@ -1034,7 +1034,7 @@ async function handleManualReset() {
     if (!confirmed) return;
 
     const overlay = document.getElementById('inv-loading-overlay');
-    overlay.style.setProperty('display', 'flex', 'important');
+    if (overlay) overlay.style.display = 'flex';
 
     try {
         const batch = writeBatch(db);
@@ -1074,14 +1074,16 @@ async function handleManualReset() {
         });
 
         await batch.commit();
-        
-        showAlert('成功', `${selectedTiming.name} の確認状況をリセットしました。`);
-        render(); // Re-render everything
+        await loadStoreInventory(selectedStore.code);
+        render(); 
+        if (overlay) overlay.style.setProperty('display', 'none', 'important');
+        alert(`「${selectedTiming.name}」の在庫チェックをリセットしました。`);
     } catch (err) {
         console.error("Reset failed:", err);
-        showAlert('エラー', 'リセットに失敗しました: ' + err.message);
+        if (overlay) overlay.style.setProperty('display', 'none', 'important');
+        alert('リセットに失敗しました: ' + err.message);
     } finally {
-        overlay.style.setProperty('display', 'none', 'important');
+        if (overlay) overlay.style.setProperty('display', 'none', 'important');
     }
 }
 
