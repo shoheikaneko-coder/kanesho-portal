@@ -1283,20 +1283,20 @@ function renderSettingsItems() {
             }
 
             container.innerHTML = itemsToShow.map(i => {
-                const pid = String(i.id);
+                const pid = String(i.id || '');
                 const displayName = i.name || i.Name || '名称未設定';
                 
-                // 仕入れ先・自家製判定
-                const ing = cachedIngredients.find(ing => String(ing.item_id) === pid);
-                const vendor = cachedVendors.find(v => (v.vendor_id || v.id) === ing?.vendor_id);
-                const menu = cachedMenus.find(m => String(m.item_id) === pid || String(m.id) === pid);
+                // 仕入れ先・自家製判定 (安全なアクセス)
+                const ing = (cachedIngredients || []).find(ing => ing && String(ing.item_id || '') === pid);
+                const vendor = (cachedSuppliers || []).find(v => v && (String(v.vendor_id || v.id) === String(ing?.vendor_id || '')));
+                const menu = (cachedMenus || []).find(m => m && (String(m.item_id || '') === pid || String(m.id || '') === pid));
                 const isSub = menu?.is_sub_recipe === true;
 
                 let vendorDisplay = '';
                 if (isSub) {
                     vendorDisplay = '<span style="color: #2563eb; font-weight: 700;">自家製原材料</span>';
                 } else if (vendor) {
-                    vendorDisplay = vendor.vendor_name;
+                    vendorDisplay = vendor.vendor_name || '名称不明';
                 } else {
                     vendorDisplay = '<span style="color: #ef4444; font-weight: 600;">業者未登録</span>';
                 }
@@ -1369,7 +1369,10 @@ function renderSettingsItems() {
         }
     } catch (err) {
         console.error("renderSettingsItems error:", err);
-        container.innerHTML = `<div style="text-align:center; padding: 2rem; color: #ef4444;">描画エラーが発生しました</div>`;
+        container.innerHTML = `<div style="text-align:center; padding: 2rem; color: #ef4444;">
+            <p>描画エラーが発生しました</p>
+            <p style="font-size: 0.7rem; color: var(--text-secondary);">${err.message}</p>
+        </div>`;
         // Emergency overlay hide
         const overlayLoad = document.getElementById('inv-loading-overlay');
         if (overlayLoad) overlayLoad.style.display = 'none';
