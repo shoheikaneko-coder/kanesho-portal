@@ -214,7 +214,7 @@ export const inventoryPageHtml = `
                 </button>
             </div>
             
-            <div id="inv-master-settings-content" style="display: grid; grid-template-columns: 1fr 350px; gap: 2rem;">
+            <div id="inv-master-settings-content" style="display: flex; flex-direction: column; gap: 2rem;">
                 <!-- Content injected by renderSettingsView -->
             </div>
         </div>
@@ -913,7 +913,7 @@ function renderSettingsView(container) {
             </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 350px; gap: 2rem;">
+        <div style="display: grid; grid-template-columns: 1fr 350px; gap: 2rem; align-items: start;">
             <!-- Left: Main List Area -->
             <div class="glass-panel" style="padding: 0; overflow: hidden; display: flex; flex-direction: column; background: white; border: 1px solid var(--border); border-radius: 16px;">
                 <div style="padding: 0.5rem; background: #f1f5f9; border-bottom: 1px solid var(--border); display: flex; font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">
