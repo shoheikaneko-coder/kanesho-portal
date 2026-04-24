@@ -31,11 +31,19 @@ export const inventoryPageHtml = `
         <!-- Main Area: Inventory Table -->
         <main class="glass-panel" style="flex: 1; display: flex; flex-direction: column; padding: 0; overflow: hidden;">
             <div id="inv-table-header" style="padding: 1rem 1.5rem; border-bottom: 2px solid var(--border); background: var(--surface-darker); display: flex; justify-content: space-between; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 0.8rem;">
+                <div style="display: flex; align-items: center; gap: 0.8rem; flex-shrink: 0;">
                     <i class="fas fa-warehouse" style="color: var(--primary);"></i>
                     <h3 id="inv-current-title" style="margin: 0; font-size: 1rem; font-weight: 800;">在庫チェック</h3>
                 </div>
-                <div style="display: flex; align-items: center; gap: 1rem;">
+
+                <!-- Search Box -->
+                <div id="inv-search-container" style="flex: 1; max-width: 350px; margin: 0 1.5rem; position: relative; display: none;">
+                    <i class="fas fa-search" style="position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary); font-size: 0.8rem; pointer-events: none;"></i>
+                    <input type="text" id="inv-item-search" placeholder="品目名で検索..." 
+                           style="width: 100%; padding: 0.5rem 0.8rem 0.5rem 2.2rem; border-radius: 20px; border: 1px solid var(--border); font-size: 0.85rem; font-weight: 600; outline: none; transition: all 0.2s; background: white;">
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 1rem; flex-shrink: 0;">
                     <button id="btn-toggle-sort" class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.75rem; font-weight: 800; border-radius: 8px;">
                         <i class="fas fa-arrows-alt-v"></i> 並べ替え
                     </button>
@@ -308,6 +316,7 @@ export const inventoryPageHtml = `
 
 // Global State
 let selectedStore = null;  // {id, name, internalCode, resetTime}
+let inventorySearchQuery = ''; 
 let currentTab = 'tiles';   // 'tiles' or 'list'
 let selectedTiming = null; // {id, name}
 let allStores = [];
@@ -534,9 +543,26 @@ function render() {
     sidebarTimings.querySelectorAll('.timing-item').forEach(item => {
         item.onclick = () => {
             selectedTiming = { id: item.dataset.code, name: item.dataset.name };
+            inventorySearchQuery = ''; // タイミング切り替え時に検索をリセット
             render();
         };
     });
+
+    // Search input control
+    const searchContainer = document.getElementById('inv-search-container');
+    if (searchContainer) {
+        searchContainer.style.display = selectedTiming ? 'block' : 'none';
+        const searchInput = document.getElementById('inv-item-search');
+        if (searchInput) {
+            searchInput.value = inventorySearchQuery;
+            searchInput.oninput = (e) => {
+                inventorySearchQuery = e.target.value;
+                // ヘッダー全体ではなく、リスト部分のみを再描画してフォーカスを維持
+                const mainContent = document.getElementById('inv-main-content');
+                if (mainContent) renderChecklist(mainContent);
+            };
+        }
+    }
 
     // 3. Render Main Content
     if (currentTab === 'settings') {
@@ -594,7 +620,19 @@ window.hideMasterSettings = () => {
 };
 
 function renderChecklist(container) {
-    const items = inventoryData.filter(d => d.確認タイミング === selectedTiming.id);
+    let items = inventoryData.filter(d => d.確認タイミング === selectedTiming.id);
+    
+    // 検索フィルタの適用
+    if (inventorySearchQuery) {
+        const q = inventorySearchQuery.toLowerCase();
+        items = items.filter(item => {
+            const masterName = (productMap[item.ProductID] || '').toLowerCase();
+            const displayName = (item.display_name || '').toLowerCase();
+            const location = (item.location_label || item.保管場所 || '').toLowerCase();
+            return masterName.includes(q) || displayName.includes(q) || location.includes(q);
+        });
+    }
+
     document.getElementById('inv-current-title').textContent = `${selectedStore.name} / ${selectedTiming.name}`;
     
     const confirmedCount = items.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime)).length;
