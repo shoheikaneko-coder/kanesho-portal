@@ -197,7 +197,7 @@ export const inventoryPageHtml = `
         .location-banner:hover { background: #e2e8f0; }
         .location-banner.completed { background: #ecfdf5; }
         
-        .location-banner td { padding: 0.6rem 1rem !important; border-left: 5px solid #cbd5e1; }
+        .location-banner td { padding: 0.6rem 0.5rem 0.6rem 1rem !important; border-left: 5px solid #cbd5e1; }
         .location-banner.completed td { border-left-color: #10b981; }
 
         .location-banner .banner-content {
@@ -205,6 +205,7 @@ export const inventoryPageHtml = `
             justify-content: space-between;
             align-items: center;
             width: 100%;
+            gap: 1rem;
         }
 
         .location-banner .title { font-weight: 800; font-size: 0.9rem; display: flex; align-items: center; gap: 0.8rem; color: #334155; }
@@ -713,7 +714,7 @@ function renderInventoryTable(container, items) {
                             ${isCompleted ? '<i class="fas fa-check-circle" style="color:var(--primary); font-size: 0.9rem;"></i>' : ''}
                         </div>
                         <div class="progress">${confirmedCount} / ${totalCount}</div>
-                        <button class="section-confirm-btn" data-loc="${loc}" onclick="event.stopPropagation(); handleSectionConfirm('${loc}')">
+                        <button class="section-confirm-btn" data-loc="${loc}">
                             <i class="fas fa-check-double"></i> この棚を完了
                         </button>
                     </div>
@@ -834,6 +835,14 @@ function renderInventoryTable(container, items) {
         btn.onclick = (e) => {
             e.stopPropagation();
             toggleItemConfirmation(btn.dataset.id);
+        };
+    });
+
+    // 棚の一括完了ボタンのリスナー
+    container.querySelectorAll('.section-confirm-btn').forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            handleSectionConfirm(btn.dataset.loc);
         };
     });
 
