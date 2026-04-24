@@ -101,6 +101,8 @@ let currentStore = null;    // Current user's store object
 let procurementData = [];   // Aggregated store items
 let collapsedItems = new Set();
 let cachedItems = [];
+let cachedIngredients = [];
+let cachedSuppliers = [];
 let currentUser = null;
 
 export async function initProcurementPage(user) {
@@ -112,6 +114,10 @@ export async function initProcurementPage(user) {
     await showLoading(true);
     try {
         await loadInitialData();
+        
+        // デフォルトですべて畳んだ状態にする
+        procurementData.forEach(si => collapsedItems.add(si.ProductID));
+
         setupEventListeners();
         render();
     } catch (err) {
@@ -123,12 +129,19 @@ export async function initProcurementPage(user) {
 }
 
 async function loadInitialData() {
-    // 1. Get current store context
-    // In a real app, user might have a default store. We'll use the first store if not set.
-    const storeSnap = await getDocs(collection(db, "m_stores"));
+    const [storeSnap, itemSnap, ingSnap, supSnap] = await Promise.all([
+        getDocs(collection(db, "m_stores")),
+        getDocs(collection(db, "m_items")),
+        getDocs(collection(db, "m_ingredients")),
+        getDocs(collection(db, "m_suppliers"))
+    ]);
+
     const stores = storeSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    cachedItems = itemSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    cachedIngredients = ingSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    cachedSuppliers = supSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     
-    // User's store (assuming currentUser.StoreID exists, fallback to first)
+    // User's store
     const storeId = currentUser?.StoreID || stores[0]?.id;
     currentStore = stores.find(s => s.id === storeId || s.store_id === storeId);
     
@@ -138,11 +151,7 @@ async function loadInitialData() {
     const groupName = currentStore.group_name || currentStore.所属グループ || '未設定';
     allGroupStores = stores.filter(s => (s.group_name || s.所属グループ || '未設定') === groupName);
 
-    // 3. Load Master Items
-    const itemSnap = await getDocs(collection(db, "m_items"));
-    cachedItems = itemSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-    // 4. Load all store items for the group
+    // 3. Load all store items for the group
     await refreshProcurementData();
 }
 
@@ -219,8 +228,11 @@ function render() {
     // 3. Extract Vendors and group items by Vendor then by ProductID
     const vendorMap = {};
     shortItems.forEach(si => {
-        const master = cachedItems.find(i => i.id === si.ProductID);
-        const vendor = master?.supplier_name || master?.業者名 || '未設定';
+        const item = cachedItems.find(i => i.id === si.ProductID);
+        const ing = cachedIngredients.find(ing => ing.item_id === si.ProductID);
+        const sup = cachedSuppliers.find(s => (s.vendor_id || s.id) === ing?.vendor_id);
+        
+        const vendor = sup?.vendor_name || item?.supplier_name || item?.業者名 || '未設定';
         if (!vendorMap[vendor]) vendorMap[vendor] = [];
         vendorMap[vendor].push(si);
     });
@@ -265,7 +277,9 @@ function render() {
         const productItems = itemsByProduct[productId];
         const master = cachedItems.find(i => i.id === productId);
         const name = master?.name || productId;
-        const unit = master?.unit || '';
+        
+        // 代表的な単位を取得（店舗別設定があれば優先、なければマスタ）
+        const representativeUnit = productItems[0]?.display_unit || master?.unit || '';
         
         // Calculate Total Requirement
         const totalReq = productItems.reduce((sum, si) => sum + (Number(si.定数 || 0) - Number(si.個数 || 0)), 0);
@@ -280,7 +294,7 @@ function render() {
                             <i class="fas fa-box" style="color:var(--primary); font-size:0.9rem;"></i>
                             ${name}
                         </div>
-                        <div class="total-req">計 ${totalReq.toFixed(1)} ${unit} 必要</div>
+                        <div class="total-req">計 ${totalReq.toFixed(1)} ${representativeUnit} 必要</div>
                     </div>
                 </div>
                 <div class="proc-detail-container ${isCollapsed ? 'hidden' : ''}">
@@ -290,10 +304,11 @@ function render() {
                                 const store = allGroupStores.find(s => s.id === si.StoreID);
                                 const sName = store?.store_name || store?.Name || si.StoreID;
                                 const req = (Number(si.定数 || 0) - Number(si.個数 || 0)).toFixed(1);
+                                const sUnit = si.display_unit || master?.unit || '';
                                 return `
                                     <tr class="proc-store-row">
                                         <td style="width: 200px;"><span class="proc-store-name">${sName}</span></td>
-                                        <td style="width: 150px; text-align: center;"><span class="proc-req-qty">不足 ${req}</span> <small>${unit}</small></td>
+                                        <td style="width: 150px; text-align: center;"><span class="proc-req-qty">不足 ${req}</span> <small>${sUnit}</small></td>
                                         <td>
                                             <div class="proc-input-container">
                                                 <input type="number" step="any" class="proc-buy-input" placeholder="0" data-si-id="${si.id}" value="${req}">
