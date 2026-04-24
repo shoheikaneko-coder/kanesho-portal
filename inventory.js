@@ -1251,61 +1251,23 @@ function renderSettingsItems() {
     const container = document.getElementById('inv-settings-list');
     if (!container) return;
 
-    // 処理開始を通知
-    container.innerHTML = '<div style="padding:1rem; font-size:0.8rem; color:var(--text-secondary);">処理を開始中...</div>';
-
     try {
-        // データの存在確認
-        if (!Array.isArray(cachedItems)) {
-            container.innerHTML = '<div style="padding:1rem; color:red;">エラー: cachedItems が配列ではありません</div>';
-            return;
-        }
-
         if (settingsBulkMode) {
             // --- Mode B: Master Items (Bulk Add) ---
             const existingPids = new Set(inventoryData.map(i => String(i.ProductID)));
             
-            // デバッグ用カウンタ
-            let debugTotal = cachedItems.length;
-            let debugExcludedTarget = 0;
-            let debugExcludedExisting = 0;
-            let debugExcludedCategory = 0;
-            let debugExcludedSearch = 0;
-
-            container.innerHTML = '<div style="padding:1rem; font-size:0.8rem; color:var(--text-secondary);">品目をフィルタリング中... (全 ' + cachedItems.length + ' 件)</div>';
-
             let itemsToShow = cachedItems.filter(i => {
-                const pid = String(i.id);
+                if (!isInventoryTarget(i)) return false;
+                if (existingPids.has(String(i.id))) return false;
+
                 const itemName = (i.name || i.Name || '').toLowerCase();
                 const itemCat = String(i.category || i.カテゴリー || 'その他');
 
-                // 1. 在庫管理対象か？
-                if (!isInventoryTarget(i)) {
-                    debugExcludedTarget++;
-                    return false;
-                }
-
-                // 2. 既に登録済みか？
-                if (existingPids.has(pid)) {
-                    debugExcludedExisting++;
-                    return false;
-                }
-
-                // 3. カテゴリ一致か？
-                if (settingsSelectedCategory !== 'ALL' && itemCat !== settingsSelectedCategory) {
-                    debugExcludedCategory++;
-                    return false;
-                }
-
-                // 4. 検索語一致か？
+                if (settingsSelectedCategory !== 'ALL' && itemCat !== settingsSelectedCategory) return false;
                 if (settingsSearchQuery) {
                     const q = settingsSearchQuery.toLowerCase();
-                    if (!itemName.includes(q)) {
-                        debugExcludedSearch++;
-                        return false;
-                    }
+                    if (!itemName.includes(q)) return false;
                 }
-
                 return true;
             });
 
@@ -1316,29 +1278,34 @@ function renderSettingsItems() {
             });
 
             if (itemsToShow.length === 0) {
-                container.innerHTML = `
-                    <div style="text-align:center; padding: 3rem; color: var(--text-secondary); font-size: 0.9rem;">
-                        <p>該当する未登録品目はありません</p>
-                        <div style="margin-top: 1.5rem; padding: 1rem; background: #f8fafc; border-radius: 8px; text-align: left; display: inline-block; font-family: monospace; font-size: 0.75rem; border: 1px solid #e2e8f0;">
-                            <div style="font-weight: 800; border-bottom: 1px solid #cbd5e1; margin-bottom: 0.5rem; padding-bottom: 0.2rem;">Debug Info:</div>
-                            <div>・マスタ総数: ${debugTotal}</div>
-                            <div>・管理対象外: ${debugExcludedTarget}</div>
-                            <div>・既に登録済: ${debugExcludedExisting}</div>
-                            <div>・カテゴリ外: ${debugExcludedCategory}</div>
-                            <div>・検索不一致: ${debugExcludedSearch}</div>
-                        </div>
-                    </div>`;
+                container.innerHTML = `<div style="text-align:center; padding: 3rem; color: var(--text-secondary); font-size: 0.9rem;">該当する未登録品目はありません</div>`;
                 return;
             }
 
             container.innerHTML = itemsToShow.map(i => {
+                const pid = String(i.id);
                 const displayName = i.name || i.Name || '名称未設定';
-                const displayCat = i.category || i.カテゴリー || '-';
+                
+                // 仕入れ先・自家製判定
+                const ing = cachedIngredients.find(ing => String(ing.item_id) === pid);
+                const vendor = cachedVendors.find(v => (v.vendor_id || v.id) === ing?.vendor_id);
+                const menu = cachedMenus.find(m => String(m.item_id) === pid || String(m.id) === pid);
+                const isSub = menu?.is_sub_recipe === true;
+
+                let vendorDisplay = '';
+                if (isSub) {
+                    vendorDisplay = '<span style="color: #2563eb; font-weight: 700;">自家製原材料</span>';
+                } else if (vendor) {
+                    vendorDisplay = vendor.vendor_name;
+                } else {
+                    vendorDisplay = '<span style="color: #ef4444; font-weight: 600;">業者未登録</span>';
+                }
+
                 return `
                     <label style="display: flex; align-items: center; padding: 0.75rem 1rem; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background 0.1s;">
-                        <div style="width: 40px;"><input type="checkbox" class="bulk-add-chk" value="${i.id}" style="width: 18px; height: 18px; cursor: pointer;"></div>
+                        <div style="width: 40px;"><input type="checkbox" class="bulk-add-chk" value="${pid}" style="width: 18px; height: 18px; cursor: pointer;"></div>
                         <div style="flex: 2; font-size: 0.9rem; font-weight: 700; color: var(--text-primary);">${displayName}</div>
-                        <div style="flex: 1; font-size: 0.75rem; color: var(--text-secondary);">${displayCat}</div>
+                        <div style="flex: 1; font-size: 0.75rem; color: var(--text-secondary);">${vendorDisplay}</div>
                         <div style="width: 40px; text-align: center;"><i class="fas fa-plus" style="color: var(--primary); opacity: 0.3;"></i></div>
                     </label>
                 `;
