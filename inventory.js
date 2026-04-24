@@ -1240,7 +1240,16 @@ function renderSettingsItems() {
     const container = document.getElementById('inv-settings-list');
     if (!container) return;
 
+    // 処理開始を通知
+    container.innerHTML = '<div style="padding:1rem; font-size:0.8rem; color:var(--text-secondary);">処理を開始中...</div>';
+
     try {
+        // データの存在確認
+        if (!Array.isArray(cachedItems)) {
+            container.innerHTML = '<div style="padding:1rem; color:red;">エラー: cachedItems が配列ではありません</div>';
+            return;
+        }
+
         if (settingsBulkMode) {
             // --- Mode B: Master Items (Bulk Add) ---
             const existingPids = new Set(inventoryData.map(i => String(i.ProductID)));
@@ -1251,6 +1260,8 @@ function renderSettingsItems() {
             let debugExcludedExisting = 0;
             let debugExcludedCategory = 0;
             let debugExcludedSearch = 0;
+
+            container.innerHTML = '<div style="padding:1rem; font-size:0.8rem; color:var(--text-secondary);">品目をフィルタリング中... (全 ' + cachedItems.length + ' 件)</div>';
 
             let itemsToShow = cachedItems.filter(i => {
                 const pid = String(i.id);
