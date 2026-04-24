@@ -991,8 +991,19 @@ function renderSettingsView(container) {
 
     document.getElementById('btn-add-timing').onclick = addTimingMaster;
 
-    renderSettingsItems();
-    renderTimingMasterList();
+    try {
+        renderSettingsItems();
+    } catch (e) {
+        console.error("renderSettingsItems failed:", e);
+        const listContainer = document.getElementById('inv-settings-list');
+        if (listContainer) listContainer.innerHTML = '<div style="color:red;padding:1rem;">品目リストの描画に失敗しました: ' + e.message + '</div>';
+    }
+
+    try {
+        renderTimingMasterList();
+    } catch (e) {
+        console.error("renderTimingMasterList failed:", e);
+    }
 }
 
 function handleQuickAddSearch(query) {
