@@ -1245,22 +1245,43 @@ function renderSettingsItems() {
             // --- Mode B: Master Items (Bulk Add) ---
             const existingPids = new Set(inventoryData.map(i => String(i.ProductID)));
             
-            let itemsToShow = cachedItems.filter(i => {
-                if (!isInventoryTarget(i)) return false;
-                if (existingPids.has(String(i.id))) return false;
+            // デバッグ用カウンタ
+            let debugTotal = cachedItems.length;
+            let debugExcludedTarget = 0;
+            let debugExcludedExisting = 0;
+            let debugExcludedCategory = 0;
+            let debugExcludedSearch = 0;
 
+            let itemsToShow = cachedItems.filter(i => {
+                const pid = String(i.id);
                 const itemName = (i.name || i.Name || '').toLowerCase();
                 const itemCat = String(i.category || i.カテゴリー || 'その他');
 
-                // Category Check
-                if (settingsSelectedCategory !== 'ALL' && itemCat !== settingsSelectedCategory) {
+                // 1. 在庫管理対象か？
+                if (!isInventoryTarget(i)) {
+                    debugExcludedTarget++;
                     return false;
                 }
 
-                // Search Check
+                // 2. 既に登録済みか？
+                if (existingPids.has(pid)) {
+                    debugExcludedExisting++;
+                    return false;
+                }
+
+                // 3. カテゴリ一致か？
+                if (settingsSelectedCategory !== 'ALL' && itemCat !== settingsSelectedCategory) {
+                    debugExcludedCategory++;
+                    return false;
+                }
+
+                // 4. 検索語一致か？
                 if (settingsSearchQuery) {
                     const q = settingsSearchQuery.toLowerCase();
-                    if (!itemName.includes(q)) return false;
+                    if (!itemName.includes(q)) {
+                        debugExcludedSearch++;
+                        return false;
+                    }
                 }
 
                 return true;
@@ -1273,7 +1294,18 @@ function renderSettingsItems() {
             });
 
             if (itemsToShow.length === 0) {
-                container.innerHTML = `<div style="text-align:center; padding: 3rem; color: var(--text-secondary); font-size: 0.9rem;">該当する未登録品目はありません</div>`;
+                container.innerHTML = `
+                    <div style="text-align:center; padding: 3rem; color: var(--text-secondary); font-size: 0.9rem;">
+                        <p>該当する未登録品目はありません</p>
+                        <div style="margin-top: 1.5rem; padding: 1rem; background: #f8fafc; border-radius: 8px; text-align: left; display: inline-block; font-family: monospace; font-size: 0.75rem; border: 1px solid #e2e8f0;">
+                            <div style="font-weight: 800; border-bottom: 1px solid #cbd5e1; margin-bottom: 0.5rem; padding-bottom: 0.2rem;">Debug Info:</div>
+                            <div>・マスタ総数: ${debugTotal}</div>
+                            <div>・管理対象外: ${debugExcludedTarget}</div>
+                            <div>・既に登録済: ${debugExcludedExisting}</div>
+                            <div>・カテゴリ外: ${debugExcludedCategory}</div>
+                            <div>・検索不一致: ${debugExcludedSearch}</div>
+                        </div>
+                    </div>`;
                 return;
             }
 
