@@ -4,10 +4,10 @@ import { collection, getDocs, query, where, getDoc, doc, updateDoc, serverTimest
 // 各ページのインポート
 import { dashboardPageHtml, initDashboardPage } from './dashboard.js?v=63';
 import { attendancePageHtml, initAttendancePage } from './attendance.js?v=63';
-import { salesPageHtml, initSalesPage } from './sales.js?v=63';
+import { salesPageHtml, initSalesPage } from './sales.js?v=65';
 import { storesPageHtml, initStoresPage } from './stores.js?v=31';
 import { usersPageHtml, initUsersPage } from './users.js?v=31';
-import { inventoryPageHtml, initInventoryPage } from './inventory.js?v=32';
+import { inventoryPageHtml, initInventoryPage } from './inventory.js?v=33';
 import { procurementPageHtml, initProcurementPage } from './procurement.js?v=8';
 import { stocktakePageHtml, initStocktakePage } from './stocktake.js?v=1';
 import { inventoryHistoryPageHtml, initInventoryHistoryPage } from './inventory_history.js?v=1';

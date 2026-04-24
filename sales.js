@@ -1,5 +1,5 @@
 import { db } from './firebase.js';
-import { collection, getDocs, doc, setDoc, query, orderBy, limit, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, getDocs, doc, setDoc, query, orderBy, limit, getDoc, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { showAlert, showConfirm } from './ui_utils.js';
 import { processFile } from './import-logic.js';
 
@@ -529,6 +529,21 @@ export async function initSalesPage() {
 
             const docId = `${sid}_${date}`;
             try {
+                console.log("Saving sales record: checking for existing data", { sid, date });
+                // クエリによる重複チェック（IDの形式に依存しない）
+                const q = query(
+                    collection(db, "t_performance"), 
+                    where("date", "==", date), 
+                    where("store_id", "==", sid),
+                    limit(1)
+                );
+                const querySnap = await getDocs(q);
+                
+                if (!querySnap.empty) {
+                    showAlert('登録済み', '既に登録済みです。修正申請は個別に管理者に連絡してください。');
+                    return;
+                }
+
                 await setDoc(doc(db, "t_performance", docId), data);
                 // LINE共有
                 const url = `line://msg/text/?${encodeURIComponent(reportText)}`;

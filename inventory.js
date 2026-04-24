@@ -1,5 +1,5 @@
 import { db } from './firebase.js';
-import { collection, getDocs, addDoc, updateDoc, doc, getDoc, query, where, orderBy, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, getDocs, addDoc, updateDoc, doc, getDoc, query, where, orderBy, setDoc, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { calculateAllTheoreticalStocks } from './stock_logic.js';
 
 export const inventoryPageHtml = `
@@ -35,7 +35,12 @@ export const inventoryPageHtml = `
                     <i class="fas fa-warehouse" style="color: var(--primary);"></i>
                     <h3 id="inv-current-title" style="margin: 0; font-size: 1rem; font-weight: 800;">在庫チェック</h3>
                 </div>
-                <div id="inv-stats" style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;"></div>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <button id="btn-toggle-sort" class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.75rem; font-weight: 800; border-radius: 8px;">
+                        <i class="fas fa-arrows-alt-v"></i> 並べ替え
+                    </button>
+                    <div id="inv-stats" style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;"></div>
+                </div>
             </div>
             
             <div id="inv-main-content" style="flex: 1; overflow-y: auto; padding: 0;">
@@ -43,32 +48,6 @@ export const inventoryPageHtml = `
             </div>
         </main>
 
-        <!-- Right Side: Docked Numeric Keypad -->
-        <aside id="inv-keypad-dock" class="glass-panel" style="width: 280px; display: flex; flex-direction: column; gap: 1rem; padding: 1.2rem; flex-shrink: 0;">
-            <div style="padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);">
-                <div id="keypad-item-name" style="font-weight: 800; font-size: 1rem; color: var(--primary); margin-bottom: 0.2rem; min-height: 1.2rem;">項目を選択</div>
-                <div id="keypad-item-unit" style="font-size: 0.75rem; color: var(--text-secondary);">--</div>
-            </div>
-            
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-top: 0.5rem;">
-                <button class="keypad-btn" data-val="1">1</button>
-                <button class="keypad-btn" data-val="2">2</button>
-                <button class="keypad-btn" data-val="3">3</button>
-                <button class="keypad-btn" data-val="4">4</button>
-                <button class="keypad-btn" data-val="5">5</button>
-                <button class="keypad-btn" data-val="6">6</button>
-                <button class="keypad-btn" data-val="7">7</button>
-                <button class="keypad-btn" data-val="8">8</button>
-                <button class="keypad-btn" data-val="9">9</button>
-                <button class="keypad-btn" data-val=".">.</button>
-                <button class="keypad-btn" data-val="0">0</button>
-                <button class="keypad-btn" data-val="BS"><i class="fas fa-backspace"></i></button>
-            </div>
-            
-            <button id="btn-keypad-confirm" class="btn btn-primary" style="margin-top: auto; padding: 1.2rem; font-size: 1.1rem; font-weight: 800; box-shadow: var(--shadow-md);">
-                <i class="fas fa-check-circle"></i> 確定 (Enter)
-            </button>
-        </aside>
 
         <!-- Modals and Overlays (Same as before but hidden) -->
         <div id="inv-keypad" style="display: none;"></div> <!-- Deprecated mobile keypad wrapper -->
@@ -101,16 +80,117 @@ export const inventoryPageHtml = `
         .timing-item:hover { background: #f1f5f9; color: var(--text-primary); }
         .timing-item.active { background: white; color: var(--primary); border-color: var(--primary); box-shadow: var(--shadow-sm); }
         
-        .qty-input { width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 6px; font-weight: 700; text-align: right; font-size: 1.1rem; color: var(--primary); }
-        .qty-input:focus { outline: 2px solid var(--primary); background: #fff; }
-        
-        .keypad-btn { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem 0; font-size: 1.3rem; font-weight: 700; cursor: pointer; transition: all 0.1s; box-shadow: var(--shadow-sm); }
-        .keypad-btn:active { transform: scale(0.95); background: #f1f5f9; }
-        
-        @media (max-width: 1024px) {
-            #inv-sidebar { width: 200px; }
-            #inv-keypad-dock { width: 240px; }
+        .qty-stepper-container {
+            display: inline-flex;
+            align-items: center;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            margin: 0 auto;
         }
+        .qty-stepper-container:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(230, 57, 70, 0.1);
+            transform: translateY(-1px);
+        }
+        
+        .qty-input { 
+            width: 65px !important; 
+            height: 44px;
+            padding: 0; 
+            border: none !important;
+            border-left: 1px solid #f1f5f9 !important;
+            border-right: 1px solid #f1f5f9 !important;
+            border-radius: 0 !important; 
+            font-weight: 800; 
+            text-align: center; 
+            font-size: 1.25rem; 
+            color: var(--primary); 
+            background: white;
+            outline: none;
+        }
+        
+        .stepper-btn {
+            width: 44px;
+            height: 44px;
+            border: none !important;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+            font-size: 1rem;
+        }
+        .stepper-btn:hover { 
+            background: #f8fafc; 
+            color: var(--primary); 
+        }
+        .stepper-btn:active { 
+            background: #f1f5f9;
+            transform: scale(0.9); 
+        }
+        .stepper-btn.minus { border-radius: 0; }
+        .stepper-btn.plus { border-radius: 0; }
+
+        @media (max-width: 1024px) {
+            #inv-sidebar { width: 220px; }
+        }
+
+        /* Inventory Optimized UI Styles */
+        .location-banner {
+            background: #e2e8f0; /* Slate 200 */
+            border-top: 1px solid #cbd5e1;
+            border-bottom: 1px solid #cbd5e1;
+            padding: 0;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+        }
+        .location-banner:hover { background: #cbd5e1; }
+        .location-banner.completed { background: #dcfce7; }
+        
+        .location-banner td { padding: 0.5rem 1rem !important; border-left: 5px solid #94a3b8; }
+        .location-banner.completed td { border-left-color: #10b981; }
+
+        .location-banner .banner-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            white-space: nowrap;
+            color: #334155; /* Slate 700 */
+        }
+
+        .location-banner .title { 
+            font-weight: 800; 
+            font-size: 0.95rem; 
+            display: flex; 
+            align-items: center; 
+            gap: 0.8rem; 
+        }
+        .location-banner .progress { 
+            font-size: 0.75rem; 
+            font-weight: 800; 
+            color: #64748b; 
+            background: rgba(255,255,255,0.5); 
+            padding: 0.2rem 0.7rem; 
+            border-radius: 12px; 
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        .location-banner.completed .progress { color: #059669; border-color: #bbf7d0; }
+
+        .inventory-table tr.hidden { display: none; }
+        
+        .sort-handle { cursor: grab; color: #cbd5e1; padding: 0.5rem; transition: color 0.2s; }
+        .inventory-table.sort-mode-active .sort-handle { color: var(--primary); }
+        .inventory-table.sort-mode-active .qty-input, .inventory-table.sort-mode-active .stepper-btn { display: none !important; }
+        
+        .drag-over { border-top: 3px solid var(--primary) !important; background: rgba(230, 57, 70, 0.05); }
     /* Item Detail Settings Modal */
     .modal-overlay {
         position: fixed;
@@ -159,6 +239,11 @@ export const inventoryPageHtml = `
                 <button onclick="hideItemModal()" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size: 1.2rem;"><i class="fas fa-times"></i></button>
             </div>
             <div style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.2rem;">
+                <div class="input-group">
+                    <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">店舗別表示名 (任意)</label>
+                    <input type="text" id="modal-display-name" placeholder="例: 生ビール中" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 1px solid var(--border); font-weight: 700; color: var(--primary);">
+                    <small style="display: block; margin-top: 0.3rem; color: var(--text-secondary); font-size: 0.65rem;">※店舗独自の名前で表示できます。マスタ名は変更されません。</small>
+                </div>
                 <div class="input-group">
                     <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">確認タイミング</label>
                     <select id="modal-timing" class="settings-input" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 1px solid var(--border); font-weight: 600;"></select>
@@ -267,6 +352,8 @@ function isInventoryTarget(item) {
 let tempSelectedPids = new Set();
 let settingsCurrentTab = 'ingredients'; 
 let editingItem = null;    // Item for keypad or loc-edit
+let sortMode = false;
+let collapsedSections = new Set(); // Store location names
 
 
 async function loadInitialData() {
@@ -525,58 +612,151 @@ function renderInventoryTable(container, items) {
         return (productMap[a.ProductID] || '').localeCompare(productMap[b.ProductID] || '');
     });
 
+    // グルーピングとプログレス計算
+    const groupedItems = {};
+    items.forEach(item => {
+        const loc = item.location_label || item.保管場所 || '未設定';
+        if (!groupedItems[loc]) groupedItems[loc] = [];
+        groupedItems[loc].push(item);
+    });
+
+    // 各ロケーション内のソート
+    Object.keys(groupedItems).forEach(loc => {
+        groupedItems[loc].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    });
+
     let html = `
-        <table class="inventory-table">
+        <table class="inventory-table ${sortMode ? 'sort-mode-active' : ''}">
             <thead>
                 <tr>
                     <th style="width: 40px; padding: 0.8rem 0.5rem;"></th>
-                    <th>品目名 / 保管場所</th>
-                    <th style="width: 80px; text-align: center;">定数</th>
-                    <th style="width: 120px; text-align: right;">現在庫入力</th>
+                    <th>品目名</th>
+                    <th style="width: 140px; text-align: center;">現在庫入力</th>
                     <th style="width: 60px; text-align: center;">単位</th>
-                    <th style="width: 50px; text-align: center;">設定</th>
+                    <th style="width: 80px; text-align: center;">定数</th>
+                    <th style="width: 50px; text-align: center;"><i class="fas fa-cog"></i></th>
                 </tr>
             </thead>
             <tbody>
     `;
 
-    items.forEach((item, index) => {
-        const isConfirmed = isConfirmedToday(item.updated_at, selectedStore.resetTime);
-        const currentQty = item.個数 !== undefined ? item.個数 : '';
-        const parStock = item.定数 || 0;
-        const isShort = (parStock > 0) && (Number(currentQty) < parStock);
-        const loc = item.location_label || item.保管場所 || '-';
+    Object.keys(groupedItems).forEach(loc => {
+        const locItems = groupedItems[loc];
+        const confirmedCount = locItems.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime)).length;
+        const totalCount = locItems.length;
+        const isCompleted = confirmedCount === totalCount;
+        const isCollapsed = collapsedSections.has(loc);
 
         html += `
-            <tr class="inventory-row ${isConfirmed ? 'confirmed' : ''} ${isShort && !isConfirmed ? 'shortage' : ''}" data-id="${item.id}">
-                <td style="text-align: center; color: var(--text-secondary);">
-                    ${isConfirmed ? '<i class="fas fa-check-circle" style="color:var(--primary)"></i>' : (index + 1)}
-                </td>
-                <td>
-                    <div style="font-weight: 700; font-size: 0.95rem;">${productMap[item.ProductID] || '不明'}</div>
-                    <div style="font-size: 0.7rem; color: var(--text-secondary);"><i class="fas fa-map-marker-alt" style="font-size: 0.6rem;"></i> ${loc}</div>
-                </td>
-                <td style="text-align: center; font-family: monospace; font-weight: 700;">${parStock}</td>
-                <td>
-                    <input type="number" step="any" class="qty-input" 
-                           value="${currentQty}" placeholder="0" 
-                           data-id="${item.id}" data-index="${index}"
-                           onfocus="this.select()">
-                </td>
-                <td style="text-align: center; font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">
-                    ${item.display_unit || ''}
-                </td>
-                <td style="text-align: center;">
-                    <button class="btn-item-settings" data-id="${item.id}" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; padding: 5px;">
-                        <i class="fas fa-cog"></i>
-                    </button>
+            <tr class="location-banner ${isCompleted ? 'completed' : ''}" data-loc="${loc}">
+                <td colspan="6">
+                    <div class="banner-content">
+                        <div class="title">
+                            <i class="fas ${isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'}" style="width: 1rem; font-size: 0.8rem; color: var(--text-secondary);"></i>
+                            <i class="fas fa-map-marker-alt" style="color: var(--primary);"></i>
+                            ${loc}
+                            ${isCompleted ? '<i class="fas fa-check-circle" style="color:var(--primary); font-size: 0.9rem;"></i>' : ''}
+                        </div>
+                        <div class="progress">${confirmedCount} / ${totalCount}</div>
+                    </div>
                 </td>
             </tr>
         `;
+
+        locItems.forEach((item, index) => {
+            const isConfirmed = isConfirmedToday(item.updated_at, selectedStore.resetTime);
+            const currentQty = item.個数 !== undefined ? item.個数 : '';
+            const parStock = item.定数 || 0;
+            const isShort = (parStock > 0) && (Number(currentQty) < parStock);
+            
+            // 表示名の出し分け
+            const masterName = productMap[item.ProductID] || '不明';
+            const displayName = item.display_name || masterName;
+            const hasCustomName = item.display_name && item.display_name !== masterName;
+
+            html += `
+                <tr class="inventory-row ${isConfirmed ? 'confirmed' : ''} ${isShort && !isConfirmed ? 'shortage' : ''} ${isCollapsed ? 'hidden' : ''}" 
+                    data-id="${item.id}" data-loc="${loc}" draggable="${sortMode}">
+                    <td style="text-align: center;">
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 0.6rem;">
+                            <div class="check-mark" style="display: ${sortMode ? 'none' : 'block'}; min-width: 1.2rem;">
+                                ${isConfirmed ? '<i class="fas fa-check-circle" style="color:var(--primary)"></i>' : (index + 1)}
+                            </div>
+                            <div class="sort-handle" style="display: ${sortMode ? 'block' : 'none'};"><i class="fas fa-bars"></i></div>
+                        </div>
+                    </td>
+                    <td>
+                        <div style="font-weight: 800; font-size: 1rem; color: var(--text-primary);">${displayName}</div>
+                        ${hasCustomName ? `<div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.1rem;">${masterName}</div>` : ''}
+                    </td>
+                    <td style="text-align: center;">
+                        <div class="qty-stepper-container">
+                            <button class="stepper-btn minus" data-id="${item.id}"><i class="fas fa-minus"></i></button>
+                            <input type="number" step="any" inputmode="decimal" class="qty-input" 
+                                   value="${currentQty}" placeholder="0" 
+                                   data-id="${item.id}" data-index="${index}">
+                            <button class="stepper-btn plus" data-id="${item.id}"><i class="fas fa-plus"></i></button>
+                        </div>
+                    </td>
+                    <td style="text-align: center; font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">
+                        ${item.display_unit || ''}
+                    </td>
+                    <td style="text-align: center; font-family: monospace; font-weight: 700;">${parStock}</td>
+                    <td style="text-align: center;">
+                        <button class="btn-item-settings" data-id="${item.id}" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; padding: 5px;">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
     });
 
     html += `</tbody></table>`;
     container.innerHTML = html;
+
+    // Header listeners
+    const btnSort = document.getElementById('btn-toggle-sort');
+    if (btnSort) {
+        btnSort.onclick = () => {
+            sortMode = !sortMode;
+            renderInventoryTable(container, items);
+        };
+    }
+
+    // Banner listeners (Toggle)
+    container.querySelectorAll('.location-banner').forEach(banner => {
+        banner.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const loc = banner.dataset.loc;
+            if (collapsedSections.has(loc)) {
+                collapsedSections.delete(loc);
+            } else {
+                collapsedSections.add(loc);
+            }
+            render(); // 全体再描画
+        };
+    });
+
+    // Input listeners (Auto-save on blur)
+    container.querySelectorAll('.qty-input').forEach(input => {
+        input.onfocus = () => input.select();
+        input.onblur = () => {
+            const item = items.find(i => i.id === input.dataset.id);
+            if (item) {
+                // 文字列として取得してitemにセット（saveItemQty内で数値化される）
+                item.個数 = input.value;
+                saveItemQty(item);
+            }
+        };
+        // Enterキーでも保存
+        input.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                input.blur();
+            }
+        };
+    });
 
     // Listeners for ⚙️ settings icon
     container.querySelectorAll('.btn-item-settings').forEach(btn => {
@@ -586,12 +766,60 @@ function renderInventoryTable(container, items) {
         };
     });
 
+    // Drag and Drop Logic
+    if (sortMode) {
+        let dragSrcEl = null;
+        container.querySelectorAll('.inventory-row[draggable="true"]').forEach(row => {
+            row.addEventListener('dragstart', (e) => {
+                dragSrcEl = row;
+                e.dataTransfer.effectAllowed = 'move';
+                row.style.opacity = '0.4';
+            });
+            row.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                const locA = dragSrcEl.dataset.loc;
+                const locB = row.dataset.loc;
+                if (locA === locB && dragSrcEl !== row) {
+                    row.classList.add('drag-over');
+                }
+            });
+            row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+            row.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                row.classList.remove('drag-over');
+                const locA = dragSrcEl.dataset.loc;
+                const locB = row.dataset.loc;
+                if (locA === locB && dragSrcEl !== row) {
+                    // Reorder in groupedItems and save
+                    const locItems = groupedItems[locA];
+                    const srcId = dragSrcEl.dataset.id;
+                    const targetId = row.dataset.id;
+                    const srcIndex = locItems.findIndex(i => i.id === srcId);
+                    const targetIndex = locItems.findIndex(i => i.id === targetId);
+                    
+                    const [removed] = locItems.splice(srcIndex, 1);
+                    locItems.splice(targetIndex, 0, removed);
+                    
+                    // Update sort_order for all items in this loc
+                    const batch = writeBatch(db);
+                    locItems.forEach((item, i) => {
+                        item.sort_order = i;
+                        batch.update(doc(db, "m_store_items", item.id), { sort_order: i });
+                    });
+                    await batch.commit();
+                    render(); // 全体再描画
+                }
+            });
+            row.addEventListener('dragend', () => row.style.opacity = '1');
+        });
+    }
+
     // Listeners for keyboard navigation and docked keypad
     const inputs = container.querySelectorAll('.qty-input');
     inputs.forEach(input => {
-        input.onfocus = () => {
+        input.onfocus = (e) => {
             editingItem = items.find(i => i.id === input.dataset.id);
-            updateKeypadDisplay();
         };
         
         input.onkeydown = (e) => {
@@ -607,15 +835,28 @@ function renderInventoryTable(container, items) {
             editingItem.個数 = e.target.value === "" ? 0 : Number(e.target.value);
         };
     });
-}
 
-function updateKeypadDisplay() {
-    const nameEl = document.getElementById('keypad-item-name');
-    const unitEl = document.getElementById('keypad-item-unit');
-    if (editingItem) {
-        nameEl.textContent = productMap[editingItem.ProductID] || '不明';
-        unitEl.textContent = editingItem.display_unit || '単位未設定';
-    }
+    // Stepper Listeners
+    container.querySelectorAll('.stepper-btn').forEach(btn => {
+        btn.onclick = async (e) => {
+            e.stopPropagation();
+            const id = btn.dataset.id;
+            const input = container.querySelector(`.qty-input[data-id="${id}"]`);
+            const item = items.find(i => i.id === id);
+            let val = Number(input.value) || 0;
+            
+            if (btn.classList.contains('plus')) {
+                val += 0.5;
+            } else {
+                val = Math.max(0, val - 0.5);
+            }
+            
+            input.value = val;
+            item.個数 = val;
+            // 変更を即座に保存
+            await saveItemQty(item);
+        };
+    });
 }
 
 function renderItemsInGroups(container, items, hideIndicators) {
@@ -662,7 +903,7 @@ function renderItemsInGroups(container, items, hideIndicators) {
                         <div style="font-size: 0.6rem; color: var(--text-secondary); line-height: 1;">定数</div>
                         <div style="font-weight: 700; font-size: 0.8rem;">${parStock}</div>
                     </div>
-                    <input type="number" step="any" class="item-qty-input" value="${currentQty}" placeholder="0" readonly data-id="${item.id}" style="width: 55px; padding: 0.4rem; font-size: 0.9rem;">
+                    <input type="number" step="any" inputmode="decimal" class="item-qty-input" value="${currentQty}" placeholder="0" data-id="${item.id}" style="width: 55px; padding: 0.4rem; font-size: 0.9rem;">
                     <button class="btn btn-primary btn-confirm-qty" data-id="${item.id}" style="padding: 0.5rem; min-width: 38px; height: 38px;">
                         <i class="fas fa-check" style="font-size: 0.8rem;"></i>
                     </button>
@@ -675,7 +916,14 @@ function renderItemsInGroups(container, items, hideIndicators) {
 
     // Listeners
     container.querySelectorAll('.item-qty-input').forEach(input => {
-        input.onclick = () => showKeypad(items.find(i => i.id === input.dataset.id));
+        input.onfocus = () => {
+            editingItem = items.find(i => i.id === input.dataset.id);
+            input.select();
+        };
+        input.oninput = (e) => {
+            const item = items.find(i => i.id === input.dataset.id);
+            item.個数 = e.target.value === "" ? 0 : Number(e.target.value);
+        };
     });
 
     container.querySelectorAll('.btn-confirm-qty').forEach(btn => {
@@ -693,14 +941,6 @@ function renderItemsInGroups(container, items, hideIndicators) {
     });
 }
 
-// Keypad System
-function showKeypad(item) {
-    editingItem = item;
-    updateKeypadDisplay();
-    // In the new UI, we focus the input and use the docked keypad
-    const input = document.querySelector(`.qty-input[data-id="${item.id}"]`);
-    if (input) input.focus();
-}
 
 function hideKeypad() {
     // Deprecated in docked UI
@@ -744,7 +984,7 @@ async function saveItemQty(item) {
             confirmed_by: currentUser?.Name || currentUser?.Email || 'unknown'
         });
 
-        // 旧ログはそのまま維持（stock_logic.jsへの影響防止）
+        // 旧ログはそのまま維持
         await addDoc(collection(db, "t_inventory_logs"), {
             InvID: item.id,
             CountValue: finalQty,
@@ -763,19 +1003,19 @@ async function saveItemQty(item) {
             change_qty: finalQty,
             qty_after: finalQty,
             reason_type: 'stock_check',
-            source_route: '',
+            source_route: 'inventory_page',
             note: '',
             executed_by: currentUser?.Name || currentUser?.Email || 'unknown',
             executed_at: now,
-            related_id: '',
             business_date: businessDate
         });
 
         item.updated_at = now;
         item.個数 = finalQty;
-        render();
+        render(); // 再描画してプログレスを更新
     } catch (err) {
-        alert("保存エラー: " + err.message);
+        console.error("Save failed:", err);
+        showAlert('エラー', '保存に失敗しました: ' + err.message);
     } finally {
         overlay.style.setProperty('display', 'none', 'important');
     }
@@ -843,26 +1083,6 @@ export async function initInventoryPage(user) {
 
     await loadInitialData();
     render();
-
-    // Keypad listeners (Docked)
-    document.querySelectorAll('.keypad-btn').forEach(btn => {
-        btn.onclick = () => handleKeypadInput(btn.dataset.val);
-    });
-
-    const btnConfirm = document.getElementById('btn-keypad-confirm');
-    if (btnConfirm) {
-        btnConfirm.onclick = () => {
-            if (editingItem) {
-                saveItemQty(editingItem);
-                // Move focus to next
-                const currentInput = document.querySelector(`.qty-input[data-id="${editingItem.id}"]`);
-                if (currentInput) {
-                    const next = document.querySelector(`.qty-input[data-index="${parseInt(currentInput.dataset.index) + 1}"]`);
-                    if (next) next.focus();
-                }
-            }
-        };
-    }
 }
 
 function openInvSettings() {
@@ -1348,7 +1568,10 @@ function renderSettingsItems() {
                 return `
                     <div style="display: flex; align-items: center; padding: 0.75rem 1rem; border-bottom: 1px solid #f1f5f9; transition: background 0.1s;">
                         <div style="flex: 2; min-width: 0;">
-                            <div style="font-size: 0.9rem; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${name}</div>
+                            <div style="font-size: 0.9rem; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                ${item.display_name || name}
+                            </div>
+                            ${item.display_name ? `<div style="font-size: 0.65rem; color: var(--text-secondary);">${name}</div>` : ''}
                         </div>
                         <div style="flex: 1; font-size: 0.75rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${supName}</div>
                         <div style="width: 100px; text-align: center; display: flex; justify-content: space-around;">
@@ -1489,6 +1712,7 @@ function showItemSettingsModal(itemId) {
     timingSelect.innerHTML = Object.keys(timingMaster).map(id => `<option value="${id}">${timingMaster[id]}</option>`).join('');
     
     timingSelect.value = item.確認タイミング || "DAILY_ALL";
+    document.getElementById('modal-display-name').value = item.display_name || "";
     document.getElementById('modal-location').value = item.location_label || item.保管場所 || "";
     document.getElementById('modal-par').value = item.定数 || 0;
     document.getElementById('modal-unit').value = item.display_unit || "";
@@ -1510,6 +1734,7 @@ async function saveSingleItemSettings() {
 
     const data = {
         確認タイミング: document.getElementById('modal-timing').value,
+        display_name: document.getElementById('modal-display-name').value.trim(),
         location_label: document.getElementById('modal-location').value,
         保管場所: document.getElementById('modal-location').value,
         定数: Number(document.getElementById('modal-par').value) || 0,
