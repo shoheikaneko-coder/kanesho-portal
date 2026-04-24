@@ -631,7 +631,7 @@ function renderInventoryTable(container, items) {
                 <tr>
                     <th style="width: 40px; padding: 0.8rem 0.5rem;"></th>
                     <th>品目名</th>
-                    <th style="width: 140px; text-align: center;">現在庫入力</th>
+                    <th style="width: 180px; text-align: center;">現在庫入力</th>
                     <th style="width: 60px; text-align: center;">単位</th>
                     <th style="width: 80px; text-align: center;">定数</th>
                     <th style="width: 50px; text-align: center;"><i class="fas fa-cog"></i></th>
