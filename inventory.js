@@ -632,7 +632,7 @@ function renderInventoryTable(container, items) {
                     <th style="width: 40px; padding: 0.8rem 0.5rem;"></th>
                     <th>品目名</th>
                     <th style="width: 180px; text-align: center;">現在庫入力</th>
-                    <th style="width: 60px; text-align: center;">単位</th>
+                    <th style="width: 90px; text-align: center;">単位</th>
                     <th style="width: 80px; text-align: center;">定数</th>
                     <th style="width: 50px; text-align: center;"><i class="fas fa-cog"></i></th>
                 </tr>
@@ -698,7 +698,7 @@ function renderInventoryTable(container, items) {
                             <button class="stepper-btn plus" data-id="${item.id}"><i class="fas fa-plus"></i></button>
                         </div>
                     </td>
-                    <td style="text-align: center; font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">
+                    <td style="text-align: center; font-size: 0.8rem; color: var(--text-secondary); font-weight: 600; white-space: nowrap;">
                         ${item.display_unit || ''}
                     </td>
                     <td style="text-align: center; font-family: monospace; font-weight: 700;">${parStock}</td>
