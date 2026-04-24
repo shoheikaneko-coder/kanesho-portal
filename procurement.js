@@ -10,37 +10,46 @@ import { showAlert, showConfirm } from './ui_utils.js';
  */
 
 export const procurementPageHtml = `
-    <div id="procurement-app" class="animate-fade-in" style="max-width: 1100px; margin: 0 auto; padding-bottom: 3rem;">
-
-        <!-- Header -->
-        <div class="glass-panel" style="padding: 1.2rem 1.5rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-            <div style="display: flex; align-items: center; gap: 1rem;">
-                <select id="proc-store-select" class="btn" style="background: white; border: 1px solid var(--border); min-width: 180px; font-size: 0.95rem;">
-                    <option value="">拠点を選択...</option>
-                </select>
-                <button id="btn-proc-refresh" class="btn" style="background: var(--surface-darker); color: var(--text-secondary); border: 1px solid var(--border);">
-                    <i class="fas fa-sync-alt"></i> 更新
-                </button>
+    <div id="procurement-app" class="animate-fade-in" style="display: flex; height: calc(100vh - 120px); gap: 1rem; overflow: hidden; padding: 0 1rem;">
+        
+        <!-- Sidebar: Vendor Selection -->
+        <aside id="proc-sidebar" class="glass-panel" style="width: 260px; display: flex; flex-direction: column; gap: 1rem; padding: 1.2rem; flex-shrink: 0;">
+            <div>
+                <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem;">表示設定</label>
+                <div class="scope-toggle" style="display: flex; background: var(--surface-darker); padding: 3px; border-radius: 8px; border: 1px solid var(--border);">
+                    <button id="btn-scope-store" class="toggle-btn active" style="flex: 1; padding: 0.4rem; font-size: 0.7rem; font-weight: 800; border-radius: 6px; border: none; cursor: pointer;">自店舗のみ</button>
+                    <button id="btn-scope-group" class="toggle-btn" style="flex: 1; padding: 0.4rem; font-size: 0.7rem; font-weight: 800; border-radius: 6px; border: none; cursor: pointer;">グループ全体</button>
+                </div>
             </div>
-            <div style="font-size: 0.8rem; color: var(--text-secondary);">
-                在庫 &lt; 定数 の品目を表示しています
-            </div>
-        </div>
 
-        <!-- Tabs -->
-        <div class="tabs-container" style="margin-bottom: 1.5rem;">
-            <div class="tab-item active" data-tab="purchase"><i class="fas fa-shopping-cart"></i> 仕入れリスト</div>
-            <div class="tab-item" data-tab="prep"><i class="fas fa-mortar-pestle"></i> 仕込みリスト</div>
-            <div class="tab-item" data-tab="transfer"><i class="fas fa-exchange-alt"></i> 移動・納品</div>
-        </div>
-
-        <!-- Content -->
-        <div id="proc-content">
-            <div style="text-align:center; padding: 4rem; color: var(--text-secondary);">
-                <i class="fas fa-store-slash" style="font-size: 2rem; opacity: 0.3; margin-bottom: 1rem;"></i>
-                <p>拠点を選択してください</p>
+            <div style="flex: 1; overflow-y: auto;">
+                <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem; margin-top: 1rem;">仕入先（業者）</label>
+                <div id="proc-vendor-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <!-- Vendors injected here -->
+                </div>
             </div>
-        </div>
+        </aside>
+
+        <!-- Main Area -->
+        <main class="glass-panel" style="flex: 1; display: flex; flex-direction: column; padding: 0; overflow: hidden;">
+            <div id="proc-header" style="padding: 1rem 1.5rem; border-bottom: 2px solid var(--border); background: var(--surface-darker); display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 0.8rem;">
+                    <i class="fas fa-truck-loading" style="color: var(--primary);"></i>
+                    <h3 id="proc-current-title" style="margin: 0; font-size: 1rem; font-weight: 800;">仕入れ・調達</h3>
+                    <span id="proc-scope-badge" class="badge" style="background: #eff6ff; color: #2563eb; font-size: 0.7rem;">自店舗</span>
+                </div>
+                
+                <div style="display: flex; align-items: center; gap: 0.8rem;">
+                    <button id="btn-proc-refresh" class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.75rem; font-weight: 800;">
+                        <i class="fas fa-sync-alt"></i> 更新
+                    </button>
+                </div>
+            </div>
+            
+            <div id="proc-main-content" style="flex: 1; overflow-y: auto; padding: 0;">
+                <!-- Accordion list injected here -->
+            </div>
+        </main>
 
         <!-- Loading overlay -->
         <div id="proc-loading" style="display:none; position:fixed; inset:0; background:rgba(255,255,255,0.75); z-index:9999; justify-content:center; align-items:center;">
@@ -49,97 +58,137 @@ export const procurementPageHtml = `
                 <p style="margin-top: 1rem; font-weight: 600;">処理中...</p>
             </div>
         </div>
+
+        <style>
+            #proc-sidebar .toggle-btn { background: transparent; color: var(--text-secondary); transition: all 0.2s; }
+            #proc-sidebar .toggle-btn.active { background: white; color: var(--primary); box-shadow: var(--shadow-sm); }
+            
+            .vendor-item { padding: 0.8rem 1rem; border-radius: 10px; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; display: flex; align-items: center; justify-content: space-between; font-weight: 600; color: var(--text-secondary); }
+            .vendor-item:hover { background: #f1f5f9; color: var(--text-primary); }
+            .vendor-item.active { background: white; color: var(--primary); border-color: var(--primary); box-shadow: var(--shadow-sm); }
+            .vendor-item .count { font-size: 0.7rem; background: #f1f5f9; padding: 2px 8px; border-radius: 10px; }
+            .vendor-item.active .count { background: var(--primary); color: white; }
+
+            .item-banner { background: #f1f5f9; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; padding: 0.8rem 1.2rem; cursor: pointer; user-select: none; }
+            .item-banner:hover { background: #e2e8f0; }
+            .item-banner .banner-content { display: flex; justify-content: space-between; align-items: center; }
+            .item-banner .title { font-weight: 800; font-size: 0.95rem; display: flex; align-items: center; gap: 0.8rem; color: #334155; }
+            .item-banner .total-req { font-size: 0.75rem; font-weight: 800; color: var(--primary); background: white; padding: 0.3rem 0.8rem; border-radius: 20px; border: 1px solid #fee2e2; }
+
+            .proc-detail-table { width: 100%; border-collapse: collapse; background: white; }
+            .proc-detail-table td { padding: 1rem 1.2rem; border-bottom: 1px solid var(--border); }
+            .proc-store-row:hover { background: #f8fafc; }
+            .proc-store-name { font-weight: 700; font-size: 0.9rem; color: var(--text-primary); }
+            .proc-req-qty { font-family: monospace; font-weight: 800; color: var(--danger); font-size: 1rem; }
+            
+            .proc-input-container { display: flex; align-items: center; gap: 0.5rem; justify-content: flex-end; }
+            .proc-buy-input { width: 80px; padding: 0.5rem; border: 2px solid #e2e8f0; border-radius: 8px; text-align: center; font-weight: 800; font-size: 1rem; color: var(--primary); outline: none; transition: border-color 0.2s; }
+            .proc-buy-input:focus { border-color: var(--primary); }
+            
+            .btn-confirm-buy { padding: 0.5rem 1rem; border-radius: 8px; font-weight: 800; font-size: 0.8rem; }
+            
+            .item-banner.hidden + .proc-detail-container { display: none; }
+            .proc-detail-container.hidden { display: none; }
+        </style>
     </div>
 `;
 
 // State
-let currentTab = 'purchase';
-let selectedStoreId = null;
-let allStores = [];
-let storeItems = [];      // m_store_items for selected store
+let selectedScope = 'store'; // 'store' or 'group'
+let selectedVendor = null;
+let allGroupStores = [];    // Stores in the same group
+let currentStore = null;    // Current user's store object
+let procurementData = [];   // Aggregated store items
+let collapsedItems = new Set();
 let cachedItems = [];
-let cachedIngredients = [];
-let cachedMenus = [];
 let currentUser = null;
 
 export async function initProcurementPage(user) {
     currentUser = user;
-    selectedStoreId = null;
-    storeItems = [];
-    currentTab = 'purchase';
+    selectedScope = 'store';
+    selectedVendor = null;
+    collapsedItems.clear();
 
-    await loadMasterData();
-    setupTabs();
-    setupStoreSelect();
-}
-
-async function loadMasterData() {
-    const [itemSnap, storeSnap, ingSnap, menuSnap] = await Promise.all([
-        getDocs(collection(db, "m_items")),
-        getDocs(collection(db, "m_stores")),
-        getDocs(collection(db, "m_ingredients")),
-        getDocs(collection(db, "m_menus"))
-    ]);
-    cachedItems = itemSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    allStores = storeSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    cachedIngredients = ingSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    cachedMenus = menuSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-    const sel = document.getElementById('proc-store-select');
-    if (sel) {
-        allStores.forEach(s => {
-            const opt = document.createElement('option');
-            opt.value = s.store_id || s.id;
-            opt.textContent = s.store_name || s.Name || s.id;
-            sel.appendChild(opt);
-        });
+    await showLoading(true);
+    try {
+        await loadInitialData();
+        setupEventListeners();
+        render();
+    } catch (err) {
+        console.error("Procurement init failed:", err);
+        showAlert("エラー", "データの読み込みに失敗しました");
+    } finally {
+        await showLoading(false);
     }
 }
 
-function setupStoreSelect() {
-    const sel = document.getElementById('proc-store-select');
-    if (!sel) return;
-    sel.onchange = async (e) => {
-        selectedStoreId = e.target.value;
-        if (selectedStoreId) {
-            await loadStoreItems();
-            renderContent();
-        }
-    };
-    const refresh = document.getElementById('btn-proc-refresh');
-    if (refresh) refresh.onclick = async () => {
-        if (selectedStoreId) { await loadStoreItems(); renderContent(); }
-    };
+async function loadInitialData() {
+    // 1. Get current store context
+    // In a real app, user might have a default store. We'll use the first store if not set.
+    const storeSnap = await getDocs(collection(db, "m_stores"));
+    const stores = storeSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    
+    // User's store (assuming currentUser.StoreID exists, fallback to first)
+    const storeId = currentUser?.StoreID || stores[0]?.id;
+    currentStore = stores.find(s => s.id === storeId || s.store_id === storeId);
+    
+    if (!currentStore) throw new Error("所属店舗が見つかりません");
+
+    // 2. Get all stores in the same group
+    const groupName = currentStore.group_name || currentStore.所属グループ || '未設定';
+    allGroupStores = stores.filter(s => (s.group_name || s.所属グループ || '未設定') === groupName);
+
+    // 3. Load Master Items
+    const itemSnap = await getDocs(collection(db, "m_items"));
+    cachedItems = itemSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // 4. Load all store items for the group
+    await refreshProcurementData();
 }
 
-function setupTabs() {
-    document.querySelectorAll('#procurement-app .tab-item').forEach(tab => {
-        tab.onclick = () => {
-            currentTab = tab.dataset.tab;
-            document.querySelectorAll('#procurement-app .tab-item').forEach(t => t.classList.toggle('active', t === tab));
-            renderContent();
-        };
-    });
-}
-
-async function loadStoreItems() {
-    const q = query(collection(db, "m_store_items"), where("StoreID", "==", selectedStoreId));
+async function refreshProcurementData() {
+    const storeIds = allGroupStores.map(s => s.id);
+    // Batch fetch store items for all stores in group
+    const q = query(collection(db, "m_store_items"), where("StoreID", "in", storeIds));
     const snap = await getDocs(q);
-    storeItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    procurementData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
-function getItemName(productId) {
-    return cachedItems.find(i => i.id === productId)?.name || productId;
+function setupEventListeners() {
+    const btnStore = document.getElementById('btn-scope-store');
+    const btnGroup = document.getElementById('btn-scope-group');
+    const btnRefresh = document.getElementById('btn-proc-refresh');
+
+    if (btnStore) btnStore.onclick = () => {
+        selectedScope = 'store';
+        btnStore.classList.add('active');
+        btnGroup.classList.remove('active');
+        document.getElementById('proc-scope-badge').textContent = '自店舗';
+        render();
+    };
+
+    if (btnGroup) btnGroup.onclick = () => {
+        selectedScope = 'group';
+        btnGroup.classList.add('active');
+        btnStore.classList.remove('active');
+        document.getElementById('proc-scope-badge').textContent = 'グループ全体';
+        render();
+    };
+
+    if (btnRefresh) btnRefresh.onclick = async () => {
+        await showLoading(true);
+        await refreshProcurementData();
+        render();
+        await showLoading(false);
+    };
 }
 
-function getDisplayUnit(si) {
-    if (si.display_unit) return si.display_unit;
-    const item = cachedItems.find(i => i.id === si.ProductID);
-    return item?.unit || '';
+function showLoading(show) {
+    const el = document.getElementById('proc-loading');
+    if (el) el.style.display = show ? 'flex' : 'none';
 }
 
-function getBusinessDate() {
-    const store = allStores.find(s => (s.store_id || s.id) === selectedStoreId);
+function getBusinessDate(store) {
     const resetTime = store?.reset_time || "05:00";
     const now = new Date();
     const [h, m] = resetTime.split(':').map(Number);
@@ -149,358 +198,184 @@ function getBusinessDate() {
     return cutoff.toISOString().split('T')[0];
 }
 
-function renderContent() {
-    const content = document.getElementById('proc-content');
-    if (!content) return;
-    if (!selectedStoreId) {
-        content.innerHTML = `<div style="text-align:center; padding:4rem; color:var(--text-secondary);"><i class="fas fa-store-slash" style="font-size:2rem;opacity:0.3;"></i><p>拠点を選択してください</p></div>`;
-        return;
-    }
-    if (currentTab === 'purchase') renderPurchaseTab(content);
-    else if (currentTab === 'prep') renderPrepTab(content);
-    else renderTransferTab(content);
-}
+function render() {
+    const sidebar = document.getElementById('proc-vendor-list');
+    const main = document.getElementById('proc-main-content');
+    if (!sidebar || !main) return;
 
-// ─── PURCHASE TAB ────────────────────────────────────────────────────────────
-function renderPurchaseTab(container) {
-    const shortItems = storeItems.filter(si => {
-        const action = si.shortage_action_type || 'purchase';
-        const qty = Number(si.個数 || 0);
-        const par = Number(si.定数 || 0);
-        return action === 'purchase' && par > 0 && qty < par;
-    });
-
-    if (shortItems.length === 0) {
-        container.innerHTML = `<div class="glass-panel" style="padding:3rem; text-align:center; color:var(--text-secondary);">
-            <i class="fas fa-check-circle" style="font-size:2.5rem; color:#10b981; margin-bottom:1rem;"></i>
-            <p style="font-weight:700;">仕入れが必要な品目はありません</p>
-        </div>`;
-        return;
+    // 1. Filter data based on scope (Current store or all stores in group)
+    let filteredData = procurementData;
+    if (selectedScope === 'store') {
+        filteredData = procurementData.filter(d => d.StoreID === currentStore.id);
     }
 
-    const rows = shortItems.map(si => {
-        const name = getItemName(si.ProductID);
-        const unit = getDisplayUnit(si);
+    // 2. Filter only short items (qty < par)
+    const shortItems = filteredData.filter(si => {
         const qty = Number(si.個数 || 0);
         const par = Number(si.定数 || 0);
-        const shortage = (par - qty).toFixed(1);
-        const autoAdd = si.auto_add_on_order !== false;
-        return `
-        <tr style="border-bottom:1px solid var(--border);" data-id="${si.id}">
-            <td style="padding:1rem; font-weight:600;">${name}</td>
-            <td style="padding:1rem; color:var(--primary); font-family:monospace; font-weight:700;">${qty} ${unit}</td>
-            <td style="padding:1rem; color:var(--text-secondary); font-family:monospace;">${par} ${unit}</td>
-            <td style="padding:1rem; color:var(--danger); font-weight:700; font-family:monospace;">-${shortage} ${unit}</td>
-            <td style="padding:1rem;">
-                <input type="number" class="proc-qty-input" step="any" value="${shortage}" style="width:80px; padding:0.4rem; border:1px solid var(--border); border-radius:6px; text-align:right;">
-                <span style="font-size:0.8rem; color:var(--text-secondary); margin-left:0.3rem;">${unit}</span>
-            </td>
-            <td style="padding:1rem;">
-                <select class="proc-route-select btn" style="background:white; border:1px solid var(--border); font-size:0.85rem; padding:0.4rem;">
-                    <option value="direct_buy">買付先から</option>
-                    <option value="from_warehouse">倉庫から</option>
-                    <option value="delivery">業者納品</option>
-                </select>
-            </td>
-            <td style="padding:1rem;">
-                ${autoAdd
-                    ? `<button class="btn btn-primary btn-proc-exec" style="font-size:0.85rem; padding:0.5rem 1rem;"><i class="fas fa-plus"></i> 反映</button>`
-                    : `<button class="btn btn-proc-exec" style="background:#f59e0b;color:white;font-size:0.85rem;padding:0.5rem 1rem;"><i class="fas fa-clipboard-check"></i> 記録のみ</button>`}
-            </td>
-        </tr>`;
-    }).join('');
-
-    container.innerHTML = `
-        <div class="glass-panel animate-fade-in" style="padding:0; overflow:hidden;">
-            <table style="width:100%; border-collapse:collapse; text-align:left;">
-                <thead>
-                    <tr style="background:var(--surface-darker); border-bottom:2px solid var(--border); color:var(--text-secondary);">
-                        <th style="padding:1rem;">品目</th>
-                        <th style="padding:1rem;">現在庫</th>
-                        <th style="padding:1rem;">定数</th>
-                        <th style="padding:1rem;">不足数</th>
-                        <th style="padding:1rem;">購入数</th>
-                        <th style="padding:1rem;">ルート</th>
-                        <th style="padding:1rem;">操作</th>
-                    </tr>
-                </thead>
-                <tbody>${rows}</tbody>
-            </table>
-        </div>`;
-
-    container.querySelectorAll('.btn-proc-exec').forEach((btn, idx) => {
-        btn.onclick = () => executePurchase(shortItems[idx], btn);
-    });
-}
-
-async function executePurchase(si, btn) {
-    const row = btn.closest('tr');
-    const qty = Number(row.querySelector('.proc-qty-input').value);
-    const route = row.querySelector('.proc-route-select').value;
-    if (qty <= 0) { showAlert('エラー', '数量は0より大きい値を入力してください。'); return; }
-
-    showLoading(true);
-    try {
-        const autoAdd = si.auto_add_on_order !== false;
-        const now = new Date().toISOString();
-        const newQty = autoAdd ? (Number(si.個数 || 0) + qty) : Number(si.個数 || 0);
-        const businessDate = getBusinessDate();
-
-        if (autoAdd) {
-            await updateDoc(doc(db, "m_store_items", si.id), { 個数: newQty, updated_at: now });
-            si.個数 = newQty;
-        }
-
-        await addDoc(collection(db, "t_inventory_history"), {
-            store_id: selectedStoreId,
-            item_id: si.ProductID,
-            store_item_id: si.id,
-            change_qty: qty,
-            qty_after: newQty,
-            reason_type: 'purchase',
-            source_route: route,
-            note: '',
-            executed_by: currentUser?.Name || currentUser?.Email || 'unknown',
-            executed_at: now,
-            related_id: '',
-            business_date: businessDate
-        });
-
-        showAlert('完了', `${getItemName(si.ProductID)} +${qty} ${getDisplayUnit(si)} を記録しました。`);
-        renderContent();
-    } catch (err) {
-        showAlert('エラー', err.message);
-    } finally {
-        showLoading(false);
-    }
-}
-
-// ─── PREP TAB ─────────────────────────────────────────────────────────────────
-function renderPrepTab(container) {
-    const shortItems = storeItems.filter(si => {
-        const action = si.shortage_action_type || 'purchase';
-        const qty = Number(si.個数 || 0);
-        const par = Number(si.定数 || 0);
-        return action === 'prep' && par > 0 && qty < par;
+        return par > 0 && qty < par;
     });
 
-    if (shortItems.length === 0) {
-        container.innerHTML = `<div class="glass-panel" style="padding:3rem; text-align:center; color:var(--text-secondary);">
-            <i class="fas fa-check-circle" style="font-size:2.5rem; color:#10b981; margin-bottom:1rem;"></i>
-            <p style="font-weight:700;">仕込みが必要な品目はありません</p>
-        </div>`;
+    // 3. Extract Vendors and group items by Vendor then by ProductID
+    const vendorMap = {};
+    shortItems.forEach(si => {
+        const master = cachedItems.find(i => i.id === si.ProductID);
+        const vendor = master?.supplier_name || master?.業者名 || '未設定';
+        if (!vendorMap[vendor]) vendorMap[vendor] = [];
+        vendorMap[vendor].push(si);
+    });
+
+    const vendors = Object.keys(vendorMap).sort((a,b) => {
+        if (a === '未設定') return 1;
+        if (b === '未設定') return -1;
+        return a.localeCompare(b);
+    });
+
+    // 4. Render Sidebar
+    if (!selectedVendor && vendors.length > 0) selectedVendor = vendors[0];
+    sidebar.innerHTML = vendors.map(v => `
+        <div class="vendor-item ${selectedVendor === v ? 'active' : ''}" data-vendor="${v}">
+            <span>${v}</span>
+            <span class="count">${vendorMap[v].length}</span>
+        </div>
+    `).join('') || `<div style="padding:1rem; font-size:0.75rem; color:var(--text-secondary);">不足品目はありません</div>`;
+
+    sidebar.querySelectorAll('.vendor-item').forEach(item => {
+        item.onclick = () => {
+            selectedVendor = item.dataset.vendor;
+            render();
+        };
+    });
+
+    // 5. Render Main Content for Selected Vendor
+    if (!selectedVendor || !vendorMap[selectedVendor]) {
+        main.innerHTML = `<div style="text-align:center; padding:4rem; color:var(--text-secondary);"><i class="fas fa-check-circle" style="font-size:3rem; color:#10b981; opacity:0.2;"></i><p>現在、仕入れが必要な品目はありません</p></div>`;
         return;
     }
 
-    const rows = shortItems.map(si => {
-        const name = getItemName(si.ProductID);
-        const unit = getDisplayUnit(si);
-        const qty = Number(si.個数 || 0);
-        const par = Number(si.定数 || 0);
-        const shortage = (par - qty).toFixed(1);
-        return `
-        <tr style="border-bottom:1px solid var(--border);" data-id="${si.id}">
-            <td style="padding:1rem;">
-                <div style="font-weight:600;">${name}</div>
-                <span class="badge" style="background:#eff6ff;color:#2563eb;border:1px solid #dbeafe;font-size:0.7rem;">仕込み</span>
-            </td>
-            <td style="padding:1rem; color:var(--primary); font-family:monospace; font-weight:700;">${qty} ${unit}</td>
-            <td style="padding:1rem; color:var(--text-secondary); font-family:monospace;">${par} ${unit}</td>
-            <td style="padding:1rem; color:var(--danger); font-weight:700; font-family:monospace;">-${shortage} ${unit}</td>
-            <td style="padding:1rem;">
-                <input type="number" class="proc-prep-input" step="any" value="${shortage}" style="width:80px; padding:0.4rem; border:1px solid var(--border); border-radius:6px; text-align:right;">
-                <span style="font-size:0.8rem; color:var(--text-secondary); margin-left:0.3rem;">${unit}</span>
-            </td>
-            <td style="padding:1rem;">
-                <button class="btn btn-primary btn-prep-exec" style="font-size:0.85rem; padding:0.5rem 1rem; background:#8b5cf6;">
-                    <i class="fas fa-check"></i> 仕込み完了
-                </button>
-            </td>
-        </tr>`;
-    }).join('');
-
-    container.innerHTML = `
-        <div class="glass-panel animate-fade-in" style="padding:0; overflow:hidden;">
-            <table style="width:100%; border-collapse:collapse; text-align:left;">
-                <thead>
-                    <tr style="background:var(--surface-darker); border-bottom:2px solid var(--border); color:var(--text-secondary);">
-                        <th style="padding:1rem;">品目</th>
-                        <th style="padding:1rem;">現在庫</th>
-                        <th style="padding:1rem;">定数</th>
-                        <th style="padding:1rem;">不足数</th>
-                        <th style="padding:1rem;">仕込み量</th>
-                        <th style="padding:1rem;">操作</th>
-                    </tr>
-                </thead>
-                <tbody>${rows}</tbody>
-            </table>
-        </div>`;
-
-    container.querySelectorAll('.btn-prep-exec').forEach((btn, idx) => {
-        btn.onclick = () => executePrep(shortItems[idx], btn);
+    // Group items by ProductID for aggregation
+    const itemsByProduct = {};
+    vendorMap[selectedVendor].forEach(si => {
+        if (!itemsByProduct[si.ProductID]) itemsByProduct[si.ProductID] = [];
+        itemsByProduct[si.ProductID].push(si);
     });
-}
 
-async function executePrep(si, btn) {
-    const row = btn.closest('tr');
-    const qty = Number(row.querySelector('.proc-prep-input').value);
-    if (qty <= 0) { showAlert('エラー', '数量は0より大きい値を入力してください。'); return; }
+    let html = ``;
+    Object.keys(itemsByProduct).forEach(productId => {
+        const productItems = itemsByProduct[productId];
+        const master = cachedItems.find(i => i.id === productId);
+        const name = master?.name || productId;
+        const unit = master?.unit || '';
+        
+        // Calculate Total Requirement
+        const totalReq = productItems.reduce((sum, si) => sum + (Number(si.定数 || 0) - Number(si.個数 || 0)), 0);
+        const isCollapsed = collapsedItems.has(productId);
 
-    showLoading(true);
-    try {
-        const now = new Date().toISOString();
-        const newQty = Number(si.個数 || 0) + qty;
-        const businessDate = getBusinessDate();
-
-        await updateDoc(doc(db, "m_store_items", si.id), { 個数: newQty, updated_at: now });
-
-        await addDoc(collection(db, "t_inventory_history"), {
-            store_id: selectedStoreId,
-            item_id: si.ProductID,
-            store_item_id: si.id,
-            change_qty: qty,
-            qty_after: newQty,
-            reason_type: 'prep_complete',
-            source_route: '',
-            note: '',
-            executed_by: currentUser?.Name || currentUser?.Email || 'unknown',
-            executed_at: now,
-            related_id: '',
-            business_date: businessDate
-        });
-
-        si.個数 = newQty;
-        showAlert('完了', `${getItemName(si.ProductID)} 仕込み完了 +${qty} ${getDisplayUnit(si)}`);
-        renderContent();
-    } catch (err) {
-        showAlert('エラー', err.message);
-    } finally {
-        showLoading(false);
-    }
-}
-
-// ─── TRANSFER TAB ─────────────────────────────────────────────────────────────
-function renderTransferTab(container) {
-    const storeOptions = allStores.map(s =>
-        `<option value="${s.store_id || s.id}">${s.store_name || s.Name || s.id}</option>`
-    ).join('');
-
-    const itemOptions = storeItems.map(si => {
-        const name = getItemName(si.ProductID);
-        const unit = getDisplayUnit(si);
-        return `<option value="${si.id}" data-unit="${unit}">${name} (現在: ${si.個数 || 0} ${unit})</option>`;
-    }).join('');
-
-    container.innerHTML = `
-        <div class="glass-panel animate-fade-in" style="max-width:600px; margin:0 auto; padding:2rem;">
-            <h3 style="margin-top:0; display:flex; align-items:center; gap:0.6rem;">
-                <i class="fas fa-exchange-alt" style="color:var(--primary);"></i> 移動・納品登録
-            </h3>
-            <div style="display:flex; flex-direction:column; gap:1.2rem;">
-                <div>
-                    <label style="display:block; font-weight:700; font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.5rem;">品目 (現拠点: ${selectedStoreId})</label>
-                    <select id="tr-item-select" style="width:100%; padding:0.7rem; border:1px solid var(--border); border-radius:8px; font-size:0.95rem;">
-                        <option value="">品目を選択...</option>
-                        ${itemOptions}
-                    </select>
-                </div>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
-                    <div>
-                        <label style="display:block; font-weight:700; font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.5rem;">操作種別</label>
-                        <select id="tr-type-select" style="width:100%; padding:0.7rem; border:1px solid var(--border); border-radius:8px; font-size:0.95rem;">
-                            <option value="delivery">業者納品（増加）</option>
-                            <option value="from_warehouse">倉庫から持ち出し（増加）</option>
-                            <option value="manual_add">手動追加</option>
-                            <option value="transfer_out">他拠点へ移動（減少）</option>
-                            <option value="manual_remove">手動減少</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label style="display:block; font-weight:700; font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.5rem;">数量 <span id="tr-unit-label"></span></label>
-                        <input type="number" id="tr-qty-input" step="any" placeholder="0" style="width:100%; padding:0.7rem; border:1px solid var(--border); border-radius:8px; font-size:0.95rem;">
+        html += `
+            <div class="item-block" style="border-bottom: 1px solid var(--border);">
+                <div class="item-banner" data-id="${productId}">
+                    <div class="banner-content">
+                        <div class="title">
+                            <i class="fas ${isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'}" style="width:1rem; font-size:0.8rem; color:var(--text-secondary);"></i>
+                            <i class="fas fa-box" style="color:var(--primary); font-size:0.9rem;"></i>
+                            ${name}
+                        </div>
+                        <div class="total-req">計 ${totalReq.toFixed(1)} ${unit} 必要</div>
                     </div>
                 </div>
-                <div>
-                    <label style="display:block; font-weight:700; font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.5rem;">メモ（任意）</label>
-                    <input type="text" id="tr-note-input" placeholder="例: A社定期配送" style="width:100%; padding:0.7rem; border:1px solid var(--border); border-radius:8px; font-size:0.95rem;">
+                <div class="proc-detail-container ${isCollapsed ? 'hidden' : ''}">
+                    <table class="proc-detail-table">
+                        <tbody>
+                            ${productItems.map(si => {
+                                const store = allGroupStores.find(s => s.id === si.StoreID);
+                                const sName = store?.store_name || store?.Name || si.StoreID;
+                                const req = (Number(si.定数 || 0) - Number(si.個数 || 0)).toFixed(1);
+                                return `
+                                    <tr class="proc-store-row">
+                                        <td style="width: 200px;"><span class="proc-store-name">${sName}</span></td>
+                                        <td style="width: 150px; text-align: center;"><span class="proc-req-qty">不足 ${req}</span> <small>${unit}</small></td>
+                                        <td>
+                                            <div class="proc-input-container">
+                                                <input type="number" step="any" class="proc-buy-input" placeholder="0" data-si-id="${si.id}" value="${req}">
+                                                <button class="btn btn-primary btn-confirm-buy" data-si-id="${si.id}">購入完了</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
                 </div>
-                <button id="btn-tr-exec" class="btn btn-primary" style="padding:1rem; font-size:1rem; font-weight:700;">
-                    <i class="fas fa-check"></i> 実行する
-                </button>
             </div>
-        </div>`;
+        `;
+    });
 
-    document.getElementById('tr-item-select').onchange = (e) => {
-        const opt = e.target.selectedOptions[0];
-        const unitLabel = document.getElementById('tr-unit-label');
-        if (unitLabel) unitLabel.textContent = `(${opt?.dataset?.unit || ''})`;
-    };
+    main.innerHTML = html;
 
-    document.getElementById('btn-tr-exec').onclick = executeTransfer;
+    // Listeners for Accordion
+    main.querySelectorAll('.item-banner').forEach(banner => {
+        banner.onclick = () => {
+            const id = banner.dataset.id;
+            if (collapsedItems.has(id)) collapsedItems.delete(id);
+            else collapsedItems.add(id);
+            render();
+        };
+    });
+
+    // Listeners for Purchase Buttons
+    main.querySelectorAll('.btn-confirm-buy').forEach(btn => {
+        btn.onclick = async (e) => {
+            e.stopPropagation();
+            const siId = btn.dataset.siId;
+            const input = main.querySelector(`.proc-buy-input[data-si-id="${siId}"]`);
+            const buyQty = Number(input.value);
+            if (buyQty <= 0) return;
+            await executePurchase(siId, buyQty);
+        };
+    });
 }
 
-async function executeTransfer() {
-    const itemSel = document.getElementById('tr-item-select');
-    const typeSel = document.getElementById('tr-type-select');
-    const qtyInput = document.getElementById('tr-qty-input');
-    const noteInput = document.getElementById('tr-note-input');
-
-    const siId = itemSel.value;
-    const type = typeSel.value;
-    const qty = Number(qtyInput.value);
-    const note = noteInput.value.trim();
-
-    if (!siId) { showAlert('エラー', '品目を選択してください。'); return; }
-    if (qty <= 0) { showAlert('エラー', '数量は0より大きい値を入力してください。'); return; }
-
-    const si = storeItems.find(s => s.id === siId);
+async function executePurchase(storeItemId, qty) {
+    const si = procurementData.find(d => d.id === storeItemId);
     if (!si) return;
 
-    const isDecrease = ['transfer_out', 'manual_remove'].includes(type);
-    const delta = isDecrease ? -qty : qty;
-    const newQty = Math.max(0, Number(si.個数 || 0) + delta);
-
-    showLoading(true);
+    await showLoading(true);
     try {
         const now = new Date().toISOString();
-        const businessDate = getBusinessDate();
-        const reasonMap = {
-            'delivery': 'purchase',
-            'from_warehouse': 'transfer_in',
-            'manual_add': 'manual',
-            'transfer_out': 'transfer_out',
-            'manual_remove': 'manual'
-        };
+        const oldQty = Number(si.個数 || 0);
+        const newQty = oldQty + qty;
+        const store = allGroupStores.find(s => s.id === si.StoreID);
+        const bizDate = getBusinessDate(store);
 
-        await updateDoc(doc(db, "m_store_items", si.id), { 個数: newQty, updated_at: now });
-
-        await addDoc(collection(db, "t_inventory_history"), {
-            store_id: selectedStoreId,
-            item_id: si.ProductID,
-            store_item_id: si.id,
-            change_qty: delta,
-            qty_after: newQty,
-            reason_type: reasonMap[type] || 'manual',
-            source_route: type === 'delivery' ? 'delivery' : (type === 'from_warehouse' ? 'from_warehouse' : ''),
-            note: note,
-            executed_by: currentUser?.Name || currentUser?.Email || 'unknown',
-            executed_at: now,
-            related_id: '',
-            business_date: businessDate
+        // 1. Update Inventory
+        await updateDoc(doc(db, "m_store_items", si.id), {
+            個数: newQty,
+            updated_at: now
         });
 
-        si.個数 = newQty;
-        showAlert('完了', `${getItemName(si.ProductID)}: ${isDecrease ? '-' : '+'}${qty} → 現在庫 ${newQty} ${getDisplayUnit(si)}`);
-        await loadStoreItems();
-        renderTransferTab(document.getElementById('proc-content'));
-    } catch (err) {
-        showAlert('エラー', err.message);
-    } finally {
-        showLoading(false);
-    }
-}
+        // 2. Add History
+        await addDoc(collection(db, "t_inventory_history"), {
+            store_id: si.StoreID,
+            item_id: si.ProductID,
+            store_item_id: si.id,
+            change_qty: qty,
+            qty_after: newQty,
+            reason_type: 'procurement',
+            source_route: 'procurement_page',
+            note: '仕入れによる追加',
+            executed_by: currentUser?.Name || currentUser?.Email || 'unknown',
+            executed_at: now,
+            business_date: bizDate
+        });
 
-function showLoading(show) {
-    const el = document.getElementById('proc-loading');
-    if (el) el.style.display = show ? 'flex' : 'none';
+        // 3. Update local data and Refresh
+        si.個数 = newQty;
+        showAlert("完了", "在庫に反映しました");
+        render();
+    } catch (err) {
+        console.error("Purchase failed:", err);
+        showAlert("エラー", "在庫の更新に失敗しました");
+    } finally {
+        await showLoading(false);
+    }
 }
