@@ -111,8 +111,114 @@ export const inventoryPageHtml = `
             #inv-sidebar { width: 200px; }
             #inv-keypad-dock { width: 240px; }
         }
+    /* Item Detail Settings Modal */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.4);
+        backdrop-filter: blur(4px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 2100;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+    .modal-overlay.active {
+        display: flex;
+        opacity: 1;
+    }
+
+    /* Master Settings Large Overlay */
+    #inv-master-settings-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(241, 245, 249, 0.95);
+        z-index: 2050;
+        display: none;
+        flex-direction: column;
+        padding: 2rem;
+        overflow-y: auto;
+    }
+    #inv-master-settings-overlay.active {
+        display: flex;
+    }
     </style>
-`;
+
+    <!-- Item Detail Settings Modal -->
+    <div id="inv-item-modal" class="modal-overlay">
+        <div class="glass-panel animate-scale-in" style="width: 420px; padding: 0; overflow: hidden; border: 1px solid var(--border); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+            <div style="padding: 1.2rem; background: var(--surface-darker); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-size: 1rem; font-weight: 800;" id="modal-item-name">品目設定</h3>
+                <button onclick="hideItemModal()" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size: 1.2rem;"><i class="fas fa-times"></i></button>
+            </div>
+            <div style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.2rem;">
+                <div class="input-group">
+                    <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">確認タイミング</label>
+                    <select id="modal-timing" class="settings-input" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 1px solid var(--border); font-weight: 600;"></select>
+                </div>
+                <div class="input-group">
+                    <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">保管場所</label>
+                    <input type="text" id="modal-location" list="common-locations" placeholder="例: 冷蔵庫A" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 1px solid var(--border);">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="input-group">
+                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">定数 (Par)</label>
+                        <input type="number" id="modal-par" step="any" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 1px solid var(--border); text-align: center; font-weight: 700;">
+                    </div>
+                    <div class="input-group">
+                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">管理単位</label>
+                        <input type="text" id="modal-unit" list="common-units" placeholder="例: 小タッパ" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 1px solid var(--border); font-weight: 600;">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="input-group">
+                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">単位換算量</label>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <input type="number" id="modal-conv" step="any" style="flex: 1; padding: 0.7rem; border-radius: 8px; border: 1px solid var(--border); text-align: center; font-weight: 700;">
+                            <span id="modal-master-unit" style="font-weight: 800; color: var(--text-secondary); font-size: 0.9rem; min-width: 30px;">-</span>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">不足時アクション</label>
+                        <select id="modal-action" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 1px solid var(--border); font-weight: 600;">
+                            <option value="purchase">仕入れ</option>
+                            <option value="prep">仕込み</option>
+                            <option value="transfer">移動</option>
+                        </select>
+                    </div>
+                </div>
+                <button id="btn-save-single-item" class="btn btn-primary" style="width: 100%; padding: 1rem; margin-top: 0.5rem; font-weight: 800; font-size: 1rem; border-radius: 12px; box-shadow: var(--shadow-primary);">
+                    設定を保存する
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Master Settings Large Overlay -->
+    <div id="inv-master-settings-overlay">
+        <div style="max-width: 1200px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h2 style="margin: 0; font-size: 1.8rem; font-weight: 900; color: var(--text-primary);">在庫マスタ設定</h2>
+                    <p style="margin: 0.5rem 0 0 0; color: var(--text-secondary); font-weight: 600;">店舗で管理する品目の選択とタイミングの管理</p>
+                </div>
+                <button onclick="hideMasterSettings()" class="btn btn-secondary" style="border-radius: 50%; width: 50px; height: 50px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div id="inv-master-settings-content" style="display: grid; grid-template-columns: 1fr 350px; gap: 2rem;">
+                <!-- Content injected by renderSettingsView -->
+            </div>
+        </div>
+    </div>
 `;
 
 // Global State
@@ -128,9 +234,38 @@ let cachedIngredients = [];
 let cachedSuppliers = [];
 let cachedMenus = [];
 let currentUser = null;
-let settingsCurrentTab = 'menus';
-let settingsSelectedCategory = null;
-let settingsSelectedSupplier = null;
+
+// Settings State
+let settingsSearchQuery = '';
+let settingsBulkMode = false;
+let settingsSelectedCategory = 'ALL';
+
+/**
+ * Helper to determine if an item is a valid inventory target
+ * (Ingredient or Sub-recipe, not a standard Sales Menu)
+ */
+function isInventoryTarget(item) {
+    if (!item) return false;
+    const pid = String(item.id);
+    
+    // メニューマスタに存在するか確認
+    const menu = cachedMenus.find(m => String(m.item_id) === pid || String(m.id) === pid);
+    
+    if (menu) {
+        // メニューにある場合、is_sub_recipe が明示的に true のものだけを対象とする
+        // (通常の販売メニューを除外するため)
+        return menu.is_sub_recipe === true;
+    }
+    
+    // 原材料マスタにあるか確認
+    const isIng = cachedIngredients.some(ing => String(ing.item_id) === pid);
+    if (isIng) return true;
+
+    // どちらにも明確に属さない場合は、デフォルトで管理対象候補とする（安全策）
+    return true; 
+}
+let tempSelectedPids = new Set();
+let settingsCurrentTab = 'ingredients'; 
 let editingItem = null;    // Item for keypad or loc-edit
 
 
@@ -231,6 +366,20 @@ function render() {
 
     if (!main || !storeSelect || !sidebarTimings) return;
 
+    // Ensure common datalists exist for modal/settings
+    const locs = [...new Set(inventoryData.map(d => d.location_label || d.保管場所).filter(Boolean))].sort();
+    const units = [...new Set(inventoryData.map(d => d.display_unit).filter(Boolean))].sort();
+    let datalists = document.getElementById('inv-datalists');
+    if (!datalists) {
+        datalists = document.createElement('div');
+        datalists.id = 'inv-datalists';
+        document.body.appendChild(datalists);
+    }
+    datalists.innerHTML = `
+        <datalist id="common-locations">${locs.map(l => `<option value="${l}">`).join('')}</datalist>
+        <datalist id="common-units">${units.map(u => `<option value="${u}">`).join('')}</datalist>
+    `;
+
     // 1. Populate Store Select (Only once or if changed)
     if (storeSelect.options.length <= 1) {
         allStores.sort((a,b) => a.name.localeCompare(b.name)).forEach(s => {
@@ -318,23 +467,44 @@ function render() {
         }
     }
 
-    // Settings Toggle
+    // Settings Toggle (Re-purposed to open overlay)
     const btnSettings = document.getElementById('btn-inv-settings');
     if (btnSettings) {
         const canManage = currentUser?.Role === 'Admin' || currentUser?.Role === '管理者' || currentUser?.Role === 'Manager' || currentUser?.Role === '店長';
         btnSettings.style.display = canManage ? 'block' : 'none';
         btnSettings.onclick = () => {
-            if (currentTab === 'settings') {
-                currentTab = 'tiles';
-                btnSettings.innerHTML = '<i class="fas fa-cog"></i> 在庫マスタ設定';
-            } else {
-                currentTab = 'settings';
-                btnSettings.innerHTML = '<i class="fas fa-arrow-left"></i> 戻る';
-            }
-            render();
+            showMasterSettings();
         };
     }
 }
+
+async function showMasterSettings() {
+    const overlay = document.getElementById('inv-master-settings-overlay');
+    const content = document.getElementById('inv-master-settings-content');
+    const overlayLoad = document.getElementById('inv-loading-overlay');
+    
+    if (overlay && content) {
+        if (overlayLoad) overlayLoad.style.display = 'flex';
+        
+        try {
+            // Re-load to ensure we have latest data
+            await loadStoreInventory(selectedStore.code);
+            overlay.classList.add('active');
+            renderSettingsView(content);
+        } catch (err) {
+            console.error("Master settings open failed:", err);
+            showAlert('エラー', 'データの取得に失敗しました');
+        } finally {
+            // Safety: Ensure loading is hidden even if render fails
+            if (overlayLoad) overlayLoad.style.display = 'none';
+        }
+    }
+}
+
+window.hideMasterSettings = () => {
+    const overlay = document.getElementById('inv-master-settings-overlay');
+    if (overlay) overlay.classList.remove('active');
+};
 
 function renderChecklist(container) {
     const items = inventoryData.filter(d => d.確認タイミング === selectedTiming.id);
@@ -363,7 +533,8 @@ function renderInventoryTable(container, items) {
                     <th>品目名 / 保管場所</th>
                     <th style="width: 80px; text-align: center;">定数</th>
                     <th style="width: 120px; text-align: right;">現在庫入力</th>
-                    <th style="width: 80px; text-align: left; padding-left: 1rem;">単位</th>
+                    <th style="width: 60px; text-align: center;">単位</th>
+                    <th style="width: 50px; text-align: center;">設定</th>
                 </tr>
             </thead>
             <tbody>
@@ -392,8 +563,13 @@ function renderInventoryTable(container, items) {
                            data-id="${item.id}" data-index="${index}"
                            onfocus="this.select()">
                 </td>
-                <td style="padding-left: 1rem; font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">
+                <td style="text-align: center; font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">
                     ${item.display_unit || ''}
+                </td>
+                <td style="text-align: center;">
+                    <button class="btn-item-settings" data-id="${item.id}" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; padding: 5px;">
+                        <i class="fas fa-cog"></i>
+                    </button>
                 </td>
             </tr>
         `;
@@ -401,6 +577,14 @@ function renderInventoryTable(container, items) {
 
     html += `</tbody></table>`;
     container.innerHTML = html;
+
+    // Listeners for ⚙️ settings icon
+    container.querySelectorAll('.btn-item-settings').forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            showItemSettingsModal(btn.dataset.id);
+        };
+    });
 
     // Listeners for keyboard navigation and docked keypad
     const inputs = container.querySelectorAll('.qty-input');
@@ -692,72 +876,345 @@ function openInvSettings() {
 function renderSettingsView(container) {
     if (!selectedStore) return;
 
-    container.innerHTML = `
-        <div class="glass-panel animate-fade-in" style="width: 100%; border: 1px solid var(--border); background: white; padding: 0; display: flex; flex-direction: column;">
-            <!-- Settings Header Area -->
-            <div style="padding: 1.5rem; background: #f8fafc; border-bottom: 1px solid var(--border);">
-                <div style="display: flex; flex-direction: column; gap: 1rem;">
-                    <div class="tabs-container" style="margin: 0; background: #e2e8f0; padding: 0.2rem; border-radius: 8px;">
-                        <div class="tab-item ${settingsCurrentTab === 'menus' ? 'active' : ''}" data-tab="menus" style="flex: 1; text-align: center; font-size:0.85rem; padding: 0.5rem;"><i class="fas fa-utensils"></i> 販売メニュー</div>
-                        <div class="tab-item ${settingsCurrentTab === 'sub_recipes' ? 'active' : ''}" data-tab="sub_recipes" style="flex: 1; text-align: center; font-size:0.85rem; padding: 0.5rem;"><i class="fas fa-mortar-pestle"></i> 自家製原材料</div>
-                        <div class="tab-item ${settingsCurrentTab === 'ingredients' ? 'active' : ''}" data-tab="ingredients" style="flex: 1; text-align: center; font-size:0.85rem; padding: 0.5rem;"><i class="fas fa-leaf"></i> 食材・仕入品</div>
-                    </div>
-                    
-                    <div style="display: flex; gap: 1rem; align-items: center;">
-                        <div class="input-group" style="margin: 0; flex: 1;">
-                            <i class="fas fa-search" style="left: 0.8rem;"></i>
-                            <input type="text" id="inv-settings-search" placeholder="品目名で検索..." style="padding-left: 2.2rem; height: 40px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.9rem;">
-                        </div>
-                        <button id="btn-save-inv-settings" class="btn btn-primary" style="height: 40px; min-width: 150px; font-weight: 700;">
-                            <i class="fas fa-save"></i> 設定を保存
-                        </button>
-                    </div>
+    // Filter manageable items using unified logic
+    const manageableItems = cachedItems.filter(isInventoryTarget);
+    const categories = [...new Set(manageableItems.map(i => i.category || i.カテゴリー || 'その他'))].sort();
 
-                    <!-- Filters -->
-                    <div id="inv-settings-filters" style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.75rem;">
-                        <div style="display: flex; align-items: center; gap: 0.6rem; overflow-x: auto; padding-bottom: 2px;" id="inv-settings-category-chips">
-                            <span style="color: var(--text-secondary); white-space: nowrap; font-weight: 600;">カテゴリー:</span>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 0.6rem; overflow-x: auto; padding-bottom: 2px;" id="inv-settings-supplier-chips">
-                            <span style="color: var(--text-secondary); white-space: nowrap; font-weight: 600;">仕入先:</span>
-                        </div>
-                    </div>
+    container.innerHTML = `
+        <!-- Header: Search & Filter Controls -->
+        <div class="glass-panel" style="padding: 1.5rem; background: #f8fafc; border: 1px solid var(--border); border-radius: 16px; display: flex; flex-direction: column; gap: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-size: 1.1rem; font-weight: 800;">
+                    ${settingsBulkMode ? '<i class="fas fa-layer-group" style="color:var(--primary);"></i> 一括登録モード' : '<i class="fas fa-list-check" style="color:var(--primary);"></i> 現在の管理リスト'}
+                </h3>
+                <div style="display: flex; align-items: center; gap: 0.8rem; background: #e2e8f0; padding: 0.4rem 1rem; border-radius: 20px;">
+                    <span style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary);">一括登録モード</span>
+                    <label class="switch" style="position: relative; display: inline-block; width: 40px; height: 20px;">
+                        <input type="checkbox" id="settings-bulk-toggle" ${settingsBulkMode ? 'checked' : ''} style="opacity: 0; width: 0; height: 0;">
+                        <span class="slider round" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .4s; border-radius: 20px;"></span>
+                    </label>
                 </div>
             </div>
 
-            <!-- List Area -->
-            <div id="inv-settings-list" style="max-height: 60vh; overflow-y: auto; background: white;">
-                <!-- Rows injected by renderSettingsItems -->
+            <div style="display: flex; gap: 0.8rem;">
+                <!-- Integrated Category Select -->
+                <select id="settings-category-filter" style="width: 160px; padding: 0 1rem; border-radius: 12px; border: 2px solid #e2e8f0; font-weight: 800; font-size: 0.85rem; cursor: pointer; outline: none;">
+                    <option value="ALL">全カテゴリ</option>
+                    ${categories.map(c => `<option value="${c}" ${settingsSelectedCategory === c ? 'selected' : ''}>${c}</option>`).join('')}
+                </select>
+                
+                <!-- Search Box -->
+                <div class="input-group" style="margin: 0; flex: 1; position: relative;">
+                    <i class="fas fa-search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary); pointer-events: none; z-index: 1;"></i>
+                    <input type="text" id="inv-master-search" placeholder="${settingsBulkMode ? '追加したい品目を検索...' : '管理リスト内を検索...'}" value="${settingsSearchQuery}" style="padding-left: 2.5rem; height: 45px; border-radius: 12px; border: 2px solid #e2e8f0; font-size: 0.95rem; font-weight: 700;">
+                    <!-- Floating Results for quick add in Normal Mode -->
+                    <div id="inv-master-quick-add-results" style="position: absolute; top: 50px; left: 0; width: 100%; background: white; border-radius: 12px; box-shadow: var(--shadow-primary); border: 1px solid var(--border); z-index: 100; display: none; max-height: 250px; overflow-y: auto;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 350px; gap: 2rem;">
+            <!-- Left: Main List Area -->
+            <div class="glass-panel" style="padding: 0; overflow: hidden; display: flex; flex-direction: column; background: white; border: 1px solid var(--border); border-radius: 16px;">
+                <div style="padding: 0.5rem; background: #f1f5f9; border-bottom: 1px solid var(--border); display: flex; font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">
+                    ${settingsBulkMode ? '<div style="width: 40px;"></div>' : ''}
+                    <div style="flex: 2; padding: 0.5rem 1rem;">品目名</div>
+                    <div style="flex: 1; padding: 0.5rem;">仕入先</div>
+                    <div style="width: ${settingsBulkMode ? '40px' : '100px'}; padding: 0.5rem; text-align: center;">操作</div>
+                </div>
+                <div id="inv-settings-list" style="height: 50vh; overflow-y: auto; background: white;">
+                    <!-- Rows injected by renderSettingsItems -->
+                </div>
+                ${settingsBulkMode ? `
+                <div style="padding: 1.2rem; background: #f8fafc; border-top: 1px solid var(--border); text-align: right;">
+                    <button id="btn-bulk-add-save" class="btn btn-primary" style="padding: 0.8rem 2rem; font-weight: 800; border-radius: 12px; box-shadow: var(--shadow-primary);">選択した品目を一括追加</button>
+                </div>
+                ` : `
+                <div style="padding: 1rem; background: #f8fafc; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-info-circle"></i> ⚙️アイコンで詳細設定（定数や場所）、🗑️アイコンでリストからの削除を行えます。
+                </div>
+                `}
             </div>
 
-            <!-- Footer helper -->
-            <div style="padding: 1rem 1.5rem; border-top: 1px solid var(--border); background: #f8fafc; font-size: 0.8rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.5rem;">
-                <i class="fas fa-info-circle"></i>
-                チェックした品目が「${selectedStore.name}」の在庫管理対象としてダッシュボードに表示されます
+            <!-- Right Column: Timing Management -->
+            <div class="glass-panel" style="padding: 1.5rem; background: white; border: 1px solid var(--border); border-radius: 16px; align-self: start;">
+                <h3 style="margin: 0 0 1.5rem 0; font-size: 1.1rem; font-weight: 800;"><i class="fas fa-clock" style="color: var(--primary);"></i> タイミング設定</h3>
+                <div id="timing-master-list" style="display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1.5rem;"></div>
+                <div style="display: flex; gap: 0.6rem;">
+                    <input type="text" id="new-timing-name" placeholder="例: 15時チェック" style="flex: 1; padding: 0.7rem; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 0.9rem; font-weight: 600;">
+                    <button id="btn-add-timing" class="btn btn-secondary" style="padding: 0.7rem; border-radius: 10px; width: 45px; height: 45px;"><i class="fas fa-plus"></i></button>
+                </div>
             </div>
         </div>
     `;
 
-    // Initialize Settings Tabs
-    container.querySelectorAll('.tab-item').forEach(tab => {
-        tab.onclick = () => {
-            settingsCurrentTab = tab.dataset.tab;
-            settingsSelectedCategory = null;
-            settingsSelectedSupplier = null;
-            renderSettingsView(container);
+    // Dynamic Slider CSS (Inline)
+    const styleId = 'bulk-toggle-style';
+    if (!document.getElementById(styleId)) {
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.innerHTML = `
+            .switch input:checked + .slider { background-color: var(--primary) !important; }
+            .switch input:checked + .slider:before { transform: translateX(20px); }
+            .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // Bind Events
+    const toggle = document.getElementById('settings-bulk-toggle');
+    toggle.onchange = (e) => {
+        settingsBulkMode = e.target.checked;
+        settingsSearchQuery = ''; // Reset search when switching
+        renderSettingsView(container);
+    };
+
+    const categorySelect = document.getElementById('settings-category-filter');
+    categorySelect.onchange = (e) => {
+        settingsSelectedCategory = e.target.value;
+        renderSettingsItems();
+    };
+
+    const searchInput = document.getElementById('inv-master-search');
+    searchInput.oninput = (e) => {
+        settingsSearchQuery = e.target.value;
+        if (!settingsBulkMode) {
+            handleQuickAddSearch(e.target.value);
+        } else {
+            renderSettingsItems();
+        }
+    };
+
+    if (settingsBulkMode) {
+        document.getElementById('btn-bulk-add-save').onclick = handleBulkAddSave;
+    }
+
+    document.getElementById('btn-add-timing').onclick = addTimingMaster;
+
+    renderSettingsItems();
+    renderTimingMasterList();
+}
+
+function handleQuickAddSearch(query) {
+    const resultsContainer = document.getElementById('inv-master-quick-add-results');
+    if (!query || query.length < 1) {
+        resultsContainer.style.display = 'none';
+        return;
+    }
+
+    const existingPids = new Set(inventoryData.map(i => String(i.ProductID)));
+    const matches = cachedItems.filter(i => {
+        const nameMatch = i.name.toLowerCase().includes(query.toLowerCase());
+        if (!nameMatch) return false;
+        
+        // Exclude menus
+        const menu = cachedMenus.find(m => String(m.item_id) === String(i.id));
+        if (menu && menu.is_sub_recipe !== true) return false;
+        
+        // Filter by category if selected
+        if (settingsSelectedCategory !== 'ALL') {
+            const cat = i.category || i.カテゴリー || 'その他';
+            if (cat !== settingsSelectedCategory) return false;
+        }
+
+        return !existingPids.has(String(i.id));
+    }).slice(0, 8);
+
+    if (matches.length === 0) {
+        resultsContainer.innerHTML = `<div style="padding: 1rem; color: var(--text-secondary); font-size: 0.85rem;">該当する品目はありません</div>`;
+    } else {
+        resultsContainer.innerHTML = matches.map(i => `
+            <div class="search-result-row" data-id="${i.id}" style="padding: 0.8rem 1rem; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background 0.1s;">
+                <div style="font-size: 0.9rem; font-weight: 700;">${i.name}</div>
+                <div style="font-size: 0.7rem; color: var(--text-secondary);">${i.category || i.カテゴリー || 'カテゴリーなし'}</div>
+            </div>
+        `).join('');
+    }
+    resultsContainer.style.display = 'block';
+
+    resultsContainer.querySelectorAll('.search-result-row').forEach(row => {
+        row.onclick = async () => {
+            const pid = row.dataset.id;
+            resultsContainer.style.display = 'none';
+            document.getElementById('inv-master-search').value = '';
+            settingsSearchQuery = '';
+            await addStoreItem(pid);
         };
     });
+}
 
-    // Search input
-    const searchInput = document.getElementById('inv-settings-search');
-    searchInput.oninput = () => renderSettingsItems();
+async function handleBulkAddSave() {
+    const checkedPids = Array.from(document.querySelectorAll('.bulk-add-chk:checked')).map(el => el.value);
+    if (checkedPids.length === 0) return;
 
-    // Save button
-    document.getElementById('btn-save-inv-settings').onclick = saveInvSettings;
+    if (!confirm(`${checkedPids.length}件の品目を一括登録しますか？`)) return;
 
-    // Initial render items and filters
-    renderSettingsFilters();
-    renderSettingsItems();
+    const overlay = document.getElementById('inv-loading-overlay');
+    overlay.style.display = 'flex';
+
+    const fallbackTimingId = Object.keys(timingMaster)[0] || "DAILY_ALL";
+
+    try {
+        for (const pid of checkedPids) {
+            const docId = `${selectedStore.code}_${pid}`;
+            await setDoc(doc(db, "m_store_items", docId), {
+                StoreID: selectedStore.code,
+                ProductID: pid,
+                確認タイミング: fallbackTimingId,
+                定数: 0,
+                location_label: "未配置",
+                保管場所: "未配置",
+                is_confirmed: false,
+                個数: 0,
+                updated_at: new Date().toISOString()
+            });
+        }
+        await loadStoreInventory(selectedStore.code);
+        settingsBulkMode = false; // Return to list view
+        renderSettingsView(document.getElementById('inv-master-settings-content'));
+        render(); // Update dashboard
+        showAlert('成功', '品目を一括登録しました');
+    } catch (err) {
+        showAlert('エラー', '登録失敗: ' + err.message);
+    } finally {
+        overlay.style.display = 'none';
+    }
+}
+
+function handleMasterSearch(query) {
+    const resultsContainer = document.getElementById('inv-master-search-results');
+    if (!query || query.length < 1) {
+        resultsContainer.style.display = 'none';
+        return;
+    }
+
+    // Filter master items that ARE NOT already in inventoryData
+    const existingPids = new Set(inventoryData.map(i => String(i.ProductID)));
+    
+    // Find matching items (excluding sales menus as per user request)
+    const matches = cachedItems.filter(i => {
+        const nameMatch = i.name.toLowerCase().includes(query.toLowerCase());
+        if (!nameMatch) return false;
+        
+        // Exclude menus
+        const menu = cachedMenus.find(m => String(m.item_id) === String(i.id));
+        if (menu && menu.is_sub_recipe !== true) return false;
+        
+        // Exclude already added
+        if (existingPids.has(String(i.id))) return false;
+        
+        return true;
+    }).slice(0, 10); // Limit to top 10 for performance
+
+    if (matches.length === 0) {
+        resultsContainer.innerHTML = `<div style="padding: 1rem; color: var(--text-secondary); font-size: 0.85rem;">該当する品目はありません</div>`;
+    } else {
+        resultsContainer.innerHTML = matches.map(i => `
+            <div class="search-result-row" data-id="${i.id}" style="padding: 0.8rem 1rem; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background 0.1s;">
+                <div style="font-size: 0.9rem; font-weight: 700;">${i.name}</div>
+                <div style="font-size: 0.7rem; color: var(--text-secondary);">${i.category || 'カテゴリーなし'}</div>
+            </div>
+        `).join('');
+    }
+
+    resultsContainer.style.display = 'block';
+
+    // Click to add
+    resultsContainer.querySelectorAll('.search-result-row').forEach(row => {
+        row.onclick = async () => {
+            const pid = row.dataset.id;
+            resultsContainer.style.display = 'none';
+            document.getElementById('inv-master-add-search').value = '';
+            await addStoreItem(pid);
+        };
+    });
+}
+
+async function addStoreItem(pid) {
+    if (!selectedStore) return;
+    const overlay = document.getElementById('inv-loading-overlay');
+    overlay.style.display = 'flex';
+
+    const fallbackTimingId = Object.keys(timingMaster)[0] || "DAILY_ALL";
+
+    try {
+        const docId = `${selectedStore.code}_${pid}`;
+        await setDoc(doc(db, "m_store_items", docId), {
+            StoreID: selectedStore.code,
+            ProductID: pid,
+            確認タイミング: fallbackTimingId,
+            定数: 0,
+            location_label: "未配置",
+            保管場所: "未配置",
+            is_confirmed: false,
+            個数: 0,
+            updated_at: new Date().toISOString()
+        });
+        
+        // Re-load and re-render
+        await loadStoreInventory(selectedStore.code);
+        renderSettingsItems();
+        render(); // Update main dashboard
+    } catch (err) {
+        showAlert('エラー', '追加に失敗しました: ' + err.message);
+    } finally {
+        overlay.style.display = 'none';
+    }
+}
+
+async function removeStoreItem(storeItemId) {
+    if (!confirm('この品目を管理リストから削除しますか？\n(定数や保管場所の設定データも消去されます)')) return;
+    
+    const overlay = document.getElementById('inv-loading-overlay');
+    overlay.style.display = 'flex';
+
+    try {
+        await deleteDoc(doc(db, "m_store_items", storeItemId));
+        await loadStoreInventory(selectedStore.code);
+        renderSettingsItems();
+        render(); // Update main dashboard
+    } catch (err) {
+        showAlert('エラー', '削除に失敗しました: ' + err.message);
+    } finally {
+        overlay.style.display = 'none';
+    }
+}
+
+async function renderTimingMasterList() {
+    const list = document.getElementById('timing-master-list');
+    if (!list) return;
+    
+    list.innerHTML = Object.keys(timingMaster).map(id => `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: #f8fafc; border-radius: 4px; border: 1px solid #e2e8f0;">
+            <span style="font-size: 0.85rem; font-weight: 600;">${timingMaster[id]}</span>
+            <button onclick="window.deleteTimingMaster('${id}')" style="background:none; border:none; color:var(--accent); cursor:pointer;"><i class="fas fa-trash"></i></button>
+        </div>
+    `).join('');
+}
+
+window.deleteTimingMaster = async (id) => {
+    if (!confirm('このタイミング設定を削除しますか？品目に設定されている場合は注意してください。')) return;
+    try {
+        await deleteDoc(doc(db, "m_check_timings", id));
+        delete timingMaster[id];
+        renderSettingsView(document.getElementById('inv-main-content'));
+    } catch (err) {
+        alert('削除エラー: ' + err.message);
+    }
+};
+
+async function addTimingMaster() {
+    const name = document.getElementById('new-timing-name').value.trim();
+    if (!name) return;
+    try {
+        const id = 'T' + Date.now();
+        await setDoc(doc(db, "m_check_timings", id), { ID: id, 確認タイミング: name });
+        timingMaster[id] = name;
+        document.getElementById('new-timing-name').value = '';
+        renderSettingsView(document.getElementById('inv-main-content'));
+    } catch (err) {
+        alert('追加エラー: ' + err.message);
+    }
 }
 
 async function loadStoreInventory(internalCode) {
@@ -779,74 +1236,123 @@ async function loadStoreInventory(internalCode) {
 
 
 
-function renderSettingsItems(tab = settingsCurrentTab, filterText = '') {
+function renderSettingsItems() {
     const container = document.getElementById('inv-settings-list');
     if (!container) return;
 
-    // 現在の検索ワード取得（引数がない場合はDOMから）
-    const searchQuery = filterText || document.getElementById('inv-settings-search').value || '';
+    try {
+        if (settingsBulkMode) {
+            // --- Mode B: Master Items (Bulk Add) ---
+            const existingPids = new Set(inventoryData.map(i => String(i.ProductID)));
+            
+            let itemsToShow = cachedItems.filter(i => {
+                if (!isInventoryTarget(i)) return false;
+                if (existingPids.has(String(i.id))) return false;
 
-    // 1. 基本的なタブフィルタリング
-    let baseItems = cachedItems.filter(i => {
-        const menu = cachedMenus.find(m => m.item_id === i.id);
-        if (tab === 'menus') return menu && (menu.is_sub_recipe !== true);
-        if (tab === 'sub_recipes') return menu && (menu.is_sub_recipe === true);
-        if (tab === 'ingredients') return cachedIngredients.some(ing => ing.item_id === i.id) || !menu;
-        return true;
-    });
+                const itemName = (i.name || i.Name || '').toLowerCase();
+                const itemCat = String(i.category || i.カテゴリー || 'その他');
 
-    // 2. フィルタ用チップのデータ抽出
-    const categories = [...new Set(baseItems.map(i => i.category || '未分類'))].sort();
-    const supplierIds = [...new Set(cachedIngredients.filter(ing => baseItems.some(bi => bi.id === ing.item_id)).map(ing => ing.vendor_id))];
-    const suppliers = cachedSuppliers.filter(s => supplierIds.includes(s.vendor_id || s.id)).sort((a, b) => a.vendor_name.localeCompare(b.vendor_name));
+                // Category Check
+                if (settingsSelectedCategory !== 'ALL' && itemCat !== settingsSelectedCategory) {
+                    return false;
+                }
 
-    renderChips('category', categories);
-    renderChips('supplier', suppliers);
+                // Search Check
+                if (settingsSearchQuery) {
+                    const q = settingsSearchQuery.toLowerCase();
+                    if (!itemName.includes(q)) return false;
+                }
 
-    // 3. 実際の絞り込み (Category x Supplier x Search)
-    const filteredItems = baseItems.filter(i => {
-        // 名称検索
-        const nameMatch = i.name.toLowerCase().includes(searchQuery.toLowerCase());
-        if (!nameMatch) return false;
+                return true;
+            });
 
-        // カテゴリー検索
-        if (settingsSelectedCategory && (i.category || '未分類') !== settingsSelectedCategory) return false;
+            itemsToShow.sort((a, b) => {
+                const nameA = a.name || a.Name || '';
+                const nameB = b.name || b.Name || '';
+                return nameA.localeCompare(nameB);
+            });
 
-        // 仕入先検索
-        if (settingsSelectedSupplier) {
-            const ing = cachedIngredients.find(ing => ing.item_id === i.id);
-            if (!ing || (ing.vendor_id !== settingsSelectedSupplier)) return false;
+            if (itemsToShow.length === 0) {
+                container.innerHTML = `<div style="text-align:center; padding: 3rem; color: var(--text-secondary); font-size: 0.9rem;">該当する未登録品目はありません</div>`;
+                return;
+            }
+
+            container.innerHTML = itemsToShow.map(i => {
+                const displayName = i.name || i.Name || '名称未設定';
+                const displayCat = i.category || i.カテゴリー || '-';
+                return `
+                    <label style="display: flex; align-items: center; padding: 0.75rem 1rem; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background 0.1s;">
+                        <div style="width: 40px;"><input type="checkbox" class="bulk-add-chk" value="${i.id}" style="width: 18px; height: 18px; cursor: pointer;"></div>
+                        <div style="flex: 2; font-size: 0.9rem; font-weight: 700; color: var(--text-primary);">${displayName}</div>
+                        <div style="flex: 1; font-size: 0.75rem; color: var(--text-secondary);">${displayCat}</div>
+                        <div style="width: 40px; text-align: center;"><i class="fas fa-plus" style="color: var(--primary); opacity: 0.3;"></i></div>
+                    </label>
+                `;
+            }).join('');
+
+        } else {
+            // --- Mode A: Management (Current Inventory) ---
+            let data = [...inventoryData];
+
+            // Category Filter
+            if (settingsSelectedCategory !== 'ALL') {
+                data = data.filter(d => {
+                    const raw = cachedItems.find(i => String(i.id) === String(d.ProductID));
+                    const cat = String(raw?.category || raw?.カテゴリー || 'その他');
+                    return cat === settingsSelectedCategory;
+                });
+            }
+
+            // Search Filter
+            if (settingsSearchQuery) {
+                const q = settingsSearchQuery.toLowerCase();
+                data = data.filter(d => (productMap[d.ProductID] || '').toLowerCase().includes(q));
+            }
+
+            data.sort((a, b) => (productMap[a.ProductID] || '').localeCompare(productMap[b.ProductID] || ''));
+
+            if (data.length === 0) {
+                container.innerHTML = `<div style="text-align:center; padding: 3rem; color: var(--text-secondary); font-size: 0.9rem;">
+                    ${settingsSearchQuery || settingsSelectedCategory !== 'ALL' ? '該当する品目はありません' : '登録されている品目はありません'}
+                </div>`;
+                return;
+            }
+
+            container.innerHTML = data.map(item => {
+                const name = productMap[item.ProductID] || '不明な品目';
+                const ing = cachedIngredients.find(ing => String(ing.item_id) === String(item.ProductID));
+                const sup = cachedSuppliers.find(s => String(s.vendor_id || s.id) === String(ing?.vendor_id));
+                const supName = sup?.vendor_name || '-';
+
+                return `
+                    <div style="display: flex; align-items: center; padding: 0.75rem 1rem; border-bottom: 1px solid #f1f5f9; transition: background 0.1s;">
+                        <div style="flex: 2; min-width: 0;">
+                            <div style="font-size: 0.9rem; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${name}</div>
+                        </div>
+                        <div style="flex: 1; font-size: 0.75rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${supName}</div>
+                        <div style="width: 100px; text-align: center; display: flex; justify-content: space-around;">
+                            <button class="btn-edit-item-master" data-id="${item.id}" style="background:none; border:none; color:var(--primary); cursor:pointer; font-size: 1.1rem;"><i class="fas fa-cog"></i></button>
+                            <button class="btn-remove-item" data-id="${item.id}" style="background:none; border:none; color:var(--accent); cursor:pointer; font-size: 1.1rem;"><i class="fas fa-trash-alt"></i></button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Re-bind listeners
+            container.querySelectorAll('.btn-edit-item-master').forEach(btn => {
+                btn.onclick = () => showItemSettingsModal(btn.dataset.id);
+            });
+            container.querySelectorAll('.btn-remove-item').forEach(btn => {
+                btn.onclick = () => removeStoreItem(btn.dataset.id);
+            });
         }
-
-        return true;
-    });
-
-    // ソート
-    filteredItems.sort((a, b) => a.name.localeCompare(b.name));
-
-    if (filteredItems.length === 0) {
-        container.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding: 2rem; color: var(--text-secondary);">該当する品目はありません</div>`;
-        return;
+    } catch (err) {
+        console.error("renderSettingsItems error:", err);
+        container.innerHTML = `<div style="text-align:center; padding: 2rem; color: #ef4444;">描画エラーが発生しました</div>`;
+        // Emergency overlay hide
+        const overlayLoad = document.getElementById('inv-loading-overlay');
+        if (overlayLoad) overlayLoad.style.display = 'none';
     }
-
-    container.innerHTML = filteredItems.map(i => {
-        const isSelected = inventoryData.some(si => si.ProductID === i.id);
-        const ing = cachedIngredients.find(ing => ing.item_id === i.id);
-        const sup = cachedSuppliers.find(s => (s.vendor_id || s.id) === ing?.vendor_id);
-        const supName = sup?.vendor_name || '自社/不明';
-
-        return `
-            <label style="display: flex; align-items: center; gap: 1rem; padding: 0.75rem 1.5rem; cursor: pointer; border-bottom: 1px solid #f1f5f9; transition: background 0.1s;">
-                <input type="checkbox" class="inv-setting-chk" value="${i.id}" ${isSelected ? 'checked' : ''} style="width: 18px; height: 18px; margin: 0; cursor: pointer;">
-                <div style="flex: 1; min-width: 0;">
-                    <div style="font-size: 0.9rem; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${i.name}</div>
-                </div>
-                <div style="font-size: 0.75rem; color: var(--text-secondary); border-left: 1px solid #eee; padding-left: 1rem; min-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                    ${supName}
-                </div>
-            </label>
-        `;
-    }).join('');
 }
 
 function renderChips(type, dataList) {
@@ -878,44 +1384,123 @@ window.toggleInvFilter = (type, value) => {
 
 async function saveInvSettings() {
     if (!selectedStore) return;
-
     const overlay = document.getElementById('inv-loading-overlay');
     overlay.style.display = 'flex';
 
-    const checkedIds = Array.from(document.querySelectorAll('.inv-setting-chk:checked')).map(el => el.value);
+    // 1. Identify manageable items (Only those visible in the settings tabs)
+    const manageablePids = new Set(cachedItems.filter(i => {
+        const menu = cachedMenus.find(m => m.item_id === i.id);
+        const isSub = menu && (menu.is_sub_recipe === true);
+        const isIng = cachedIngredients.some(ing => ing.item_id === i.id) || !menu;
+        return isSub || isIng; // Exclude regular sales menus
+    }).map(i => i.id));
+
+    const checkedIds = Array.from(tempSelectedPids);
     const existingIds = inventoryData.map(i => i.ProductID);
 
+    // 2. Determine Add/Remove scope
+    // We ONLY remove if it was an item we could have managed (is in manageablePids) 
+    // AND it is no longer in our selection.
+    const toRemove = Array.from(manageablePids).filter(pid => 
+        existingIds.includes(pid) && !tempSelectedPids.has(pid)
+    );
     const toAdd = checkedIds.filter(id => !existingIds.includes(id));
-    const toRemove = existingIds.filter(id => !checkedIds.includes(id));
+
+    // 3. Fallback timing (Pick the first valid one from master)
+    const fallbackTimingId = Object.keys(timingMaster)[0] || "DAILY_ALL";
 
     try {
-        // 削除
+        // Bulk delete (Scoped)
         for (const pid of toRemove) {
             await deleteDoc(doc(db, "m_store_items", `${selectedStore.code}_${pid}`));
         }
-
-        // 追加
+        // Bulk add
         for (const pid of toAdd) {
             await setDoc(doc(db, "m_store_items", `${selectedStore.code}_${pid}`), {
                 StoreID: selectedStore.code,
                 ProductID: pid,
-                確認タイミング: "DAILY_ALL", // デフォルト
+                確認タイミング: fallbackTimingId,
                 定数: 0,
                 location_label: "未配置",
+                保管場所: "未配置",
                 is_confirmed: false,
                 個数: 0,
                 updated_at: new Date().toISOString()
             });
         }
-
-        showAlert('成功', `${toAdd.length}件追加、${toRemove.length}件削除しました。`);
-        document.getElementById('inv-settings-modal').style.setProperty('display', 'none', 'important');
+        
+        showAlert('成功', '在庫管理対象を更新しました。詳細設定は各品目の⚙️アイコンから行ってください。');
+        hideMasterSettings();
         await loadStoreInventory(selectedStore.code);
         render();
     } catch (err) {
         console.error(err);
-        showAlert('エラー', '設定の保存に失敗しました');
-    } finally {
-        overlay.style.display = 'none';
+        showAlert('エラー', '保存失敗: ' + err.message);
+    } finally { 
+        overlay.style.display = 'none'; 
     }
+}
+
+function showItemSettingsModal(itemId) {
+    const item = inventoryData.find(i => i.id === itemId);
+    if (!item) return;
+    
+    editingItem = item;
+    const modal = document.getElementById('inv-item-modal');
+    document.getElementById('modal-item-name').textContent = productMap[item.ProductID] || '品目設定';
+    
+    // Find master unit for better UI (Affordance)
+    let masterUnit = '-';
+    const rawItem = cachedItems.find(i => i.id === item.ProductID);
+    if (rawItem) {
+        masterUnit = rawItem.unit || rawItem.単位 || '-';
+    }
+    if (masterUnit === '-') {
+        const ing = cachedIngredients.find(i => i.item_id === item.ProductID);
+        if (ing) masterUnit = ing.unit || ing.単位 || '-';
+    }
+    document.getElementById('modal-master-unit').textContent = masterUnit;
+    
+    const timingSelect = document.getElementById('modal-timing');
+    timingSelect.innerHTML = Object.keys(timingMaster).map(id => `<option value="${id}">${timingMaster[id]}</option>`).join('');
+    
+    timingSelect.value = item.確認タイミング || "DAILY_ALL";
+    document.getElementById('modal-location').value = item.location_label || item.保管場所 || "";
+    document.getElementById('modal-par').value = item.定数 || 0;
+    document.getElementById('modal-unit').value = item.display_unit || "";
+    document.getElementById('modal-conv').value = item.unit_conversion_amount || 1;
+    document.getElementById('modal-action').value = item.shortage_action_type || "purchase";
+
+    modal.classList.add('active');
+    document.getElementById('btn-save-single-item').onclick = saveSingleItemSettings;
+}
+
+window.hideItemModal = () => {
+    document.getElementById('inv-item-modal').classList.remove('active');
+};
+
+async function saveSingleItemSettings() {
+    if (!editingItem) return;
+    const overlay = document.getElementById('inv-loading-overlay');
+    overlay.style.display = 'flex';
+
+    const data = {
+        確認タイミング: document.getElementById('modal-timing').value,
+        location_label: document.getElementById('modal-location').value,
+        保管場所: document.getElementById('modal-location').value,
+        定数: Number(document.getElementById('modal-par').value) || 0,
+        display_unit: document.getElementById('modal-unit').value,
+        unit_conversion_amount: Number(document.getElementById('modal-conv').value) || 1,
+        shortage_action_type: document.getElementById('modal-action').value,
+        updated_at: new Date().toISOString()
+    };
+
+    try {
+        await updateDoc(doc(db, "m_store_items", editingItem.id), data);
+        Object.assign(editingItem, data);
+        hideItemModal();
+        render();
+    } catch (err) {
+        alert('保存エラー: ' + err.message);
+    } finally { overlay.style.display = 'none'; }
 }
