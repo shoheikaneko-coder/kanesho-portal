@@ -1,6 +1,7 @@
 import { db } from './firebase.js';
 import { collection, getDocs, addDoc, updateDoc, doc, getDoc, query, where, orderBy, setDoc, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { calculateAllTheoreticalStocks } from './stock_logic.js';
+import { showAlert } from './ui_utils.js';
 
 export const inventoryPageHtml = `
     <div id="inventory-app" class="animate-fade-in" style="display: flex; height: calc(100vh - 120px); gap: 1rem; overflow: hidden; padding: 0 1rem;">
@@ -43,11 +44,14 @@ export const inventoryPageHtml = `
                            style="width: 100%; padding: 0.5rem 0.8rem 0.5rem 2.2rem; border-radius: 20px; border: 1px solid var(--border); font-size: 0.85rem; font-weight: 600; outline: none; transition: all 0.2s; background: white;">
                 </div>
 
-                <div style="display: flex; align-items: center; gap: 1rem; flex-shrink: 0;">
+                <div style="display: flex; align-items: center; gap: 0.8rem; flex-shrink: 0;">
                     <button id="btn-toggle-sort" class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.75rem; font-weight: 800; border-radius: 8px;">
                         <i class="fas fa-arrows-alt-v"></i> 並べ替え
                     </button>
                     <div id="inv-stats" style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;"></div>
+                    <button id="btn-manual-reset" class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.75rem; font-weight: 800; border-radius: 8px; color: #ef4444; border-color: #fecaca; display: none;">
+                        <i class="fas fa-undo"></i> リセット
+                    </button>
                 </div>
             </div>
             
@@ -589,6 +593,14 @@ function render() {
             showMasterSettings();
         };
     }
+
+    // Manual Reset Button
+    const btnReset = document.getElementById('btn-manual-reset');
+    if (btnReset) {
+        const canReset = currentUser?.Role === 'Admin' || currentUser?.Role === '管理者' || currentUser?.Role === 'Manager' || currentUser?.Role === '店長';
+        btnReset.style.display = (canReset && selectedTiming) ? 'block' : 'none';
+        btnReset.onclick = handleManualReset;
+    }
 }
 
 async function showMasterSettings() {
@@ -1000,6 +1012,77 @@ function handleKeypadInput(val) {
     editingItem.個数 = input.value === "" ? 0 : Number(input.value);
     
     // Auto-update Firestore if needed or wait for confirm
+}
+
+async function handleManualReset() {
+    if (!selectedStore || !selectedTiming) return;
+
+    const itemsToReset = inventoryData.filter(d => 
+        d.確認タイミング === selectedTiming.id && 
+        isConfirmedToday(d.updated_at, selectedStore.resetTime)
+    );
+
+    if (itemsToReset.length === 0) {
+        showAlert('情報', '現在リセットが必要な項目はありません。');
+        return;
+    }
+
+    const confirmed = confirm(
+        `「${selectedTiming.name}」の在庫チェックのリセットを行います。よろしいですか？`
+    );
+
+    if (!confirmed) return;
+
+    const overlay = document.getElementById('inv-loading-overlay');
+    overlay.style.setProperty('display', 'flex', 'important');
+
+    try {
+        const batch = writeBatch(db);
+        const now = new Date().toISOString();
+        const resetTimestamp = "2000-01-01T00:00:00Z"; // Reset to far past
+        const businessDate = getBusinessDate(selectedStore.resetTime);
+
+        itemsToReset.forEach(item => {
+            const docRef = doc(db, "m_store_items", item.id);
+            batch.update(docRef, {
+                is_confirmed: false,
+                updated_at: resetTimestamp,
+                confirmed_at: null,
+                reset_by: currentUser?.Name || currentUser?.Email || 'unknown',
+                reset_at: now
+            });
+            
+            // Update local object immediately
+            item.is_confirmed = false;
+            item.updated_at = resetTimestamp;
+        });
+
+        // Log the reset action to history
+        const historyRef = doc(collection(db, "t_inventory_history"));
+        batch.set(historyRef, {
+            store_id: selectedStore.code,
+            item_id: 'SYSTEM_RESET',
+            store_item_id: selectedTiming.id,
+            change_qty: 0,
+            qty_after: 0,
+            reason_type: 'manual_reset',
+            source_route: 'inventory_page',
+            note: `${selectedTiming.name} を手動リセットしました`,
+            executed_by: currentUser?.Name || currentUser?.Email || 'unknown',
+            executed_at: now,
+            business_date: businessDate
+        });
+
+        await batch.commit();
+        
+        showAlert('成功', `${selectedTiming.name} の確認状況をリセットしました。`);
+        render(); // Re-render everything
+    } catch (err) {
+        console.error("Reset failed:", err);
+        showAlert('エラー', 'リセットに失敗しました: ' + err.message);
+    } finally {
+        overlay.style.setProperty('display', 'none', 'important');
+    }
 }
 
 async function saveItemQty(item) {
