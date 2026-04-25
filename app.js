@@ -2,16 +2,16 @@ import { db } from './firebase.js';
 import { collection, getDocs, query, where, getDoc, doc, updateDoc, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 // 各ページのインポート
-import { dashboardPageHtml, initDashboardPage } from './dashboard.js?v=96';
-import { attendancePageHtml, initAttendancePage } from './attendance.js?v=96';
-import { salesPageHtml, initSalesPage } from './sales.js?v=96';
+import { dashboardPageHtml, initDashboardPage } from './dashboard.js?v=105';
+import { attendancePageHtml, initAttendancePage } from './attendance.js?v=105';
+import { salesPageHtml, initSalesPage } from './sales.js?v=105';
 import { storesPageHtml, initStoresPage } from './stores.js?v=31';
 import { usersPageHtml, initUsersPage } from './users.js?v=31';
 import { inventoryPageHtml, initInventoryPage } from './inventory.js?v=33';
 import { procurementPageHtml, initProcurementPage } from './procurement.js?v=8';
 import { stocktakePageHtml, initStocktakePage } from './stocktake.js?v=1';
 import { inventoryHistoryPageHtml, initInventoryHistoryPage } from './inventory_history.js?v=1';
-import { productsPageHtml, initProductsPage } from './products.js?v=20260425_2140';
+import { productsPageHtml, initProductsPage } from './products.js?v=20260425_2151';
 import { suppliersPageHtml, initSuppliersPage } from './suppliers.js?v=36';
 import { storeItemsPageHtml, initStoreItemsPage } from './store_items.js?v=31';
 import { recipesViewerPageHtml, initRecipesViewerPage } from './recipes.js?v=7';

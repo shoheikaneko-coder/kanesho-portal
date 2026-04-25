@@ -348,7 +348,8 @@ async function refreshDashboard() {
             if (!grouped[key]) {
                 const si = storeMap[sid] || {};
                 grouped[key] = {
-                    ym: ym, 
+                    ym: ym,
+                    year_month: ym, // 両方の呼び名に対応
                     store_id: sid, 
                     store_name: r.store_name || r.StoreName || si.store_name || si.StoreName,
                     group_name: si.group_name || si.GroupName || si['グループ名'],
@@ -739,7 +740,11 @@ function renderMonthlyTable(recs, daily) {
         }
     });
 
-    allRows.sort((a,b) => b.ym.localeCompare(a.ym) || a.store_name.localeCompare(b.store_name));
+    allRows.sort((a,b) => {
+        const ymB = String(b.ym || b.year_month || "");
+        const ymA = String(a.ym || a.year_month || "");
+        return ymB.localeCompare(ymA) || String(a.store_name || "").localeCompare(String(b.store_name || ""));
+    });
     tbody.innerHTML = '';
     
     allRows.forEach(r => {
