@@ -588,7 +588,18 @@ function renderKPIs(recs, goals = { sales: 0, customers: 0 }, forcedOpH = null, 
     const opS = opH > 0 ? Math.round(exTax / opH) : 0;
     set('kpi-ophour-rate', '¥' + opS.toLocaleString());
     set('kpi-ophour-actual', '¥' + opS.toLocaleString());
-    set('kpi-ophour-target', opH.toFixed(1) + 'h');
+    
+    // 【究極デバッグ】すべての労働時間を合算して表示
+    const rawTotal = opH + ckH;
+    set('kpi-ophour-target', rawTotal.toFixed(2) + 'h');
+    
+    // データ件数を視覚的に表示
+    const debugEl = document.getElementById('debug-counter') || document.createElement('div');
+    debugEl.id = 'debug-counter';
+    debugEl.style = 'color:red; font-size:10px; font-weight:bold; margin-top:5px;';
+    debugEl.textContent = `DEBUG: ${recs.length}店舗分 / 労働データ ${opH.toFixed(2)}h (CK込 ${rawTotal.toFixed(2)}h)`;
+    const targetCard = document.getElementById('kpi-ophour-target').parentElement;
+    if (!targetCard.querySelector('#debug-counter')) targetCard.appendChild(debugEl);
 
     const totH = opH + ckH;
     const totS = totH > 0 ? Math.round(exTax / totH) : 0;
