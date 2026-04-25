@@ -44,10 +44,6 @@ export const dashboardPageHtml = `
                 <button id="dash-apply-btn" class="btn btn-primary" style="padding: 0.5rem 1.2rem; font-size: 0.9rem; white-space: nowrap; height: 38px;">
                     <i class="fas fa-search"></i> 表示
                 </button>
-                <!-- 診断用一時ボタン -->
-                <button id="debug-diag-btn" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.8rem; white-space: nowrap; height: 38px; border-color: var(--primary); color: var(--primary);">
-                    <i class="fas fa-microscope"></i> 重複診断
-                </button>
             </div>
         </div>
 
@@ -199,109 +195,6 @@ export async function initDashboardPage() {
     await refreshDashboard();
     await loadPersonalDashboard(); // 追加
     document.getElementById('dash-apply-btn').onclick = refreshDashboard;
-
-    // --- 重複データ診断ロジック ---
-    document.getElementById('debug-diag-btn').onclick = async () => {
-        if (!confirm('4月の全勤怠データをスキャンして重複を診断しますか？\n(読み取りのみで、データは変更しません)')) return;
-        
-        try {
-            const btn = document.getElementById('debug-diag-btn');
-            const originalHtml = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 診断中...';
-
-            const startDate = "2026-04-01";
-            const endDate = "2026-04-30";
-            
-            // ハイフン形式とスラッシュ形式の両方を検索
-            const q1 = query(collection(db, "t_attendance"), where("date", ">=", startDate), where("date", "<=", endDate));
-            const q2 = query(collection(db, "t_attendance"), where("date", ">=", startDate.replace(/-/g, '/')), where("date", "<=", endDate.replace(/-/g, '/')));
-            
-            const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
-            const allDocs = [];
-            snap1.forEach(d => allDocs.push({ id: d.id, ...d.data() }));
-            snap2.forEach(d => allDocs.push({ id: d.id, ...d.data() }));
-
-            const normalizeId = (id) => String(id || "").trim().replace(/^0+/, '');
-            const groups = {};
-
-            allDocs.forEach(doc => {
-                const sid = normalizeId(doc.staff_id || doc.EmployeeCode || "");
-                const ts = doc.timestamp || "";
-                const type = doc.type || "";
-                if (!sid || !ts || !type) return;
-                const key = `${sid}_${ts}_${type}`;
-                if (!groups[key]) groups[key] = [];
-                groups[key].push(doc);
-            });
-
-            let dupCount = 0;
-            let missingHours = 0;
-            let missingStaff = {}; // {name: hours}
-            let report = "【診断結果】\n";
-            let affectedStaff = new Set();
-
-            Object.entries(groups).forEach(([key, docs]) => {
-                if (docs.length > 1) {
-                    dupCount += (docs.length - 1);
-                    const main = docs[0];
-                    affectedStaff.add(main.staff_name || main.staff_id);
-                }
-            });
-
-            // 漏れている時間の特定 (店舗IDが ID001, ID002 以外、または空)
-            const activeStoreIds = ['ID001', 'ID002']; // 現在表示されている店舗
-            
-            // 簡易的な労働時間計算を全データに対して実行
-            for (const [key, docs] of Object.entries(groups)) {
-                // 重複は1つとして扱う
-                const doc = docs[0];
-                const sid = String(doc.store_id || doc.labor_store_id || "").trim();
-                
-                // ここで個別の労働時間を概算 (in/outペアを見つける)
-                // (簡易化のため、ここでは「この打刻がどの店舗に紐付いているか」だけをチェック)
-                if (!activeStoreIds.includes(sid)) {
-                    // 店舗IDが不明、または対象外
-                    const name = doc.staff_name || doc.staff_id || "不明";
-                    // 実際にはここではペアリングが必要だが、まずは「対象外の店舗ID」をリストアップ
-                    missingStaff[sid] = (missingStaff[sid] || 0) + 1;
-                }
-            }
-
-            if (dupCount === 0 && Object.keys(missingStaff).length === 0) {
-                alert("重複も集計漏れも見つかりませんでした。");
-            } else {
-                if (dupCount > 0) report += `・重複データ: ${dupCount}件\n`;
-                if (Object.keys(missingStaff).length > 0) {
-                    report += `\n【店舗IDが空の打刻を行っているスタッフ】\n`;
-                    // 名前を収集して表示
-                    const missingNames = {}; // {name: count}
-                    for (const [key, docs] of Object.entries(groups)) {
-                        const doc = docs[0];
-                        const sid = String(doc.store_id || doc.labor_store_id || "").trim();
-                        if (!activeStoreIds.includes(sid)) {
-                            const name = doc.staff_name || doc.staff_id || "不明";
-                            missingNames[name] = (missingNames[name] || 0) + 1;
-                        }
-                    }
-                    for (const [name, count] of Object.entries(missingNames)) {
-                        report += `・${name}: ${count}件\n`;
-                    }
-                    report += `\n※これらの打刻は、現在のダッシュボード合計に含まれていない可能性があります。`;
-                }
-                alert(report);
-            }
-
-            btn.disabled = false;
-            btn.innerHTML = originalHtml;
-        } catch (e) {
-            console.error(e);
-            alert("診断中にエラーが発生しました: " + e.message);
-            const btn = document.getElementById('debug-diag-btn');
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-microscope"></i> 重複診断';
-        }
-    };
 }
 
 async function loadPersonalDashboard() {
@@ -598,8 +491,11 @@ async function refreshDashboard() {
                             if (isCKStaff && staffGroupName) {
                                 const gkey = `${staffGroupName}__${ym}`;
                                 ckHoursPool[gkey] = (ckHoursPool[gkey] || 0) + h;
-                            } else if (finalSid) {
-                                const k = `${ym}__${finalSid}`;
+                            } else {
+                                // 店舗IDが打刻に含まれていない場合は、スタッフマスタの所属店舗を使用する(集計漏れ防止)
+                                const fallbackSid = (u ? (u.StoreID || u.StoreId) : '') || 'unknown';
+                                const sid = finalSid || fallbackSid;
+                                const k = `${ym}__${sid}`;
                                 laborMap[k] = (laborMap[k] || 0) + h;
                             }
                         }
@@ -652,6 +548,7 @@ async function refreshDashboard() {
         // --- 目標データの取得と累計計算 ---
         const goals = await calculatePeriodGoals(storeFilter, dateFrom, dateTo);
         
+        window.__lastLaborMap = laborMap;
         renderKPIs(records, goals, totalOpH, totalCkH);
         renderMonthlyTable(records, daily);
     } catch (e) {
@@ -811,30 +708,69 @@ function calculateDayWeight(y, m, day, calDays, weights) {
 function renderMonthlyTable(recs, daily) {
     const tbody = document.getElementById('monthly-table-body');
     if (!tbody) return;
-    recs.sort((a,b) => b.ym.localeCompare(a.ym) || a.store_name.localeCompare(b.store_name));
+
+    // laborMapにあってrecs(売上データ)にないものを「その他」として追加
+    const coveredSids = new Set(recs.map(r => r.store_id));
+    const otherRows = {}; 
+
+    Object.entries(window.__lastLaborMap || {}).forEach(([key, h]) => {
+        const [ym, sid] = key.split('__');
+        if (!coveredSids.has(sid)) {
+            if (!otherRows[ym]) otherRows[ym] = { op: 0, ck: 0, ym: ym };
+            otherRows[ym].op += h;
+        }
+    });
+
+    const allRows = [...recs];
+    Object.entries(otherRows).forEach(([ym, val]) => {
+        if (val.op > 0) {
+            allRows.push({
+                ym: ym,
+                store_id: 'unknown',
+                store_name: 'その他(店舗未設定等)',
+                op_hours: val.op,
+                ck_alloc: 0,
+                sales: 0,
+                customers: 0,
+                days: 0,
+                cash_diff: 0,
+                isOther: true
+            });
+        }
+    });
+
+    allRows.sort((a,b) => b.ym.localeCompare(a.ym) || a.store_name.localeCompare(b.store_name));
     tbody.innerHTML = '';
-    recs.forEach(r => {
+    
+    allRows.forEach(r => {
         const exTax = r.sales / TAX_RATE;
-        const totH = r.op_hours + r.ck_alloc;
+        const totH = r.op_hours + (r.ck_alloc || 0);
         const up = r.customers > 0 ? Math.round(r.sales/r.customers) : 0;
         const tr = document.createElement('tr');
-        tr.style.cursor = 'pointer';
+        if (r.isOther) {
+            tr.style.background = '#f8fafc';
+            tr.style.fontStyle = 'italic';
+            tr.style.color = 'var(--text-secondary)';
+        } else {
+            tr.style.cursor = 'pointer';
+            tr.onclick = () => showDrilldown(r.ym, r.store_id, r.store_name, daily);
+        }
+        
         tr.innerHTML = `
             <td style="text-align:left; font-weight:600;">${r.ym}</td>
             <td style="text-align:left;">${r.store_name}</td>
-            <td>${r.days}</td>
+            <td>${r.days || '-'}</td>
             <td>¥${Math.round(r.sales).toLocaleString()}</td>
             <td>${r.customers.toLocaleString()}</td>
             <td>¥${up.toLocaleString()}</td>
             <td>${r.days > 0 ? (r.customers/r.days).toFixed(1) : 0}</td>
-            <td>${r.op_hours.toFixed(1)}</td>
-            <td>${r.ck_alloc.toFixed(1)}</td>
+            <td style="color:var(--warning); font-weight:700;">${r.op_hours.toFixed(1)}</td>
+            <td style="color:var(--secondary);">${(r.ck_alloc || 0).toFixed(1)}</td>
             <td style="font-weight:bold;">${totH.toFixed(1)}</td>
             <td>¥${r.op_hours > 0 ? Math.round(exTax/r.op_hours).toLocaleString() : 0}</td>
             <td>¥${totH > 0 ? Math.round(exTax/totH).toLocaleString() : 0}</td>
-            <td class="${r.cash_diff >= 0 ? 'diff-pos' : 'diff-neg'}">${r.cash_diff.toLocaleString()}</td>
+            <td class="${r.cash_diff >= 0 ? 'diff-pos' : 'diff-neg'}">${(r.cash_diff || 0).toLocaleString()}</td>
         `;
-        tr.onclick = () => showDrilldown(r.ym, r.store_id, r.store_name, daily);
         tbody.appendChild(tr);
     });
 }
