@@ -373,7 +373,9 @@ async function refreshDashboard() {
         lSnap.forEach(doc => {
             const d = doc.data();
             const ts = d.timestamp || d.date || "";
-            if (ts.substring(0, 10) >= bFromStr && ts.substring(0, 10) <= bToStr) laborRaw.push(d);
+            // date（業務日）を最優先。なければ timestamp から日付を取得。
+            const workDate = d.date || ts.substring(0, 10);
+            if (workDate >= bFromStr && workDate <= bToStr) laborRaw.push(d);
         });
 
         const storeNameToId = {};
@@ -477,9 +479,9 @@ async function refreshDashboard() {
                         const netMs = Math.max(0, (outT - inT) - totalBreakMs);
                         const h = netMs / 3600000;
                         
-                        // 日本時間(JST)ベースで日付を判定
+                        // 日本時間(JST)ベースで日付を判定 (dateフィールドがあればそれを優先)
                         const jstInT = new Date(inT.getTime() + (9 * 60 * 60 * 1000));
-                        const shiftDate = jstInT.toISOString().substring(0, 10);
+                        const shiftDate = r.date || jstInT.toISOString().substring(0, 10);
                         const ym = shiftDate.substring(0, 7);
                         const finalSid = currentNormalizedSid || sid;
 

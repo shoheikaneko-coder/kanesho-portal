@@ -988,9 +988,9 @@ async function renderPerformanceSummary(user, isMobile = false) {
                         const outT = new Date(ts);
                         const netMs = Math.max(0, (outT - inT) - totalBreakMs);
                         
-                        // 日本時間(JST)ベースで日付を判定
+                        // 日本時間(JST)ベースで日付を判定 (dateがあれば優先)
                         const jstInT = new Date(inT.getTime() + (9 * 60 * 60 * 1000));
-                        const shiftDate = jstInT.toISOString().substring(0, 10);
+                        const shiftDate = r.date || jstInT.toISOString().substring(0, 10);
 
                         if (shiftDate === ymd) {
                             actual.total_labor_hours += (netMs / 3600000);
