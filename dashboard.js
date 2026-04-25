@@ -364,10 +364,16 @@ async function refreshDashboard() {
 
         const lSnap = await getDocs(collection(db, "t_attendance"));
         const laborRaw = [];
+        // 前後1日のバッファを持たせて取得（日を跨ぐ勤務のペアリングのため）
+        const bufferFrom = new Date(dateFrom); bufferFrom.setDate(bufferFrom.getDate() - 1);
+        const bufferTo = new Date(dateTo); bufferTo.setDate(bufferTo.getDate() + 1);
+        const bFromStr = bufferFrom.toISOString().substring(0, 10);
+        const bToStr = bufferTo.toISOString().substring(0, 10);
+
         lSnap.forEach(doc => {
             const d = doc.data();
             const ts = d.timestamp || d.date || "";
-            if (ts.substring(0, 10) >= dateFrom && ts.substring(0, 10) <= dateTo) laborRaw.push(d);
+            if (ts.substring(0, 10) >= bFromStr && ts.substring(0, 10) <= bToStr) laborRaw.push(d);
         });
 
         const storeNameToId = {};
@@ -378,17 +384,15 @@ async function refreshDashboard() {
         const perStaff = {};
         laborRaw.forEach(r => {
             const ts = r.timestamp || r.date || r.Date || "";
-            // ID名寄せ: staff_id, staff_code, EmployeeCode のいずれかから正規化したIDを作成
             const staffId = String(r.staff_id || r.staff_code || r.EmployeeCode || "").trim();
-            
             // 店舗IDの正規化: 数値IDなどをドキュメントID(ID001等)に変換
             const rawSid = String(r.store_id || r.StoreID || r.labor_store_id || storeNameToId[r.store_name] || "").trim();
             const si = storeMap[rawSid];
             const sid = (si && si.id) ? si.id : rawSid; // マスタにあれば正式なIDを使用
             
             if (!ts || !sid || !staffId) return;
-            // 同一スタッフ・同一日の打刻をまとめる（店舗を跨ぐヘルプも考慮）
-            const key = `${staffId}__${ts.substring(0, 10)}`;
+            // 重要: 日付(substring)で区切らず、スタッフIDのみでグルーピングする
+            const key = staffId;
             if (!perStaff[key]) perStaff[key] = [];
             perStaff[key].push({ ...r, normalized_sid: sid });
         });
@@ -459,17 +463,24 @@ async function refreshDashboard() {
                         totalBreakMs += (new Date(ts) - breakStartT);
                         breakStartT = null;
                     } else if ((type === 'out' || type.includes('check_out') || type.includes('退勤')) && inT) {
-                        const netMs = Math.max(0, (new Date(ts) - inT) - totalBreakMs);
+                        const outT = new Date(ts);
+                        const netMs = Math.max(0, (outT - inT) - totalBreakMs);
                         const h = netMs / 3600000;
-                        const ym = ts.substring(0, 7);
+                        
+                        // 勤務実績の日付を決定（出勤時刻の日付とする）
+                        const shiftDate = inT.toISOString().substring(0, 10);
+                        const ym = shiftDate.substring(0, 7);
                         const finalSid = currentNormalizedSid || sid;
 
-                        if (isCKStaff && staffGroupName) {
-                            const gkey = `${staffGroupName}__${ym}`;
-                            ckHoursPool[gkey] = (ckHoursPool[gkey] || 0) + h;
-                        } else if (finalSid) {
-                            const k = `${ym}__${finalSid}`;
-                            laborMap[k] = (laborMap[k] || 0) + h;
+                        // 表示対象期間内であれば加算
+                        if (shiftDate >= dateFrom && shiftDate <= dateTo) {
+                            if (isCKStaff && staffGroupName) {
+                                const gkey = `${staffGroupName}__${ym}`;
+                                ckHoursPool[gkey] = (ckHoursPool[gkey] || 0) + h;
+                            } else if (finalSid) {
+                                const k = `${ym}__${finalSid}`;
+                                laborMap[k] = (laborMap[k] || 0) + h;
+                            }
                         }
                         inT = null; totalBreakMs = 0; breakStartT = null;
                     }
