@@ -877,8 +877,11 @@ async function renderPerformanceSummary(user, isMobile = false) {
             userMap[String(d.id).trim()] = data;
             const code = data.EmployeeCode || data.staff_code || "";
             if (code) userMap[String(code).trim()] = data;
-        const storeData = storeSnap.exists() ? storeSnap.data() : {};
-        
+            // 名前でも引けるように（修正打刻対策）
+            const name = data.staff_name || data.name || "";
+            if (name) userMap[name.trim()] = data;
+        });
+
         // --- 目標値算出の共通処理を実行 ---
         const now = new Date();
         const jstHour = (now.getUTCHours() + 9) % 24;
