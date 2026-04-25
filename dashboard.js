@@ -44,6 +44,10 @@ export const dashboardPageHtml = `
                 <button id="dash-apply-btn" class="btn btn-primary" style="padding: 0.5rem 1.2rem; font-size: 0.9rem; white-space: nowrap; height: 38px;">
                     <i class="fas fa-search"></i> 表示
                 </button>
+                <!-- 診断用一時ボタン -->
+                <button id="debug-diag-btn" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.8rem; white-space: nowrap; height: 38px; border-color: var(--primary); color: var(--primary);">
+                    <i class="fas fa-microscope"></i> 重複診断
+                </button>
             </div>
         </div>
 
@@ -195,6 +199,75 @@ export async function initDashboardPage() {
     await refreshDashboard();
     await loadPersonalDashboard(); // 追加
     document.getElementById('dash-apply-btn').onclick = refreshDashboard;
+
+    // --- 重複データ診断ロジック ---
+    document.getElementById('debug-diag-btn').onclick = async () => {
+        if (!confirm('4月の全勤怠データをスキャンして重複を診断しますか？\n(読み取りのみで、データは変更しません)')) return;
+        
+        try {
+            const btn = document.getElementById('debug-diag-btn');
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 診断中...';
+
+            const startDate = "2026-04-01";
+            const endDate = "2026-04-30";
+            
+            // ハイフン形式とスラッシュ形式の両方を検索
+            const q1 = query(collection(db, "t_attendance"), where("date", ">=", startDate), where("date", "<=", endDate));
+            const q2 = query(collection(db, "t_attendance"), where("date", ">=", startDate.replace(/-/g, '/')), where("date", "<=", endDate.replace(/-/g, '/')));
+            
+            const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+            const allDocs = [];
+            snap1.forEach(d => allDocs.push({ id: d.id, ...d.data() }));
+            snap2.forEach(d => allDocs.push({ id: d.id, ...d.data() }));
+
+            const normalizeId = (id) => String(id || "").trim().replace(/^0+/, '');
+            const groups = {};
+
+            allDocs.forEach(doc => {
+                const sid = normalizeId(doc.staff_id || doc.EmployeeCode || "");
+                const ts = doc.timestamp || "";
+                const type = doc.type || "";
+                if (!sid || !ts || !type) return;
+                const key = `${sid}_${ts}_${type}`;
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(doc);
+            });
+
+            let dupCount = 0;
+            let report = "【診断結果】\n";
+            let affectedStaff = new Set();
+
+            Object.entries(groups).forEach(([key, docs]) => {
+                if (docs.length > 1) {
+                    dupCount += (docs.length - 1);
+                    const main = docs[0];
+                    affectedStaff.add(main.staff_name || main.staff_id);
+                    if (affectedStaff.size <= 10) {
+                        report += `・${main.staff_name || main.staff_id}: ${main.timestamp} (${docs.length}重)\n`;
+                    }
+                }
+            });
+
+            if (dupCount === 0) {
+                alert("重複データは見つかりませんでした。");
+            } else {
+                report += `\n合計重複件数: ${dupCount}件\n対象スタッフ: ${Array.from(affectedStaff).join(", ")}`;
+                alert(report);
+                console.log("Full Diagnostic Result:", groups);
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        } catch (e) {
+            console.error(e);
+            alert("診断中にエラーが発生しました: " + e.message);
+            const btn = document.getElementById('debug-diag-btn');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-microscope"></i> 重複診断';
+        }
+    };
 }
 
 async function loadPersonalDashboard() {

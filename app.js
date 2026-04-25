@@ -2,9 +2,9 @@ import { db } from './firebase.js';
 import { collection, getDocs, query, where, getDoc, doc, updateDoc, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 // 各ページのインポート
-import { dashboardPageHtml, initDashboardPage } from './dashboard.js?v=85';
-import { attendancePageHtml, initAttendancePage } from './attendance.js?v=85';
-import { salesPageHtml, initSalesPage } from './sales.js?v=85';
+import { dashboardPageHtml, initDashboardPage } from './dashboard.js?v=90';
+import { attendancePageHtml, initAttendancePage } from './attendance.js?v=90';
+import { salesPageHtml, initSalesPage } from './sales.js?v=90';
 import { storesPageHtml, initStoresPage } from './stores.js?v=31';
 import { usersPageHtml, initUsersPage } from './users.js?v=31';
 import { inventoryPageHtml, initInventoryPage } from './inventory.js?v=33';
