@@ -308,14 +308,30 @@ async function refreshDashboard() {
 
         const pSnap = await getDocs(collection(db, "t_performance"));
         let daily = [];
+        let groupDaily = []; // フィルターに関わらずグループ全体の計算用
         pSnap.forEach(doc => {
             const d = doc.data();
             const normDate = (d.date || "").replace(/\//g, '-').replace(/\./g, '-');
             if (normDate >= dateFrom && normDate <= dateTo) {
                 const si = storeMap[d.store_id];
+                const ym = d.year_month || normDate.substring(0, 7);
+                
+                // 全店舗のデータを一旦保持（按分の分母用）
+                groupDaily.push({ ...d, date: normDate, ym: ym });
+
+                // 表示用のフィルタリング
                 if (storeFilter !== 'all' && d.store_id !== storeFilter) return;
                 if (groupFilter !== 'all' && (!si || si.group_name !== groupFilter)) return;
-                daily.push({ ...d, date: normDate }); // 内部的にはハイフン形式で統一
+                daily.push({ ...d, date: normDate, ym: ym });
+            }
+        });
+
+        const groupSalesByYM = {};
+        groupDaily.forEach(r => {
+            const si = storeMap[r.store_id];
+            if (si && si.group_name) {
+                const gkey = `${si.group_name}__${r.ym}`;
+                groupSalesByYM[gkey] = (groupSalesByYM[gkey] || 0) + (r.amount || r.sales || 0) / TAX_RATE;
             }
         });
 
@@ -372,75 +388,79 @@ async function refreshDashboard() {
             perStaff[key].push(r);
         });
 
-        const laborMap = {}; // ym__store_id -> hours
+        });
+
+        // スタッフマスタ（CK所属判定用）
+        const uSnap = await getDocs(collection(db, "m_users"));
+        const userMap = {};
+        uSnap.forEach(d => { userMap[d.id] = d.data(); });
+
+        const laborMap = {};      // ym__store_id -> op_hours
+        const ckHoursPool = {};   // group__ym -> total_ck_hours
+
         Object.values(perStaff).forEach(recs => {
-            // インポートデータ（total_labor_hoursがある）か打刻データかを判定
             const imported = recs.find(r => (r.total_labor_hours !== undefined || r.TotalLaborHours !== undefined));
+            
+            // スタッフ情報の特定
+            const first = recs[0];
+            const staffId = first.staff_id || first.staff_code || first.EmployeeCode || "";
+            const staffData = userMap[staffId] || {};
+            const homeStore = storeMap[staffData.StoreID || staffData.StoreId || ""];
+            const isCKStaff = homeStore && (homeStore.store_type === 'CK' || String(homeStore.store_type).includes('CK'));
+            const staffGroupName = homeStore ? homeStore.group_name : "";
+
             if (imported) {
                 recs.forEach(r => {
                     const h = Number(r.total_labor_hours || r.TotalLaborHours || 0);
                     const ts = r.timestamp || r.date || r.Date || "";
                     const ym = r.year_month || r.YearMonth || (ts ? ts.substring(0, 7) : '');
                     const sid = r.store_id || r.StoreID || "";
-                    if (ym && sid) {
+                    if (!ym) return;
+
+                    if (isCKStaff && staffGroupName) {
+                        const gkey = `${staffGroupName}__${ym}`;
+                        ckHoursPool[gkey] = (ckHoursPool[gkey] || 0) + h;
+                    } else if (sid) {
                         const k = `${ym}__${sid}`;
                         laborMap[k] = (laborMap[k] || 0) + h;
                     }
                 });
             } else {
-                // 打刻データの場合のみペア計算を行う
                 recs.sort((a,b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
-
-                let inT = null;           // 出勤時刻
-                let breakStartT = null;   // 休憩開始時刻
-                let totalBreakMs = 0;     // 当日の休憩合計（ミリ秒）
-                let calcSid = "";         // 計算に使うstore_id
+                let inT = null, breakStartT = null, totalBreakMs = 0, currentStoreId = "";
 
                 recs.forEach(r => {
                     const ts = r.timestamp || r.date || r.Date || "";
                     if (!ts) return;
-                    const sid = r.labor_store_id || r.store_id || r.StoreID || storeNameToId[r.store_name] || "";
-                    const type = String(r.type || r.Type || r['区分'] || '').toLowerCase();
+                    const type = String(r.type || r.Type || '').toLowerCase();
+                    const sid = r.store_id || r.StoreID || "";
 
                     if (type === 'in' || type.includes('check_in') || type.includes('出勤')) {
                         inT = new Date(ts);
-                        totalBreakMs = 0;  // 新しい出勤サイクルで休憩をリセット
+                        totalBreakMs = 0;
                         breakStartT = null;
-                        calcSid = sid;
+                        currentStoreId = sid;
                     } else if (type.includes('break_start') || type.includes('休憩開始')) {
                         breakStartT = new Date(ts);
                     } else if ((type.includes('break_end') || type.includes('休憩終了')) && breakStartT) {
-                        // 休憩時間を累積
                         totalBreakMs += (new Date(ts) - breakStartT);
                         breakStartT = null;
                     } else if ((type === 'out' || type.includes('check_out') || type.includes('退勤')) && inT) {
-                        // 実労働時間 = (退勤 - 出勤) - 休憩合計
-                        const grossMs = new Date(ts) - inT;
-                        const netMs = Math.max(0, grossMs - totalBreakMs);
+                        const netMs = Math.max(0, (new Date(ts) - inT) - totalBreakMs);
                         const h = netMs / 3600000;
                         const ym = ts.substring(0, 7);
-                        const finalSid = calcSid || sid;
-                        if (ym && finalSid) {
+                        const finalSid = currentStoreId || sid;
+
+                        if (isCKStaff && staffGroupName) {
+                            const gkey = `${staffGroupName}__${ym}`;
+                            ckHoursPool[gkey] = (ckHoursPool[gkey] || 0) + h;
+                        } else if (finalSid) {
                             const k = `${ym}__${finalSid}`;
                             laborMap[k] = (laborMap[k] || 0) + h;
                         }
-                        inT = null;
-                        totalBreakMs = 0;
-                        breakStartT = null;
-                        calcSid = "";
+                        inT = null; totalBreakMs = 0; breakStartT = null;
                     }
                 });
-            }
-        });
-
-        // CK按分
-        const ckHoursByGroupYM = {};
-        Object.entries(laborMap).forEach(([k, h]) => {
-            const [ym, sid] = k.split('__');
-            const si = storeMap[sid];
-            if (si && (si.store_type === 'CK' || String(si.store_type).includes('CK')) && si.group_name) {
-                const gkey = `${si.group_name}__${ym}`;
-                ckHoursByGroupYM[gkey] = (ckHoursByGroupYM[gkey] || 0) + h;
             }
         });
 
@@ -448,17 +468,18 @@ async function refreshDashboard() {
             if (laborMap[k]) grouped[k].op_hours = laborMap[k];
         });
 
-        const groupSalesByYM = {};
         Object.values(grouped).forEach(r => {
             const gkey = `${r.group_name}__${r.ym}`;
-            groupSalesByYM[gkey] = (groupSalesByYM[gkey] || 0) + r.sales / TAX_RATE;
-        });
-
-        Object.values(grouped).forEach(r => {
-            const gkey = `${r.group_name}__${r.ym}`;
-            const gTotal = groupSalesByYM[gkey] || 0;
-            const ckH = ckHoursByGroupYM[gkey] || 0;
-            if (gTotal > 0) r.ck_alloc = ckH * ( (r.sales/TAX_RATE) / gTotal );
+            const gTotalSales = groupSalesByYM[gkey] || 0;
+            const totalCkH = ckHoursPool[gkey] || 0;
+            
+            if (gTotalSales > 0) {
+                // 按分比率 = その店舗の売上 / グループ総売上
+                const ratio = (r.sales / TAX_RATE) / gTotalSales;
+                r.ck_alloc = totalCkH * ratio;
+            } else {
+                r.ck_alloc = 0;
+            }
         });
 
         const records = Object.values(grouped);

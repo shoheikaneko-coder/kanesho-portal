@@ -853,8 +853,18 @@ async function renderPerformanceSummary(user, isMobile = false) {
             return;
         }
 
-        // 昨日の判定 (店舗の営業終了時間を考慮)
-        const storeSnap = await getDoc(doc(db, "m_stores", storeId));
+        // マスタデータ一括取得 (計算の正確性と按分のために必要)
+        const [storeSnap, allStoresSnap, allUsersSnap] = await Promise.all([
+            getDoc(doc(db, "m_stores", storeId)),
+            getDocs(collection(db, "m_stores")),
+            getDocs(collection(db, "m_users"))
+        ]);
+        
+        const storeMap = {};
+        allStoresSnap.forEach(d => { storeMap[d.id] = d.data(); });
+        const userMap = {};
+        allUsersSnap.forEach(d => { userMap[d.id] = d.data(); });
+
         const storeData = storeSnap.exists() ? storeSnap.data() : {};
         
         // --- 目標値算出の共通処理を実行 ---
@@ -911,8 +921,8 @@ async function renderPerformanceSummary(user, isMobile = false) {
         const perStaff = {};
         attendanceSnap.forEach(doc => {
             const d = doc.data();
-            // 店舗判定: 実際に働いた場所 (labor_store_id) を優先。なければ store_id
-            const sid = d.labor_store_id || d.store_id || d.StoreID || "";
+            // 物理的な打刻店舗 (store_id) を優先。なければ labor_store_id
+            const sid = d.store_id || d.labor_store_id || d.StoreID || "";
             if (sid !== storeId) return;
 
             const ts = d.timestamp || d.date || "";
@@ -925,25 +935,29 @@ async function renderPerformanceSummary(user, isMobile = false) {
         });
 
         Object.values(perStaff).forEach(recs => {
-            // インポートデータ (total_labor_hoursがある) か打刻データかを判定
+            const first = recs[0];
+            const staffId = first.staff_id || first.staff_code || "";
+            const staffData = userMap[staffId] || {};
+            const homeStore = storeMap[staffData.StoreID || staffData.StoreId || ""];
+            const isCKStaff = homeStore && (homeStore.store_type === 'CK' || String(homeStore.store_type).includes('CK'));
+
+            // 営業社員（非CK所属）のみ営業労働hにカウント
+            if (isCKStaff) return;
+
             const imported = recs.find(r => r.total_labor_hours !== undefined);
             if (imported) {
                 recs.forEach(r => {
-                    // インポートデータの場合は日付 (date) が一致するものを単純合計
                     if (r.date === ymd) {
                         actual.total_labor_hours += Number(r.total_labor_hours || 0);
                     }
                 });
             } else {
-                // 打刻データの場合はペア計算 (dashboard.js と同等ロジック)
                 recs.sort((a,b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
-                let inT = null;
-                let breakStartT = null;
-                let totalBreakMs = 0;
+                let inT = null, breakStartT = null, totalBreakMs = 0;
 
                 recs.forEach(r => {
                     const ts = r.timestamp;
-                    if (!ts || ts < startEdge || ts >= endEdge) return; // 業務日範囲外は除外
+                    if (!ts || ts < startEdge || ts >= endEdge) return;
 
                     const type = String(r.type || '').toLowerCase();
                     if (type === 'check_in' || type.includes('in') || type.includes('出勤')) {
