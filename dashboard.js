@@ -447,8 +447,11 @@ async function refreshDashboard() {
                     
                     if (!ym) return;
 
-                    if (isCKStaff && staffGroupName) {
-                        const gkey = `${staffGroupName}__${ym}`;
+                    const isCKWork = si && String(si.store_type || "").trim() === 'CK';
+                    const punchGroupName = si ? String(si.group_name || si.GroupName || si['グループ名'] || "").trim() : "";
+
+                    if (isCKWork && punchGroupName) {
+                        const gkey = `${punchGroupName}__${ym}`;
                         ckHoursPool[gkey] = (ckHoursPool[gkey] || 0) + h;
                     } else if (sid) {
                         const k = `${ym}__${sid}`;
@@ -486,10 +489,14 @@ async function refreshDashboard() {
                         const ym = shiftDate.substring(0, 7).replace(/\//g, '-');
                         const finalSid = currentNormalizedSid || sid;
 
-                        // 表示対象期間内であれば加算
+                        // 修正: 誰が(所属)ではなく、どこで(勤務先店舗)で仕分けを判定する
+                        const punchStore = storeMap[finalSid];
+                        const isCKWork = punchStore && String(punchStore.store_type || "").trim() === 'CK';
+                        const punchGroupName = punchStore ? String(punchStore.group_name || punchStore.GroupName || punchStore['グループ名'] || "").trim() : "";
+
                         if (shiftDate >= dateFrom && shiftDate <= dateTo) {
-                            if (isCKStaff && staffGroupName) {
-                                const gkey = `${staffGroupName}__${ym}`;
+                            if (isCKWork && punchGroupName) {
+                                const gkey = `${punchGroupName}__${ym}`;
                                 ckHoursPool[gkey] = (ckHoursPool[gkey] || 0) + h;
                             } else if (finalSid) {
                                 const k = `${ym}__${finalSid}`;
@@ -522,11 +529,23 @@ async function refreshDashboard() {
             }
         });
 
-        // KPIカード用の合計値算出 (売上データの有無に関わらず全労働時間を合算)
+        // KPIカード用の合計値算出 (売上データの有無に関わらず、フィルタに一致する全労働時間を合算)
         let totalOpH = 0;
-        Object.values(laborMap).forEach(h => totalOpH += h);
         let totalCkH = 0;
-        Object.values(ckHoursPool).forEach(h => totalCkH += h);
+
+        Object.entries(laborMap).forEach(([key, h]) => {
+            const [ym, sid] = key.split('__');
+            if (storeFilter !== 'all' && sid !== storeFilter) return;
+            const si = storeMap[sid];
+            if (groupFilter !== 'all' && (!si || si.group_name !== groupFilter)) return;
+            totalOpH += h;
+        });
+
+        Object.entries(ckHoursPool).forEach(([key, h]) => {
+            const [gn, ym] = key.split('__');
+            if (groupFilter !== 'all' && gn !== groupFilter) return;
+            totalCkH += h;
+        });
 
         const records = Object.values(grouped);
         
@@ -588,18 +607,7 @@ function renderKPIs(recs, goals = { sales: 0, customers: 0 }, forcedOpH = null, 
     const opS = opH > 0 ? Math.round(exTax / opH) : 0;
     set('kpi-ophour-rate', '¥' + opS.toLocaleString());
     set('kpi-ophour-actual', '¥' + opS.toLocaleString());
-    
-    // 【究極デバッグ】すべての労働時間を合算して表示
-    const rawTotal = opH + ckH;
-    set('kpi-ophour-target', rawTotal.toFixed(2) + 'h');
-    
-    // データ件数を視覚的に表示
-    const debugEl = document.getElementById('debug-counter') || document.createElement('div');
-    debugEl.id = 'debug-counter';
-    debugEl.style = 'color:red; font-size:10px; font-weight:bold; margin-top:5px;';
-    debugEl.textContent = `DEBUG: ${recs.length}店舗分 / 労働データ ${opH.toFixed(2)}h (CK込 ${rawTotal.toFixed(2)}h)`;
-    const targetCard = document.getElementById('kpi-ophour-target').parentElement;
-    if (!targetCard.querySelector('#debug-counter')) targetCard.appendChild(debugEl);
+    set('kpi-ophour-target', opH.toFixed(1) + 'h');
 
     const totH = opH + ckH;
     const totS = totH > 0 ? Math.round(exTax / totH) : 0;
