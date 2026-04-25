@@ -419,8 +419,6 @@ async function refreshDashboard() {
         const ckHoursPool = {};   // group__ym -> total_ck_hours
 
         Object.values(perStaff).forEach(recs => {
-            const imported = recs.find(r => (r.total_labor_hours !== undefined || r.TotalLaborHours !== undefined));
-            
             // スタッフ情報の特定 (IDがなければ名前でマスタを引く)
             const first = recs[0];
             const staffKey = String(first.staff_id || first.staff_code || first.EmployeeCode || first.staff_name || first.name || "").trim();
@@ -434,38 +432,40 @@ async function refreshDashboard() {
             const isCKStaff = homeStore && String(homeStore.store_type || "").trim() === 'CK';
             const staffGroupName = homeStore ? String(homeStore.group_name || homeStore.GroupName || homeStore['グループ名'] || "").trim() : "";
 
-            if (imported) {
-                recs.forEach(r => {
+            // 全打刻/インポートデータを日付順に処理
+            recs.sort((a,b) => new Date(a.timestamp || a.date || 0) - new Date(b.timestamp || b.date || 0));
+            let inT = null, breakStartT = null, totalBreakMs = 0, currentNormalizedSid = "";
+
+            recs.forEach(r => {
+                const ts = r.timestamp || r.date || r.Date || "";
+                if (!ts) return;
+                const type = String(r.type || r.Type || '').toLowerCase();
+                const sid = r.normalized_sid;
+                const isImported = (r.total_labor_hours !== undefined || r.TotalLaborHours !== undefined);
+
+                if (isImported) {
+                    // インポートデータ(集計済み)の処理
                     const h = Number(r.total_labor_hours || r.TotalLaborHours || 0);
-                    const ts = r.timestamp || r.date || r.Date || "";
-                    const rawYm = r.year_month || r.YearMonth || (ts ? ts.substring(0, 7) : '');
+                    const rawYm = r.year_month || r.YearMonth || ts.substring(0, 7);
                     const ym = rawYm.replace(/\//g, '-');
-                    
-                    // インポートデータの店舗IDも正規化する
                     const rawSid = String(r.store_id || r.StoreID || "").trim();
                     const si = storeMap[rawSid];
-                    const sid = (si && si.id) ? si.id : rawSid;
+                    const normSid = (si && si.id) ? si.id : rawSid;
                     
-                    if (!ym) return;
-
-                    if (isCKStaff && staffGroupName) {
-                        const gkey = `${staffGroupName}__${ym}`;
-                        ckHoursPool[gkey] = (ckHoursPool[gkey] || 0) + h;
-                    } else if (sid) {
-                        const k = `${ym}__${sid}`;
-                        laborMap[k] = (laborMap[k] || 0) + h;
+                    const fallbackSid = (staffData ? (staffData.StoreID || staffData.StoreId) : '') || 'unknown';
+                    const finalSid = normSid || fallbackSid;
+                    
+                    if (ym && ym >= dateFrom.substring(0,7) && ym <= dateTo.substring(0,7)) {
+                        if (isCKStaff && staffGroupName) {
+                            const gkey = `${staffGroupName}__${ym}`;
+                            ckHoursPool[gkey] = (ckHoursPool[gkey] || 0) + h;
+                        } else {
+                            const k = `${ym}__${finalSid}`;
+                            laborMap[k] = (laborMap[k] || 0) + h;
+                        }
                     }
-                });
-            } else {
-                recs.sort((a,b) => new Date(a.timestamp || 0) - new Date(b.timestamp || 0));
-                let inT = null, breakStartT = null, totalBreakMs = 0, currentNormalizedSid = "";
-
-                recs.forEach(r => {
-                    const ts = r.timestamp || r.date || r.Date || "";
-                    if (!ts) return;
-                    const type = String(r.type || r.Type || '').toLowerCase();
-                    const sid = r.normalized_sid;
-
+                } else {
+                    // 通常の打刻ペア処理
                     if (type === 'in' || type.includes('check_in') || type.includes('出勤')) {
                         inT = new Date(ts);
                         totalBreakMs = 0;
@@ -481,29 +481,26 @@ async function refreshDashboard() {
                         const netMs = Math.max(0, (outT - inT) - totalBreakMs);
                         const h = netMs / 3600000;
                         
-                        // 日本時間(JST)ベースで日付を判定 (dateフィールドがあればそれを優先)
                         const jstInT = new Date(inT.getTime() + (9 * 60 * 60 * 1000));
                         const shiftDate = r.date || jstInT.toISOString().substring(0, 10);
                         const ym = shiftDate.substring(0, 7).replace(/\//g, '-');
                         const finalSid = currentNormalizedSid || sid;
 
-                        // 元の状態（所属基準）に戻す
                         if (shiftDate >= dateFrom && shiftDate <= dateTo) {
                             if (isCKStaff && staffGroupName) {
                                 const gkey = `${staffGroupName}__${ym}`;
                                 ckHoursPool[gkey] = (ckHoursPool[gkey] || 0) + h;
                             } else {
-                                // 店舗IDが打刻に含まれていない場合は、スタッフマスタの所属店舗を使用する(集計漏れ防止)
                                 const fallbackSid = (staffData ? (staffData.StoreID || staffData.StoreId) : '') || 'unknown';
-                                const sid = finalSid || fallbackSid;
-                                const k = `${ym}__${sid}`;
+                                const sidToUse = finalSid || fallbackSid;
+                                const k = `${ym}__${sidToUse}`;
                                 laborMap[k] = (laborMap[k] || 0) + h;
                             }
                         }
                         inT = null; totalBreakMs = 0; breakStartT = null;
                     }
-                });
-            }
+                }
+            });
         });
 
         Object.keys(grouped).forEach(k => {
