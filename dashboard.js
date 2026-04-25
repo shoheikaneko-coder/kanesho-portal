@@ -467,8 +467,9 @@ async function refreshDashboard() {
                         const netMs = Math.max(0, (outT - inT) - totalBreakMs);
                         const h = netMs / 3600000;
                         
-                        // 勤務実績の日付を決定（出勤時刻の日付とする）
-                        const shiftDate = inT.toISOString().substring(0, 10);
+                        // 日本時間(JST)ベースで日付を判定
+                        const jstInT = new Date(inT.getTime() + (9 * 60 * 60 * 1000));
+                        const shiftDate = jstInT.toISOString().substring(0, 10);
                         const ym = shiftDate.substring(0, 7);
                         const finalSid = currentNormalizedSid || sid;
 

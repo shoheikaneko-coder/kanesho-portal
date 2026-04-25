@@ -918,11 +918,6 @@ async function renderPerformanceSummary(user, isMobile = false) {
             actual.customers += (d.customer_count || d.customers || 0);
         });
 
-        // 業務日範囲の定義 (店舗の日替わり時刻を基準にする)
-        const dayChangeTime = storeData.day_change_time || 5;
-        const startEdge = `${ymd}T${String(dayChangeTime).padStart(2, '0')}:00:00`;
-        const endEdge = `${nextDayYmd}T${String(dayChangeTime).padStart(2, '0')}:00:00`;
-
         const perStaff = {};
         attendanceSnap.forEach(doc => {
             const d = doc.data();
