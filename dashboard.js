@@ -390,10 +390,15 @@ async function refreshDashboard() {
             perStaff[key].push(r);
         });
 
-        // スタッフマスタ（CK所属判定用）
+        // スタッフマスタ（ID/従業員番号の両方で引けるようにインデックスを作成）
         const uSnap = await getDocs(collection(db, "m_users"));
         const userMap = {};
-        uSnap.forEach(d => { userMap[d.id] = d.data(); });
+        uSnap.forEach(d => { 
+            const data = d.data();
+            userMap[String(d.id).trim()] = data;
+            const code = data.EmployeeCode || data.staff_code || data.staff_id || "";
+            if (code) userMap[String(code).trim()] = data;
+        });
 
         const laborMap = {};      // ym__store_id -> op_hours
         const ckHoursPool = {};   // group__ym -> total_ck_hours
@@ -403,16 +408,16 @@ async function refreshDashboard() {
             
             // スタッフ情報の特定 (所属店舗のタイプに基づくCK判定)
             const first = recs[0];
-            const staffId = first.staff_id || first.staff_code || first.EmployeeCode || "";
+            const staffId = String(first.staff_id || first.staff_code || first.EmployeeCode || "").trim();
             const staffData = userMap[staffId] || {};
             
             // 従業員マスタの所属店舗ID（ID003など）を取得
-            const staffStoreId = staffData.StoreID || staffData.StoreId || staffData.store_id || "";
+            const staffStoreId = String(staffData.StoreID || staffData.StoreId || staffData.store_id || "").trim();
             const homeStore = storeMap[staffStoreId];
             
-            // ユーザー指定の判定基準: store_type が "CK" ならCK所属、それ以外は営業
-            const isCKStaff = homeStore && homeStore.store_type === 'CK';
-            const staffGroupName = homeStore ? (homeStore.group_name || homeStore.GroupName || homeStore['グループ名']) : "";
+            // ユーザー指定の判定基準: store_type が "CK" ならCK所属
+            const isCKStaff = homeStore && String(homeStore.store_type || "").trim() === 'CK';
+            const staffGroupName = homeStore ? String(homeStore.group_name || homeStore.GroupName || homeStore['グループ名'] || "").trim() : "";
 
             if (imported) {
                 recs.forEach(r => {

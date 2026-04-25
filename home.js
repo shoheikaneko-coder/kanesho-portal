@@ -861,9 +861,14 @@ async function renderPerformanceSummary(user, isMobile = false) {
         ]);
         
         const storeMap = {};
-        allStoresSnap.forEach(d => { storeMap[d.id] = d.data(); });
+        allStoresSnap.forEach(d => { storeMap[String(d.id).trim()] = d.data(); });
         const userMap = {};
-        allUsersSnap.forEach(d => { userMap[d.id] = d.data(); });
+        allUsersSnap.forEach(d => { 
+            const data = d.data();
+            userMap[String(d.id).trim()] = data;
+            const code = data.EmployeeCode || data.staff_code || data.staff_id || "";
+            if (code) userMap[String(code).trim()] = data;
+        });
 
         const storeData = storeSnap.exists() ? storeSnap.data() : {};
         
@@ -936,13 +941,13 @@ async function renderPerformanceSummary(user, isMobile = false) {
 
         Object.values(perStaff).forEach(recs => {
             const first = recs[0];
-            const staffId = first.staff_id || first.staff_code || "";
+            const staffId = String(first.staff_id || first.staff_code || "").trim();
             const staffData = userMap[staffId] || {};
-            const staffStoreId = staffData.StoreID || staffData.StoreId || staffData.store_id || "";
+            const staffStoreId = String(staffData.StoreID || staffData.StoreId || staffData.store_id || "").trim();
             const homeStore = storeMap[staffStoreId];
             
             // ユーザー指定の判定基準: store_type が "CK" ならCK所属
-            const isCKStaff = homeStore && homeStore.store_type === 'CK';
+            const isCKStaff = homeStore && String(homeStore.store_type || "").trim() === 'CK';
 
             // 営業社員（非CK所属）のみ営業労働hにカウント
             if (isCKStaff) return;
