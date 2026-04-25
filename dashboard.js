@@ -494,7 +494,7 @@ async function refreshDashboard() {
                                 ckHoursPool[gkey] = (ckHoursPool[gkey] || 0) + h;
                             } else {
                                 // 店舗IDが打刻に含まれていない場合は、スタッフマスタの所属店舗を使用する(集計漏れ防止)
-                                const fallbackSid = (u ? (u.StoreID || u.StoreId) : '') || 'unknown';
+                                const fallbackSid = (staffData ? (staffData.StoreID || staffData.StoreId) : '') || 'unknown';
                                 const sid = finalSid || fallbackSid;
                                 const k = `${ym}__${sid}`;
                                 laborMap[k] = (laborMap[k] || 0) + h;
