@@ -329,8 +329,10 @@ async function refreshDashboard() {
         const groupSalesByYM = {};
         groupDaily.forEach(r => {
             const si = storeMap[r.store_id];
-            if (si && si.group_name) {
-                const gkey = `${si.group_name}__${r.ym}`;
+            // 表記揺れに対応したグループ名取得
+            const gn = si ? (si.group_name || si.GroupName || si['グループ名']) : "";
+            if (gn) {
+                const gkey = `${gn}__${r.ym}`;
                 groupSalesByYM[gkey] = (groupSalesByYM[gkey] || 0) + (r.amount || r.sales || 0) / TAX_RATE;
             }
         });
@@ -403,9 +405,12 @@ async function refreshDashboard() {
             const first = recs[0];
             const staffId = first.staff_id || first.staff_code || first.EmployeeCode || "";
             const staffData = userMap[staffId] || {};
-            const homeStore = storeMap[staffData.StoreID || staffData.StoreId || ""];
+            // StoreIDの表記揺れ対応
+            const staffStoreId = staffData.StoreID || staffData.StoreId || staffData.store_id || "";
+            const homeStore = storeMap[staffStoreId];
+            
             const isCKStaff = homeStore && (homeStore.store_type === 'CK' || String(homeStore.store_type).includes('CK'));
-            const staffGroupName = homeStore ? homeStore.group_name : "";
+            const staffGroupName = homeStore ? (homeStore.group_name || homeStore.GroupName || homeStore['グループ名']) : "";
 
             if (imported) {
                 recs.forEach(r => {
@@ -467,7 +472,9 @@ async function refreshDashboard() {
         });
 
         Object.values(grouped).forEach(r => {
-            const gkey = `${r.group_name}__${r.ym}`;
+            // 表示店舗側のグループ名も表記揺れ対応
+            const gn = r.group_name || ""; 
+            const gkey = `${gn}__${r.ym}`;
             const gTotalSales = groupSalesByYM[gkey] || 0;
             const totalCkH = ckHoursPool[gkey] || 0;
             

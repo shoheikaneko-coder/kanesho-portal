@@ -938,7 +938,8 @@ async function renderPerformanceSummary(user, isMobile = false) {
             const first = recs[0];
             const staffId = first.staff_id || first.staff_code || "";
             const staffData = userMap[staffId] || {};
-            const homeStore = storeMap[staffData.StoreID || staffData.StoreId || ""];
+            const staffStoreId = staffData.StoreID || staffData.StoreId || staffData.store_id || "";
+            const homeStore = storeMap[staffStoreId];
             const isCKStaff = homeStore && (homeStore.store_type === 'CK' || String(homeStore.store_type).includes('CK'));
 
             // 営業社員（非CK所属）のみ営業労働hにカウント
