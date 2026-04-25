@@ -926,17 +926,16 @@ async function renderPerformanceSummary(user, isMobile = false) {
         const perStaff = {};
         attendanceSnap.forEach(doc => {
             const d = doc.data();
-            // 物理的な打刻店舗 (store_id) を優先。なければ labor_store_id
-            const sid = d.store_id || d.labor_store_id || d.StoreID || "";
-            if (sid !== storeId) return;
-
             const ts = d.timestamp || d.date || "";
-            const staffId = d.staff_id || d.staff_code || "";
-            if (!ts || !staffId) return;
+            const staffId = String(d.staff_id || d.staff_code || "").trim();
+            const rawSid = String(d.store_id || d.labor_store_id || d.StoreID || "").trim();
+            const si = storeMap[rawSid];
+            const sid = (si && si.id) ? si.id : rawSid;
 
+            if (!ts || !sid || !staffId) return;
             const key = `${staffId}__${ts.substring(0, 10)}`;
             if (!perStaff[key]) perStaff[key] = [];
-            perStaff[key].push(d);
+            perStaff[key].push({ ...d, normalized_sid: sid });
         });
 
         Object.values(perStaff).forEach(recs => {

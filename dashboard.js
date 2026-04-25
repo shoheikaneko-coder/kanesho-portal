@@ -362,7 +362,6 @@ async function refreshDashboard() {
             g.days += 1;
         });
 
-        // 労働時間
         const lSnap = await getDocs(collection(db, "t_attendance"));
         const laborRaw = [];
         lSnap.forEach(doc => {
@@ -371,23 +370,27 @@ async function refreshDashboard() {
             if (ts.substring(0, 10) >= dateFrom && ts.substring(0, 10) <= dateTo) laborRaw.push(d);
         });
 
-        // store_name → store_id 逆引きマップ（直接打刻の過去データ救済用）
         const storeNameToId = {};
         Object.entries(storeMap).forEach(([k, v]) => {
-            if (v.store_name) storeNameToId[v.store_name] = v.store_id || k;
+            if (v.store_name) storeNameToId[v.store_name] = v.id || k;
         });
 
         const perStaff = {};
         laborRaw.forEach(r => {
             const ts = r.timestamp || r.date || r.Date || "";
-            // labor_store_id（CK按分用）を優先。なければ store_id、さらに store_name 逆引きでフォールバック
-            const sid = r.labor_store_id || r.store_id || r.StoreID || storeNameToId[r.store_name] || "";
-            const staffId = r.staff_id || r.staff_code || r.EmployeeCode || "";
+            // ID名寄せ: staff_id, staff_code, EmployeeCode のいずれかから正規化したIDを作成
+            const staffId = String(r.staff_id || r.staff_code || r.EmployeeCode || "").trim();
+            
+            // 店舗IDの正規化: 数値IDなどをドキュメントID(ID001等)に変換
+            const rawSid = String(r.store_id || r.StoreID || r.labor_store_id || storeNameToId[r.store_name] || "").trim();
+            const si = storeMap[rawSid];
+            const sid = (si && si.id) ? si.id : rawSid; // マスタにあれば正式なIDを使用
+            
             if (!ts || !sid || !staffId) return;
-
-            const key = `${staffId}__${ts.substring(0, 10)}__${sid}`;
+            // 同一スタッフ・同一日の打刻をまとめる（店舗を跨ぐヘルプも考慮）
+            const key = `${staffId}__${ts.substring(0, 10)}`;
             if (!perStaff[key]) perStaff[key] = [];
-            perStaff[key].push(r);
+            perStaff[key].push({ ...r, normalized_sid: sid });
         });
 
         // スタッフマスタ（ID/従業員番号の両方で引けるようにインデックスを作成）
@@ -424,7 +427,7 @@ async function refreshDashboard() {
                     const h = Number(r.total_labor_hours || r.TotalLaborHours || 0);
                     const ts = r.timestamp || r.date || r.Date || "";
                     const ym = r.year_month || r.YearMonth || (ts ? ts.substring(0, 7) : '');
-                    const sid = r.store_id || r.StoreID || "";
+                    const sid = r.normalized_sid;
                     if (!ym) return;
 
                     if (isCKStaff && staffGroupName) {
@@ -437,19 +440,19 @@ async function refreshDashboard() {
                 });
             } else {
                 recs.sort((a,b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
-                let inT = null, breakStartT = null, totalBreakMs = 0, currentStoreId = "";
+                let inT = null, breakStartT = null, totalBreakMs = 0, currentNormalizedSid = "";
 
                 recs.forEach(r => {
                     const ts = r.timestamp || r.date || r.Date || "";
                     if (!ts) return;
                     const type = String(r.type || r.Type || '').toLowerCase();
-                    const sid = r.store_id || r.StoreID || "";
+                    const sid = r.normalized_sid;
 
                     if (type === 'in' || type.includes('check_in') || type.includes('出勤')) {
                         inT = new Date(ts);
                         totalBreakMs = 0;
                         breakStartT = null;
-                        currentStoreId = sid;
+                        currentNormalizedSid = sid;
                     } else if (type.includes('break_start') || type.includes('休憩開始')) {
                         breakStartT = new Date(ts);
                     } else if ((type.includes('break_end') || type.includes('休憩終了')) && breakStartT) {
@@ -459,7 +462,7 @@ async function refreshDashboard() {
                         const netMs = Math.max(0, (new Date(ts) - inT) - totalBreakMs);
                         const h = netMs / 3600000;
                         const ym = ts.substring(0, 7);
-                        const finalSid = currentStoreId || sid;
+                        const finalSid = currentNormalizedSid || sid;
 
                         if (isCKStaff && staffGroupName) {
                             const gkey = `${staffGroupName}__${ym}`;
