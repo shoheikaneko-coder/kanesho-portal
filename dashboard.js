@@ -374,7 +374,9 @@ async function refreshDashboard() {
             const rawDate = d.date || ts.substring(0, 10);
             const normDate = rawDate.replace(/\//g, '-').replace(/\./g, '-');
             
-            if (normDate >= dateFrom && normDate <= dateTo) {
+            // 判定を1日余裕を持たせる (深夜跨ぎの退勤を拾うため)
+            const dateToPlus1 = new Date(new Date(dateTo).getTime() + 86400000).toISOString().substring(0, 10);
+            if (normDate >= dateFrom && normDate <= dateToPlus1) {
                 laborRaw.push(d);
             }
         });
