@@ -431,7 +431,12 @@ async function refreshDashboard() {
                     const h = Number(r.total_labor_hours || r.TotalLaborHours || 0);
                     const ts = r.timestamp || r.date || r.Date || "";
                     const ym = r.year_month || r.YearMonth || (ts ? ts.substring(0, 7) : '');
-                    const sid = r.normalized_sid;
+                    
+                    // インポートデータの店舗IDも正規化する
+                    const rawSid = String(r.store_id || r.StoreID || "").trim();
+                    const si = storeMap[rawSid];
+                    const sid = (si && si.id) ? si.id : rawSid;
+                    
                     if (!ym) return;
 
                     if (isCKStaff && staffGroupName) {
