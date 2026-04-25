@@ -273,11 +273,21 @@ export async function initDashboardPage() {
             } else {
                 if (dupCount > 0) report += `・重複データ: ${dupCount}件\n`;
                 if (Object.keys(missingStaff).length > 0) {
-                    report += `\n【集計対象外の店舗IDでの打刻】\n`;
-                    for (const [sid, count] of Object.entries(missingStaff)) {
-                        report += `・店舗ID [${sid || '空'}]: ${count}件の打刻\n`;
+                    report += `\n【店舗IDが空の打刻を行っているスタッフ】\n`;
+                    // 名前を収集して表示
+                    const missingNames = {}; // {name: count}
+                    for (const [key, docs] of Object.entries(groups)) {
+                        const doc = docs[0];
+                        const sid = String(doc.store_id || doc.labor_store_id || "").trim();
+                        if (!activeStoreIds.includes(sid)) {
+                            const name = doc.staff_name || doc.staff_id || "不明";
+                            missingNames[name] = (missingNames[name] || 0) + 1;
+                        }
                     }
-                    report += `\n※これらのIDでの打刻は、現在のダッシュボード合計に含まれていない可能性があります。`;
+                    for (const [name, count] of Object.entries(missingNames)) {
+                        report += `・${name}: ${count}件\n`;
+                    }
+                    report += `\n※これらの打刻は、現在のダッシュボード合計に含まれていない可能性があります。`;
                 }
                 alert(report);
             }
