@@ -388,8 +388,6 @@ async function refreshDashboard() {
             perStaff[key].push(r);
         });
 
-        });
-
         // スタッフマスタ（CK所属判定用）
         const uSnap = await getDocs(collection(db, "m_users"));
         const userMap = {};
