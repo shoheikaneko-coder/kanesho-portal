@@ -938,15 +938,15 @@ async function renderPerformanceSummary(user, isMobile = false) {
             const sid = (si && si.id) ? si.id : rawSid;
 
             if (!ts || !sid || !staffId) return;
-            const key = `${staffId}__${ts.substring(0, 10)}`;
+            const key = staffId; // IDまたは名前
             if (!perStaff[key]) perStaff[key] = [];
             perStaff[key].push({ ...d, normalized_sid: sid });
         });
 
         Object.values(perStaff).forEach(recs => {
             const first = recs[0];
-            const staffId = String(first.staff_id || first.staff_code || "").trim();
-            const staffData = userMap[staffId] || {};
+            const staffKey = String(first.staff_id || first.staff_code || first.staff_name || first.name || "").trim();
+            const staffData = userMap[staffKey] || {};
             const staffStoreId = String(staffData.StoreID || staffData.StoreId || staffData.store_id || "").trim();
             const homeStore = storeMap[staffStoreId];
             
@@ -968,10 +968,13 @@ async function renderPerformanceSummary(user, isMobile = false) {
                 let inT = null, breakStartT = null, totalBreakMs = 0;
 
                 recs.forEach(r => {
-                    const ts = r.timestamp;
-                    if (!ts || ts < startEdge || ts >= endEdge) return;
+                    const ts = r.timestamp || r.date || r.Date || "";
+                    if (!ts) return;
+                    const type = String(r.type || r.Type || '').toLowerCase();
+                    const sid = r.normalized_sid;
 
-                    const type = String(r.type || '').toLowerCase();
+                    if (sid !== storeId) return;
+
                     if (type === 'check_in' || type.includes('in') || type.includes('出勤')) {
                         inT = new Date(ts);
                         totalBreakMs = 0;
@@ -982,11 +985,17 @@ async function renderPerformanceSummary(user, isMobile = false) {
                         totalBreakMs += (new Date(ts) - breakStartT);
                         breakStartT = null;
                     } else if ((type === 'check_out' || type.includes('out') || type.includes('退勤')) && inT) {
-                        const netMs = Math.max(0, (new Date(ts) - inT) - totalBreakMs);
-                        actual.total_labor_hours += (netMs / 3600000);
-                        inT = null;
-                        totalBreakMs = 0;
-                        breakStartT = null;
+                        const outT = new Date(ts);
+                        const netMs = Math.max(0, (outT - inT) - totalBreakMs);
+                        
+                        // 日本時間(JST)ベースで日付を判定
+                        const jstInT = new Date(inT.getTime() + (9 * 60 * 60 * 1000));
+                        const shiftDate = jstInT.toISOString().substring(0, 10);
+
+                        if (shiftDate === ymd) {
+                            actual.total_labor_hours += (netMs / 3600000);
+                        }
+                        inT = null; totalBreakMs = 0; breakStartT = null;
                     }
                 });
             }
