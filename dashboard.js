@@ -447,11 +447,8 @@ async function refreshDashboard() {
                     
                     if (!ym) return;
 
-                    const isCKWork = si && String(si.store_type || "").trim() === 'CK';
-                    const punchGroupName = si ? String(si.group_name || si.GroupName || si['グループ名'] || "").trim() : "";
-
-                    if (isCKWork && punchGroupName) {
-                        const gkey = `${punchGroupName}__${ym}`;
+                    if (isCKStaff && staffGroupName) {
+                        const gkey = `${staffGroupName}__${ym}`;
                         ckHoursPool[gkey] = (ckHoursPool[gkey] || 0) + h;
                     } else if (sid) {
                         const k = `${ym}__${sid}`;
@@ -489,14 +486,10 @@ async function refreshDashboard() {
                         const ym = shiftDate.substring(0, 7).replace(/\//g, '-');
                         const finalSid = currentNormalizedSid || sid;
 
-                        // 修正: 誰が(所属)ではなく、どこで(勤務先店舗)で仕分けを判定する
-                        const punchStore = storeMap[finalSid];
-                        const isCKWork = punchStore && String(punchStore.store_type || "").trim() === 'CK';
-                        const punchGroupName = punchStore ? String(punchStore.group_name || punchStore.GroupName || punchStore['グループ名'] || "").trim() : "";
-
+                        // 元の状態（所属基準）に戻す
                         if (shiftDate >= dateFrom && shiftDate <= dateTo) {
-                            if (isCKWork && punchGroupName) {
-                                const gkey = `${punchGroupName}__${ym}`;
+                            if (isCKStaff && staffGroupName) {
+                                const gkey = `${staffGroupName}__${ym}`;
                                 ckHoursPool[gkey] = (ckHoursPool[gkey] || 0) + h;
                             } else if (finalSid) {
                                 const k = `${ym}__${finalSid}`;
