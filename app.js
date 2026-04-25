@@ -2,9 +2,9 @@ import { db } from './firebase.js';
 import { collection, getDocs, query, where, getDoc, doc, updateDoc, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 // 各ページのインポート
-import { dashboardPageHtml, initDashboardPage } from './dashboard.js?v=63';
-import { attendancePageHtml, initAttendancePage } from './attendance.js?v=63';
-import { salesPageHtml, initSalesPage } from './sales.js?v=65';
+import { dashboardPageHtml, initDashboardPage } from './dashboard.js?v=70';
+import { attendancePageHtml, initAttendancePage } from './attendance.js?v=70';
+import { salesPageHtml, initSalesPage } from './sales.js?v=70';
 import { storesPageHtml, initStoresPage } from './stores.js?v=31';
 import { usersPageHtml, initUsersPage } from './users.js?v=31';
 import { inventoryPageHtml, initInventoryPage } from './inventory.js?v=33';
@@ -26,7 +26,7 @@ import { productAnalysisPageHtml, initProductAnalysisPage } from './product_anal
 import { notificationsPageHtml, initNotificationsPage } from './notifications.js?v=116';
 import { calendarAdminPageHtml, initCalendarAdminPage, calendarViewerPageHtml, initCalendarViewerPage } from './calendar.js?v=63';
 import { goalsAdminPageHtml, initGoalsAdminPage, goalsStorePageHtml, initGoalsStorePage } from './goals.js?v=7';
-import { homePageHtml, initHomePage } from './home.js?v=116';
+import { homePageHtml, initHomePage } from './home.js?v=120';
 import { shiftSubmissionPageHtml, initShiftSubmissionPage, shiftAdminPageHtml, initShiftAdminPage, shiftViewerPageHtml, initShiftViewerPage, checkIfShiftPublished } from './shift.js?v=72';
 import { loansPageHtml, initLoansPage } from './loans.js?v=116';
 import { hubPageHtml, initHubPage } from './hubs.js?v=116';

@@ -437,7 +437,8 @@ async function refreshDashboard() {
                 recs.forEach(r => {
                     const h = Number(r.total_labor_hours || r.TotalLaborHours || 0);
                     const ts = r.timestamp || r.date || r.Date || "";
-                    const ym = r.year_month || r.YearMonth || (ts ? ts.substring(0, 7) : '');
+                    const rawYm = r.year_month || r.YearMonth || (ts ? ts.substring(0, 7) : '');
+                    const ym = rawYm.replace(/\//g, '-');
                     
                     // インポートデータの店舗IDも正規化する
                     const rawSid = String(r.store_id || r.StoreID || "").trim();
@@ -482,7 +483,7 @@ async function refreshDashboard() {
                         // 日本時間(JST)ベースで日付を判定 (dateフィールドがあればそれを優先)
                         const jstInT = new Date(inT.getTime() + (9 * 60 * 60 * 1000));
                         const shiftDate = r.date || jstInT.toISOString().substring(0, 10);
-                        const ym = shiftDate.substring(0, 7);
+                        const ym = shiftDate.substring(0, 7).replace(/\//g, '-');
                         const finalSid = currentNormalizedSid || sid;
 
                         // 表示対象期間内であれば加算
