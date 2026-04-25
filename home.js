@@ -914,10 +914,8 @@ async function renderPerformanceSummary(user, isMobile = false) {
             where("store_id", "==", storeId), 
             where("date", "==", ymd)));
         
-        // 勤怠取得 (t_attendance) - 人時売上算出用 (深夜退勤を考慮し翌日分まで取得)
-        const attendanceSnap = await getDocs(query(collection(db, "t_attendance"),
-            where("date", ">=", ymd),
-            where("date", "<=", nextDayYmd)));
+        // 勤怠取得 (t_attendance) - 人時売上算出用 (全件取得してメモリ内で日付正規化して判定)
+        const attendanceSnap = await getDocs(collection(db, "t_attendance"));
         
         let actual = { sales: 0, sales_ex_tax: 0, customers: 0, total_labor_hours: 0 };
         
@@ -932,13 +930,20 @@ async function renderPerformanceSummary(user, isMobile = false) {
         attendanceSnap.forEach(doc => {
             const d = doc.data();
             const ts = d.timestamp || d.date || "";
+            // 日付形式をハイフンに統一
+            const rawDate = d.date || ts.substring(0, 10);
+            const normDate = rawDate.replace(/\//g, '-').replace(/\./g, '-');
+
+            // 深夜退勤を考慮し、対象日(ymd)または翌日(nextDayYmd)のデータを取得
+            if (normDate !== ymd && normDate !== nextDayYmd) return;
+
             const staffId = String(d.staff_id || d.staff_code || d.staff_name || d.name || "").trim();
             const rawSid = String(d.store_id || d.labor_store_id || d.StoreID || "").trim();
             const si = storeMap[rawSid];
             const sid = (si && si.id) ? si.id : rawSid;
 
             if (!ts || !sid || !staffId) return;
-            const key = staffId; // IDまたは名前
+            const key = staffId; 
             if (!perStaff[key]) perStaff[key] = [];
             perStaff[key].push({ ...d, normalized_sid: sid });
         });

@@ -363,15 +363,19 @@ async function refreshDashboard() {
             g.days += 1;
         });
 
-        const nextDay = new Date(new Date(dateTo).getTime() + 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
-        const q = query(collection(db, "t_attendance"), 
-            where("date", ">=", dateFrom),
-            where("date", "<=", nextDay)
-        );
-        const lSnap = await getDocs(q);
+        const lSnap = await getDocs(collection(db, "t_attendance"));
         const laborRaw = [];
+        
         lSnap.forEach(doc => {
-            laborRaw.push(doc.data());
+            const d = doc.data();
+            const ts = d.timestamp || d.date || "";
+            // 日付形式をハイフンに統一 (2026/04/15 -> 2026-04-15)
+            const rawDate = d.date || ts.substring(0, 10);
+            const normDate = rawDate.replace(/\//g, '-').replace(/\./g, '-');
+            
+            if (normDate >= dateFrom && normDate <= dateTo) {
+                laborRaw.push(d);
+            }
         });
 
         const storeNameToId = {};
@@ -451,7 +455,7 @@ async function refreshDashboard() {
                     }
                 });
             } else {
-                recs.sort((a,b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
+                recs.sort((a,b) => new Date(a.timestamp || 0) - new Date(b.timestamp || 0));
                 let inT = null, breakStartT = null, totalBreakMs = 0, currentNormalizedSid = "";
 
                 recs.forEach(r => {
