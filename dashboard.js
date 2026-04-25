@@ -236,6 +236,8 @@ export async function initDashboardPage() {
             });
 
             let dupCount = 0;
+            let missingHours = 0;
+            let missingStaff = {}; // {name: hours}
             let report = "【診断結果】\n";
             let affectedStaff = new Set();
 
@@ -244,18 +246,40 @@ export async function initDashboardPage() {
                     dupCount += (docs.length - 1);
                     const main = docs[0];
                     affectedStaff.add(main.staff_name || main.staff_id);
-                    if (affectedStaff.size <= 10) {
-                        report += `・${main.staff_name || main.staff_id}: ${main.timestamp} (${docs.length}重)\n`;
-                    }
                 }
             });
 
-            if (dupCount === 0) {
-                alert("重複データは見つかりませんでした。");
+            // 漏れている時間の特定 (店舗IDが ID001, ID002 以外、または空)
+            const activeStoreIds = ['ID001', 'ID002']; // 現在表示されている店舗
+            
+            // 簡易的な労働時間計算を全データに対して実行
+            for (const [key, docs] of Object.entries(groups)) {
+                // 重複は1つとして扱う
+                const doc = docs[0];
+                const sid = String(doc.store_id || doc.labor_store_id || "").trim();
+                
+                // ここで個別の労働時間を概算 (in/outペアを見つける)
+                // (簡易化のため、ここでは「この打刻がどの店舗に紐付いているか」だけをチェック)
+                if (!activeStoreIds.includes(sid)) {
+                    // 店舗IDが不明、または対象外
+                    const name = doc.staff_name || doc.staff_id || "不明";
+                    // 実際にはここではペアリングが必要だが、まずは「対象外の店舗ID」をリストアップ
+                    missingStaff[sid] = (missingStaff[sid] || 0) + 1;
+                }
+            }
+
+            if (dupCount === 0 && Object.keys(missingStaff).length === 0) {
+                alert("重複も集計漏れも見つかりませんでした。");
             } else {
-                report += `\n合計重複件数: ${dupCount}件\n対象スタッフ: ${Array.from(affectedStaff).join(", ")}`;
+                if (dupCount > 0) report += `・重複データ: ${dupCount}件\n`;
+                if (Object.keys(missingStaff).length > 0) {
+                    report += `\n【集計対象外の店舗IDでの打刻】\n`;
+                    for (const [sid, count] of Object.entries(missingStaff)) {
+                        report += `・店舗ID [${sid || '空'}]: ${count}件の打刻\n`;
+                    }
+                    report += `\n※これらのIDでの打刻は、現在のダッシュボード合計に含まれていない可能性があります。`;
+                }
                 alert(report);
-                console.log("Full Diagnostic Result:", groups);
             }
 
             btn.disabled = false;
