@@ -299,11 +299,12 @@ async function refreshDashboard() {
     try {
         const storeMap = {};
         const sSnap = await getDocs(collection(db, "m_stores"));
-        sSnap.forEach(d => { 
-            const data = d.data();
-            storeMap[d.id] = data; 
+        sSnap.forEach(doc => {
+            const data = doc.data();
+            const fullData = { ...data, id: doc.id };
+            storeMap[doc.id] = fullData;
             const sid = data.store_id || data.StoreID || data['店舗ID'];
-            if (sid) storeMap[String(sid)] = data;
+            if (sid) storeMap[String(sid)] = fullData;
         });
 
         const pSnap = await getDocs(collection(db, "t_performance"));
@@ -362,20 +363,15 @@ async function refreshDashboard() {
             g.days += 1;
         });
 
-        const lSnap = await getDocs(collection(db, "t_attendance"));
+        const nextDay = new Date(new Date(dateTo).getTime() + 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
+        const q = query(collection(db, "t_attendance"), 
+            where("date", ">=", dateFrom),
+            where("date", "<=", nextDay)
+        );
+        const lSnap = await getDocs(q);
         const laborRaw = [];
-        // 前後1日のバッファを持たせて取得（日を跨ぐ勤務のペアリングのため）
-        const bufferFrom = new Date(dateFrom); bufferFrom.setDate(bufferFrom.getDate() - 1);
-        const bufferTo = new Date(dateTo); bufferTo.setDate(bufferTo.getDate() + 1);
-        const bFromStr = bufferFrom.toISOString().substring(0, 10);
-        const bToStr = bufferTo.toISOString().substring(0, 10);
-
         lSnap.forEach(doc => {
-            const d = doc.data();
-            const ts = d.timestamp || d.date || "";
-            // date（業務日）を最優先。なければ timestamp から日付を取得。
-            const workDate = d.date || ts.substring(0, 10);
-            if (workDate >= bFromStr && workDate <= bToStr) laborRaw.push(d);
+            laborRaw.push(doc.data());
         });
 
         const storeNameToId = {};
