@@ -522,12 +522,18 @@ async function refreshDashboard() {
             }
         });
 
+        // KPIカード用の合計値算出 (売上データの有無に関わらず全労働時間を合算)
+        let totalOpH = 0;
+        Object.values(laborMap).forEach(h => totalOpH += h);
+        let totalCkH = 0;
+        Object.values(ckHoursPool).forEach(h => totalCkH += h);
+
         const records = Object.values(grouped);
         
         // --- 目標データの取得と累計計算 ---
         const goals = await calculatePeriodGoals(storeFilter, dateFrom, dateTo);
         
-        renderKPIs(records, goals);
+        renderKPIs(records, goals, totalOpH, totalCkH);
         renderMonthlyTable(records, daily);
     } catch (e) {
         console.error(e);
@@ -535,9 +541,14 @@ async function refreshDashboard() {
     }
 }
 
-function renderKPIs(recs, goals = { sales: 0, customers: 0 }) {
+function renderKPIs(recs, goals = { sales: 0, customers: 0 }, forcedOpH = null, forcedCkH = null) {
     let s=0, c=0, opH=0, ckH=0;
     recs.forEach(r => { s+=r.sales; c+=r.customers; opH+=r.op_hours; ckH+=r.ck_alloc; });
+    
+    // 引数で合計値が渡されている場合はそれを使用 (売上データに紐付かない労働時間も救済するため)
+    if (forcedOpH !== null) opH = forcedOpH;
+    if (forcedCkH !== null) ckH = forcedCkH;
+
     const exTax = s / TAX_RATE;
 
     const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
