@@ -401,15 +401,17 @@ async function refreshDashboard() {
         Object.values(perStaff).forEach(recs => {
             const imported = recs.find(r => (r.total_labor_hours !== undefined || r.TotalLaborHours !== undefined));
             
-            // スタッフ情報の特定
+            // スタッフ情報の特定 (所属店舗のタイプに基づくCK判定)
             const first = recs[0];
             const staffId = first.staff_id || first.staff_code || first.EmployeeCode || "";
             const staffData = userMap[staffId] || {};
-            // StoreIDの表記揺れ対応
+            
+            // 従業員マスタの所属店舗ID（ID003など）を取得
             const staffStoreId = staffData.StoreID || staffData.StoreId || staffData.store_id || "";
             const homeStore = storeMap[staffStoreId];
             
-            const isCKStaff = homeStore && (homeStore.store_type === 'CK' || String(homeStore.store_type).includes('CK'));
+            // ユーザー指定の判定基準: store_type が "CK" ならCK所属、それ以外は営業
+            const isCKStaff = homeStore && homeStore.store_type === 'CK';
             const staffGroupName = homeStore ? (homeStore.group_name || homeStore.GroupName || homeStore['グループ名']) : "";
 
             if (imported) {

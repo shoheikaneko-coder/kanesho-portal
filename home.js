@@ -940,7 +940,9 @@ async function renderPerformanceSummary(user, isMobile = false) {
             const staffData = userMap[staffId] || {};
             const staffStoreId = staffData.StoreID || staffData.StoreId || staffData.store_id || "";
             const homeStore = storeMap[staffStoreId];
-            const isCKStaff = homeStore && (homeStore.store_type === 'CK' || String(homeStore.store_type).includes('CK'));
+            
+            // ユーザー指定の判定基準: store_type が "CK" ならCK所属
+            const isCKStaff = homeStore && homeStore.store_type === 'CK';
 
             // 営業社員（非CK所属）のみ営業労働hにカウント
             if (isCKStaff) return;
