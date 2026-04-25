@@ -384,20 +384,22 @@ async function refreshDashboard() {
         const perStaff = {};
         laborRaw.forEach(r => {
             const ts = r.timestamp || r.date || r.Date || "";
-            const staffId = String(r.staff_id || r.staff_code || r.EmployeeCode || "").trim();
+            // IDがなければ名前を使用（管理者修正対策）
+            const staffId = String(r.staff_id || r.staff_code || r.EmployeeCode || r.staff_name || r.name || "").trim();
+            
             // 店舗IDの正規化: 数値IDなどをドキュメントID(ID001等)に変換
             const rawSid = String(r.store_id || r.StoreID || r.labor_store_id || storeNameToId[r.store_name] || "").trim();
             const si = storeMap[rawSid];
             const sid = (si && si.id) ? si.id : rawSid; // マスタにあれば正式なIDを使用
             
             if (!ts || !sid || !staffId) return;
-            // 重要: 日付(substring)で区切らず、スタッフIDのみでグルーピングする
+            // 重要: 日付(substring)で区切らず、スタッフID/名前のみでグルーピングする
             const key = staffId;
             if (!perStaff[key]) perStaff[key] = [];
             perStaff[key].push({ ...r, normalized_sid: sid });
         });
 
-        // スタッフマスタ（ID/従業員番号の両方で引けるようにインデックスを作成）
+        // スタッフマスタ（ID/従業員番号/名前のすべてで引けるようにインデックスを作成）
         const uSnap = await getDocs(collection(db, "m_users"));
         const userMap = {};
         uSnap.forEach(d => { 
@@ -405,6 +407,9 @@ async function refreshDashboard() {
             userMap[String(d.id).trim()] = data;
             const code = data.EmployeeCode || data.staff_code || data.staff_id || "";
             if (code) userMap[String(code).trim()] = data;
+            // 名前でも引けるように（修正打刻対策）
+            const name = data.staff_name || data.name || "";
+            if (name) userMap[name.trim()] = data;
         });
 
         const laborMap = {};      // ym__store_id -> op_hours
@@ -413,12 +418,12 @@ async function refreshDashboard() {
         Object.values(perStaff).forEach(recs => {
             const imported = recs.find(r => (r.total_labor_hours !== undefined || r.TotalLaborHours !== undefined));
             
-            // スタッフ情報の特定 (所属店舗のタイプに基づくCK判定)
+            // スタッフ情報の特定 (IDがなければ名前でマスタを引く)
             const first = recs[0];
-            const staffId = String(first.staff_id || first.staff_code || first.EmployeeCode || "").trim();
-            const staffData = userMap[staffId] || {};
+            const staffKey = String(first.staff_id || first.staff_code || first.EmployeeCode || first.staff_name || first.name || "").trim();
+            const staffData = userMap[staffKey] || {};
             
-            // 従業員マスタの所属店舗ID（ID003など）を取得
+            // 従業員マスタの所属店舗IDを取得
             const staffStoreId = String(staffData.StoreID || staffData.StoreId || staffData.store_id || "").trim();
             const homeStore = storeMap[staffStoreId];
             

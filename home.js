@@ -845,31 +845,38 @@ async function renderPerformanceSummary(user, isMobile = false) {
     container.style.display = 'block';
 
     const me = JSON.parse(localStorage.getItem('currentUser'));
-    const storeId = user.StoreID || user.StoreId || window.currentAdminStoreId || (me ? (me.StoreID || me.StoreId) : null) || "ALL";
+    const storeId = (me ? (me.StoreID || me.StoreId) : null) || window.currentAdminStoreId || "ALL";
 
     try {
-        if (!storeId || storeId === 'undefined') {
-            console.warn("renderPerformanceSummary: storeId is invalid.", storeId);
+        if (!storeId || storeId === 'undefined' || storeId === 'ALL') {
+            // 全社表示などの場合はサマリーを表示しないか、別途処理が必要。
+            // 現状はエラー回避のためALLの場合は戻る
+            if (storeId === 'ALL') container.style.display = 'none';
             return;
         }
 
-        // マスタデータ一括取得 (計算の正確性と按分のために必要)
+        // マスタデータ一括取得
         const [storeSnap, allStoresSnap, allUsersSnap] = await Promise.all([
             getDoc(doc(db, "m_stores", storeId)),
             getDocs(collection(db, "m_stores")),
             getDocs(collection(db, "m_users"))
         ]);
-        
+
+        const storeData = storeSnap.exists() ? storeSnap.data() : { id: storeId };
         const storeMap = {};
-        allStoresSnap.forEach(d => { storeMap[String(d.id).trim()] = d.data(); });
-        const userMap = {};
-        allUsersSnap.forEach(d => { 
+        allStoresSnap.forEach(d => {
             const data = d.data();
-            userMap[String(d.id).trim()] = data;
-            const code = data.EmployeeCode || data.staff_code || data.staff_id || "";
-            if (code) userMap[String(code).trim()] = data;
+            const sid = data.store_id || data.StoreID || data['店舗ID'];
+            if (sid) storeMap[String(sid)] = { ...data, id: d.id };
+            storeMap[d.id] = { ...data, id: d.id };
         });
 
+        const userMap = {};
+        allUsersSnap.forEach(d => {
+            const data = d.data();
+            userMap[String(d.id).trim()] = data;
+            const code = data.EmployeeCode || data.staff_code || "";
+            if (code) userMap[String(code).trim()] = data;
         const storeData = storeSnap.exists() ? storeSnap.data() : {};
         
         // --- 目標値算出の共通処理を実行 ---
