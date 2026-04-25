@@ -871,6 +871,9 @@ async function renderPerformanceSummary(user, isMobile = false) {
         }
         
         const ymd = formatDateJST(lastWorkDate);
+        const nextDayDate = new Date(lastWorkDate.getTime() + (24 * 60 * 60 * 1000));
+        const nextDayYmd = formatDateJST(nextDayDate);
+
         const dailyTargets = await calculateDailyTargets(storeId, ymd);
 
         const ym = ymd.substring(0, 7);
@@ -886,10 +889,10 @@ async function renderPerformanceSummary(user, isMobile = false) {
             where("store_id", "==", storeId), 
             where("date", "==", ymd)));
         
-        // 勤怠取得 (t_attendance) - 人時売上算出用
+        // 勤怠取得 (t_attendance) - 人時売上算出用 (深夜退勤を考慮し翌日分まで取得)
         const attendanceSnap = await getDocs(query(collection(db, "t_attendance"),
-            where("store_id", "==", storeId),
-            where("date", "==", ymd)));
+            where("date", ">=", ymd),
+            where("date", "<=", nextDayYmd)));
         
         let actual = { sales: 0, sales_ex_tax: 0, customers: 0, total_labor_hours: 0 };
         
@@ -900,9 +903,67 @@ async function renderPerformanceSummary(user, isMobile = false) {
             actual.customers += (d.customer_count || d.customers || 0);
         });
 
+        // 業務日範囲の定義 (店舗の日替わり時刻を基準にする)
+        const dayChangeTime = storeData.day_change_time || 5;
+        const startEdge = `${ymd}T${String(dayChangeTime).padStart(2, '0')}:00:00`;
+        const endEdge = `${nextDayYmd}T${String(dayChangeTime).padStart(2, '0')}:00:00`;
+
+        const perStaff = {};
         attendanceSnap.forEach(doc => {
             const d = doc.data();
-            actual.total_labor_hours += (d.total_labor_hours || 0);
+            // 店舗判定: 実際に働いた場所 (labor_store_id) を優先。なければ store_id
+            const sid = d.labor_store_id || d.store_id || d.StoreID || "";
+            if (sid !== storeId) return;
+
+            const ts = d.timestamp || d.date || "";
+            const staffId = d.staff_id || d.staff_code || "";
+            if (!ts || !staffId) return;
+
+            const key = `${staffId}__${ts.substring(0, 10)}`;
+            if (!perStaff[key]) perStaff[key] = [];
+            perStaff[key].push(d);
+        });
+
+        Object.values(perStaff).forEach(recs => {
+            // インポートデータ (total_labor_hoursがある) か打刻データかを判定
+            const imported = recs.find(r => r.total_labor_hours !== undefined);
+            if (imported) {
+                recs.forEach(r => {
+                    // インポートデータの場合は日付 (date) が一致するものを単純合計
+                    if (r.date === ymd) {
+                        actual.total_labor_hours += Number(r.total_labor_hours || 0);
+                    }
+                });
+            } else {
+                // 打刻データの場合はペア計算 (dashboard.js と同等ロジック)
+                recs.sort((a,b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
+                let inT = null;
+                let breakStartT = null;
+                let totalBreakMs = 0;
+
+                recs.forEach(r => {
+                    const ts = r.timestamp;
+                    if (!ts || ts < startEdge || ts >= endEdge) return; // 業務日範囲外は除外
+
+                    const type = String(r.type || '').toLowerCase();
+                    if (type === 'check_in' || type.includes('in') || type.includes('出勤')) {
+                        inT = new Date(ts);
+                        totalBreakMs = 0;
+                        breakStartT = null;
+                    } else if (type.includes('break_start') || type.includes('休憩開始')) {
+                        breakStartT = new Date(ts);
+                    } else if ((type.includes('break_end') || type.includes('休憩終了')) && breakStartT) {
+                        totalBreakMs += (new Date(ts) - breakStartT);
+                        breakStartT = null;
+                    } else if ((type === 'check_out' || type.includes('out') || type.includes('退勤')) && inT) {
+                        const netMs = Math.max(0, (new Date(ts) - inT) - totalBreakMs);
+                        actual.total_labor_hours += (netMs / 3600000);
+                        inT = null;
+                        totalBreakMs = 0;
+                        breakStartT = null;
+                    }
+                });
+            }
         });
 
         // 共通関数から取得した目標値を変数に展開
