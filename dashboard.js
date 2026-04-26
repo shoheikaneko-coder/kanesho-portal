@@ -577,7 +577,7 @@ async function refreshDashboard() {
                             const netMs = Math.max(0, (outT - inT) - totalBreakMs);
                             const h = netMs / 3600000;
                             const shiftDate = inDate || r.date || new Date(inT.getTime() + (9 * 60 * 60 * 1000)).toISOString().substring(0, 10);
-                            const ym = shiftDate.substring(0, 7).replace(/\\//g, '-');
+                            const ym = shiftDate.substring(0, 7).replace(/\//g, '-');
                             const finalSid = currentNormalizedSid || sid;
 
                             if (shiftDate >= dateFrom && shiftDate <= dateTo) {
