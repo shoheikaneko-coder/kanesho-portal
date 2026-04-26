@@ -682,9 +682,10 @@ async function refreshDashboard() {
         document.getElementById('dash-loading-overlay').style.display = 'none';
     } catch (e) {
         console.error(e);
+        alert("ダッシュボード読込エラー: " + e.message + "\\n" + e.stack);
         if (dtbody) dtbody.innerHTML = '<tr><td colspan="13" style="text-align:center; color:var(--danger);">読込失敗</td></tr>';
         if (mtbody) mtbody.innerHTML = '<tr><td colspan="12" style="text-align:center; color:var(--danger);">読込失敗</td></tr>';
-        document.getElementById('dash-loading-overlay').style.display = 'none';
+        if (document.getElementById('dash-loading-overlay')) document.getElementById('dash-loading-overlay').style.display = 'none';
     }
 }
 
