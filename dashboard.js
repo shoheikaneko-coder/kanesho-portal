@@ -965,21 +965,21 @@ function renderDailyTab(daily) {
         
         const pettyCash = r.petty_cash || r.PettyCash || 0;
         
-        tr.innerHTML = \`
-            <td>\${r.date}</td>
-            <td style="color:\${dow===0?'var(--danger)':(dow===6?'var(--primary)':'inherit')}">\${dowStr}</td>
-            <td>\${r.weather_1 || '-'} / \${r.weather_2 || '-'}</td>
-            <td style="text-align: right;">¥\${Math.round(exTax).toLocaleString()}</td>
-            <td style="text-align: right;">\${cust.toLocaleString()}</td>
-            <td style="text-align: right;">¥\${up.toLocaleString()}</td>
-            <td style="text-align: right; \${isAlert ? 'color: var(--danger); font-weight:bold;' : ''}">¥\${opS.toLocaleString()}</td>
-            <td style="text-align: right;">¥\${totS.toLocaleString()}</td>
-            <td style="text-align: right;" class="\${cashDiff !== 0 ? 'val-red' : ''}">\${cashDiff.toLocaleString()}</td>
-            <td style="text-align: right;">\${(r.op_hours||0).toFixed(1)}</td>
-            <td style="text-align: right;">\${(r.ck_alloc||0).toFixed(1)}</td>
-            <td><div style="max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="\${r.memo || ''}">\${r.memo || ''}</div></td>
-            <td style="text-align: right;">¥\${pettyCash.toLocaleString()}</td>
-        \`;
+        tr.innerHTML = `
+            <td>${r.date}</td>
+            <td style="color:${dow===0?'var(--danger)':(dow===6?'var(--primary)':'inherit')}">${dowStr}</td>
+            <td>${r.weather_1 || '-'} / ${r.weather_2 || '-'}</td>
+            <td style="text-align: right;">¥${Math.round(exTax).toLocaleString()}</td>
+            <td style="text-align: right;">${cust.toLocaleString()}</td>
+            <td style="text-align: right;">¥${up.toLocaleString()}</td>
+            <td style="text-align: right; ${isAlert ? 'color: var(--danger); font-weight:bold;' : ''}">¥${opS.toLocaleString()}</td>
+            <td style="text-align: right;">¥${totS.toLocaleString()}</td>
+            <td style="text-align: right;" class="${cashDiff !== 0 ? 'val-red' : ''}">${cashDiff.toLocaleString()}</td>
+            <td style="text-align: right;">${(r.op_hours||0).toFixed(1)}</td>
+            <td style="text-align: right;">${(r.ck_alloc||0).toFixed(1)}</td>
+            <td><div style="max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${r.memo || ''}">${r.memo || ''}</div></td>
+            <td style="text-align: right;">¥${pettyCash.toLocaleString()}</td>
+        `;
         tbody.appendChild(tr);
     });
 }
@@ -1016,20 +1016,20 @@ function renderMonthlyPivotTab(records, daily) {
             tr.style.cursor = 'pointer';
             tr.onclick = () => showDrilldown(r.ym, r.store_id, r.store_name, daily);
             
-            tr.innerHTML = \`
-                <td><span style="font-size:0.7rem; color:var(--text-secondary); display:block;">\${sName}</span>\${r.ym}</td>
-                <td style="text-align: center;">\${r.days}</td>
-                <td style="text-align: right;">¥\${Math.round(exTax).toLocaleString()}</td>
-                <td style="text-align: right;">\${r.customers.toLocaleString()}</td>
-                <td style="text-align: right;">¥\${up.toLocaleString()}</td>
-                <td style="text-align: right;" class="\${r.cash_diff !== 0 ? 'val-red' : ''}">\${r.cash_diff.toLocaleString()}</td>
-                <td style="text-align: right;">¥\${avgSales.toLocaleString()}</td>
-                <td style="text-align: right;">\${avgCust}</td>
-                <td style="text-align: right;">¥\${opS.toLocaleString()}</td>
-                <td style="text-align: right;">¥\${totS.toLocaleString()}</td>
-                <td style="text-align: right;">\${r.op_hours.toFixed(1)}</td>
-                <td style="text-align: right;">\${(r.ck_alloc||0).toFixed(1)}</td>
-            \`;
+            tr.innerHTML = `
+                <td><span style="font-size:0.7rem; color:var(--text-secondary); display:block;">${sName}</span>${r.ym}</td>
+                <td style="text-align: center;">${r.days}</td>
+                <td style="text-align: right;">¥${Math.round(exTax).toLocaleString()}</td>
+                <td style="text-align: right;">${r.customers.toLocaleString()}</td>
+                <td style="text-align: right;">¥${up.toLocaleString()}</td>
+                <td style="text-align: right;" class="${r.cash_diff !== 0 ? 'val-red' : ''}">${r.cash_diff.toLocaleString()}</td>
+                <td style="text-align: right;">¥${avgSales.toLocaleString()}</td>
+                <td style="text-align: right;">${avgCust}</td>
+                <td style="text-align: right;">¥${opS.toLocaleString()}</td>
+                <td style="text-align: right;">¥${totS.toLocaleString()}</td>
+                <td style="text-align: right;">${r.op_hours.toFixed(1)}</td>
+                <td style="text-align: right;">${(r.ck_alloc||0).toFixed(1)}</td>
+            `;
             tbody.appendChild(tr);
             
             sDays += r.days; sSales += r.sales; sCust += r.customers; sCash += r.cash_diff; sOpH += r.op_hours; sCkH += (r.ck_alloc||0);
@@ -1041,20 +1041,20 @@ function renderMonthlyPivotTab(records, daily) {
             const tr = document.createElement('tr');
             tr.style.background = '#f1f5f9';
             tr.style.fontWeight = 'bold';
-            tr.innerHTML = \`
-                <td>\${sName} 計</td>
-                <td style="text-align: center;">\${sDays}</td>
-                <td style="text-align: right;">¥\${Math.round(exTax).toLocaleString()}</td>
-                <td style="text-align: right;">\${sCust.toLocaleString()}</td>
-                <td style="text-align: right;">¥\${sCust > 0 ? Math.round(exTax/sCust).toLocaleString() : 0}</td>
-                <td style="text-align: right;" class="\${sCash !== 0 ? 'val-red' : ''}">\${sCash.toLocaleString()}</td>
-                <td style="text-align: right;">¥\${sDays > 0 ? Math.round(exTax/sDays).toLocaleString() : 0}</td>
-                <td style="text-align: right;">\${sDays > 0 ? (sCust/sDays).toFixed(1) : 0}</td>
-                <td style="text-align: right;">¥\${sOpH > 0 ? Math.round(exTax/sOpH).toLocaleString() : 0}</td>
-                <td style="text-align: right;">¥\${(sOpH+sCkH) > 0 ? Math.round(exTax/(sOpH+sCkH)).toLocaleString() : 0}</td>
-                <td style="text-align: right;">\${sOpH.toFixed(1)}</td>
-                <td style="text-align: right;">\${sCkH.toFixed(1)}</td>
-            \`;
+            tr.innerHTML = `
+                <td>${sName} 計</td>
+                <td style="text-align: center;">${sDays}</td>
+                <td style="text-align: right;">¥${Math.round(exTax).toLocaleString()}</td>
+                <td style="text-align: right;">${sCust.toLocaleString()}</td>
+                <td style="text-align: right;">¥${sCust > 0 ? Math.round(exTax/sCust).toLocaleString() : 0}</td>
+                <td style="text-align: right;" class="${sCash !== 0 ? 'val-red' : ''}">${sCash.toLocaleString()}</td>
+                <td style="text-align: right;">¥${sDays > 0 ? Math.round(exTax/sDays).toLocaleString() : 0}</td>
+                <td style="text-align: right;">${sDays > 0 ? (sCust/sDays).toFixed(1) : 0}</td>
+                <td style="text-align: right;">¥${sOpH > 0 ? Math.round(exTax/sOpH).toLocaleString() : 0}</td>
+                <td style="text-align: right;">¥${(sOpH+sCkH) > 0 ? Math.round(exTax/(sOpH+sCkH)).toLocaleString() : 0}</td>
+                <td style="text-align: right;">${sOpH.toFixed(1)}</td>
+                <td style="text-align: right;">${sCkH.toFixed(1)}</td>
+            `;
             tbody.appendChild(tr);
         }
     });
