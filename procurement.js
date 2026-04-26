@@ -281,53 +281,91 @@ function render() {
         // 代表的な単位を取得（店舗別設定があれば優先、なければマスタ）
         const representativeUnit = productItems[0]?.display_unit || master?.unit || '';
         
-        // Calculate Total Requirement
-        const totalReq = productItems.reduce((sum, si) => sum + (Number(si.定数 || 0) - Number(si.個数 || 0)), 0);
+        // Calculate Total Requirement (rounding each store's need)
+        const totalReq = productItems.reduce((sum, si) => {
+            const diff = Number(si.定数 || 0) - Number(si.個数 || 0);
+            return sum + Math.round(Math.max(0, diff));
+        }, 0);
+        
         const isCollapsed = collapsedItems.has(productId);
+        const isSelfScope = selectedScope === 'store';
 
-        html += `
-            <div class="item-block" style="border-bottom: 1px solid var(--border);">
-                <div class="item-banner" data-id="${productId}">
-                    <div class="banner-content">
-                        <div class="title">
-                            <i class="fas ${isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'}" style="width:1rem; font-size:0.8rem; color:var(--text-secondary);"></i>
-                            <i class="fas fa-box" style="color:var(--primary); font-size:0.9rem;"></i>
-                            ${name}
+        if (isSelfScope) {
+            // "Only My Store": Flat layout, no accordion for faster input
+            const si = productItems[0];
+            const diff = Number(si.定数 || 0) - Number(si.個数 || 0);
+            const req = Math.round(Math.max(0, diff));
+            const sUnit = si.display_unit || master?.unit || '';
+            
+            html += `
+                <div class="item-block" style="border-bottom: 1px solid var(--border); padding: 0.8rem 1.5rem; background: white; transition: background 0.3s;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 200px;">
+                            <div style="width: 40px; height: 40px; background: #f1f5f9; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--primary);">
+                                <i class="fas fa-box" style="font-size:1.2rem;"></i>
+                            </div>
+                            <div>
+                                <div style="font-weight: 800; font-size: 1.05rem; color: #1e293b; margin-bottom: 0.2rem;">${name}</div>
+                                <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700;">
+                                    必要数: <span style="color:var(--danger); font-size: 1rem; font-family: monospace;">${req}</span> ${sUnit}
+                                </div>
+                            </div>
                         </div>
-                        <div class="total-req">計 ${totalReq.toFixed(1)} ${representativeUnit} 必要</div>
+                        <div class="proc-input-container" style="background: #f8fafc; padding: 0.6rem; border-radius: 12px; border: 1px solid #e2e8f0;">
+                            <span style="font-size: 0.7rem; font-weight: 800; color: #64748b; margin-right: 0.5rem;">購入数</span>
+                            <input type="number" step="1" class="proc-buy-input" placeholder="0" data-si-id="${si.id}" value="${req}" style="border-color: #cbd5e1; height: 42px; width: 80px; text-align: center; border-radius: 8px; font-weight: 800;">
+                            <button class="btn btn-primary btn-confirm-buy" data-si-id="${si.id}" style="height: 42px; padding: 0 1.2rem; font-size: 0.85rem; border-radius: 8px; font-weight: 800;">購入完了</button>
+                        </div>
                     </div>
                 </div>
-                <div class="proc-detail-container ${isCollapsed ? 'hidden' : ''}">
-                    <table class="proc-detail-table">
-                        <tbody>
-                            ${productItems.map(si => {
-                                const store = allGroupStores.find(s => s.id === si.StoreID);
-                                const sName = store?.store_name || store?.Name || si.StoreID;
-                                const req = (Number(si.定数 || 0) - Number(si.個数 || 0)).toFixed(1);
-                                const sUnit = si.display_unit || master?.unit || '';
-                                return `
-                                    <tr class="proc-store-row">
-                                        <td style="width: 200px;"><span class="proc-store-name">${sName}</span></td>
-                                        <td style="width: 150px; text-align: center;"><span class="proc-req-qty">不足 ${req}</span> <small>${sUnit}</small></td>
-                                        <td>
-                                            <div class="proc-input-container">
-                                                <input type="number" step="any" class="proc-buy-input" placeholder="0" data-si-id="${si.id}" value="${req}">
-                                                <button class="btn btn-primary btn-confirm-buy" data-si-id="${si.id}">購入完了</button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                `;
-                            }).join('')}
-                        </tbody>
-                    </table>
+            `;
+        } else {
+            // "Group-wide": Keep current aggregate + accordion behavior
+            html += `
+                <div class="item-block" style="border-bottom: 1px solid var(--border);">
+                    <div class="item-banner" data-id="${productId}">
+                        <div class="banner-content">
+                            <div class="title">
+                                <i class="fas ${isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'}" style="width:1rem; font-size:0.8rem; color:var(--text-secondary);"></i>
+                                <i class="fas fa-box" style="color:var(--primary); font-size:0.9rem;"></i>
+                                ${name}
+                            </div>
+                            <div class="total-req">計 ${totalReq} ${representativeUnit} 必要</div>
+                        </div>
+                    </div>
+                    <div class="proc-detail-container ${isCollapsed ? 'hidden' : ''}">
+                        <table class="proc-detail-table">
+                            <tbody>
+                                ${productItems.map(si => {
+                                    const store = allGroupStores.find(s => s.id === si.StoreID);
+                                    const sName = store?.store_name || store?.Name || si.StoreID;
+                                    const diff = Number(si.定数 || 0) - Number(si.個数 || 0);
+                                    const req = Math.round(Math.max(0, diff));
+                                    const sUnit = si.display_unit || master?.unit || '';
+                                    return `
+                                        <tr class="proc-store-row">
+                                            <td style="width: 200px;"><span class="proc-store-name">${sName}</span></td>
+                                            <td style="width: 150px; text-align: center;"><span class="proc-req-qty">不足 ${req}</span> <small>${sUnit}</small></td>
+                                            <td>
+                                                <div class="proc-input-container">
+                                                    <input type="number" step="1" class="proc-buy-input" placeholder="0" data-si-id="${si.id}" value="${req}">
+                                                    <button class="btn btn-primary btn-confirm-buy" data-si-id="${si.id}">購入完了</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
-        `;
+            `;
+        }
     });
 
     main.innerHTML = html;
 
-    // Listeners for Accordion
+    // Listeners for Accordion (Only in group mode)
     main.querySelectorAll('.item-banner').forEach(banner => {
         banner.onclick = () => {
             const id = banner.dataset.id;
