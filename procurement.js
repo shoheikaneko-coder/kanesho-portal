@@ -308,14 +308,17 @@ function renderItemRow(si, master, showStoreName = false) {
         locHtml = `<div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.1rem;"><i class="fas fa-map-marker-alt" style="font-size:0.6rem;"></i> 移動元の棚: <span style="font-weight:700; color:#475569;">${sourceLoc}</span></div>`;
     }
     
+    const itemName = si.display_name || master?.name || '品目不明';
+    
     return `
         <div class="proc-row-card" style="${selectedCategory === 'transfer' ? 'padding-right: 1rem;' : ''}">
             <div style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 150px;">
                 <div style="width: 40px; height: 40px; background: #f8fafc; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--primary); border: 1px solid #e2e8f0;">
-                    <i class="fas ${showStoreName ? 'fa-store' : 'fa-box'}" style="font-size:1.1rem;"></i>
+                    <i class="fas fa-box" style="font-size:1.1rem;"></i>
                 </div>
                 <div>
-                    <div style="font-weight: 800; font-size: 0.95rem; color: #1e293b;">${showStoreName ? sName : (master?.name || '品目不明')}</div>
+                    <div style="font-weight: 800; font-size: 0.95rem; color: #1e293b;">${itemName}</div>
+                    ${showStoreName ? `<div style="font-size: 0.7rem; color: #64748b; font-weight: 700;"><i class="fas fa-store"></i> 届け先: ${sName}</div>` : ''}
                     ${selectedCategory === 'transfer' ? locHtml : ''}
                     <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700;">
                         必要: <span style="color:var(--danger); font-size: 1rem; font-family: monospace;">${req}</span> ${sUnit}
