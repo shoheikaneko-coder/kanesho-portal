@@ -690,6 +690,9 @@ async function refreshDashboard() {
 }
 
 function renderAllTabs(records, goals, totalOpH, totalCkH, daily, storeMap, storeFilter, userMap, dateFrom, dateTo) {
+    // グローバル変数の初期化
+    window.__dashCharts = window.__dashCharts || {};
+    
     // 既存のKPI更新
     renderKPIs(records, goals, totalOpH, totalCkH);
     
