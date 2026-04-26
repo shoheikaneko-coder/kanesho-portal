@@ -14,7 +14,7 @@ export const procurementPageHtml = `
         
         <!-- Sidebar: Vendor Selection -->
         <aside id="proc-sidebar" class="glass-panel" style="width: 260px; display: flex; flex-direction: column; gap: 1rem; padding: 1.2rem; flex-shrink: 0;">
-            <div>
+            <div id="proc-scope-config">
                 <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem;">表示設定</label>
                 <div class="scope-toggle" style="display: flex; background: var(--surface-darker); padding: 3px; border-radius: 8px; border: 1px solid var(--border);">
                     <button id="btn-scope-store" class="toggle-btn active" style="flex: 1; padding: 0.4rem; font-size: 0.7rem; font-weight: 800; border-radius: 6px; border: none; cursor: pointer;">自店舗のみ</button>
@@ -110,7 +110,6 @@ let currentUser = null;
 
 export async function initProcurementPage(user) {
     currentUser = user;
-    selectedScope = 'store';
     selectedVendor = null;
     collapsedItems.clear();
 
@@ -120,6 +119,17 @@ export async function initProcurementPage(user) {
         
         // デフォルトですべて畳んだ状態にする
         procurementData.forEach(si => collapsedItems.add(si.ProductID));
+
+        // CK社員の場合はデフォルトでグループ表示にし、設定を隠す
+        if (currentStore?.store_type === 'CK') {
+            selectedScope = 'group';
+            const scopeConfig = document.getElementById('proc-scope-config');
+            if (scopeConfig) scopeConfig.style.display = 'none';
+            const badge = document.getElementById('proc-scope-badge');
+            if (badge) badge.textContent = 'グループ全体';
+        } else {
+            selectedScope = 'store';
+        }
 
         setupEventListeners();
         render();
