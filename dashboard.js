@@ -379,7 +379,9 @@ async function refreshDashboard() {
 
     const dtbody = document.getElementById('daily-table-body');
     const mtbody = document.getElementById('monthly-pivot-body');
+    const loadingOverlay = document.getElementById('dash-loading-overlay');
     
+    if (loadingOverlay) loadingOverlay.style.display = 'flex';
     if (dtbody) dtbody.innerHTML = '<tr><td colspan="13" style="text-align:center; padding:2rem;">集計中...</td></tr>';
     if (mtbody) mtbody.innerHTML = '<tr><td colspan="12" style="text-align:center; padding:2rem;">集計中...</td></tr>';
 
@@ -522,7 +524,10 @@ async function refreshDashboard() {
             let inT = null, breakStartT = null, totalBreakMs = 0, currentNormalizedSid = "", inDate = null;
 
             recs.forEach(r => {
-                const ts = r.timestamp || r.date || r.Date || "";
+                let ts = r.timestamp || r.date || r.Date || "";
+                if (ts && typeof ts.toDate === 'function') ts = ts.toDate().toISOString();
+                else ts = String(ts);
+                
                 if (!ts) return;
                 const type = String(r.type || r.Type || '').toLowerCase();
                 const sid = r.normalized_sid;
@@ -530,9 +535,8 @@ async function refreshDashboard() {
 
                 if (isImported) {
                     const h = Number(r.total_labor_hours || r.TotalLaborHours || 0);
-                    const rawYm = r.year_month || r.YearMonth || ts.substring(0, 7);
-                    const ym = rawYm.replace(/\\//g, '-');
-                    // インポートは月単位のため、日別には概算で均等割りはしない（今回は日別レポートの対象外とするか、実装しない）
+                    const rawYm = r.year_month || r.YearMonth || String(ts).substring(0, 7);
+                    const ym = String(rawYm).replace(/\//g, '-');
                     const rawSid = String(r.store_id || r.StoreID || "").trim();
                     const si = storeMap[rawSid];
                     const normSid = (si && si.id) ? si.id : rawSid;
@@ -551,34 +555,45 @@ async function refreshDashboard() {
                 } else {
                     if (type === 'in' || type.includes('check_in') || type.includes('出勤')) {
                         inT = new Date(ts);
-                        totalBreakMs = 0; breakStartT = null; currentNormalizedSid = sid;
-                        const jstInT = new Date(inT.getTime() + (9 * 60 * 60 * 1000));
-                        inDate = r.date || jstInT.toISOString().substring(0, 10);
+                        if (!isNaN(inT.getTime())) {
+                            totalBreakMs = 0; breakStartT = null; currentNormalizedSid = sid;
+                            const jstInT = new Date(inT.getTime() + (9 * 60 * 60 * 1000));
+                            inDate = r.date || jstInT.toISOString().substring(0, 10);
+                        } else {
+                            inT = null;
+                        }
                     } else if (type.includes('break_start') || type.includes('休憩開始')) {
                         breakStartT = new Date(ts);
+                        if (isNaN(breakStartT.getTime())) breakStartT = null;
                     } else if ((type.includes('break_end') || type.includes('休憩終了')) && breakStartT) {
-                        totalBreakMs += (new Date(ts) - breakStartT); breakStartT = null;
+                        const boT = new Date(ts);
+                        if (!isNaN(boT.getTime())) {
+                            totalBreakMs += (boT - breakStartT);
+                        }
+                        breakStartT = null;
                     } else if ((type === 'out' || type.includes('check_out') || type.includes('退勤')) && inT) {
                         const outT = new Date(ts);
-                        const netMs = Math.max(0, (outT - inT) - totalBreakMs);
-                        const h = netMs / 3600000;
-                        const shiftDate = inDate || r.date || new Date(inT.getTime() + (9 * 60 * 60 * 1000)).toISOString().substring(0, 10);
-                        const ym = shiftDate.substring(0, 7).replace(/\\//g, '-');
-                        const finalSid = currentNormalizedSid || sid;
+                        if (!isNaN(outT.getTime())) {
+                            const netMs = Math.max(0, (outT - inT) - totalBreakMs);
+                            const h = netMs / 3600000;
+                            const shiftDate = inDate || r.date || new Date(inT.getTime() + (9 * 60 * 60 * 1000)).toISOString().substring(0, 10);
+                            const ym = shiftDate.substring(0, 7).replace(/\\//g, '-');
+                            const finalSid = currentNormalizedSid || sid;
 
-                        if (shiftDate >= dateFrom && shiftDate <= dateTo) {
-                            if (isCKStaff && staffGroupName) {
-                                const gkey = `${staffGroupName}__${ym}`;
-                                const dgkey = `${staffGroupName}__${shiftDate}`;
-                                ckHoursPool[gkey] = (ckHoursPool[gkey] || 0) + h;
-                                dailyCkHoursPool[dgkey] = (dailyCkHoursPool[dgkey] || 0) + h;
-                            } else {
-                                const fallbackSid = (staffData ? (staffData.StoreID || staffData.StoreId) : '') || 'unknown';
-                                const sidToUse = finalSid || fallbackSid;
-                                const k = `${ym}__${sidToUse}`;
-                                const dk = `${shiftDate}__${sidToUse}`;
-                                laborMap[k] = (laborMap[k] || 0) + h;
-                                dailyLaborMap[dk] = (dailyLaborMap[dk] || 0) + h;
+                            if (shiftDate >= dateFrom && shiftDate <= dateTo) {
+                                if (isCKStaff && staffGroupName) {
+                                    const gkey = `${staffGroupName}__${ym}`;
+                                    const dgkey = `${staffGroupName}__${shiftDate}`;
+                                    ckHoursPool[gkey] = (ckHoursPool[gkey] || 0) + h;
+                                    dailyCkHoursPool[dgkey] = (dailyCkHoursPool[dgkey] || 0) + h;
+                                } else {
+                                    const fallbackSid = (staffData ? (staffData.StoreID || staffData.StoreId) : '') || 'unknown';
+                                    const sidToUse = finalSid || fallbackSid;
+                                    const k = `${ym}__${sidToUse}`;
+                                    const dk = `${shiftDate}__${sidToUse}`;
+                                    laborMap[k] = (laborMap[k] || 0) + h;
+                                    dailyLaborMap[dk] = (dailyLaborMap[dk] || 0) + h;
+                                }
                             }
                         }
                         inT = null; totalBreakMs = 0; breakStartT = null; inDate = null;
