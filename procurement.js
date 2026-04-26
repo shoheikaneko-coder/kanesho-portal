@@ -75,17 +75,20 @@ export const procurementPageHtml = `
             .item-banner .title { font-weight: 800; font-size: 0.95rem; display: flex; align-items: center; gap: 0.8rem; color: #334155; }
             .item-banner .total-req { font-size: 0.75rem; font-weight: 800; color: var(--primary); background: white; padding: 0.3rem 0.8rem; border-radius: 20px; border: 1px solid #fee2e2; }
 
-            .proc-detail-table { width: 100%; border-collapse: collapse; background: white; }
-            .proc-detail-table td { padding: 1rem 1.2rem; border-bottom: 1px solid var(--border); }
-            .proc-store-row:hover { background: #f8fafc; }
-            .proc-store-name { font-weight: 700; font-size: 0.9rem; color: var(--text-primary); }
-            .proc-req-qty { font-family: monospace; font-weight: 800; color: var(--danger); font-size: 1rem; }
+            /* Hide default arrows */
+            input[type="number"]::-webkit-inner-spin-button, 
+            input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+            input[type="number"] { -moz-appearance: textfield; }
+
+            .proc-row-card { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); background: white; transition: all 0.2s; }
+            .proc-row-card:hover { background: #f8fafc; }
             
-            .proc-input-container { display: flex; align-items: center; gap: 0.5rem; justify-content: flex-end; }
-            .proc-buy-input { width: 80px; padding: 0.5rem; border: 2px solid #e2e8f0; border-radius: 8px; text-align: center; font-weight: 800; font-size: 1rem; color: var(--primary); outline: none; transition: border-color 0.2s; }
-            .proc-buy-input:focus { border-color: var(--primary); }
+            .stepper-container { display: flex; align-items: center; background: #f1f5f9; border-radius: 10px; padding: 2px; border: 1px solid #e2e8f0; }
+            .stepper-btn { width: 32px; height: 32px; border-radius: 8px; border: none; background: white; color: #64748b; cursor: pointer; font-weight: 800; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+            .stepper-btn:hover { background: var(--primary); color: white; }
+            .stepper-btn:active { transform: scale(0.95); }
             
-            .btn-confirm-buy { padding: 0.5rem 1rem; border-radius: 8px; font-weight: 800; font-size: 0.8rem; }
+            .proc-buy-input { width: 50px; border: none; background: transparent; text-align: center; font-weight: 800; font-size: 1.1rem; color: var(--primary); outline: none; }
             
             .item-banner.hidden + .proc-detail-container { display: none; }
             .proc-detail-container.hidden { display: none; }
@@ -207,6 +210,39 @@ function getBusinessDate(store) {
     return cutoff.toISOString().split('T')[0];
 }
 
+function renderItemRow(si, master, showStoreName = false) {
+    const store = allGroupStores.find(s => s.id === si.StoreID);
+    const sName = store?.store_name || store?.Name || si.StoreID;
+    const diff = Number(si.定数 || 0) - Number(si.個数 || 0);
+    const req = Math.round(Math.max(0, diff));
+    const sUnit = si.display_unit || master?.unit || '';
+
+    return `
+        <div class="proc-row-card">
+            <div style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 150px;">
+                <div style="width: 40px; height: 40px; background: #f8fafc; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--primary); border: 1px solid #e2e8f0;">
+                    <i class="fas ${showStoreName ? 'fa-store' : 'fa-box'}" style="font-size:1.1rem;"></i>
+                </div>
+                <div>
+                    <div style="font-weight: 800; font-size: 0.95rem; color: #1e293b;">${showStoreName ? sName : (master?.name || '品目不明')}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700;">
+                        必要: <span style="color:var(--danger); font-size: 1rem; font-family: monospace;">${req}</span> ${sUnit}
+                    </div>
+                </div>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div class="stepper-container">
+                    <button class="stepper-btn btn-minus" data-si-id="${si.id}"><i class="fas fa-minus"></i></button>
+                    <input type="number" step="1" class="proc-buy-input" placeholder="0" data-si-id="${si.id}" value="${req}">
+                    <button class="stepper-btn btn-plus" data-si-id="${si.id}"><i class="fas fa-plus"></i></button>
+                </div>
+                <button class="btn btn-primary btn-confirm-buy" data-si-id="${si.id}" style="padding: 0.6rem 1.2rem; font-size: 0.85rem; border-radius: 8px; font-weight: 800;">購入完了</button>
+            </div>
+        </div>
+    `;
+}
+
 function render() {
     const sidebar = document.getElementById('proc-vendor-list');
     const main = document.getElementById('proc-main-content');
@@ -277,8 +313,6 @@ function render() {
         const productItems = itemsByProduct[productId];
         const master = cachedItems.find(i => i.id === productId);
         const name = master?.name || productId;
-        
-        // 代表的な単位を取得（店舗別設定があれば優先、なければマスタ）
         const representativeUnit = productItems[0]?.display_unit || master?.unit || '';
         
         // Calculate Total Requirement (rounding each store's need)
@@ -291,36 +325,8 @@ function render() {
         const isSelfScope = selectedScope === 'store';
 
         if (isSelfScope) {
-            // "Only My Store": Flat layout, no accordion for faster input
-            const si = productItems[0];
-            const diff = Number(si.定数 || 0) - Number(si.個数 || 0);
-            const req = Math.round(Math.max(0, diff));
-            const sUnit = si.display_unit || master?.unit || '';
-            
-            html += `
-                <div class="item-block" style="border-bottom: 1px solid var(--border); padding: 0.8rem 1.5rem; background: white; transition: background 0.3s;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
-                        <div style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 200px;">
-                            <div style="width: 40px; height: 40px; background: #f1f5f9; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--primary);">
-                                <i class="fas fa-box" style="font-size:1.2rem;"></i>
-                            </div>
-                            <div>
-                                <div style="font-weight: 800; font-size: 1.05rem; color: #1e293b; margin-bottom: 0.2rem;">${name}</div>
-                                <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700;">
-                                    必要数: <span style="color:var(--danger); font-size: 1rem; font-family: monospace;">${req}</span> ${sUnit}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="proc-input-container" style="background: #f8fafc; padding: 0.6rem; border-radius: 12px; border: 1px solid #e2e8f0;">
-                            <span style="font-size: 0.7rem; font-weight: 800; color: #64748b; margin-right: 0.5rem;">購入数</span>
-                            <input type="number" step="1" class="proc-buy-input" placeholder="0" data-si-id="${si.id}" value="${req}" style="border-color: #cbd5e1; height: 42px; width: 80px; text-align: center; border-radius: 8px; font-weight: 800;">
-                            <button class="btn btn-primary btn-confirm-buy" data-si-id="${si.id}" style="height: 42px; padding: 0 1.2rem; font-size: 0.85rem; border-radius: 8px; font-weight: 800;">購入完了</button>
-                        </div>
-                    </div>
-                </div>
-            `;
+            html += renderItemRow(productItems[0], master, false);
         } else {
-            // "Group-wide": Keep current aggregate + accordion behavior
             html += `
                 <div class="item-block" style="border-bottom: 1px solid var(--border);">
                     <div class="item-banner" data-id="${productId}">
@@ -333,30 +339,8 @@ function render() {
                             <div class="total-req">計 ${totalReq} ${representativeUnit} 必要</div>
                         </div>
                     </div>
-                    <div class="proc-detail-container ${isCollapsed ? 'hidden' : ''}">
-                        <table class="proc-detail-table">
-                            <tbody>
-                                ${productItems.map(si => {
-                                    const store = allGroupStores.find(s => s.id === si.StoreID);
-                                    const sName = store?.store_name || store?.Name || si.StoreID;
-                                    const diff = Number(si.定数 || 0) - Number(si.個数 || 0);
-                                    const req = Math.round(Math.max(0, diff));
-                                    const sUnit = si.display_unit || master?.unit || '';
-                                    return `
-                                        <tr class="proc-store-row">
-                                            <td style="width: 200px;"><span class="proc-store-name">${sName}</span></td>
-                                            <td style="width: 150px; text-align: center;"><span class="proc-req-qty">不足 ${req}</span> <small>${sUnit}</small></td>
-                                            <td>
-                                                <div class="proc-input-container">
-                                                    <input type="number" step="1" class="proc-buy-input" placeholder="0" data-si-id="${si.id}" value="${req}">
-                                                    <button class="btn btn-primary btn-confirm-buy" data-si-id="${si.id}">購入完了</button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    `;
-                                }).join('')}
-                            </tbody>
-                        </table>
+                    <div class="proc-detail-container ${isCollapsed ? 'hidden' : ''}" style="background: #f8fafc;">
+                        ${productItems.map(si => renderItemRow(si, master, true)).join('')}
                     </div>
                 </div>
             `;
@@ -365,13 +349,27 @@ function render() {
 
     main.innerHTML = html;
 
-    // Listeners for Accordion (Only in group mode)
+    // Listeners for Accordion
     main.querySelectorAll('.item-banner').forEach(banner => {
         banner.onclick = () => {
             const id = banner.dataset.id;
             if (collapsedItems.has(id)) collapsedItems.delete(id);
             else collapsedItems.add(id);
             render();
+        };
+    });
+
+    // Listeners for Stepper Buttons
+    main.querySelectorAll('.stepper-btn').forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            const sid = btn.dataset.siId;
+            const input = main.querySelector(`.proc-buy-input[data-si-id="${sid}"]`);
+            if (!input) return;
+            let val = parseInt(input.value) || 0;
+            if (btn.classList.contains('btn-plus')) val++;
+            else val = Math.max(0, val - 1);
+            input.value = val;
         };
     });
 
