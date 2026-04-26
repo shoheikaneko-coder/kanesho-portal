@@ -1488,8 +1488,10 @@ function handleQuickAddSearch(query) {
 
     const existingPids = new Set(inventoryData.map(i => String(i.ProductID)));
     const matches = cachedItems.filter(i => {
-        const nameMatch = i.name.toLowerCase().includes(query.toLowerCase());
-        if (!nameMatch) return false;
+        const q = query.toLowerCase();
+        const nameMatch = (i.name || '').toLowerCase().includes(q);
+        const furiganaMatch = (i.furigana || i.ふりがな || '').toLowerCase().includes(q);
+        if (!nameMatch && !furiganaMatch) return false;
         
         // Exclude menus
         const menu = cachedMenus.find(m => String(m.item_id) === String(i.id));
@@ -1577,8 +1579,10 @@ function handleMasterSearch(query) {
     
     // Find matching items (excluding sales menus as per user request)
     const matches = cachedItems.filter(i => {
-        const nameMatch = i.name.toLowerCase().includes(query.toLowerCase());
-        if (!nameMatch) return false;
+        const q = query.toLowerCase();
+        const nameMatch = (i.name || '').toLowerCase().includes(q);
+        const furiganaMatch = (i.furigana || i.ふりがな || '').toLowerCase().includes(q);
+        if (!nameMatch && !furiganaMatch) return false;
         
         // Exclude menus
         const menu = cachedMenus.find(m => String(m.item_id) === String(i.id));
@@ -1739,7 +1743,8 @@ function renderSettingsItems() {
                 if (settingsSelectedCategory !== 'ALL' && itemCat !== settingsSelectedCategory) return false;
                 if (settingsSearchQuery) {
                     const q = settingsSearchQuery.toLowerCase();
-                    if (!itemName.includes(q)) return false;
+                    const furigana = (i.furigana || i.ふりがな || '').toLowerCase();
+                    if (!itemName.includes(q) && !furigana.includes(q)) return false;
                 }
                 return true;
             });
@@ -1800,7 +1805,12 @@ function renderSettingsItems() {
             // Search Filter
             if (settingsSearchQuery) {
                 const q = settingsSearchQuery.toLowerCase();
-                data = data.filter(d => (productMap[d.ProductID] || '').toLowerCase().includes(q));
+                data = data.filter(d => {
+                    const name = (productMap[d.ProductID] || '').toLowerCase();
+                    const raw = cachedItems.find(i => String(i.id) === String(d.ProductID));
+                    const furigana = (raw?.furigana || raw?.ふりがな || '').toLowerCase();
+                    return name.includes(q) || furigana.includes(q);
+                });
             }
 
             data.sort((a, b) => (productMap[a.ProductID] || '').localeCompare(productMap[b.ProductID] || ''));
