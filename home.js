@@ -937,7 +937,7 @@ async function renderPerformanceSummary(user, isMobile = false) {
             // 深夜退勤を考慮し、対象日(ymd)または翌日(nextDayYmd)のデータを取得
             if (normDate !== ymd && normDate !== nextDayYmd) return;
 
-            const staffId = String(d.staff_id || d.staff_code || d.staff_name || d.name || "").trim();
+            const staffId = String(d.staff_id || d.staff_code || d.EmployeeCode || d.staff_name || d.name || "").trim();
             const rawSid = String(d.store_id || d.labor_store_id || d.StoreID || "").trim();
             const si = storeMap[rawSid];
             const sid = (si && si.id) ? si.id : rawSid;
@@ -950,7 +950,7 @@ async function renderPerformanceSummary(user, isMobile = false) {
 
         Object.values(perStaff).forEach(recs => {
             const first = recs[0];
-            const staffKey = String(first.staff_id || first.staff_code || first.staff_name || first.name || "").trim();
+            const staffKey = String(first.staff_id || first.staff_code || first.EmployeeCode || first.staff_name || first.name || "").trim();
             const staffData = userMap[staffKey] || {};
             const staffStoreId = String(staffData.StoreID || staffData.StoreId || staffData.store_id || "").trim();
             const homeStore = storeMap[staffStoreId];
@@ -961,49 +961,63 @@ async function renderPerformanceSummary(user, isMobile = false) {
             // 営業社員（非CK所属）のみ営業労働hにカウント
             if (isCKStaff) return;
 
-            const imported = recs.find(r => r.total_labor_hours !== undefined);
-            if (imported) {
-                recs.forEach(r => {
+            // 全打刻/インポートデータを日付順に処理
+            recs.sort((a,b) => new Date(a.timestamp || a.date || 0) - new Date(b.timestamp || b.date || 0));
+            let inT = null, breakStartT = null, totalBreakMs = 0, currentNormalizedSid = "";
+
+            recs.forEach(r => {
+                const ts = r.timestamp || r.date || r.Date || "";
+                if (!ts) return;
+                const type = String(r.type || r.Type || '').toLowerCase();
+                const sid = r.normalized_sid;
+                const isImported = (r.total_labor_hours !== undefined || r.TotalLaborHours !== undefined);
+
+                if (isImported) {
+                    // インポートデータ(集計済み)の処理
                     if (r.date === ymd) {
-                        actual.total_labor_hours += Number(r.total_labor_hours || 0);
+                        const h = Number(r.total_labor_hours || r.TotalLaborHours || 0);
+                        const rawSid = String(r.store_id || r.StoreID || "").trim();
+                        const si = storeMap[rawSid];
+                        const normSid = (si && si.id) ? si.id : rawSid;
+                        const fallbackSid = (staffData ? (staffData.StoreID || staffData.StoreId) : '') || 'unknown';
+                        const finalSid = normSid || fallbackSid;
+
+                        if (finalSid === storeId) {
+                            actual.total_labor_hours += h;
+                        }
                     }
-                });
-            } else {
-                recs.sort((a,b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
-                let inT = null, breakStartT = null, totalBreakMs = 0;
-
-                recs.forEach(r => {
-                    const ts = r.timestamp || r.date || r.Date || "";
-                    if (!ts) return;
-                    const type = String(r.type || r.Type || '').toLowerCase();
-                    const sid = r.normalized_sid;
-
-                    if (sid !== storeId) return;
-
-                    if (type === 'check_in' || type.includes('in') || type.includes('出勤')) {
+                } else {
+                    // 通常の打刻ペア処理
+                    if (type === 'in' || type.includes('check_in') || type.includes('出勤')) {
                         inT = new Date(ts);
                         totalBreakMs = 0;
                         breakStartT = null;
+                        currentNormalizedSid = sid;
                     } else if (type.includes('break_start') || type.includes('休憩開始')) {
                         breakStartT = new Date(ts);
                     } else if ((type.includes('break_end') || type.includes('休憩終了')) && breakStartT) {
                         totalBreakMs += (new Date(ts) - breakStartT);
                         breakStartT = null;
-                    } else if ((type === 'check_out' || type.includes('out') || type.includes('退勤')) && inT) {
+                    } else if ((type === 'out' || type.includes('check_out') || type.includes('退勤')) && inT) {
                         const outT = new Date(ts);
                         const netMs = Math.max(0, (outT - inT) - totalBreakMs);
+                        const h = netMs / 3600000;
                         
-                        // 日本時間(JST)ベースで日付を判定 (dateがあれば優先)
                         const jstInT = new Date(inT.getTime() + (9 * 60 * 60 * 1000));
                         const shiftDate = r.date || jstInT.toISOString().substring(0, 10);
+                        const finalSid = currentNormalizedSid || sid;
 
                         if (shiftDate === ymd) {
-                            actual.total_labor_hours += (netMs / 3600000);
+                            const fallbackSid = (staffData ? (staffData.StoreID || staffData.StoreId) : '') || 'unknown';
+                            const sidToUse = finalSid || fallbackSid;
+                            if (sidToUse === storeId) {
+                                actual.total_labor_hours += h;
+                            }
                         }
                         inT = null; totalBreakMs = 0; breakStartT = null;
                     }
-                });
-            }
+                }
+            });
         });
 
         // 共通関数から取得した目標値を変数に展開
