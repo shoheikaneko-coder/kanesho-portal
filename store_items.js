@@ -193,12 +193,18 @@ function renderFormView(container) {
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem;">
                         <div>
                             <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.85rem; color: var(--text-secondary);">不足時のアクション</label>
-                            <div style="display: flex; gap: 0.8rem; margin-top: 0.3rem;">
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.8rem; margin-top: 0.3rem;">
                                 <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; font-size: 0.9rem;">
                                     <input type="radio" name="si-shortage-action" id="si-action-purchase" value="purchase" checked> 仕入れ
                                 </label>
                                 <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; font-size: 0.9rem;">
-                                    <input type="radio" name="si-shortage-action" id="si-action-prep" value="prep"> 仕込み
+                                    <input type="radio" name="si-shortage-action" id="si-action-prep" value="prep"> 店舗仕込み
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; font-size: 0.9rem;">
+                                    <input type="radio" name="si-shortage-action" id="si-action-ck-prep" value="ck_prep"> CK仕込み
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; font-size: 0.9rem;">
+                                    <input type="radio" name="si-shortage-action" id="si-action-transfer" value="transfer"> 移動
                                 </label>
                             </div>
                         </div>
@@ -324,7 +330,13 @@ function renderTableRows() {
         const displayUnit = si.display_unit || item?.unit || '-';
         const convAmt = si.unit_conversion_amount || 1;
         const unitLabel = si.display_unit ? `${si.display_unit} (×${convAmt})` : (item?.unit || '-');
-        const actionLabel = si.shortage_action_type === 'prep' ? '<span class="badge" style="background:#eff6ff;color:#2563eb;border:1px solid #dbeafe;">仕込み</span>' : '<span class="badge" style="background:#f0fdf4;color:#10b981;border:1px solid #bbf7d0;">仕入れ</span>';
+        let actionLabel = '';
+        switch(si.shortage_action_type) {
+            case 'prep': actionLabel = '<span class="badge" style="background:#eff6ff;color:#2563eb;border:1px solid #dbeafe;">店舗仕込み</span>'; break;
+            case 'ck_prep': actionLabel = '<span class="badge" style="background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe;">CK仕込み</span>'; break;
+            case 'transfer': actionLabel = '<span class="badge" style="background:#fff7ed;color:#ea580c;border:1px solid #ffedd5;">移動</span>'; break;
+            default: actionLabel = '<span class="badge" style="background:#f0fdf4;color:#10b981;border:1px solid #bbf7d0;">仕入れ</span>';
+        }
         tr.innerHTML = `
             <td style="padding: 1.2rem;">
                 <div style="font-weight: 600;">${item?.name || '不明'}</div>

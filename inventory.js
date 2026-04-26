@@ -286,7 +286,8 @@ export const inventoryPageHtml = `
                         <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">不足時アクション</label>
                         <select id="modal-action" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 1px solid var(--border); font-weight: 600;">
                             <option value="purchase">仕入れ</option>
-                            <option value="prep">仕込み</option>
+                            <option value="prep">店舗仕込み</option>
+                            <option value="ck_prep">CK仕込み</option>
                             <option value="transfer">移動</option>
                         </select>
                     </div>

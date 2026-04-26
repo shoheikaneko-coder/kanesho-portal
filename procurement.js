@@ -13,17 +13,36 @@ export const procurementPageHtml = `
     <div id="procurement-app" class="animate-fade-in" style="display: flex; height: calc(100vh - 120px); gap: 1rem; overflow: hidden; padding: 0 1rem;">
         
         <!-- Sidebar: Vendor Selection -->
-        <aside id="proc-sidebar" class="glass-panel" style="width: 260px; display: flex; flex-direction: column; gap: 1rem; padding: 1.2rem; flex-shrink: 0;">
+        <aside id="proc-sidebar" class="glass-panel" style="width: 260px; display: flex; flex-direction: column; gap: 1.5rem; padding: 1.2rem; flex-shrink: 0;">
+            
+            <div id="proc-category-config">
+                <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em;">業務区分</label>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                    <button class="cat-btn" data-cat="purchase" style="display: flex; align-items: center; gap: 0.8rem; padding: 0.8rem 1rem; border-radius: 10px; border: 1px solid var(--border); background: white; cursor: pointer; font-weight: 700; font-size: 0.85rem; transition: all 0.2s; color: var(--text-secondary);">
+                        <i class="fas fa-shopping-cart" style="width: 1.2rem;"></i> 仕入れ
+                    </button>
+                    <button class="cat-btn" data-cat="store_prep" style="display: flex; align-items: center; gap: 0.8rem; padding: 0.8rem 1rem; border-radius: 10px; border: 1px solid var(--border); background: white; cursor: pointer; font-weight: 700; font-size: 0.85rem; transition: all 0.2s; color: var(--text-secondary);">
+                        <i class="fas fa-utensils" style="width: 1.2rem;"></i> 店舗仕込み
+                    </button>
+                    <button class="cat-btn" data-cat="ck_prep" style="display: flex; align-items: center; gap: 0.8rem; padding: 0.8rem 1rem; border-radius: 10px; border: 1px solid var(--border); background: white; cursor: pointer; font-weight: 700; font-size: 0.85rem; transition: all 0.2s; color: var(--text-secondary);">
+                        <i class="fas fa-industry" style="width: 1.2rem;"></i> CK仕込み
+                    </button>
+                    <button class="cat-btn" data-cat="transfer" style="display: flex; align-items: center; gap: 0.8rem; padding: 0.8rem 1rem; border-radius: 10px; border: 1px solid var(--border); background: white; cursor: pointer; font-weight: 700; font-size: 0.85rem; transition: all 0.2s; color: var(--text-secondary);">
+                        <i class="fas fa-exchange-alt" style="width: 1.2rem;"></i> 移動
+                    </button>
+                </div>
+            </div>
+
             <div id="proc-scope-config">
-                <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem;">表示設定</label>
+                <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">表示設定</label>
                 <div class="scope-toggle" style="display: flex; background: var(--surface-darker); padding: 3px; border-radius: 8px; border: 1px solid var(--border);">
                     <button id="btn-scope-store" class="toggle-btn active" style="flex: 1; padding: 0.4rem; font-size: 0.7rem; font-weight: 800; border-radius: 6px; border: none; cursor: pointer;">自店舗のみ</button>
                     <button id="btn-scope-group" class="toggle-btn" style="flex: 1; padding: 0.4rem; font-size: 0.7rem; font-weight: 800; border-radius: 6px; border: none; cursor: pointer;">グループ全体</button>
                 </div>
             </div>
 
-            <div style="flex: 1; overflow-y: auto;">
-                <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem; margin-top: 1rem;">仕入先（業者）</label>
+            <div id="proc-vendor-section" style="flex: 1; overflow-y: auto; display: none;">
+                <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem; margin-top: 1rem; text-transform: uppercase; letter-spacing: 0.05em;">仕入先（業者）</label>
                 <div id="proc-vendor-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
                     <!-- Vendors injected here -->
                 </div>
@@ -40,6 +59,9 @@ export const procurementPageHtml = `
                 </div>
                 
                 <div style="display: flex; align-items: center; gap: 0.8rem;">
+                    <button id="btn-proc-history" class="btn btn-outline" style="display: none; padding: 0.4rem 0.8rem; font-size: 0.75rem; font-weight: 800; border-color: var(--primary); color: var(--primary);">
+                        <i class="fas fa-history"></i> 移動履歴
+                    </button>
                     <button id="btn-proc-refresh" class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.75rem; font-weight: 800;">
                         <i class="fas fa-sync-alt"></i> 更新
                     </button>
@@ -68,6 +90,9 @@ export const procurementPageHtml = `
             .vendor-item.active { background: white; color: var(--primary); border-color: var(--primary); box-shadow: var(--shadow-sm); }
             .vendor-item .count { font-size: 0.7rem; background: #f1f5f9; padding: 2px 8px; border-radius: 10px; }
             .vendor-item.active .count { background: var(--primary); color: white; }
+
+            .cat-btn.active { background: var(--primary) !important; color: white !important; border-color: var(--primary) !important; box-shadow: var(--shadow-md); }
+            .cat-btn:hover:not(.active) { background: #f8fafc; border-color: var(--primary); color: var(--primary); }
 
             .item-banner { background: #f1f5f9; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; padding: 0.8rem 1.2rem; cursor: pointer; user-select: none; }
             .item-banner:hover { background: #e2e8f0; }
@@ -98,6 +123,7 @@ export const procurementPageHtml = `
 
 // State
 let selectedScope = 'store'; // 'store' or 'group'
+let selectedCategory = null; // 'purchase', 'store_prep', 'ck_prep', 'transfer'
 let selectedVendor = null;
 let allGroupStores = [];    // Stores in the same group
 let currentStore = null;    // Current user's store object
@@ -181,6 +207,21 @@ function setupEventListeners() {
     const btnGroup = document.getElementById('btn-scope-group');
     const btnRefresh = document.getElementById('btn-proc-refresh');
 
+    // Business Category Buttons
+    document.querySelectorAll('.cat-btn').forEach(btn => {
+        btn.onclick = () => {
+            selectedCategory = btn.dataset.cat;
+            selectedVendor = null; // Reset vendor when category changes
+            document.querySelectorAll('.cat-btn').forEach(b => b.classList.toggle('active', b === btn));
+            
+            // Show/Hide Vendor Sidebar Section (only for Purchase)
+            const vendorSection = document.getElementById('proc-vendor-section');
+            if (vendorSection) vendorSection.style.display = selectedCategory === 'purchase' ? 'block' : 'none';
+            
+            render();
+        };
+    });
+
     if (btnStore) btnStore.onclick = () => {
         selectedScope = 'store';
         btnStore.classList.add('active');
@@ -203,6 +244,9 @@ function setupEventListeners() {
         render();
         await showLoading(false);
     };
+
+    const btnHistory = document.getElementById('btn-proc-history');
+    if (btnHistory) btnHistory.onclick = showTransferHistory;
 }
 
 function showLoading(show) {
@@ -227,8 +271,38 @@ function renderItemRow(si, master, showStoreName = false) {
     const req = Math.round(Math.max(0, diff));
     const sUnit = si.display_unit || master?.unit || '';
 
+    // Action specific labels
+    const actionLabels = { purchase: '購入完了', store_prep: '仕込み完了', ck_prep: '仕込み完了', transfer: '移動完了' };
+    const btnLabel = actionLabels[selectedCategory] || '完了';
+
+    let transferUi = '';
+    if (selectedCategory === 'transfer') {
+        // Find other stores that have this product and their stock
+        const otherStores = allGroupStores.filter(s => s.id !== si.StoreID);
+        const sourceOptions = otherStores.map(s => {
+            const sourceItem = procurementData.find(d => d.StoreID === s.id && d.ProductID === si.ProductID);
+            const stock = Number(sourceItem?.個数 || 0);
+            const sNameShort = s.store_name || s.Name;
+            return { id: s.id, name: sNameShort, stock };
+        }).sort((a, b) => b.stock - a.stock); // Most stock first
+
+        // Default to the store with most stock (usually CK)
+        const defaultSource = sourceOptions[0];
+        const isOutOfStock = !defaultSource || defaultSource.stock <= 0;
+
+        transferUi = `
+            <div style="margin-right: 1rem; display: flex; flex-direction: column; gap: 0.2rem;">
+                <label style="font-size: 0.65rem; font-weight: 800; color: var(--text-secondary);">移動元店舗</label>
+                <select class="source-store-select" data-si-id="${si.id}" style="padding: 0.3rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.8rem; font-weight: 700; min-width: 120px;">
+                    ${sourceOptions.map(o => `<option value="${o.id}" ${o.stock <= 0 ? 'disabled' : ''}>${o.name} (残:${o.stock})</option>`).join('')}
+                </select>
+                ${isOutOfStock ? '<span style="font-size: 0.6rem; color: var(--danger); font-weight: 800;">移動元に在庫がありません</span>' : ''}
+            </div>
+        `;
+    }
+
     return `
-        <div class="proc-row-card">
+        <div class="proc-row-card" style="${selectedCategory === 'transfer' ? 'padding-right: 1rem;' : ''}">
             <div style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 150px;">
                 <div style="width: 40px; height: 40px; background: #f8fafc; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--primary); border: 1px solid #e2e8f0;">
                     <i class="fas ${showStoreName ? 'fa-store' : 'fa-box'}" style="font-size:1.1rem;"></i>
@@ -241,13 +315,16 @@ function renderItemRow(si, master, showStoreName = false) {
                 </div>
             </div>
             
-            <div style="display: flex; align-items: center; gap: 1rem;">
+            <div style="display: flex; align-items: center; gap: 0.8rem;">
+                ${transferUi}
                 <div class="stepper-container">
                     <button class="stepper-btn btn-minus" data-si-id="${si.id}"><i class="fas fa-minus"></i></button>
                     <input type="number" step="1" class="proc-buy-input" placeholder="0" data-si-id="${si.id}" value="${req}">
                     <button class="stepper-btn btn-plus" data-si-id="${si.id}"><i class="fas fa-plus"></i></button>
                 </div>
-                <button class="btn btn-primary btn-confirm-buy" data-si-id="${si.id}" style="padding: 0.6rem 1.2rem; font-size: 0.85rem; border-radius: 8px; font-weight: 800;">購入完了</button>
+                <button class="btn btn-primary btn-confirm-action" data-si-id="${si.id}" 
+                    ${(selectedCategory === 'transfer' && (!sourceOptions || sourceOptions.every(o => o.stock <= 0))) ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}
+                    style="padding: 0.6rem 1.2rem; font-size: 0.85rem; border-radius: 8px; font-weight: 800;">${btnLabel}</button>
             </div>
         </div>
     `;
@@ -256,7 +333,30 @@ function renderItemRow(si, master, showStoreName = false) {
 function render() {
     const sidebar = document.getElementById('proc-vendor-list');
     const main = document.getElementById('proc-main-content');
+    const headerTitle = document.getElementById('proc-current-title');
     if (!sidebar || !main) return;
+
+    // Blank State
+    if (!selectedCategory) {
+        main.innerHTML = `
+            <div style="text-align:center; padding: 6rem 2rem; color: var(--text-secondary);">
+                <div style="font-size: 4rem; margin-bottom: 2rem; opacity: 0.1;">
+                    <i class="fas fa-tasks"></i>
+                </div>
+                <h3 style="font-weight: 800; color: var(--text-primary); margin-bottom: 0.5rem;">業務区分を選択してください</h3>
+                <p style="font-size: 0.9rem;">左側のメニューから「仕入れ」「仕込み」「移動」のいずれかを選択して開始します。</p>
+            </div>
+        `;
+        headerTitle.textContent = '調達・供給管理ハブ';
+        return;
+    }
+
+    // Update Title & Buttons
+    const catNames = { purchase: '仕入れ・調達', store_prep: '店舗仕込み', ck_prep: 'CK仕込み', transfer: '店舗間移動' };
+    headerTitle.textContent = catNames[selectedCategory];
+    
+    const btnHistory = document.getElementById('btn-proc-history');
+    if (btnHistory) btnHistory.style.display = selectedCategory === 'transfer' ? 'block' : 'none';
 
     // 1. Filter data based on scope (Current store or all stores in group)
     let filteredData = procurementData;
@@ -264,56 +364,71 @@ function render() {
         filteredData = procurementData.filter(d => d.StoreID === currentStore.id);
     }
 
-    // 2. Filter only short items (qty < par)
+    // 2. Filter by Category (Shortage Action Type) and Short items
     const shortItems = filteredData.filter(si => {
         const qty = Number(si.個数 || 0);
         const par = Number(si.定数 || 0);
-        return par > 0 && qty < par;
+        if (par <= 0 || qty >= par) return false;
+
+        const action = si.shortage_action_type || 'purchase';
+        return action === selectedCategory;
     });
 
-    // 3. Extract Vendors and group items by Vendor then by ProductID
-    const vendorMap = {};
-    shortItems.forEach(si => {
-        const item = cachedItems.find(i => i.id === si.ProductID);
-        const ing = cachedIngredients.find(ing => ing.item_id === si.ProductID);
-        const sup = cachedSuppliers.find(s => (s.vendor_id || s.id) === ing?.vendor_id);
-        
-        const vendor = sup?.vendor_name || item?.supplier_name || item?.業者名 || '未設定';
-        if (!vendorMap[vendor]) vendorMap[vendor] = [];
-        vendorMap[vendor].push(si);
-    });
+    // 3. Grouping logic based on category
+    if (selectedCategory === 'purchase') {
+        // Group by Vendor
+        const vendorMap = {};
+        shortItems.forEach(si => {
+            const item = cachedItems.find(i => i.id === si.ProductID);
+            const ing = cachedIngredients.find(ing => ing.item_id === si.ProductID);
+            const sup = cachedSuppliers.find(s => (s.vendor_id || s.id) === ing?.vendor_id);
+            
+            const vendor = sup?.vendor_name || item?.supplier_name || item?.業者名 || '未設定';
+            if (!vendorMap[vendor]) vendorMap[vendor] = [];
+            vendorMap[vendor].push(si);
+        });
 
-    const vendors = Object.keys(vendorMap).sort((a,b) => {
-        if (a === '未設定') return 1;
-        if (b === '未設定') return -1;
-        return a.localeCompare(b);
-    });
+        const vendors = Object.keys(vendorMap).sort((a,b) => {
+            if (a === '未設定') return 1;
+            if (b === '未設定') return -1;
+            return a.localeCompare(b);
+        });
 
-    // 4. Render Sidebar
-    if (!selectedVendor && vendors.length > 0) selectedVendor = vendors[0];
-    sidebar.innerHTML = vendors.map(v => `
-        <div class="vendor-item ${selectedVendor === v ? 'active' : ''}" data-vendor="${v}">
-            <span>${v}</span>
-            <span class="count">${vendorMap[v].length}</span>
-        </div>
-    `).join('') || `<div style="padding:1rem; font-size:0.75rem; color:var(--text-secondary);">不足品目はありません</div>`;
+        // Render Vendor Sidebar
+        if (!selectedVendor && vendors.length > 0) selectedVendor = vendors[0];
+        sidebar.innerHTML = vendors.map(v => `
+            <div class="vendor-item ${selectedVendor === v ? 'active' : ''}" data-vendor="${v}">
+                <span>${v}</span>
+                <span class="count">${vendorMap[v].length}</span>
+            </div>
+        `).join('') || `<div style="padding:1rem; font-size:0.75rem; color:var(--text-secondary);">不足品目はありません</div>`;
 
-    sidebar.querySelectorAll('.vendor-item').forEach(item => {
-        item.onclick = () => {
-            selectedVendor = item.dataset.vendor;
-            render();
-        };
-    });
+        sidebar.querySelectorAll('.vendor-item').forEach(item => {
+            item.onclick = () => {
+                selectedVendor = item.dataset.vendor;
+                render();
+            };
+        });
 
-    // 5. Render Main Content for Selected Vendor
-    if (!selectedVendor || !vendorMap[selectedVendor]) {
-        main.innerHTML = `<div style="text-align:center; padding:4rem; color:var(--text-secondary);"><i class="fas fa-check-circle" style="font-size:3rem; color:#10b981; opacity:0.2;"></i><p>現在、仕入れが必要な品目はありません</p></div>`;
+        renderMainContent(vendorMap[selectedVendor] || []);
+    } else {
+        // Other categories: Show all short items directly or grouped by Product
+        renderMainContent(shortItems);
+    }
+}
+
+function renderMainContent(items) {
+    const main = document.getElementById('proc-main-content');
+    if (!main) return;
+
+    if (items.length === 0) {
+        main.innerHTML = `<div style="text-align:center; padding:4rem; color:var(--text-secondary);"><i class="fas fa-check-circle" style="font-size:3rem; color:#10b981; opacity:0.2;"></i><p>現在、対象となる品目はありません</p></div>`;
         return;
     }
 
     // Group items by ProductID for aggregation
     const itemsByProduct = {};
-    vendorMap[selectedVendor].forEach(si => {
+    items.forEach(si => {
         if (!itemsByProduct[si.ProductID]) itemsByProduct[si.ProductID] = [];
         itemsByProduct[si.ProductID].push(si);
     });
@@ -325,7 +440,6 @@ function render() {
         const name = master?.name || productId;
         const representativeUnit = productItems[0]?.display_unit || master?.unit || '';
         
-        // Calculate Total Requirement (rounding each store's need)
         const totalReq = productItems.reduce((sum, si) => {
             const diff = Number(si.定数 || 0) - Number(si.個数 || 0);
             return sum + Math.round(Math.max(0, diff));
@@ -358,9 +472,12 @@ function render() {
     });
 
     main.innerHTML = html;
+    attachMainContentListeners(main);
+}
 
+function attachMainContentListeners(container) {
     // Listeners for Accordion
-    main.querySelectorAll('.item-banner').forEach(banner => {
+    container.querySelectorAll('.item-banner').forEach(banner => {
         banner.onclick = () => {
             const id = banner.dataset.id;
             if (collapsedItems.has(id)) collapsedItems.delete(id);
@@ -370,11 +487,11 @@ function render() {
     });
 
     // Listeners for Stepper Buttons
-    main.querySelectorAll('.stepper-btn').forEach(btn => {
+    container.querySelectorAll('.stepper-btn').forEach(btn => {
         btn.onclick = (e) => {
             e.stopPropagation();
             const sid = btn.dataset.siId;
-            const input = main.querySelector(`.proc-buy-input[data-si-id="${sid}"]`);
+            const input = container.querySelector(`.proc-buy-input[data-si-id="${sid}"]`);
             if (!input) return;
             let val = parseInt(input.value) || 0;
             if (btn.classList.contains('btn-plus')) val++;
@@ -383,20 +500,25 @@ function render() {
         };
     });
 
-    // Listeners for Purchase Buttons
-    main.querySelectorAll('.btn-confirm-buy').forEach(btn => {
+    // Listeners for Action Buttons (Confirm Purchase/Prep/Transfer)
+    container.querySelectorAll('.btn-confirm-action').forEach(btn => {
         btn.onclick = async (e) => {
             e.stopPropagation();
             const siId = btn.dataset.siId;
-            const input = main.querySelector(`.proc-buy-input[data-si-id="${siId}"]`);
-            const buyQty = Number(input.value);
-            if (buyQty <= 0) return;
-            await executePurchase(siId, buyQty);
+            const input = container.querySelector(`.proc-buy-input[data-si-id="${siId}"]`);
+            const qty = Number(input.value);
+            if (qty <= 0) return;
+            
+            if (selectedCategory === 'transfer') {
+                await executeTransfer(siId, qty);
+            } else {
+                await executeAction(siId, qty);
+            }
         };
     });
 }
 
-async function executePurchase(storeItemId, qty) {
+async function executeAction(storeItemId, qty) {
     const si = procurementData.find(d => d.id === storeItemId);
     if (!si) return;
 
@@ -407,6 +529,11 @@ async function executePurchase(storeItemId, qty) {
         const newQty = oldQty + qty;
         const store = allGroupStores.find(s => s.id === si.StoreID);
         const bizDate = getBusinessDate(store);
+
+        const reasonMap = { purchase: 'procurement', store_prep: 'preparation', ck_prep: 'ck_preparation' };
+        const reasonType = reasonMap[selectedCategory] || 'procurement';
+        const noteMap = { purchase: '仕入れによる追加', store_prep: '店舗仕込み完了', ck_prep: 'CK仕込み完了' };
+        const note = noteMap[selectedCategory] || '手動追加';
 
         // 1. Update Inventory
         await updateDoc(doc(db, "m_store_items", si.id), {
@@ -421,9 +548,9 @@ async function executePurchase(storeItemId, qty) {
             store_item_id: si.id,
             change_qty: qty,
             qty_after: newQty,
-            reason_type: 'procurement',
+            reason_type: reasonType,
             source_route: 'procurement_page',
-            note: '仕入れによる追加',
+            note: note,
             executed_by: currentUser?.Name || currentUser?.Email || 'unknown',
             executed_at: now,
             business_date: bizDate
@@ -434,8 +561,159 @@ async function executePurchase(storeItemId, qty) {
         showAlert("完了", "在庫に反映しました");
         render();
     } catch (err) {
-        console.error("Purchase failed:", err);
+        console.error("Action failed:", err);
         showAlert("エラー", "在庫の更新に失敗しました");
+    } finally {
+        await showLoading(false);
+    }
+}
+
+async function executeTransfer(destStoreItemId, qty) {
+    const destSi = procurementData.find(d => d.id === destStoreItemId);
+    if (!destSi) return;
+
+    const sourceStoreSelect = document.querySelector(`.source-store-select[data-si-id="${destStoreItemId}"]`);
+    const sourceStoreId = sourceStoreSelect?.value;
+    if (!sourceStoreId) {
+        showAlert("エラー", "移動元店舗が選択されていません");
+        return;
+    }
+
+    const sourceSi = procurementData.find(d => d.StoreID === sourceStoreId && d.ProductID === destSi.ProductID);
+    if (!sourceSi || Number(sourceSi.個数 || 0) < qty) {
+        showAlert("エラー", "移動元店舗に十分な在庫がありません");
+        return;
+    }
+
+    const confirmTransfer = confirm(`移動元: ${sourceStoreId}\n移動先: ${destSi.StoreID}\n数量: ${qty}\nを実行しますか？`);
+    if (!confirmTransfer) return;
+
+    await showLoading(true);
+    try {
+        const { writeBatch } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        const batch = writeBatch(db);
+        const now = new Date().toISOString();
+        const bizDate = getBusinessDate(allGroupStores.find(s => s.id === destSi.StoreID));
+
+        const sourceOldQty = Number(sourceSi.個数 || 0);
+        const sourceNewQty = sourceOldQty - qty;
+        const destOldQty = Number(destSi.個数 || 0);
+        const destNewQty = destOldQty + qty;
+
+        // 1. Update Destination
+        batch.update(doc(db, "m_store_items", destSi.id), { 個数: destNewQty, updated_at: now });
+        
+        // 2. Update Source
+        batch.update(doc(db, "m_store_items", sourceSi.id), { 個数: sourceNewQty, updated_at: now });
+
+        // 3. Add History (Dest - Transfer In)
+        const histDestRef = doc(collection(db, "t_inventory_history"));
+        batch.set(histDestRef, {
+            store_id: destSi.StoreID,
+            item_id: destSi.ProductID,
+            store_item_id: destSi.id,
+            change_qty: qty,
+            qty_after: destNewQty,
+            reason_type: 'transfer_in',
+            source_route: 'procurement_page',
+            note: `店舗間移動(入庫): ${sourceStoreId} から`,
+            executed_by: currentUser?.Name || 'unknown',
+            executed_at: now,
+            business_date: bizDate
+        });
+
+        // 4. Add History (Source - Transfer Out)
+        const histSourceRef = doc(collection(db, "t_inventory_history"));
+        batch.set(histSourceRef, {
+            store_id: sourceSi.StoreID,
+            item_id: sourceSi.ProductID,
+            store_item_id: sourceSi.id,
+            change_qty: -qty,
+            qty_after: sourceNewQty,
+            reason_type: 'transfer_out',
+            source_route: 'procurement_page',
+            note: `店舗間移動(出庫): ${destSi.StoreID} へ`,
+            executed_by: currentUser?.Name || 'unknown',
+            executed_at: now,
+            business_date: bizDate
+        });
+
+        await batch.commit();
+
+        // Update local data
+        destSi.個数 = destNewQty;
+        sourceSi.個数 = sourceNewQty;
+
+        showAlert("完了", "店舗間移動を完了しました");
+        render();
+    } catch (err) {
+        console.error("Transfer failed:", err);
+        showAlert("エラー", "移動処理に失敗しました: " + err.message);
+    } finally {
+        await showLoading(false);
+    }
+}
+
+async function showTransferHistory() {
+    await showLoading(true);
+    try {
+        const q = query(
+            collection(db, "t_inventory_history"), 
+            where("reason_type", "in", ["transfer_in", "transfer_out"]),
+            orderBy("executed_at", "desc")
+        );
+        const snap = await getDocs(q);
+        const logs = snap.docs.map(d => d.data()).slice(0, 50); // Top 50
+
+        const modalHtml = `
+            <div id="transfer-history-modal" class="modal-overlay active" style="z-index: 10000; position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center;">
+                <div class="glass-panel" style="width: 90%; max-width: 800px; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; padding: 0; background: white; border-radius: 16px; box-shadow: var(--shadow-lg);">
+                    <div style="padding: 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+                        <h3 style="margin:0; font-weight: 800;"><i class="fas fa-history" style="color: var(--primary);"></i> 店舗間移動履歴 (直近50件)</h3>
+                        <button onclick="document.getElementById('transfer-history-modal').remove()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color: var(--text-secondary);">&times;</button>
+                    </div>
+                    <div style="flex:1; overflow-y:auto; padding: 1rem;">
+                        <table style="width:100%; border-collapse: collapse; font-size: 0.85rem;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid var(--border); text-align: left; color: var(--text-secondary);">
+                                    <th style="padding: 0.8rem;">日時</th>
+                                    <th style="padding: 0.8rem;">店舗</th>
+                                    <th style="padding: 0.8rem;">品目</th>
+                                    <th style="padding: 0.8rem; text-align: center;">数量</th>
+                                    <th style="padding: 0.8rem;">内容</th>
+                                    <th style="padding: 0.8rem;">実行者</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${logs.map(l => {
+                                    const master = cachedItems.find(i => i.id === l.item_id);
+                                    const store = allGroupStores.find(s => s.id === l.store_id);
+                                    const date = new Date(l.executed_at).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                                    const isPlus = l.change_qty > 0;
+                                    return `
+                                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                                            <td style="padding: 0.8rem; color: var(--text-secondary); white-space: nowrap;">${date}</td>
+                                            <td style="padding: 0.8rem; font-weight: 700;">${store?.store_name || store?.Name || l.store_id}</td>
+                                            <td style="padding: 0.8rem; font-weight: 600;">${master?.name || l.item_id}</td>
+                                            <td style="padding: 0.8rem; text-align: center; font-weight: 800; color: ${isPlus ? '#10b981' : '#ef4444'};">
+                                                ${isPlus ? '+' : ''}${l.change_qty}
+                                            </td>
+                                            <td style="padding: 0.8rem; font-size: 0.75rem; color: var(--text-secondary);">${l.note}</td>
+                                            <td style="padding: 0.8rem;">${l.executed_by}</td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                        ${logs.length === 0 ? '<p style="text-align:center; padding: 3rem; color: var(--text-secondary);">履歴はありません</p>' : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    } catch (err) {
+        console.error("History load failed:", err);
+        showAlert("エラー", "履歴の読み込みに失敗しました");
     } finally {
         await showLoading(false);
     }
