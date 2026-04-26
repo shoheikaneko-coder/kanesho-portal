@@ -537,8 +537,27 @@ function renderEditTable() {
     const body = document.getElementById('attn-edit-body');
     body.innerHTML = '';
 
+    const selectedSid = document.getElementById('attn-day-store-filter')?.value;
+    const storeInfo = cachedStores.find(s => (s.store_id || s.id) === selectedSid);
+    const dayChangeTime = storeInfo?.day_change_time || 5;
+    
+    const startEdge = `${currentTargetDate}T${String(dayChangeTime).padStart(2, '0')}:00:00`;
+    const nextDate = getNextDateStr(currentTargetDate);
+    const endEdge = `${nextDate}T${String(dayChangeTime).padStart(2, '0')}:00:00`;
+
+    let visibleCount = 0;
+
     currentEditPunches.forEach((p, idx) => {
         const tr = document.createElement('tr');
+        
+        const ts = p.timestamp;
+        const isOutOfBusinessDay = ts && (ts < startEdge || ts >= endEdge);
+        if (isOutOfBusinessDay) {
+            tr.style.display = 'none';
+        } else {
+            visibleCount++;
+        }
+
         const timeVal = p.timestamp ? p.timestamp.substring(11, 16) : '';
         const dateVal = p.date || currentTargetDate;
 
@@ -580,7 +599,7 @@ function renderEditTable() {
         body.appendChild(tr);
     });
 
-    if (currentEditPunches.length === 0) {
+    if (visibleCount === 0) {
         body.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-secondary);">打刻実績がありません。「行追加」で新規作成できます。</td></tr>';
     }
 }
