@@ -963,7 +963,7 @@ async function renderPerformanceSummary(user, isMobile = false) {
 
             // 全打刻/インポートデータを日付順に処理
             recs.sort((a,b) => new Date(a.timestamp || a.date || 0) - new Date(b.timestamp || b.date || 0));
-            let inT = null, breakStartT = null, totalBreakMs = 0, currentNormalizedSid = "";
+            let inT = null, breakStartT = null, totalBreakMs = 0, currentNormalizedSid = "", inDate = null;
 
             recs.forEach(r => {
                 const ts = r.timestamp || r.date || r.Date || "";
@@ -993,6 +993,10 @@ async function renderPerformanceSummary(user, isMobile = false) {
                         totalBreakMs = 0;
                         breakStartT = null;
                         currentNormalizedSid = sid;
+                        
+                        // 出勤時の日付を保持する（深夜跨ぎの退勤日付に引っ張られないようにするため）
+                        const jstInT = new Date(inT.getTime() + (9 * 60 * 60 * 1000));
+                        inDate = r.date || jstInT.toISOString().substring(0, 10);
                     } else if (type.includes('break_start') || type.includes('休憩開始')) {
                         breakStartT = new Date(ts);
                     } else if ((type.includes('break_end') || type.includes('休憩終了')) && breakStartT) {
@@ -1003,8 +1007,7 @@ async function renderPerformanceSummary(user, isMobile = false) {
                         const netMs = Math.max(0, (outT - inT) - totalBreakMs);
                         const h = netMs / 3600000;
                         
-                        const jstInT = new Date(inT.getTime() + (9 * 60 * 60 * 1000));
-                        const shiftDate = r.date || jstInT.toISOString().substring(0, 10);
+                        const shiftDate = inDate || r.date || new Date(inT.getTime() + (9 * 60 * 60 * 1000)).toISOString().substring(0, 10);
                         const finalSid = currentNormalizedSid || sid;
 
                         if (shiftDate === ymd) {
@@ -1014,7 +1017,7 @@ async function renderPerformanceSummary(user, isMobile = false) {
                                 actual.total_labor_hours += h;
                             }
                         }
-                        inT = null; totalBreakMs = 0; breakStartT = null;
+                        inT = null; totalBreakMs = 0; breakStartT = null; inDate = null;
                     }
                 }
             });
