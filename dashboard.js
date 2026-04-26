@@ -377,8 +377,11 @@ async function refreshDashboard() {
     const storeFilter = document.getElementById('dash-store-filter').value;
     const groupFilter = document.getElementById('dash-group-filter').value;
 
-    const tbody = document.getElementById('monthly-table-body');
-    tbody.innerHTML = '<tr><td colspan="13" style="text-align:center; padding:2rem;">集計中...</td></tr>';
+    const dtbody = document.getElementById('daily-table-body');
+    const mtbody = document.getElementById('monthly-pivot-body');
+    
+    if (dtbody) dtbody.innerHTML = '<tr><td colspan="13" style="text-align:center; padding:2rem;">集計中...</td></tr>';
+    if (mtbody) mtbody.innerHTML = '<tr><td colspan="12" style="text-align:center; padding:2rem;">集計中...</td></tr>';
 
     try {
         const storeMap = {};
@@ -658,18 +661,19 @@ async function refreshDashboard() {
         window.__lastLaborMap = filteredLaborMap;
 
         // 全タブのレンダリング
-        renderAllTabs(records, goals, totalOpH, totalCkH, daily, storeMap, storeFilter, userMap);
+        renderAllTabs(records, goals, totalOpH, totalCkH, daily, storeMap, storeFilter, userMap, dateFrom, dateTo);
         
         // ローディング非表示
         document.getElementById('dash-loading-overlay').style.display = 'none';
     } catch (e) {
         console.error(e);
-        tbody.innerHTML = '<tr><td colspan="13" style="text-align:center; color:var(--danger);">読込失敗</td></tr>';
+        if (dtbody) dtbody.innerHTML = '<tr><td colspan="13" style="text-align:center; color:var(--danger);">読込失敗</td></tr>';
+        if (mtbody) mtbody.innerHTML = '<tr><td colspan="12" style="text-align:center; color:var(--danger);">読込失敗</td></tr>';
         document.getElementById('dash-loading-overlay').style.display = 'none';
     }
 }
 
-function renderAllTabs(records, goals, totalOpH, totalCkH, daily, storeMap, storeFilter, userMap) {
+function renderAllTabs(records, goals, totalOpH, totalCkH, daily, storeMap, storeFilter, userMap, dateFrom, dateTo) {
     // 既存のKPI更新
     renderKPIs(records, goals, totalOpH, totalCkH);
     
