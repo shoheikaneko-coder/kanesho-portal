@@ -531,6 +531,7 @@ async function refreshDashboard() {
         // KPIカード用の合計値算出 (売上データの有無に関わらず、フィルタに一致する全労働時間を合算)
         let totalOpH = 0;
         let totalCkH = 0;
+        const filteredLaborMap = {};
 
         Object.entries(laborMap).forEach(([key, h]) => {
             const [ym, sid] = key.split('__');
@@ -538,6 +539,7 @@ async function refreshDashboard() {
             const si = storeMap[sid];
             if (groupFilter !== 'all' && (!si || si.group_name !== groupFilter)) return;
             totalOpH += h;
+            filteredLaborMap[key] = h;
         });
 
         Object.entries(ckHoursPool).forEach(([key, h]) => {
@@ -551,7 +553,7 @@ async function refreshDashboard() {
         // --- 目標データの取得と累計計算 ---
         const goals = await calculatePeriodGoals(storeFilter, dateFrom, dateTo);
         
-        window.__lastLaborMap = laborMap;
+        window.__lastLaborMap = filteredLaborMap;
         renderKPIs(records, goals, totalOpH, totalCkH);
         renderMonthlyTable(records, daily);
     } catch (e) {
