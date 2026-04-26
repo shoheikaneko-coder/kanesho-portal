@@ -290,17 +290,21 @@ function renderItemRow(si, master, showStoreName = false) {
         const defaultSource = sourceOptions[0];
         const isOutOfStock = !defaultSource || defaultSource.stock <= 0;
 
-        transferUi = `
-            <div style="margin-right: 1rem; display: flex; flex-direction: column; gap: 0.2rem;">
-                <label style="font-size: 0.65rem; font-weight: 800; color: var(--text-secondary);">移動元店舗</label>
-                <select class="source-store-select" data-si-id="${si.id}" style="padding: 0.3rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.8rem; font-weight: 700; min-width: 120px;">
-                    ${sourceOptions.map(o => `<option value="${o.id}" ${o.stock <= 0 ? 'disabled' : ''}>${o.name} (残:${o.stock})</option>`).join('')}
-                </select>
-                ${isOutOfStock ? '<span style="font-size: 0.6rem; color: var(--danger); font-weight: 800;">移動元に在庫がありません</span>' : ''}
-            </div>
-        `;
-    }
-
+    transferUi = `
+        <div style="margin-right: 1rem; display: flex; flex-direction: column; gap: 0.2rem;">
+            <label style="font-size: 0.65rem; font-weight: 800; color: var(--text-secondary);">移動元店舗</label>
+            <select class="source-store-select" data-si-id="${si.id}" style="padding: 0.3rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.8rem; font-weight: 700; min-width: 120px;">
+                ${sourceOptions.map(o => `<option value="${o.id}" ${o.id === si.default_source_store_id ? 'selected' : ''} ${o.stock <= 0 ? 'disabled' : ''}>${o.name} (残:${o.stock})</option>`).join('')}
+            </select>
+            ${isOutOfStock ? '<span style="font-size: 0.6rem; color: var(--danger); font-weight: 800;">移動元に在庫がありません</span>' : ''}
+        </div>
+    `;
+    
+    // Add Source Location Text
+    const sourceStoreItem = procurementData.find(d => d.StoreID === (si.default_source_store_id || defaultSource?.id) && d.ProductID === si.ProductID);
+    const sourceLoc = sourceStoreItem?.location_label || sourceStoreItem?.保管場所 || '未設定';
+    const locHtml = `<div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.1rem;"><i class="fas fa-map-marker-alt" style="font-size:0.6rem;"></i> 移動元の棚: <span style="font-weight:700; color:#475569;">${sourceLoc}</span></div>`;
+    
     return `
         <div class="proc-row-card" style="${selectedCategory === 'transfer' ? 'padding-right: 1rem;' : ''}">
             <div style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 150px;">
@@ -309,6 +313,7 @@ function renderItemRow(si, master, showStoreName = false) {
                 </div>
                 <div>
                     <div style="font-weight: 800; font-size: 0.95rem; color: #1e293b;">${showStoreName ? sName : (master?.name || '品目不明')}</div>
+                    ${selectedCategory === 'transfer' ? locHtml : ''}
                     <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700;">
                         必要: <span style="color:var(--danger); font-size: 1rem; font-family: monospace;">${req}</span> ${sUnit}
                     </div>
@@ -374,47 +379,103 @@ function render() {
         return action === selectedCategory;
     });
 
-    // 3. Grouping logic based on category
     if (selectedCategory === 'purchase') {
-        // Group by Vendor
-        const vendorMap = {};
-        shortItems.forEach(si => {
-            const item = cachedItems.find(i => i.id === si.ProductID);
-            const ing = cachedIngredients.find(ing => ing.item_id === si.ProductID);
-            const sup = cachedSuppliers.find(s => (s.vendor_id || s.id) === ing?.vendor_id);
-            
-            const vendor = sup?.vendor_name || item?.supplier_name || item?.業者名 || '未設定';
-            if (!vendorMap[vendor]) vendorMap[vendor] = [];
-            vendorMap[vendor].push(si);
-        });
-
-        const vendors = Object.keys(vendorMap).sort((a,b) => {
-            if (a === '未設定') return 1;
-            if (b === '未設定') return -1;
-            return a.localeCompare(b);
-        });
-
-        // Render Vendor Sidebar
-        if (!selectedVendor && vendors.length > 0) selectedVendor = vendors[0];
-        sidebar.innerHTML = vendors.map(v => `
-            <div class="vendor-item ${selectedVendor === v ? 'active' : ''}" data-vendor="${v}">
-                <span>${v}</span>
-                <span class="count">${vendorMap[v].length}</span>
-            </div>
-        `).join('') || `<div style="padding:1rem; font-size:0.75rem; color:var(--text-secondary);">不足品目はありません</div>`;
-
-        sidebar.querySelectorAll('.vendor-item').forEach(item => {
-            item.onclick = () => {
-                selectedVendor = item.dataset.vendor;
-                render();
-            };
-        });
-
-        renderMainContent(vendorMap[selectedVendor] || []);
+        // ... (existing vendor logic)
+        renderPurchaseContent(shortItems, sidebar);
+    } else if (selectedCategory === 'transfer') {
+        sidebar.innerHTML = `<div style="padding:1rem; font-size:0.75rem; color:var(--text-secondary);">店舗間移動モード</div>`;
+        renderTransferContent(shortItems);
     } else {
-        // Other categories: Show all short items directly or grouped by Product
+        sidebar.innerHTML = `<div style="padding:1rem; font-size:0.75rem; color:var(--text-secondary);">仕込みモード</div>`;
         renderMainContent(shortItems);
     }
+}
+
+function renderPurchaseContent(shortItems, sidebar) {
+    const vendorMap = {};
+    shortItems.forEach(si => {
+        const item = cachedItems.find(i => i.id === si.ProductID);
+        const ing = cachedIngredients.find(ing => ing.item_id === si.ProductID);
+        const sup = cachedSuppliers.find(s => (s.vendor_id || s.id) === ing?.vendor_id);
+        
+        const vendor = sup?.vendor_name || item?.supplier_name || item?.業者名 || '未設定';
+        if (!vendorMap[vendor]) vendorMap[vendor] = [];
+        vendorMap[vendor].push(si);
+    });
+
+    const vendors = Object.keys(vendorMap).sort((a,b) => {
+        if (a === '未設定') return 1;
+        if (b === '未設定') return -1;
+        return a.localeCompare(b);
+    });
+
+    if (!selectedVendor && vendors.length > 0) selectedVendor = vendors[0];
+    sidebar.innerHTML = vendors.map(v => `
+        <div class="vendor-item ${selectedVendor === v ? 'active' : ''}" data-vendor="${v}">
+            <span>${v}</span>
+            <span class="count">${vendorMap[v].length}</span>
+        </div>
+    `).join('') || `<div style="padding:1rem; font-size:0.75rem; color:var(--text-secondary);">不足品目はありません</div>`;
+
+    sidebar.querySelectorAll('.vendor-item').forEach(item => {
+        item.onclick = () => {
+            selectedVendor = item.dataset.vendor;
+            render();
+        };
+    });
+
+    renderMainContent(vendorMap[selectedVendor] || []);
+}
+
+function renderTransferContent(items) {
+    const main = document.getElementById('proc-main-content');
+    if (!main) return;
+
+    if (items.length === 0) {
+        main.innerHTML = `<div style="text-align:center; padding:4rem; color:var(--text-secondary);"><i class="fas fa-check-circle" style="font-size:3rem; color:#10b981; opacity:0.2;"></i><p>現在、移動が必要な品目はありません</p></div>`;
+        return;
+    }
+
+    // Group items by Source Store
+    const itemsBySource = {};
+    items.forEach(si => {
+        const sourceId = si.default_source_store_id || 'UNKNOWN';
+        if (!itemsBySource[sourceId]) itemsBySource[sourceId] = [];
+        itemsBySource[sourceId].push(si);
+    });
+
+    let html = ``;
+    Object.keys(itemsBySource).sort().forEach(sourceId => {
+        const sourceStore = allGroupStores.find(s => s.id === sourceId);
+        const sourceName = sourceStore?.store_name || sourceStore?.Name || (sourceId === 'UNKNOWN' ? '移動元未設定' : sourceId);
+        const sourceItems = itemsBySource[sourceId];
+        
+        const isCollapsed = collapsedItems.has(sourceId);
+
+        html += `
+            <div class="item-block" style="border-bottom: 1px solid var(--border);">
+                <div class="item-banner" data-id="${sourceId}" style="background: #fdf2f2; border-left: 4px solid #ef4444;">
+                    <div class="banner-content">
+                        <div class="title">
+                            <i class="fas ${isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'}" style="width:1rem; font-size:0.8rem; color:var(--text-secondary);"></i>
+                            <i class="fas fa-truck" style="color:#ef4444; font-size:0.9rem;"></i>
+                            ${sourceName} から移動
+                        </div>
+                        <div class="total-req" style="background: #fee2e2; color: #b91c1c; border-color: #fca5a5;">${sourceItems.length} 品目</div>
+                    </div>
+                </div>
+                <div class="proc-detail-container ${isCollapsed ? 'hidden' : ''}" style="background: #fffafa;">
+                    ${sourceItems.map(si => {
+                        const master = cachedItems.find(i => i.id === si.ProductID);
+                        return renderItemRow(si, master, true);
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    });
+
+    main.innerHTML = html;
+    attachMainContentListeners(main);
 }
 
 function renderMainContent(items) {

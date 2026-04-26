@@ -291,6 +291,12 @@ export const inventoryPageHtml = `
                             <option value="transfer">移動</option>
                         </select>
                     </div>
+
+                    <div id="modal-source-store-container" style="display: none; margin-top: 1rem;">
+                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">移動元店舗</label>
+                        <select id="modal-source-store" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 1px solid var(--border); font-weight: 600;"></select>
+                        <div id="modal-source-warning" style="font-size: 0.65rem; color: var(--danger); margin-top: 0.3rem; font-weight: 700; display: none;">※この店舗には品目が登録されていません</div>
+                    </div>
                 </div>
                 <button id="btn-save-single-item" class="btn btn-primary" style="width: 100%; padding: 1rem; margin-top: 0.5rem; font-weight: 800; font-size: 1rem; border-radius: 12px; box-shadow: var(--shadow-primary);">
                     設定を保存する
@@ -1964,6 +1970,27 @@ function showItemSettingsModal(itemId) {
     document.getElementById('modal-unit').value = item.display_unit || "";
     document.getElementById('modal-conv').value = item.unit_conversion_amount || 1;
     document.getElementById('modal-action').value = item.shortage_action_type || "purchase";
+    
+    // Source Store Handling
+    const sourceContainer = document.getElementById('modal-source-store-container');
+    const sourceSelect = document.getElementById('modal-source-store');
+    const actionSelect = document.getElementById('modal-action');
+    
+    const updateSourceVisibility = () => {
+        if (actionSelect.value === 'transfer') {
+            sourceContainer.style.display = 'block';
+            // Populate stores in same group
+            const currentStoreData = allStores.find(s => s.id === selectedStore.code);
+            const sameGroupStores = allStores.filter(s => s.id !== selectedStore.code && (s.group_name || s.所属グループ) === (currentStoreData?.group_name || currentStoreData?.所属グループ));
+            
+            sourceSelect.innerHTML = sameGroupStores.map(s => `<option value="${s.id}" ${s.id === item.default_source_store_id ? 'selected' : ''}>${s.store_name || s.Name}</option>`).join('') || '<option value="">(グループ内店舗なし)</option>';
+        } else {
+            sourceContainer.style.display = 'none';
+        }
+    };
+
+    actionSelect.onchange = updateSourceVisibility;
+    updateSourceVisibility();
 
     modal.classList.add('active');
     document.getElementById('btn-save-single-item').onclick = saveSingleItemSettings;
@@ -1987,8 +2014,24 @@ async function saveSingleItemSettings() {
         display_unit: document.getElementById('modal-unit').value,
         unit_conversion_amount: Number(document.getElementById('modal-conv').value) || 1,
         shortage_action_type: document.getElementById('modal-action').value,
+        default_source_store_id: document.getElementById('modal-action').value === 'transfer' ? document.getElementById('modal-source-store').value : null,
         updated_at: new Date().toISOString()
     };
+
+    // Validation for Transfer Source
+    if (data.shortage_action_type === 'transfer' && data.default_source_store_id) {
+        try {
+            const sourceDoc = await getDoc(doc(db, "m_store_items", `${data.default_source_store_id}_${editingItem.ProductID}`));
+            if (!sourceDoc.exists()) {
+                if (!confirm('【警告】選択された移動元店舗に、この品目が登録されていません。このまま保存しますか？（移動画面でエラーになる可能性があります）')) {
+                    overlay.style.display = 'none';
+                    return;
+                }
+            }
+        } catch (e) {
+            console.error("Source validation error:", e);
+        }
+    }
 
     try {
         await updateDoc(doc(db, "m_store_items", editingItem.id), data);
