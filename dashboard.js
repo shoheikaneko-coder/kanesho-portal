@@ -693,20 +693,31 @@ function renderAllTabs(records, goals, totalOpH, totalCkH, daily, storeMap, stor
     // グローバル変数の初期化
     window.__dashCharts = window.__dashCharts || {};
     
+    // CK（セントラルキッチン）のデータを表示から除外する
+    const nonCkRecords = records.filter(r => {
+        const si = storeMap[r.store_id];
+        return !(si && String(si.store_type || "").trim() === 'CK');
+    });
+    
+    const nonCkDaily = daily.filter(r => {
+        const si = storeMap[r.store_id || r.StoreID || r['店舗ID']];
+        return !(si && String(si.store_type || "").trim() === 'CK');
+    });
+    
     // 既存のKPI更新
-    renderKPIs(records, goals, totalOpH, totalCkH);
+    renderKPIs(nonCkRecords, goals, totalOpH, totalCkH);
     
     // タブ1: サマリーチャート
-    renderSummaryChart(daily, goals, dateFrom, dateTo);
+    renderSummaryChart(nonCkDaily, goals, dateFrom, dateTo);
     
     // タブ2: 日別詳細レポート
-    renderDailyTab(daily);
+    renderDailyTab(nonCkDaily, storeMap);
     
-    // タブ3: 店舗別・月別集計 (既存の renderMonthlyTable をリネーム・拡張)
-    renderMonthlyPivotTab(records, daily);
+    // タブ3: 店舗別・月別集計
+    renderMonthlyPivotTab(nonCkRecords, nonCkDaily);
     
     // タブ4: 多角分析チャート
-    renderAnalyticsTab(daily);
+    renderAnalyticsTab(nonCkDaily);
 }
 
 function renderKPIs(recs, goals = { sales: 0, customers: 0 }, forcedOpH = null, forcedCkH = null) {
