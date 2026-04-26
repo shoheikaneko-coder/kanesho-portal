@@ -680,11 +680,9 @@ async function calculatePeriodGoals(storeId, from, to) {
             if (calDay && calDay.type === 'work') {
                 const weight = calculateDayWeight(d.getFullYear(), d.getMonth() + 1, calDay, m.calDays, m.weights);
                 const dailySales = (m.sales_target / m.totalWeights) * weight;
-                // 客数目標（重み付けなしで単純営業日割）
-                const dailyCust = (m.sales_target / 10000) * 1.5; // 仮ロジック（実際は客数目標も同様に扱える）
                 
                 totalSales += dailySales;
-                totalCust += (m.sales_target / 4500) * (weight/1.0); // 客単価案分
+                totalCust += dailySales / 4500; // その日の目標売上 ÷ 客単価
             }
         }
     }
