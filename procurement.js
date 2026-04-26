@@ -277,6 +277,7 @@ function renderItemRow(si, master, showStoreName = false) {
 
     let transferUi = '';
     let locHtml = '';
+    let sourceOptions = [];
     if (selectedCategory === 'transfer') {
         // Find other stores that have this product and their stock
         const otherStores = allGroupStores.filter(s => s.id !== si.StoreID);

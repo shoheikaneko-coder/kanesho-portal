@@ -387,6 +387,7 @@ async function loadInitialData() {
                 id: d.id,
                 name: data.store_name || data.Name || d.id,
                 code: data.store_id || d.id,
+                group_name: data.group_name || data.所属グループ || '',
                 resetTime: data.reset_time || "05:00"
             });
         });
@@ -1980,10 +1981,11 @@ function showItemSettingsModal(itemId) {
         if (actionSelect.value === 'transfer') {
             sourceContainer.style.display = 'block';
             // Populate stores in same group
-            const currentStoreData = allStores.find(s => s.id === selectedStore.code);
-            const sameGroupStores = allStores.filter(s => s.id !== selectedStore.code && (s.group_name || s.所属グループ) === (currentStoreData?.group_name || currentStoreData?.所属グループ));
+            const currentStoreData = allStores.find(s => s.code === selectedStore.code);
+            const currentGroup = currentStoreData?.group_name;
+            const sameGroupStores = allStores.filter(s => s.code !== selectedStore.code && s.group_name === currentGroup);
             
-            sourceSelect.innerHTML = sameGroupStores.map(s => `<option value="${s.id}" ${s.id === item.default_source_store_id ? 'selected' : ''}>${s.store_name || s.Name}</option>`).join('') || '<option value="">(グループ内店舗なし)</option>';
+            sourceSelect.innerHTML = sameGroupStores.map(s => `<option value="${s.code}" ${s.code === item.default_source_store_id ? 'selected' : ''}>${s.name}</option>`).join('') || '<option value="">(グループ内店舗なし)</option>';
         } else {
             sourceContainer.style.display = 'none';
         }
