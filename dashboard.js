@@ -50,42 +50,72 @@ export const dashboardPageHtml = `
 
             <!-- タブ1: サマリー -->
             <div id="tab-summary" class="dash-tab-content active">
-                <div class="dashboard-kpi-grid" style="gap: 1rem; margin-bottom: 1.5rem;">
-                    <div class="glass-panel kpi-card" style="border-top:4px solid var(--primary);">
-                        <div class="kpi-label"><i class="fas fa-yen-sign"></i> 売上合計(税抜)</div>
-                        <div class="kpi-rate" id="kpi-sales-rate">¥---</div>
-                        <div class="kpi-rate-bar-wrap"><div class="kpi-rate-bar" id="kpi-sales-bar" style="background:var(--primary); width:100%;"></div></div>
-                        <div class="kpi-row">
-                            <div><div class="kpi-sub-label">税込実績</div><div class="kpi-val" id="kpi-sales-actual">¥---</div></div>
-                            <div style="text-align:right;"><div class="kpi-sub-label">目標</div><div class="kpi-val kpi-val-muted">未設定</div></div>
+                <div class="dashboard-kpi-grid">
+                    <!-- Sales Card -->
+                    <div class="stylish-kpi">
+                        <div class="kpi-header">
+                            <div class="kpi-label"><i class="fas fa-yen-sign" style="color:var(--primary);"></i> 売上(税抜)</div>
+                            <div class="kpi-circle-wrap">
+                                <svg class="kpi-circle-svg" viewBox="0 0 36 36">
+                                    <path class="kpi-circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                    <path class="kpi-circle-path" id="kpi-sales-circle" stroke-dasharray="0, 100" stroke="var(--primary)" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                </svg>
+                                <div class="kpi-circle-text" id="kpi-sales-rate">--%</div>
+                            </div>
                         </div>
+                        <div class="kpi-actual" id="kpi-sales-actual">¥---</div>
+                        <div class="kpi-target">目標: <span id="kpi-sales-target">未設定</span></div>
+                        <div class="kpi-subtext">税込実績: <span id="kpi-sales-taxed">¥---</span></div>
                     </div>
-                    <div class="glass-panel kpi-card" style="border-top:4px solid var(--secondary);">
-                        <div class="kpi-label"><i class="fas fa-users"></i> 客数</div>
-                        <div class="kpi-rate" id="kpi-cust-rate" style="color:var(--secondary);">---名</div>
-                        <div class="kpi-rate-bar-wrap"><div class="kpi-rate-bar" id="kpi-cust-bar" style="background:var(--secondary); width:100%;"></div></div>
-                        <div class="kpi-row">
-                            <div><div class="kpi-sub-label">実績</div><div class="kpi-val" id="kpi-cust-actual">---名</div></div>
-                            <div style="text-align:right;"><div class="kpi-sub-label">目標</div><div class="kpi-val kpi-val-muted">未設定</div></div>
+
+                    <!-- Customers Card -->
+                    <div class="stylish-kpi">
+                        <div class="kpi-header">
+                            <div class="kpi-label"><i class="fas fa-users" style="color:var(--secondary);"></i> 客数</div>
+                            <div class="kpi-circle-wrap">
+                                <svg class="kpi-circle-svg" viewBox="0 0 36 36">
+                                    <path class="kpi-circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                    <path class="kpi-circle-path" id="kpi-cust-circle" stroke-dasharray="0, 100" stroke="var(--secondary)" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                </svg>
+                                <div class="kpi-circle-text" id="kpi-cust-rate">--%</div>
+                            </div>
                         </div>
+                        <div class="kpi-actual" id="kpi-cust-actual">---名</div>
+                        <div class="kpi-target">目標: <span id="kpi-cust-target">未設定</span></div>
                     </div>
-                    <div class="glass-panel kpi-card" style="border-top:4px solid var(--warning);">
-                        <div class="kpi-label"><i class="fas fa-clock"></i> 営業人時売上</div>
-                        <div class="kpi-rate" id="kpi-ophour-rate" style="color:var(--warning);">¥---</div>
-                        <div style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:0.6rem;">売上税抜 ÷ 営業労働h</div>
-                        <div class="kpi-row">
-                            <div><div class="kpi-sub-label">実績</div><div class="kpi-val" id="kpi-ophour-actual">¥---</div></div>
-                            <div style="text-align:right;"><div class="kpi-sub-label">労働合計</div><div class="kpi-val kpi-val-muted" id="kpi-ophour-target">---h</div></div>
+
+                    <!-- Op Labor Productivity Card -->
+                    <div class="stylish-kpi">
+                        <div class="kpi-header">
+                            <div class="kpi-label"><i class="fas fa-bolt" style="color:var(--warning);"></i> 営業人時売上</div>
+                            <div class="kpi-circle-wrap">
+                                <svg class="kpi-circle-svg" viewBox="0 0 36 36">
+                                    <path class="kpi-circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                    <path class="kpi-circle-path" id="kpi-ophour-circle" stroke-dasharray="0, 100" stroke="var(--warning)" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                </svg>
+                                <div class="kpi-circle-text" id="kpi-ophour-rate">--%</div>
+                            </div>
                         </div>
+                        <div class="kpi-actual" id="kpi-ophour-actual">¥---</div>
+                        <div class="kpi-target">目標: <span id="kpi-ophour-target">未設定</span></div>
+                        <div class="kpi-subtext">労働: <span id="kpi-ophour-labor">---h</span></div>
                     </div>
-                    <div class="glass-panel kpi-card" style="border-top:4px solid #8B5CF6;">
-                        <div class="kpi-label"><i class="fas fa-building"></i> 総人時売上</div>
-                        <div class="kpi-rate" id="kpi-totalhour-rate" style="color:#8B5CF6;">¥---</div>
-                        <div style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:0.6rem;">売上税抜 ÷ (営業+CK按分h)</div>
-                        <div class="kpi-row">
-                            <div><div class="kpi-sub-label">実績</div><div class="kpi-val" id="kpi-totalhour-actual">¥---</div></div>
-                            <div style="text-align:right;"><div class="kpi-sub-label">総労働h</div><div class="kpi-val kpi-val-muted" id="kpi-totalhour-target">---h</div></div>
+
+                    <!-- Total Labor Productivity Card -->
+                    <div class="stylish-kpi">
+                        <div class="kpi-header">
+                            <div class="kpi-label"><i class="fas fa-chart-line" style="color:#8B5CF6;"></i> 総人時売上</div>
+                            <div class="kpi-circle-wrap">
+                                <svg class="kpi-circle-svg" viewBox="0 0 36 36">
+                                    <path class="kpi-circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                    <path class="kpi-circle-path" id="kpi-totalhour-circle" stroke-dasharray="0, 100" stroke="#8B5CF6" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                </svg>
+                                <div class="kpi-circle-text" id="kpi-totalhour-rate">--%</div>
+                            </div>
                         </div>
+                        <div class="kpi-actual" id="kpi-totalhour-actual">¥---</div>
+                        <div class="kpi-target">目標: <span id="kpi-totalhour-target">未設定</span></div>
+                        <div class="kpi-subtext">総労働: <span id="kpi-totalhour-labor">---h</span></div>
                     </div>
                 </div>
 
@@ -217,21 +247,29 @@ function injectStyles() {
     const style = document.createElement('style');
     style.id = 'dash-fix-styles';
     style.textContent = `
-        /* KPI Cards */
-        .kpi-card { padding: 1.4rem; transition: transform 0.2s; }
-        .kpi-card:hover { transform: translateY(-2px); }
-        .kpi-label { font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.4rem; }
-        .kpi-rate { font-size: 1.8rem; font-weight: 800; color: var(--primary); }
-        .kpi-rate-bar-wrap { width: 100%; height: 6px; background: rgba(0,0,0,0.07); border-radius: 3px; margin: 0.6rem 0 0.8rem; overflow:hidden; position:relative; }
-        .kpi-rate-bar { height: 100%; transition: width 0.8s; }
-        .kpi-row { display: flex; justify-content: space-between; }
-        .kpi-sub-label { font-size: 0.7rem; color: var(--text-secondary); font-weight: 600; }
-        .kpi-val { font-size: 1rem; font-weight: 700; font-family: monospace; }
-        .kpi-val-muted { color: var(--text-secondary); font-weight: 500; }
-        .kpi-target-marker { position: absolute; top: 0; width: 2px; height: 100%; background: #1e293b; z-index: 2; box-shadow: 0 0 4px rgba(255,255,255,0.8); transition: left 0.5s; }
-        .dashboard-kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); }
+        /* KPI Cards - Stylish Redesign */
+        .dashboard-kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.2rem; margin-bottom: 2rem; }
         @media (max-width: 1000px) { .dashboard-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 600px) { .dashboard-kpi-grid { grid-template-columns: 1fr; } }
+        .stylish-kpi { 
+            padding: 1.5rem; border-radius: 12px; background: #ffffff;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+            border: 1px solid rgba(0,0,0,0.04);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .stylish-kpi:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); }
+        .kpi-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .kpi-label { font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.5rem; }
+        .kpi-body { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 0.5rem; }
+        .kpi-actual { font-size: 1.8rem; font-weight: 800; color: #0f172a; line-height: 1.1; margin-bottom: 0.4rem; font-family: 'Inter', monospace; }
+        .kpi-target { font-size: 0.8rem; font-weight: 600; color: #64748b; }
+        .kpi-subtext { font-size: 0.75rem; color: #94a3b8; margin-top: 0.2rem; }
+        /* Circular Progress */
+        .kpi-circle-wrap { position: relative; width: 54px; height: 54px; }
+        .kpi-circle-svg { transform: rotate(-90deg); width: 100%; height: 100%; }
+        .kpi-circle-bg { fill: none; stroke: #f1f5f9; stroke-width: 3.5; }
+        .kpi-circle-path { fill: none; stroke: var(--primary); stroke-width: 3.5; stroke-linecap: round; transition: stroke-dasharray 1s ease-out; }
+        .kpi-circle-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.75rem; font-weight: 800; color: #334155; }
         
         /* Tabs */
         .dash-tabs-container { display: flex; gap: 0.5rem; border-bottom: 2px solid var(--border); margin-bottom: 1.5rem; overflow-x: auto; scrollbar-width: none; }
@@ -724,69 +762,65 @@ function renderKPIs(recs, goals = { sales: 0, customers: 0 }, forcedOpH = null, 
     let s=0, c=0, opH=0, ckH=0;
     recs.forEach(r => { s+=r.sales; c+=r.customers; opH+=r.op_hours; ckH+=r.ck_alloc; });
     
-    // 引数で合計値が渡されている場合はそれを使用 (売上データに紐付かない労働時間も救済するため)
     if (forcedOpH !== null) opH = forcedOpH;
     if (forcedCkH !== null) ckH = forcedCkH;
 
     const exTax = s / TAX_RATE;
-
     const set = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
-    set('kpi-sales-rate', '¥' + Math.round(exTax).toLocaleString()); 
-    set('kpi-sales-actual', '¥' + Math.round(s).toLocaleString());
-    set('kpi-cust-rate', Math.round(c).toLocaleString() + '名');
-    set('kpi-cust-actual', Math.round(c).toLocaleString() + '名');
+    const updateCircle = (idPrefix, rate) => {
+        const circle = document.getElementById(idPrefix + '-circle');
+        const text = document.getElementById(idPrefix + '-rate');
+        if (!circle || !text) return;
+        if (rate === null || isNaN(rate) || rate <= 0) {
+            circle.style.strokeDasharray = '0, 100';
+            circle.style.stroke = '#f1f5f9';
+            text.textContent = '--%';
+        } else {
+            const drawRate = Math.min(100, Math.max(0, rate));
+            circle.style.strokeDasharray = `${drawRate}, 100`;
+            text.textContent = rate + '%';
+            // 100%超えの場合は色を変える等の演出も可能
+            circle.style.stroke = rate >= 100 ? '#10b981' : 'var(--primary)';
+        }
+    };
 
-    // 売上進捗率とバーの更新
+    // 1. Sales
+    set('kpi-sales-actual', '¥' + Math.round(exTax).toLocaleString());
+    set('kpi-sales-taxed', '¥' + Math.round(s).toLocaleString());
     if (goals.sales > 0) {
         const rate = Math.round((exTax / goals.sales) * 100);
-        set('kpi-sales-rate', rate + '%');
-        document.getElementById('kpi-sales-bar').style.width = Math.min(100, rate) + '%';
-        document.getElementById('kpi-sales-bar').style.background = rate >= 100 ? '#10b981' : 'var(--primary)';
-        
-        // 目標ラベル (税抜目標を表示)
-        const targetLabel = recs.length > 0 ? document.getElementById('kpi-sales-actual').parentElement.nextElementSibling.querySelector('.kpi-val') : null;
-        if (targetLabel) targetLabel.textContent = '¥' + Math.round(goals.sales).toLocaleString();
-        
-        // ターゲットマーカー（常に100%地点＝右端 ではない。期間全体に対する「本日時点の理想値」を示す等の運用も可能だが、
-        // 今回は「期間全体の目標」に対する進捗バーとして実装するため、マーカーは「現在の期間比率」や「100%地点」等で表現可能。
-        // ここでは、バーの100%を目標値とした上で、達成しているかを目視しやすくするため、常に100%地点にマーカーを表示。
-        updateTargetMarker('kpi-sales-bar', 100); 
+        set('kpi-sales-target', '¥' + Math.round(goals.sales).toLocaleString());
+        updateCircle('kpi-sales', rate);
+    } else {
+        set('kpi-sales-target', '未設定');
+        updateCircle('kpi-sales', null);
     }
 
+    // 2. Customers
+    set('kpi-cust-actual', Math.round(c).toLocaleString() + '名');
     if (goals.customers > 0) {
         const rate = Math.round((c / goals.customers) * 100);
-        set('kpi-cust-rate', rate + '%');
-        document.getElementById('kpi-cust-bar').style.width = Math.min(100, rate) + '%';
-        
-        const targetLabel = document.getElementById('kpi-cust-actual').parentElement.nextElementSibling.querySelector('.kpi-val');
-        if (targetLabel) targetLabel.textContent = Math.round(goals.customers).toLocaleString() + '名';
-        
-        updateTargetMarker('kpi-cust-bar', 100);
+        set('kpi-cust-target', Math.round(goals.customers).toLocaleString() + '名');
+        updateCircle('kpi-cust', rate);
+    } else {
+        set('kpi-cust-target', '未設定');
+        updateCircle('kpi-cust', null);
     }
 
+    // 3. Op Labor Productivity
     const opS = opH > 0 ? Math.round(exTax / opH) : 0;
-    set('kpi-ophour-rate', '¥' + opS.toLocaleString());
     set('kpi-ophour-actual', '¥' + opS.toLocaleString());
-    set('kpi-ophour-target', opH.toFixed(1) + 'h');
+    set('kpi-ophour-labor', opH.toFixed(1) + 'h');
+    set('kpi-ophour-target', '未設定');
+    updateCircle('kpi-ophour', null);
 
+    // 4. Total Labor Productivity
     const totH = opH + ckH;
     const totS = totH > 0 ? Math.round(exTax / totH) : 0;
-    set('kpi-totalhour-rate', '¥' + totS.toLocaleString());
     set('kpi-totalhour-actual', '¥' + totS.toLocaleString());
-    set('kpi-totalhour-target', totH.toFixed(1) + 'h');
-}
-
-function updateTargetMarker(barId, pct) {
-    const bar = document.getElementById(barId);
-    if (!bar) return;
-    const wrap = bar.parentElement;
-    let marker = wrap.querySelector('.kpi-target-marker');
-    if (!marker) {
-        marker = document.createElement('div');
-        marker.className = 'kpi-target-marker';
-        wrap.appendChild(marker);
-    }
-    marker.style.left = pct + '%';
+    set('kpi-totalhour-labor', totH.toFixed(1) + 'h');
+    set('kpi-totalhour-target', '未設定');
+    updateCircle('kpi-totalhour', null);
 }
 
 /**
