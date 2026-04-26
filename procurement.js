@@ -276,6 +276,7 @@ function renderItemRow(si, master, showStoreName = false) {
     const btnLabel = actionLabels[selectedCategory] || '完了';
 
     let transferUi = '';
+    let locHtml = '';
     if (selectedCategory === 'transfer') {
         // Find other stores that have this product and their stock
         const otherStores = allGroupStores.filter(s => s.id !== si.StoreID);
@@ -290,20 +291,21 @@ function renderItemRow(si, master, showStoreName = false) {
         const defaultSource = sourceOptions[0];
         const isOutOfStock = !defaultSource || defaultSource.stock <= 0;
 
-    transferUi = `
-        <div style="margin-right: 1rem; display: flex; flex-direction: column; gap: 0.2rem;">
-            <label style="font-size: 0.65rem; font-weight: 800; color: var(--text-secondary);">移動元店舗</label>
-            <select class="source-store-select" data-si-id="${si.id}" style="padding: 0.3rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.8rem; font-weight: 700; min-width: 120px;">
-                ${sourceOptions.map(o => `<option value="${o.id}" ${o.id === si.default_source_store_id ? 'selected' : ''} ${o.stock <= 0 ? 'disabled' : ''}>${o.name} (残:${o.stock})</option>`).join('')}
-            </select>
-            ${isOutOfStock ? '<span style="font-size: 0.6rem; color: var(--danger); font-weight: 800;">移動元に在庫がありません</span>' : ''}
-        </div>
-    `;
-    
-    // Add Source Location Text
-    const sourceStoreItem = procurementData.find(d => d.StoreID === (si.default_source_store_id || defaultSource?.id) && d.ProductID === si.ProductID);
-    const sourceLoc = sourceStoreItem?.location_label || sourceStoreItem?.保管場所 || '未設定';
-    const locHtml = `<div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.1rem;"><i class="fas fa-map-marker-alt" style="font-size:0.6rem;"></i> 移動元の棚: <span style="font-weight:700; color:#475569;">${sourceLoc}</span></div>`;
+        transferUi = `
+            <div style="margin-right: 1rem; display: flex; flex-direction: column; gap: 0.2rem;">
+                <label style="font-size: 0.65rem; font-weight: 800; color: var(--text-secondary);">移動元店舗</label>
+                <select class="source-store-select" data-si-id="${si.id}" style="padding: 0.3rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.8rem; font-weight: 700; min-width: 120px;">
+                    ${sourceOptions.map(o => `<option value="${o.id}" ${o.id === si.default_source_store_id ? 'selected' : ''} ${o.stock <= 0 ? 'disabled' : ''}>${o.name} (残:${o.stock})</option>`).join('')}
+                </select>
+                ${isOutOfStock ? '<span style="font-size: 0.6rem; color: var(--danger); font-weight: 800;">移動元に在庫がありません</span>' : ''}
+            </div>
+        `;
+        
+        // Add Source Location Text
+        const sourceStoreItem = procurementData.find(d => d.StoreID === (si.default_source_store_id || defaultSource?.id) && d.ProductID === si.ProductID);
+        const sourceLoc = sourceStoreItem?.location_label || sourceStoreItem?.保管場所 || '未設定';
+        locHtml = `<div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.1rem;"><i class="fas fa-map-marker-alt" style="font-size:0.6rem;"></i> 移動元の棚: <span style="font-weight:700; color:#475569;">${sourceLoc}</span></div>`;
+    }
     
     return `
         <div class="proc-row-card" style="${selectedCategory === 'transfer' ? 'padding-right: 1rem;' : ''}">
