@@ -710,7 +710,7 @@ async function refreshDashboard() {
         });
 
         const records = Object.values(grouped);
-        const goals = await calculatePeriodGoals(storeFilter, dateFrom, dateTo);
+        const goals = await calculatePeriodGoals(storeFilter, groupFilter, storeMap, dateFrom, dateTo);
         window.__lastLaborMap = filteredLaborMap;
 
         // 全タブのレンダリング
@@ -758,7 +758,7 @@ function renderAllTabs(records, goals, totalOpH, totalCkH, daily, storeMap, stor
     renderAnalyticsTab(nonCkDaily);
 }
 
-function renderKPIs(recs, goals = { sales: 0, customers: 0 }, forcedOpH = null, forcedCkH = null) {
+function renderKPIs(recs, goals = { sales: 0, customers: 0, sph_op: 0, sph_total: 0 }, forcedOpH = null, forcedCkH = null) {
     let s=0, c=0, opH=0, ckH=0;
     recs.forEach(r => { s+=r.sales; c+=r.customers; opH+=r.op_hours; ckH+=r.ck_alloc; });
     
@@ -811,75 +811,127 @@ function renderKPIs(recs, goals = { sales: 0, customers: 0 }, forcedOpH = null, 
     const opS = opH > 0 ? Math.round(exTax / opH) : 0;
     set('kpi-ophour-actual', '¥' + opS.toLocaleString());
     set('kpi-ophour-labor', opH.toFixed(1) + 'h');
-    set('kpi-ophour-target', '未設定');
-    updateCircle('kpi-ophour', null);
+    if (goals.sph_op > 0) {
+        const rate = Math.round((opS / goals.sph_op) * 100);
+        set('kpi-ophour-target', '¥' + Math.round(goals.sph_op).toLocaleString());
+        updateCircle('kpi-ophour', rate);
+    } else {
+        set('kpi-ophour-target', '未設定');
+        updateCircle('kpi-ophour', null);
+    }
 
     // 4. Total Labor Productivity
     const totH = opH + ckH;
     const totS = totH > 0 ? Math.round(exTax / totH) : 0;
     set('kpi-totalhour-actual', '¥' + totS.toLocaleString());
     set('kpi-totalhour-labor', totH.toFixed(1) + 'h');
-    set('kpi-totalhour-target', '未設定');
-    updateCircle('kpi-totalhour', null);
+    if (goals.sph_total > 0) {
+        const rate = Math.round((totS / goals.sph_total) * 100);
+        set('kpi-totalhour-target', '¥' + Math.round(goals.sph_total).toLocaleString());
+        updateCircle('kpi-totalhour', rate);
+    } else {
+        set('kpi-totalhour-target', '未設定');
+        updateCircle('kpi-totalhour', null);
+    }
 }
 
 /**
  * 期間内の累計目標を計算
  */
-async function calculatePeriodGoals(storeId, from, to) {
-    if (storeId === 'all') return { sales: 0, customers: 0 };
-    
+async function calculatePeriodGoals(storeId, groupFilter, storeMap, from, to) {
+    const storesToProcess = [];
+    if (storeId === 'all') {
+        Object.values(storeMap).forEach(s => {
+            const sid = s.id || s.StoreID || s.StoreId;
+            if (!sid) return;
+            const gn = s.group_name || s.GroupName || s['グループ名'] || "";
+            if (groupFilter === 'all' || gn === groupFilter) {
+                if (String(s.store_type || "").trim() !== 'CK') {
+                    storesToProcess.push(sid);
+                }
+            }
+        });
+    } else {
+        storesToProcess.push(storeId);
+    }
+
     let totalSales = 0;
     let totalCust = 0;
-    
-    const start = new Date(from);
-    const end = new Date(to);
-    
-    // 月ごとのキャッシュ
-    const monthCache = {};
+    let sphOpSum = 0;
+    let sphTotSum = 0;
+    let laborTargetCount = 0;
 
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        const key = `${ym}_${storeId}`;
-        
-        if (!monthCache[key]) {
-            const snap = await getDoc(doc(db, "t_monthly_goals", key));
-            if (snap.exists()) {
-                const data = snap.data();
-                const weights = data.weights || { 
-                    mon_thu: 1.0, fri: 1.2, sat: 1.5, sun: 1.4, holiday: 1.5, day_before_holiday: 1.6 
-                };
+    // 年度目標の取得 (期間の開始日を基準にする)
+    const startDate = new Date(from);
+    let fy = startDate.getFullYear();
+    if (startDate.getMonth() < 6) fy--; // 7月開始
 
-                // 月の総指数を再計算
-                const calSnap = await getDoc(doc(db, "m_calendars", `${ym}_common`));
-                const calDays = calSnap.exists() ? calSnap.data().days : [];
-                
-                let totalWeights = 0;
-                calDays.forEach(day => {
-                    if (day.type !== 'work') return;
-                    totalWeights += calculateDayWeight(d.getFullYear(), d.getMonth() + 1, day, calDays, weights);
-                });
-                
-                monthCache[key] = { ...data, weights, totalWeights, calDays };
-            } else {
-                monthCache[key] = null;
+    for (const sid of storesToProcess) {
+        // 年度予算から人時売上目標を取得
+        try {
+            const bSnap = await getDoc(doc(db, "m_annual_budgets", `${fy}_${sid}`));
+            if (bSnap.exists()) {
+                const b = bSnap.data();
+                if (b.target_sales_per_hour_op) {
+                    sphOpSum += Number(b.target_sales_per_hour_op || 0);
+                    sphTotSum += Number(b.target_sales_per_hour_total || 0);
+                    laborTargetCount++;
+                }
             }
-        }
-        
-        const m = monthCache[key];
-        if (m) {
-            const calDay = m.calDays.find(cd => cd.day === d.getDate());
-            if (calDay && calDay.type === 'work') {
-                const weight = calculateDayWeight(d.getFullYear(), d.getMonth() + 1, calDay, m.calDays, m.weights);
-                const dailySales = (m.sales_target / m.totalWeights) * weight;
-                
-                totalSales += dailySales;
-                totalCust += dailySales / 4500; // その日の目標売上 ÷ 客単価
+        } catch (e) { console.error("Budget fetch error for", sid, e); }
+
+        // 日別売上目標の集計
+        const start = new Date(from);
+        const end = new Date(to);
+        const monthCache = {};
+
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            const key = `${ym}_${sid}`;
+            
+            if (!monthCache[key]) {
+                const snap = await getDoc(doc(db, "t_monthly_goals", key));
+                if (snap.exists()) {
+                    const data = snap.data();
+                    const weights = data.weights || { 
+                        mon_thu: 1.0, fri: 1.2, sat: 1.5, sun: 1.4, holiday: 1.5, day_before_holiday: 1.6 
+                    };
+
+                    const calSnap = await getDoc(doc(db, "m_calendars", `${ym}_common`));
+                    const calDays = calSnap.exists() ? calSnap.data().days : [];
+                    
+                    let totalWeights = 0;
+                    calDays.forEach(day => {
+                        if (day.type !== 'work') return;
+                        totalWeights += calculateDayWeight(d.getFullYear(), d.getMonth() + 1, day, calDays, weights);
+                    });
+                    
+                    monthCache[key] = { ...data, weights, totalWeights, calDays };
+                } else {
+                    monthCache[key] = null;
+                }
+            }
+            
+            const m = monthCache[key];
+            if (m) {
+                const calDay = m.calDays.find(cd => cd.day === d.getDate());
+                if (calDay && calDay.type === 'work') {
+                    const weight = calculateDayWeight(d.getFullYear(), d.getMonth() + 1, calDay, m.calDays, m.weights);
+                    const dailySales = (Number(m.sales_target || 0) / (m.totalWeights || 1)) * weight;
+                    
+                    totalSales += dailySales;
+                    totalCust += dailySales / 4500; // 仮の客単価
+                }
             }
         }
     }
-    
-    return { sales: totalSales, customers: totalCust };
+
+    return { 
+        sales: totalSales, 
+        customers: totalCust,
+        sph_op: laborTargetCount > 0 ? sphOpSum / laborTargetCount : 0,
+        sph_total: laborTargetCount > 0 ? sphTotSum / laborTargetCount : 0
+    };
 }
 
 function calculateDayWeight(y, m, day, calDays, weights) {
