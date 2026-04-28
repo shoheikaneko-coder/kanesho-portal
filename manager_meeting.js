@@ -46,14 +46,77 @@ async function renderArchiveView(container) {
         <div class="mm-card no-print">
             <p>※ 過去の会議データ一覧（開発中）</p>
         </div>
+
+        <!-- 新規作成モーダル -->
+        <div id="mm-create-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
+            <div class="glass-panel animate-fade-in" style="background:white; padding:2rem; border-radius:12px; width:90%; max-width:400px;">
+                <h3 style="margin-top:0; color:var(--text-primary);">新規作成</h3>
+                <div class="input-group">
+                    <label>対象店舗</label>
+                    <select id="mm-select-store" class="mm-input">
+                        <option value="">読込中...</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>対象月</label>
+                    <input type="month" id="mm-select-month" class="mm-input">
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:1rem; margin-top:1.5rem;">
+                    <button id="btn-cancel-modal" class="btn" style="background:#f1f5f9;">キャンセル</button>
+                    <button id="btn-confirm-create" class="btn btn-primary">作成開始</button>
+                </div>
+            </div>
+        </div>
     `;
 
-    document.getElementById('btn-create-meeting').onclick = () => {
-        // 仮で即作成画面へ遷移（後で店舗・月の選択モーダルを入れる）
+    const modal = document.getElementById('mm-create-modal');
+    
+    document.getElementById('btn-create-meeting').onclick = async () => {
+        modal.style.display = 'flex';
+        // 今月をデフォルトセット
+        const now = new Date();
+        document.getElementById('mm-select-month').value = \`\${now.getFullYear()}-\${String(now.getMonth() + 1).padStart(2, '0')}\`;
+        
+        // 店舗リスト取得
+        const storeSelect = document.getElementById('mm-select-store');
+        if (storeSelect.options.length <= 1) {
+            try {
+                const snap = await getDocs(query(collection(db, "m_stores"), orderBy("store_id")));
+                storeSelect.innerHTML = '';
+                snap.forEach(d => {
+                    const opt = document.createElement('option');
+                    opt.value = d.data().store_id;
+                    opt.textContent = d.data().store_name;
+                    storeSelect.appendChild(opt);
+                });
+                
+                // ログインユーザーの店舗をデフォルト選択
+                if (window.state && window.state.currentUser) {
+                    storeSelect.value = window.state.currentUser.StoreID || window.state.currentUser.StoreId;
+                }
+            } catch (e) {
+                console.error("Failed to load stores:", e);
+                storeSelect.innerHTML = '<option value="">店舗の読み込みに失敗</option>';
+            }
+        }
+    };
+
+    document.getElementById('btn-cancel-modal').onclick = () => {
+        modal.style.display = 'none';
+    };
+
+    document.getElementById('btn-confirm-create').onclick = () => {
+        const store = document.getElementById('mm-select-store').value;
+        const month = document.getElementById('mm-select-month').value;
+        if (!store || !month) return alert("店舗と月を選択してください");
+        
+        currentTargetStore = store;
+        currentTargetMonth = month;
         currentMeetingView = 'form';
         editingMeetingData = null;
         renderMeetingView();
     };
+
 }
 
 async function renderFormView(container) {
@@ -117,4 +180,45 @@ async function renderFormView(container) {
     document.getElementById('btn-print-meeting').onclick = () => {
         window.print();
     };
+
+    // 初期データ投入
+    initializeFormBasicInfo();
+}
+
+async function initializeFormBasicInfo() {
+    const user = window.state ? window.state.currentUser : null;
+    const authorName = user ? (user.Name || '不明') : '不明';
+    const today = new Date().toLocaleDateString('ja-JP');
+
+    document.getElementById('display-author').textContent = authorName;
+    document.getElementById('display-date').textContent = today;
+    document.getElementById('display-status').textContent = '下書き';
+    
+    // YYYY-MM から YYYY年M月度 へ変換
+    const [y, m] = currentTargetMonth.split('-');
+    document.getElementById('display-target-month').textContent = \`\${y}年\${parseInt(m)}月度\`;
+
+    // 店舗名取得
+    try {
+        const snap = await getDocs(query(collection(db, "m_stores"), where("store_id", "==", currentTargetStore)));
+        if (!snap.empty) {
+            document.getElementById('display-store-name').textContent = snap.docs[0].data().store_name;
+        } else {
+            document.getElementById('display-store-name').textContent = currentTargetStore;
+        }
+    } catch(e) {
+        document.getElementById('display-store-name').textContent = currentTargetStore;
+    }
+
+    // 今後ここにKPIデータの取得処理を追加
+    document.getElementById('mm-kpi-tbody').innerHTML = \`
+        <tr>
+            <td>売上</td>
+            <td>-</td>
+            <td>-</td>
+            <td>-</td>
+            <td>-</td>
+            <td>-</td>
+        </tr>
+    \`;
 }
