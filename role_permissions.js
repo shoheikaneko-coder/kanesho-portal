@@ -154,6 +154,14 @@ export async function initRolePermissionsPage() {
                     permissions: checked,
                     updatedAt: new Date().toISOString()
                 });
+                
+                // 現在ログイン中のユーザー自身の権限を変更した場合は即座にアプリに反映させる
+                if (window.state && window.state.currentUser && window.state.currentUser.Role === selectedRole) {
+                    if (window.appState) {
+                        window.appState.permissions = checked;
+                    }
+                }
+                
                 alert("権限設定を保存しました。");
             } catch (err) {
                 alert("保存に失敗しました: " + err.message);

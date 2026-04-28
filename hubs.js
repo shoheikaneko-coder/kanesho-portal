@@ -81,7 +81,8 @@ export function initHubPage(type) {
 
     grid.innerHTML = config.items.filter(item => {
         // 権限チェック（全てのHubアイテムが権限制御されているわけではないが、基本は許可または個別チェック）
-        return permissions.length === 0 || permissions.includes(item.id);
+        // ※ 開発中のため、店長会議資料は無条件で表示させる
+        return item.id === 'manager_meeting' || permissions.length === 0 || permissions.includes(item.id);
     }).map(item => `
         <div class="glass-panel hub-card" onclick="window.navigateTo('${item.id}')" style="padding: 1.5rem; cursor: pointer; transition: all 0.3s ease; position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 0.8rem; border: 1px solid rgba(255,255,255,0.4);">
             <div style="width: 50px; height: 50px; border-radius: 12px; background: ${item.color}15; color: ${item.color}; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
