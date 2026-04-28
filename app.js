@@ -36,6 +36,7 @@ import { attendanceManagementPageHtml, initAttendanceManagementPage } from './at
 import { bottleKeepPageHtml, initBottleKeepPage } from './bottle_keep.js';
 import { prototypeMenuPageHtml, initPrototypeMenuPage } from './prototype_menu.js?v=141';
 import { competitorListPageHtml, initCompetitorListPage } from './competitor_list.js';
+import { managerMeetingPageHtml, initManagerMeetingPage } from './manager_meeting.js';
 import { PullToRefresh } from './ptr_logic.js';
 
 
@@ -447,6 +448,11 @@ function showPage(target) {
                 updateHeaderTitle('ダッシュボード');
                 pageContent.innerHTML = dashboardPageHtml;
                 initDashboardPage();
+                break;
+            case 'manager_meeting':
+                updateHeaderTitle('店長会議資料');
+                pageContent.innerHTML = managerMeetingPageHtml;
+                initManagerMeetingPage();
                 break;
             case 'attendance_check':
                 updateHeaderTitle('勤怠状況確認');

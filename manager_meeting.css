@@ -1,0 +1,165 @@
+/* manager_meeting.css */
+
+.manager-meeting-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+.mm-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.mm-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border);
+}
+
+.mm-section-title {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--primary);
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.mm-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.mm-grid-2 { grid-template-columns: repeat(2, 1fr); }
+.mm-grid-3 { grid-template-columns: repeat(3, 1fr); }
+.mm-grid-4 { grid-template-columns: repeat(4, 1fr); }
+.mm-grid-5 { grid-template-columns: repeat(5, 1fr); }
+
+.mm-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-bottom: 0.2rem;
+    display: block;
+}
+
+.mm-value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    background: #f8fafc;
+    padding: 0.6rem;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+}
+
+.mm-input {
+    width: 100%;
+    padding: 0.6rem;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    font-size: 0.95rem;
+    background: white;
+}
+
+.mm-textarea {
+    width: 100%;
+    padding: 0.6rem;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    font-size: 0.95rem;
+    background: white;
+    min-height: 80px;
+    resize: vertical;
+}
+
+/* KPI Table */
+.mm-kpi-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+}
+
+.mm-kpi-table th, .mm-kpi-table td {
+    padding: 0.8rem;
+    border: 1px solid var(--border);
+    text-align: right;
+    font-size: 0.9rem;
+}
+
+.mm-kpi-table th {
+    background: #f1f5f9;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+.mm-kpi-table td:first-child {
+    text-align: left;
+    font-weight: 700;
+    background: #f8fafc;
+}
+
+/* Print Styles */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    
+    .manager-meeting-container, 
+    .manager-meeting-container * {
+        visibility: visible;
+    }
+    
+    .manager-meeting-container {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        max-width: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .mm-card {
+        box-shadow: none;
+        border: 1px solid #ccc;
+        break-inside: avoid;
+        margin-bottom: 10px;
+        padding: 15px;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+
+    /* Adjust sizing for A4 */
+    @page {
+        size: A4;
+        margin: 1cm;
+    }
+    
+    .mm-section-title {
+        font-size: 1rem;
+        padding-bottom: 2px;
+        margin-bottom: 5px;
+    }
+    
+    .mm-label {
+        font-size: 0.7rem;
+    }
+    
+    .mm-input, .mm-textarea, .mm-value {
+        padding: 0.3rem;
+        font-size: 0.85rem;
+    }
+}

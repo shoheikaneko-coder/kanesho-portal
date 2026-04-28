@@ -176,10 +176,16 @@ function renderFormView(container) {
                         </div>
                     </div>
 
-                    <div class="input-group">
-                        <label style="font-weight: 700; color: #475569;">メールアドレス (ログイン用ID)</label>
-                        <input type="email" id="user-email" placeholder="example@kaneshow.jp">
-                        <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.3rem;">※ポータルへのログインに使用します</p>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                        <div class="input-group">
+                            <label style="font-weight: 700; color: #475569;">メールアドレス (ログイン用ID)</label>
+                            <input type="email" id="user-email" placeholder="example@kaneshow.jp">
+                            <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.3rem;">※ポータルへのログインに使用します</p>
+                        </div>
+                        <div class="input-group">
+                            <label style="font-weight: 700; color: #475569;">VISA期限 (外国人スタッフ用)</label>
+                            <input type="date" id="user-visa-expiry" style="background: white; font-weight: 600;">
+                        </div>
                     </div>
 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; background: #f1f5f9; padding: 1.5rem; border-radius: 12px;">
@@ -237,6 +243,7 @@ function renderFormView(container) {
             document.getElementById('user-28h-limit').checked = !!editingUserData.Has28hLimit;
             document.getElementById('user-display-name').value = editingUserData.DisplayName || '';
             document.getElementById('user-job-title').value = editingUserData.JobTitle || '';
+            document.getElementById('user-visa-expiry').value = editingUserData.visa_expiry_date || '';
         }
     });
 
@@ -271,6 +278,7 @@ function setupFormLogic() {
             'DisplayName': document.getElementById('user-display-name').value,
             'JobTitle': document.getElementById('user-job-title').value,
             'Status': document.getElementById('user-status').value,
+            'visa_expiry_date': document.getElementById('user-visa-expiry').value,
             'UpdatedAt': new Date().toISOString()
         };
 

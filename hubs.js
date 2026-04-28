@@ -28,6 +28,7 @@ const HUB_CONFIG = {
             { id: 'stocktake', name: '棚卸し履歴', icon: 'fa-history', color: '#8b5cf6', desc: '日次棚卸し額の記録・推移確認' },
             { id: 'inventory_history', name: '在庫履歴', icon: 'fa-list-alt', color: '#64748b', desc: '在庫増減の全履歴ログ' },
             { id: 'recipe_viewer', name: 'レシピ閲覧', icon: 'fa-book-open', color: '#ec4899', desc: 'メニュー情報の確認' },
+            { id: 'manager_meeting', name: '店長会議資料', icon: 'fa-file-signature', color: '#14b8a6', desc: '実績とPDCAの入力・印刷' },
             { id: 'goals_store', name: '月次計画(店長用)', icon: 'fa-tasks', color: '#f97316', desc: '目標管理と按分シミュ' }
         ]
     },
