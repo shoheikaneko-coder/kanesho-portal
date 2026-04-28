@@ -44,7 +44,9 @@ async function renderArchiveView(container) {
         </div>
 
         <div class="mm-card no-print">
-            <p>※ 過去の会議データ一覧（開発中）</p>
+            <div id="mm-archive-list" class="mm-grid" style="gap: 1rem; display: flex; flex-direction: column;">
+                <p style="text-align:center; padding: 2rem;">読込中...</p>
+            </div>
         </div>
 
         <!-- 新規作成モーダル -->
@@ -70,6 +72,9 @@ async function renderArchiveView(container) {
     `;
 
     const modal = document.getElementById('mm-create-modal');
+    
+    // 過去のデータを読み込み
+    loadArchiveList();
     
     document.getElementById('btn-create-meeting').onclick = async () => {
         modal.style.display = 'flex';
@@ -168,7 +173,30 @@ async function renderFormView(container) {
                 </table>
             </div>
 
-            <!-- More sections will be added here -->
+            <!-- PDCA 入力セクション -->
+            <div class="mm-card">
+                <div class="mm-section-title"><i class="fas fa-sync-alt"></i> 今月の振り返り (PDCA)</div>
+                <div class="input-group" style="margin-bottom: 1.5rem;">
+                    <label>先月の課題に対する今月の取り組み結果 (Check & Action)</label>
+                    <textarea id="mm-input-review" class="mm-input" rows="4" placeholder="先月立てた改善策がどうだったか、結果と要因を記載してください"></textarea>
+                </div>
+                <div class="input-group">
+                    <label>今月の新たな課題と要因分析 (Plan)</label>
+                    <textarea id="mm-input-issues" class="mm-input" rows="4" placeholder="今月目標未達だった項目や、新たに見つかった課題とその原因を記載してください"></textarea>
+                </div>
+            </div>
+
+            <div class="mm-card">
+                <div class="mm-section-title"><i class="fas fa-forward"></i> 次月への改善計画</div>
+                <div class="input-group" style="margin-bottom: 1.5rem;">
+                    <label>次月の具体的な改善アクション (Do)</label>
+                    <textarea id="mm-input-action" class="mm-input" rows="4" placeholder="誰が、いつまでに、何をするか具体的に記載してください"></textarea>
+                </div>
+                <div class="input-group">
+                    <label>本部に共有したい事項・要望事項等 (任意)</label>
+                    <textarea id="mm-input-requests" class="mm-input" rows="3" placeholder="備品の不足、ルールの改善要望など"></textarea>
+                </div>
+            </div>
         </div>
     `;
 
@@ -181,8 +209,20 @@ async function renderFormView(container) {
         window.print();
     };
 
+    document.getElementById('btn-save-meeting').onclick = async () => {
+        await saveMeetingData();
+    };
+
     // 初期データ投入
-    initializeFormBasicInfo();
+    await initializeFormBasicInfo();
+    
+    // 編集モードならデータ復元
+    if (editingMeetingData) {
+        document.getElementById('mm-input-review').value = editingMeetingData.review_text || '';
+        document.getElementById('mm-input-issues').value = editingMeetingData.issues_text || '';
+        document.getElementById('mm-input-action').value = editingMeetingData.action_text || '';
+        document.getElementById('mm-input-requests').value = editingMeetingData.requests_text || '';
+    }
 }
 
 async function initializeFormBasicInfo() {
@@ -212,6 +252,119 @@ async function initializeFormBasicInfo() {
 
     // KPIデータの取得処理を追加
     await fetchMeetingData(y, m);
+}
+
+// ==========================================
+// アーカイブ・保存処理
+// ==========================================
+
+async function loadArchiveList() {
+    const listContainer = document.getElementById('mm-archive-list');
+    if (!listContainer) return;
+
+    try {
+        const snap = await getDocs(query(collection(db, "t_manager_meetings"), orderBy("target_month", "desc")));
+        if (snap.empty) {
+            listContainer.innerHTML = '<p style="text-align:center; color:var(--text-secondary);">過去の会議資料はありません</p>';
+            return;
+        }
+
+        let html = '';
+        snap.forEach(docSnap => {
+            const d = docSnap.data();
+            const dateStr = new Date(d.created_at).toLocaleDateString('ja-JP');
+            html += \`
+                <div class="glass-panel" style="padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s;"
+                     onclick="window.openMeeting('\${docSnap.id}')"
+                     onmouseover="this.style.borderColor='var(--primary)'"
+                     onmouseout="this.style.borderColor='rgba(255,255,255,0.4)'">
+                    <div>
+                        <h4 style="margin:0; font-size:1.1rem; color:var(--text-primary);">\${d.store_name} - \${d.target_month}度</h4>
+                        <p style="margin:0.2rem 0 0; font-size:0.8rem; color:var(--text-secondary);">作成者: \${d.author_name} | 最終更新: \${dateStr}</p>
+                    </div>
+                    <div>
+                        <span style="background:var(--primary); color:white; padding:0.3rem 0.8rem; border-radius:20px; font-size:0.8rem; font-weight:600;">\${d.status || '下書き'}</span>
+                    </div>
+                </div>
+            \`;
+        });
+        
+        listContainer.innerHTML = html;
+        
+        // グローバルに関数を登録してクリックで開けるようにする
+        window.openMeeting = async (docId) => {
+            const docRef = await getDoc(doc(db, "t_manager_meetings", docId));
+            if (docRef.exists()) {
+                const data = docRef.data();
+                editingMeetingData = { ...data, id: docId };
+                currentTargetStore = data.store_id;
+                currentTargetMonth = data.target_month;
+                currentMeetingView = 'form';
+                renderMeetingView();
+            }
+        };
+
+    } catch (e) {
+        console.error("Failed to load archive:", e);
+        listContainer.innerHTML = '<p style="text-align:center; color:var(--danger);">データの読み込みに失敗しました</p>';
+    }
+}
+
+async function saveMeetingData() {
+    const btn = document.getElementById('btn-save-meeting');
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
+    btn.disabled = true;
+
+    try {
+        const user = window.state ? window.state.currentUser : null;
+        
+        const storeName = document.getElementById('display-store-name').textContent;
+        const authorName = document.getElementById('display-author').textContent;
+        const reviewText = document.getElementById('mm-input-review').value;
+        const issuesText = document.getElementById('mm-input-issues').value;
+        const actionText = document.getElementById('mm-input-action').value;
+        const requestsText = document.getElementById('mm-input-requests').value;
+        
+        // 保存するデータ
+        const saveData = {
+            store_id: currentTargetStore,
+            store_name: storeName,
+            target_month: currentTargetMonth,
+            author_id: user ? user.id : 'unknown',
+            author_name: authorName,
+            review_text: reviewText,
+            issues_text: issuesText,
+            action_text: actionText,
+            requests_text: requestsText,
+            status: '提出済み', // とりあえず固定
+            updated_at: new Date().toISOString()
+        };
+
+        if (!editingMeetingData) {
+            saveData.created_at = new Date().toISOString();
+        } else {
+            saveData.created_at = editingMeetingData.created_at || new Date().toISOString();
+        }
+
+        // ドキュメントID: 店舗ID_年月 (一店舗一月に一つ)
+        const docId = editingMeetingData ? editingMeetingData.id : \`\${currentTargetStore}_\${currentTargetMonth}\`;
+        
+        await setDoc(doc(db, "t_manager_meetings", docId), saveData);
+        
+        showAlert("会議資料を保存・提出しました！", "success");
+        
+        // アーカイブに戻る
+        currentMeetingView = 'archive';
+        renderMeetingView();
+
+    } catch (e) {
+        console.error("Save failed:", e);
+        showAlert("保存に失敗しました", "danger");
+    } finally {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+    }
 }
 
 const TAX_RATE = 1.1;
