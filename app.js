@@ -193,7 +193,6 @@ async function loginSuccess(rawData) {
         }
         
         window.scrollTo(0, 0);
-    }
 
     const nameEl = document.getElementById('display-user-name');
     const roleEl = document.getElementById('display-user-role');
