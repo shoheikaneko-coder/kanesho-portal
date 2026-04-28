@@ -110,6 +110,7 @@ const menuItems = [
     // 目標管理
     { id: 'goals_admin', name: '目標設定 (社長用)', icon: 'fa-bullseye' },
     { id: 'goals_store', name: '月次計画 (店長用)', icon: 'fa-tasks' },
+    { id: 'manager_meeting', name: '店長会議資料', icon: 'fa-file-signature' },
     { id: 'daily_sakes', name: '日本酒管理', icon: 'fa-wine-glass-alt' },
     { id: 'bottle_keep', name: 'ボトルキープ', icon: 'fa-wine-bottle' },
     // 便利機能
