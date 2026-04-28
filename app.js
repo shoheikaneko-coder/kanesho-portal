@@ -30,13 +30,13 @@ import { goalsAdminPageHtml, initGoalsAdminPage, goalsStorePageHtml, initGoalsSt
 import { homePageHtml, initHomePage } from './home.js?v=120';
 import { shiftSubmissionPageHtml, initShiftSubmissionPage, shiftAdminPageHtml, initShiftAdminPage, shiftViewerPageHtml, initShiftViewerPage, checkIfShiftPublished } from './shift.js?v=72';
 import { loansPageHtml, initLoansPage } from './loans.js?v=116';
-import { hubPageHtml, initHubPage } from './hubs.js?v=116';
+import { hubPageHtml, initHubPage } from './hubs.js?v=20260428_01';
 import { inviteNaviPageHtml, initInviteNaviPage } from './invite_navi.js';
 import { attendanceManagementPageHtml, initAttendanceManagementPage } from './attendance_management.js';
 import { bottleKeepPageHtml, initBottleKeepPage } from './bottle_keep.js';
 import { prototypeMenuPageHtml, initPrototypeMenuPage } from './prototype_menu.js?v=141';
 import { competitorListPageHtml, initCompetitorListPage } from './competitor_list.js';
-import { managerMeetingPageHtml, initManagerMeetingPage } from './manager_meeting.js';
+import { managerMeetingPageHtml, initManagerMeetingPage } from './manager_meeting.js?v=20260428_01';
 import { PullToRefresh } from './ptr_logic.js';
 
 
