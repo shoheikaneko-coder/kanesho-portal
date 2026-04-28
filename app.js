@@ -1,4 +1,5 @@
-import { db } from './firebase.js';
+import { auth, db } from './firebase.js';
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { collection, getDocs, query, where, getDoc, doc, updateDoc, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 // 各ページのインポート
@@ -136,14 +137,40 @@ function normalizeUser(user) {
     return normalized;
 }
 
+let isInitialized = false;
+
 /**
  * ログイン成功時の処理（初期化・画面遷移）
  */
 async function loginSuccess(rawData) {
+    // 重複実行防止
+    if (isInitialized) return;
+    isInitialized = true;
+
     const user = normalizeUser(rawData);
     if (!user || !user.id) {
         console.warn("loginSuccess: Invalid user data, aborting login flow.");
         return;
+    }
+
+    // DOM要素の準備を待機する (根本解決)
+    let layout = document.getElementById('dashboard-layout');
+    if (!layout) {
+        console.log("loginSuccess: Waiting for DOM (#dashboard-layout)...");
+        // 最大2秒間待機
+        for (let i = 0; i < 20; i++) {
+            await new Promise(r => setTimeout(r, 100));
+            layout = document.getElementById('dashboard-layout');
+            if (layout) break;
+        }
+    }
+
+    if (!layout) {
+        const errMsg = "#dashboard-layout が見つかりませんでした。初期化を中断します。";
+        console.error(errMsg);
+        // 開発者向けに詳細な状態をログ
+        console.log("Current Body:", document.body.innerHTML.substring(0, 500) + "...");
+        throw new Error(errMsg);
     }
 
     state.currentUser = user;
@@ -154,10 +181,9 @@ async function loginSuccess(rawData) {
     const appContainer = document.getElementById('app-container');
     if (appContainer) appContainer.remove();
     
-    const layout = document.getElementById('dashboard-layout');
-    if (layout) {
-        layout.style.display = 'flex';
-        layout.style.opacity = '1';
+    // layout は上記待機処理で取得済み
+    layout.style.display = 'flex';
+    layout.style.opacity = '1';
         
         // 店舗タブレットの場合はサイドバーをデフォルトで折りたたむ
         if (user.Role === 'Tablet') {
@@ -627,16 +653,44 @@ document.addEventListener('DOMContentLoaded', () => {
         console.warn("DOMContentLoaded: #login-form not found.");
     }
 
-    // 2. ログイン状態の確認と自動ログイン
+    // 2. 認証状態の監視 (一本化)
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            console.log("Auth state changed: User is logged in", user.uid);
+            try {
+                // 必要に応じて Firestore から最新のユーザー情報を取得
+                const docSnap = await getDoc(doc(db, "m_users", user.uid));
+                if (docSnap.exists()) {
+                    await loginSuccess({ id: user.uid, ...docSnap.data() });
+                } else {
+                    // マスタにない場合は auth の情報で最低限ログイン
+                    await loginSuccess({ id: user.uid, email: user.email, Name: user.displayName });
+                }
+            } catch (err) {
+                console.error("Authentication initialization failed:", err);
+            }
+        } else {
+            console.log("Auth state changed: User is logged out");
+            // ログアウト時はストレージをクリアしてリロード（必要に応じて）
+            const wasLoggedIn = !!localStorage.getItem('currentUser');
+            if (wasLoggedIn) {
+                localStorage.removeItem('currentUser');
+                location.reload();
+            }
+        }
+    });
+
+    // 3. ローカルストレージによる先行ログイン (初期表示の高速化)
     const savedUser = localStorage.getItem('currentUser');
     if (savedUser) {
         try {
             const userData = JSON.parse(savedUser);
             if (userData) {
+                console.log("Local storage auto-login starting...");
                 loginSuccess(userData);
             }
         } catch (e) { 
-            console.error("Auto-login error:", e);
+            console.error("Local auto-login error:", e);
             localStorage.removeItem('currentUser'); 
         }
     }
