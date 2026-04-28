@@ -210,15 +210,113 @@ async function initializeFormBasicInfo() {
         document.getElementById('display-store-name').textContent = currentTargetStore;
     }
 
-    // 今後ここにKPIデータの取得処理を追加
-    document.getElementById('mm-kpi-tbody').innerHTML = \`
+    // KPIデータの取得処理を追加
+    await fetchMeetingData(y, m);
+}
+
+const TAX_RATE = 1.1;
+
+async function fetchMeetingData(year, monthStr) {
+    const month = parseInt(monthStr);
+    const targetYm = \`\${year}-\${String(month).padStart(2, '0')}\`;
+    
+    // 前月の計算
+    let prevY = year;
+    let prevM = month - 1;
+    if (prevM === 0) { prevM = 12; prevY--; }
+    const prevYm = \`\${prevY}-\${String(prevM).padStart(2, '0')}\`;
+
+    const storeId = currentTargetStore;
+
+    // ----- 1. 実績の集計 (売上, 客数) -----
+    const pSnap = await getDocs(query(collection(db, "t_performance"), where("store_id", "==", storeId)));
+    
+    let currentSales = 0;
+    let prevSales = 0;
+
+    pSnap.forEach(doc => {
+        const d = doc.data();
+        const normDate = (d.date || "").replace(/\//g, '-').replace(/\./g, '-');
+        const ym = d.year_month || normDate.substring(0, 7);
+        const amount = (d.amount || d.Amount || d['売上税込'] || 0) / TAX_RATE; // 税抜換算
+
+        if (ym === targetYm) currentSales += amount;
+        if (ym === prevYm) prevSales += amount;
+    });
+
+    // ----- 2. 人時の集計 (勤怠) -----
+    // 簡易版: t_attendance のインポート済 total_labor_hours を優先
+    const aSnap = await getDocs(collection(db, "t_attendance"));
+    let currentOpHours = 0;
+    let prevOpHours = 0;
+
+    aSnap.forEach(doc => {
+        const d = doc.data();
+        const isImported = (d.total_labor_hours !== undefined || d.TotalLaborHours !== undefined);
+        if (!isImported) return; // 詳細な打刻の集計は重いため、いったんインポートされた合計値を使う
+
+        const sid = String(d.store_id || d.StoreID || "").trim();
+        if (sid !== storeId) return;
+
+        const rawYm = d.year_month || d.YearMonth || String(d.timestamp || d.date).substring(0, 7);
+        const ym = String(rawYm).replace(/\//g, '-');
+        const h = Number(d.total_labor_hours || d.TotalLaborHours || 0);
+
+        if (ym === targetYm) currentOpHours += h;
+        if (ym === prevYm) prevOpHours += h;
+    });
+
+    // ----- 3. 目標の取得 -----
+    let targetSales = 0;
+    let targetSphOp = 0;
+    
+    try {
+        const goalSnap = await getDoc(doc(db, "t_monthly_goals", \`\${targetYm}_\${storeId}\`));
+        if (goalSnap.exists()) {
+            targetSales = Number(goalSnap.data().sales_target || 0);
+        }
+        
+        // 年間予算から人時目標
+        let fy = year;
+        if (month < 3) fy = year - 1; // かね将の会計年度が3月始まりと仮定 (ダッシュボードロジック準拠)
+        const bSnap = await getDoc(doc(db, "m_annual_budgets", \`\${fy}_\${storeId}\`));
+        if (bSnap.exists()) {
+            targetSphOp = Number(bSnap.data().target_sales_per_hour_op || 0);
+        }
+    } catch(e) { console.error(e); }
+
+    const targetOpHours = targetSphOp > 0 ? targetSales / targetSphOp : 0;
+
+    // ----- 4. 人時売上の計算 -----
+    const currentSph = currentOpHours > 0 ? currentSales / currentOpHours : 0;
+    const prevSph = prevOpHours > 0 ? prevSales / prevOpHours : 0;
+
+    // ----- テーブル描画 -----
+    const tbody = document.getElementById('mm-kpi-tbody');
+    tbody.innerHTML = \`
         <tr>
-            <td>売上</td>
-            <td>-</td>
-            <td>-</td>
-            <td>-</td>
-            <td>-</td>
-            <td>-</td>
+            <td>売上 (税抜)</td>
+            <td>¥\${Math.round(targetSales).toLocaleString()}</td>
+            <td>¥\${Math.round(currentSales).toLocaleString()}</td>
+            <td>\${targetSales > 0 ? Math.round((currentSales / targetSales)*100) : '-'}%</td>
+            <td>¥\${Math.round(prevSales).toLocaleString()}</td>
+            <td>\${prevSales > 0 ? Math.round((currentSales / prevSales)*100) : '-'}%</td>
+        </tr>
+        <tr>
+            <td>営業人時</td>
+            <td>\${Math.round(targetOpHours).toLocaleString()} h</td>
+            <td>\${Math.round(currentOpHours).toLocaleString()} h</td>
+            <td>\${targetOpHours > 0 ? Math.round((currentOpHours / targetOpHours)*100) : '-'}%</td>
+            <td>\${Math.round(prevOpHours).toLocaleString()} h</td>
+            <td>\${prevOpHours > 0 ? Math.round((currentOpHours / prevOpHours)*100) : '-'}%</td>
+        </tr>
+        <tr>
+            <td>人時売上</td>
+            <td>¥\${Math.round(targetSphOp).toLocaleString()}</td>
+            <td>¥\${Math.round(currentSph).toLocaleString()}</td>
+            <td>\${targetSphOp > 0 ? Math.round((currentSph / targetSphOp)*100) : '-'}%</td>
+            <td>¥\${Math.round(prevSph).toLocaleString()}</td>
+            <td>\${prevSph > 0 ? Math.round((currentSph / prevSph)*100) : '-'}%</td>
         </tr>
     \`;
 }
