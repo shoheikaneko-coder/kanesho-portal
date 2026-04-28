@@ -80,7 +80,7 @@ async function renderArchiveView(container) {
         modal.style.display = 'flex';
         // 今月をデフォルトセット
         const now = new Date();
-        document.getElementById('mm-select-month').value = \`\${now.getFullYear()}-\${String(now.getMonth() + 1).padStart(2, '0')}\`;
+        document.getElementById('mm-select-month').value = `\${now.getFullYear()}-\${String(now.getMonth() + 1).padStart(2, '0')}`;
         
         // 店舗リスト取得
         const storeSelect = document.getElementById('mm-select-store');
@@ -236,7 +236,7 @@ async function initializeFormBasicInfo() {
     
     // YYYY-MM から YYYY年M月度 へ変換
     const [y, m] = currentTargetMonth.split('-');
-    document.getElementById('display-target-month').textContent = \`\${y}年\${parseInt(m)}月度\`;
+    document.getElementById('display-target-month').textContent = `\${y}年\${parseInt(m)}月度`;
 
     // 店舗名取得
     try {
@@ -273,7 +273,7 @@ async function loadArchiveList() {
         snap.forEach(docSnap => {
             const d = docSnap.data();
             const dateStr = new Date(d.created_at).toLocaleDateString('ja-JP');
-            html += \`
+            html += `
                 <div class="glass-panel" style="padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s;"
                      onclick="window.openMeeting('\${docSnap.id}')"
                      onmouseover="this.style.borderColor='var(--primary)'"
@@ -286,7 +286,7 @@ async function loadArchiveList() {
                         <span style="background:var(--primary); color:white; padding:0.3rem 0.8rem; border-radius:20px; font-size:0.8rem; font-weight:600;">\${d.status || '下書き'}</span>
                     </div>
                 </div>
-            \`;
+            `;
         });
         
         listContainer.innerHTML = html;
@@ -348,7 +348,7 @@ async function saveMeetingData() {
         }
 
         // ドキュメントID: 店舗ID_年月 (一店舗一月に一つ)
-        const docId = editingMeetingData ? editingMeetingData.id : \`\${currentTargetStore}_\${currentTargetMonth}\`;
+        const docId = editingMeetingData ? editingMeetingData.id : `\${currentTargetStore}_\${currentTargetMonth}`;
         
         await setDoc(doc(db, "t_manager_meetings", docId), saveData);
         
@@ -371,13 +371,13 @@ const TAX_RATE = 1.1;
 
 async function fetchMeetingData(year, monthStr) {
     const month = parseInt(monthStr);
-    const targetYm = \`\${year}-\${String(month).padStart(2, '0')}\`;
+    const targetYm = `\${year}-\${String(month).padStart(2, '0')}`;
     
     // 前月の計算
     let prevY = year;
     let prevM = month - 1;
     if (prevM === 0) { prevM = 12; prevY--; }
-    const prevYm = \`\${prevY}-\${String(prevM).padStart(2, '0')}\`;
+    const prevYm = `\${prevY}-\${String(prevM).padStart(2, '0')}`;
 
     const storeId = currentTargetStore;
 
@@ -424,7 +424,7 @@ async function fetchMeetingData(year, monthStr) {
     let targetSphOp = 0;
     
     try {
-        const goalSnap = await getDoc(doc(db, "t_monthly_goals", \`\${targetYm}_\${storeId}\`));
+        const goalSnap = await getDoc(doc(db, "t_monthly_goals", `\${targetYm}_\${storeId}`));
         if (goalSnap.exists()) {
             targetSales = Number(goalSnap.data().sales_target || 0);
         }
@@ -432,7 +432,7 @@ async function fetchMeetingData(year, monthStr) {
         // 年間予算から人時目標
         let fy = year;
         if (month < 3) fy = year - 1; // かね将の会計年度が3月始まりと仮定 (ダッシュボードロジック準拠)
-        const bSnap = await getDoc(doc(db, "m_annual_budgets", \`\${fy}_\${storeId}\`));
+        const bSnap = await getDoc(doc(db, "m_annual_budgets", `\${fy}_\${storeId}`));
         if (bSnap.exists()) {
             targetSphOp = Number(bSnap.data().target_sales_per_hour_op || 0);
         }
@@ -446,7 +446,7 @@ async function fetchMeetingData(year, monthStr) {
 
     // ----- テーブル描画 -----
     const tbody = document.getElementById('mm-kpi-tbody');
-    tbody.innerHTML = \`
+    tbody.innerHTML = `
         <tr>
             <td>売上 (税抜)</td>
             <td>¥\${Math.round(targetSales).toLocaleString()}</td>
@@ -471,5 +471,5 @@ async function fetchMeetingData(year, monthStr) {
             <td>¥\${Math.round(prevSph).toLocaleString()}</td>
             <td>\${prevSph > 0 ? Math.round((currentSph / prevSph)*100) : '-'}%</td>
         </tr>
-    \`;
+    `;
 }
