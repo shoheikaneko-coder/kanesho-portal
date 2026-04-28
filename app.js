@@ -652,32 +652,8 @@ document.addEventListener('DOMContentLoaded', () => {
         console.warn("DOMContentLoaded: #login-form not found.");
     }
 
-    // 2. 認証状態の監視 (一本化)
-    onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            console.log("Auth state changed: User is logged in", user.uid);
-            try {
-                // 必要に応じて Firestore から最新のユーザー情報を取得
-                const docSnap = await getDoc(doc(db, "m_users", user.uid));
-                if (docSnap.exists()) {
-                    await loginSuccess({ id: user.uid, ...docSnap.data() });
-                } else {
-                    // マスタにない場合は auth の情報で最低限ログイン
-                    await loginSuccess({ id: user.uid, email: user.email, Name: user.displayName });
-                }
-            } catch (err) {
-                console.error("Authentication initialization failed:", err);
-            }
-        } else {
-            console.log("Auth state changed: User is logged out");
-            // ログアウト時はストレージをクリアしてリロード（必要に応じて）
-            const wasLoggedIn = !!localStorage.getItem('currentUser');
-            if (wasLoggedIn) {
-                localStorage.removeItem('currentUser');
-                location.reload();
-            }
-        }
-    });
+    // 2. 独自認証の仕組みのため、Firebase Auth の監視は行わず、
+    // セッションの維持は localStorage のみで行う。
 
     // 3. ローカルストレージによる先行ログイン (初期表示の高速化)
     const savedUser = localStorage.getItem('currentUser');
