@@ -1699,18 +1699,28 @@ function renderSettingsItems() {
 
     catalogContainer.innerHTML = catalogItems.length === 0 ? 
         `<div style="padding:2rem; text-align:center; color:var(--text-secondary); font-size:0.8rem;">該当する品目はありません</div>` :
-        catalogItems.map(i => `
-            <div style="display: flex; align-items: center; padding: 0.6rem 0.8rem; background: white; border-radius: 8px; margin-bottom: 0.4rem; border: 1px solid #f1f5f9; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
-                <input type="checkbox" class="catalog-chk" value="${i.id}" style="margin-right: 0.8rem; width: 16px; height: 16px;">
-                <div style="flex: 1; min-width: 0;">
-                    <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${i.name}</div>
-                    <div style="font-size: 0.65rem; color: var(--text-secondary);">${i.category || 'カテゴリなし'}</div>
+        catalogItems.map(i => {
+            const ing = cachedIngredients.find(ing => String(ing.item_id) === String(i.id));
+            const sup = cachedSuppliers.find(s => String(s.vendor_id || s.id) === String(ing?.vendor_id));
+            const vendorName = sup ? sup.vendor_name : '自社仕込';
+
+            return `
+                <div style="display: flex; align-items: center; padding: 0.6rem 0.8rem; background: white; border-radius: 8px; margin-bottom: 0.4rem; border: 1px solid #f1f5f9; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                    <input type="checkbox" class="catalog-chk" value="${i.id}" style="margin-right: 0.8rem; width: 16px; height: 16px;">
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${i.name}</div>
+                        <div style="font-size: 0.65rem; color: var(--text-secondary); display: flex; gap: 0.4rem; align-items: center;">
+                            <span>${i.category || '未分類'}</span>
+                            <span style="color: #e2e8f0;">|</span>
+                            <span style="font-weight: 700; color: #64748b;">${vendorName}</span>
+                        </div>
+                    </div>
+                    <button class="btn-quick-add" data-id="${i.id}" style="background: var(--surface-darker); border: 1px solid var(--border); color: var(--primary); padding: 0.3rem 0.6rem; border-radius: 6px; cursor: pointer; font-size: 0.7rem; font-weight: 800;">
+                        <i class="fas fa-plus"></i> 追加
+                    </button>
                 </div>
-                <button class="btn-quick-add" data-id="${i.id}" style="background: var(--surface-darker); border: 1px solid var(--border); color: var(--primary); padding: 0.3rem 0.6rem; border-radius: 6px; cursor: pointer; font-size: 0.7rem; font-weight: 800;">
-                    <i class="fas fa-plus"></i> 追加
-                </button>
-            </div>
-        `).join('');
+            `;
+        }).join('');
 
     catalogContainer.querySelectorAll('.btn-quick-add').forEach(btn => {
         btn.onclick = async () => {
