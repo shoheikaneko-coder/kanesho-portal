@@ -1620,12 +1620,38 @@ async function addStoreItem(pid) {
 }
 
 async function removeStoreItem(storeItemId) {
+    // 削除対象のProductIDを取得
+    const itemToDelete = inventoryData.find(i => i.id === storeItemId);
+    if (!itemToDelete) return;
+
     if (!confirm('この品目を管理リストから削除しますか？\n(定数や保管場所の設定データも消去されます)')) return;
     
     const overlay = document.getElementById('inv-loading-overlay');
     if(overlay) overlay.style.display = 'flex';
 
     try {
+        // 1. 他店からの参照チェック（逆引きガード）
+        const q = query(collection(db, "m_store_items"), 
+                        where("default_source_store_id", "==", selectedStore.code),
+                        where("ProductID", "==", itemToDelete.ProductID));
+        const snap = await getDocs(q);
+        
+        if (!snap.empty) {
+            const depStoreNames = snap.docs.map(d => {
+                const sCode = d.data().StoreID;
+                const store = allStores.find(s => s.code === sCode || s.id === sCode);
+                return store ? store.name : sCode;
+            });
+            
+            const warningMsg = `【重要：削除警告】\nこの品目は以下の店舗で「移動元」として設定されています：\n\n・${depStoreNames.join('\n・')}\n\nここで削除すると、これらの店舗で在庫移動（入庫）が行えなくなります。\n本当に削除してもよろしいですか？`;
+            
+            if (!confirm(warningMsg)) {
+                if(overlay) overlay.style.display = 'none';
+                return;
+            }
+        }
+
+        // 2. 削除処理の実行
         // Optimistic delete from local data
         inventoryData = inventoryData.filter(i => i.id !== storeItemId);
         renderSettingsItems();
