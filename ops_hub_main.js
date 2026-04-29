@@ -20,6 +20,11 @@ export const opsHubMainPageHtml = `
             <button class="ops-tab-btn" data-tab="ck_prep" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.7rem 1.2rem; border-radius: 12px; border: 1px solid var(--border); background: white; cursor: pointer; font-weight: 800; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap;">
                 <i class="fas fa-industry"></i> CK仕込み
             </button>
+            
+            <!-- Shortcut to Master -->
+            <button id="btn-goto-recipe-master" style="margin-left: auto; display: flex; align-items: center; gap: 0.6rem; padding: 0.7rem 1.2rem; border-radius: 12px; border: 1px solid #e2e8f0; background: #f8fafc; color: #64748b; cursor: pointer; font-weight: 800; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap;">
+                <i class="fas fa-book"></i> 商品レシピマスタ <i class="fas fa-external-link-alt" style="font-size: 0.7rem; opacity: 0.7;"></i>
+            </button>
         </div>
 
         <!-- Content Area -->
@@ -66,6 +71,15 @@ function setupTabListeners() {
             switchTab(tabId);
         };
     });
+
+    const btnMaster = document.getElementById('btn-goto-recipe-master');
+    if (btnMaster) {
+        btnMaster.onclick = () => {
+            if (window.navigateTo) {
+                window.navigateTo('products');
+            }
+        };
+    }
 }
 
 async function switchTab(tabId) {
