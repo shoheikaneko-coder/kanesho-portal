@@ -231,12 +231,12 @@ export const inventoryPageHtml = `
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(241, 245, 249, 0.95);
+        background: rgba(241, 245, 249, 0.98);
         z-index: 2050;
         display: none;
         flex-direction: column;
-        padding: 2rem;
-        overflow-y: auto;
+        padding: 1rem 2rem;
+        overflow: hidden;
     }
     #inv-master-settings-overlay.active {
         display: flex;
@@ -307,18 +307,18 @@ export const inventoryPageHtml = `
 
     <!-- Master Settings Large Overlay -->
     <div id="inv-master-settings-overlay">
-        <div style="max-width: 1200px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 2rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h2 style="margin: 0; font-size: 1.8rem; font-weight: 900; color: var(--text-primary);">在庫マスタ設定</h2>
-                    <p style="margin: 0.5rem 0 0 0; color: var(--text-secondary); font-weight: 600;">店舗で管理する品目の選択とタイミングの管理</p>
+        <div style="max-width: 1300px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 0.8rem; height: 100%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <h2 style="margin: 0; font-size: 1.4rem; font-weight: 900; color: var(--text-primary);">在庫マスタ設定</h2>
+                    <p style="margin: 0; color: var(--text-secondary); font-weight: 600; font-size: 0.8rem;">店舗で管理する品目の選択とタイミングの管理</p>
                 </div>
-                <button onclick="hideMasterSettings()" class="btn btn-secondary" style="border-radius: 50%; width: 50px; height: 50px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+                <button onclick="hideMasterSettings()" class="btn btn-secondary" style="border-radius: 50%; width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             
-            <div id="inv-master-settings-content" style="display: flex; flex-direction: column; gap: 2rem;">
+            <div id="inv-master-settings-content" style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
                 <!-- Content injected by renderSettingsView -->
             </div>
         </div>
@@ -1368,45 +1368,39 @@ function renderSettingsView(container) {
 
     container.innerHTML = `
         <!-- Header: Store Info & Action -->
-        <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: flex-end;">
-            <div>
-                <span style="background: var(--primary); color: white; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.7rem; font-weight: 800; vertical-align: middle; margin-right: 0.5rem;">SETTING</span>
-                <h2 style="display: inline-block; margin: 0; font-size: 1.5rem; font-weight: 900; color: var(--text-primary);">[${selectedStore.name}] 在庫マスタ設定</h2>
+        <div style="margin-bottom: 0.8rem; display: flex; justify-content: space-between; align-items: center; background: white; padding: 0.6rem 1.2rem; border-radius: 12px; border: 1px solid var(--border);">
+            <div style="display: flex; align-items: center; gap: 0.8rem;">
+                <span style="background: var(--primary); color: white; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.7rem; font-weight: 800;">SETTING</span>
+                <h2 style="margin: 0; font-size: 1.2rem; font-weight: 900; color: var(--text-primary);">${selectedStore.name}</h2>
             </div>
-            <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary);">
-                登録済み: <span style="color: var(--primary); font-weight: 800;">${inventoryData.length}</span> 品目
+            <div style="font-size: 0.8rem; font-weight: 800; color: var(--text-secondary);">
+                登録済み: <span style="color: var(--primary);">${inventoryData.length}</span> 品目
             </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 380px 1fr 280px; gap: 1.5rem; height: calc(100vh - 250px); min-height: 500px;">
+        <div style="display: grid; grid-template-columns: 360px 1fr 280px; gap: 1rem; flex: 1; min-height: 0;">
             
             <!-- Column 1: Master Catalog (Add New) -->
             <div class="glass-panel" style="display: flex; flex-direction: column; padding: 0; overflow: hidden; background: #f8fafc; border: 1px solid var(--border);">
-                <div style="padding: 1.2rem; background: white; border-bottom: 1px solid var(--border);">
-                    <h3 style="margin: 0 0 1rem 0; font-size: 0.95rem; font-weight: 800;"><i class="fas fa-search-plus" style="color: var(--primary);"></i> マスタから追加</h3>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.8rem;">
+                <div style="padding: 0.8rem 1.2rem; background: white; border-bottom: 1px solid var(--border);">
+                    <h3 style="margin: 0 0 0.8rem 0; font-size: 0.9rem; font-weight: 800;"><i class="fas fa-search-plus" style="color: var(--primary);"></i> マスタから追加</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.6rem;">
                         <div class="input-group" style="margin:0;">
-                            <input type="text" id="settings-supplier-filter" list="supplier-datalist" placeholder="業者名で絞り込み..." 
+                            <input type="text" id="settings-supplier-filter" list="supplier-datalist" placeholder="業者絞込..." 
                                    value="${settingsSelectedSupplier === 'ALL' ? '' : settingsSelectedSupplier}"
-                                   style="font-size: 0.75rem; padding: 0.5rem; border-radius: 8px;">
-                            <datalist id="supplier-datalist">
-                                ${vendors.map(v => `<option value="${v}">`).join('')}
-                            </datalist>
+                                   style="font-size: 0.75rem; padding: 0.4rem; border-radius: 6px;">
                         </div>
                         <div class="input-group" style="margin:0;">
-                            <input type="text" id="settings-category-filter-new" list="category-datalist" placeholder="カテゴリで絞り込み..." 
+                            <input type="text" id="settings-category-filter-new" list="category-datalist" placeholder="カテゴリ絞込..." 
                                    value="${settingsSelectedCategory === 'ALL' ? '' : settingsSelectedCategory}"
-                                   style="font-size: 0.75rem; padding: 0.5rem; border-radius: 8px;">
-                            <datalist id="category-datalist">
-                                ${categories.map(c => `<option value="${c}">`).join('')}
-                            </datalist>
+                                   style="font-size: 0.75rem; padding: 0.4rem; border-radius: 6px;">
                         </div>
                     </div>
                     <div class="input-group" style="margin:0; position: relative;">
                         <i class="fas fa-search" style="position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%); font-size: 0.8rem; color: #94a3b8;"></i>
                         <input type="text" id="inv-master-search-new" placeholder="品目名・ふりがなで検索..." 
                                value="${settingsSearchQuery}" 
-                               style="padding-left: 2.2rem; font-size: 0.85rem; border-radius: 8px; border: 2px solid var(--border);">
+                               style="padding: 0.4rem 0.4rem 0.4rem 2.2rem; font-size: 0.8rem; border-radius: 6px;">
                     </div>
                 </div>
 
@@ -1414,42 +1408,42 @@ function renderSettingsView(container) {
                     <!-- Master Items injected here -->
                 </div>
 
-                <div style="padding: 1rem; background: white; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
-                    <div style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 600;">※登録済みの品目は表示されません</div>
-                    <button id="btn-bulk-add-catalog" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.75rem; font-weight: 800; border-radius: 8px;">選択項目を一括追加</button>
+                <div style="padding: 0.8rem; background: white; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-size: 0.65rem; color: var(--text-secondary); font-weight: 600;">※登録済は非表示</div>
+                    <button id="btn-bulk-add-catalog" class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.75rem; font-weight: 800; border-radius: 6px;">選択を一括追加</button>
                 </div>
             </div>
 
             <!-- Column 2: Management List (Current Inventory) -->
             <div class="glass-panel" style="display: flex; flex-direction: column; padding: 0; overflow: hidden; background: white; border: 1px solid var(--border);">
-                <div style="padding: 1.2rem; border-bottom: 1px solid var(--border); background: white; display: flex; justify-content: space-between; align-items: center;">
-                    <h3 style="margin: 0; font-size: 0.95rem; font-weight: 800;"><i class="fas fa-list-check" style="color: var(--primary);"></i> 現在の管理リスト</h3>
+                <div style="padding: 0.8rem 1.2rem; border-bottom: 1px solid var(--border); background: white; display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin: 0; font-size: 0.9rem; font-weight: 800;"><i class="fas fa-list-check" style="color: var(--primary);"></i> 現在の管理リスト</h3>
                     <div id="settings-store-stats" style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary);"></div>
                 </div>
                 
-                <div id="inv-settings-store-list" style="flex: 1; overflow-y: auto; padding: 1rem;">
+                <div id="inv-settings-store-list" style="flex: 1; overflow-y: auto; padding: 0.8rem;">
                     <!-- Grouped Store Items injected here -->
                 </div>
             </div>
 
             <!-- Column 3: Timing & Meta -->
-            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
                 <!-- Timing Management -->
-                <div class="glass-panel" style="padding: 1.5rem; background: white; border: 1px solid var(--border); border-radius: 16px;">
-                    <h3 style="margin: 0 0 1rem 0; font-size: 0.95rem; font-weight: 800;"><i class="fas fa-clock" style="color: var(--primary);"></i> タイミング管理</h3>
-                    <div id="timing-master-list-new" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 300px; overflow-y: auto; margin-bottom: 1rem; padding-right: 0.3rem;"></div>
+                <div class="glass-panel" style="padding: 1rem; background: white; border: 1px solid var(--border); border-radius: 12px;">
+                    <h3 style="margin: 0 0 0.8rem 0; font-size: 0.9rem; font-weight: 800;"><i class="fas fa-clock" style="color: var(--primary);"></i> タイミング管理</h3>
+                    <div id="timing-master-list-new" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 250px; overflow-y: auto; margin-bottom: 0.8rem; padding-right: 0.3rem;"></div>
                     <div style="display: flex; gap: 0.4rem;">
-                        <input type="text" id="new-timing-name-new" placeholder="新規タイミング名..." style="flex: 1; padding: 0.5rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.8rem; font-weight: 600;">
-                        <button id="btn-add-timing-new" class="btn btn-secondary" style="padding: 0.5rem; width: 36px; height: 36px;"><i class="fas fa-plus"></i></button>
+                        <input type="text" id="new-timing-name-new" placeholder="新規名称..." style="flex: 1; padding: 0.4rem; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">
+                        <button id="btn-add-timing-new" class="btn btn-secondary" style="padding: 0.4rem; width: 32px; height: 32px;"><i class="fas fa-plus"></i></button>
                     </div>
                 </div>
 
                 <!-- Info Box -->
-                <div class="glass-panel" style="padding: 1rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px;">
-                    <h4 style="margin: 0 0 0.5rem 0; font-size: 0.8rem; font-weight: 800; color: #1e40af;"><i class="fas fa-info-circle"></i> ヒント</h4>
-                    <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.75rem; color: #1e40af; line-height: 1.5; font-weight: 600;">
-                        <li>右側の [⚙️] で保管場所や定数を個別に設定できます。</li>
-                        <li>タイミングを削除すると、そのタイミングの品目が「未設定」に移動します。</li>
+                <div class="glass-panel" style="padding: 0.8rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px;">
+                    <h4 style="margin: 0 0 0.4rem 0; font-size: 0.75rem; font-weight: 800; color: #1e40af;"><i class="fas fa-info-circle"></i> ヒント</h4>
+                    <ul style="margin: 0; padding-left: 1.1rem; font-size: 0.7rem; color: #1e40af; line-height: 1.4; font-weight: 600;">
+                        <li>右側の [⚙️] で保管場所や定数を個別設定。</li>
+                        <li>タイミング削除で品目は「未設定」に移動。</li>
                     </ul>
                 </div>
             </div>
