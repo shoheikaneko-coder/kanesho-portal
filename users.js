@@ -51,10 +51,16 @@ function renderListView(container) {
         </div>
         
         <div class="glass-panel" style="padding: 0; overflow: hidden; border: 1px solid var(--border);">
-            <div style="padding: 1.2rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
-                <div class="input-group" style="margin-bottom: 0; width: 350px;">
-                    <i class="fas fa-search" style="top: 0.8rem;"></i>
-                    <input type="text" id="user-search" placeholder="名前やコードで検索..." style="padding-top: 0.6rem; padding-bottom: 0.6rem; border-radius: 20px;">
+            <div style="padding: 1.2rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc; flex-wrap: wrap; gap: 1rem;">
+                <div style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+                    <div class="input-group" style="margin-bottom: 0; width: 300px;">
+                        <i class="fas fa-search" style="top: 0.8rem;"></i>
+                        <input type="text" id="user-search" placeholder="名前やコードで検索..." style="padding-top: 0.6rem; padding-bottom: 0.6rem; border-radius: 20px;">
+                    </div>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-secondary); font-weight: 600; font-size: 0.9rem;">
+                        <input type="checkbox" id="user-include-retired" style="width: 1.2rem; height: 1.2rem; cursor: pointer;">
+                        退職者を含める
+                    </label>
                 </div>
                 <div id="users-count" style="color: var(--text-secondary); font-size: 0.85rem; font-weight: 600;">
                     読込中...
@@ -97,6 +103,14 @@ function renderListView(container) {
         searchInput.oninput = (e) => {
             currentPage = 1;
             renderTable(e.target.value);
+        };
+    }
+
+    const includeRetiredCheckbox = document.getElementById('user-include-retired');
+    if (includeRetiredCheckbox) {
+        includeRetiredCheckbox.onchange = () => {
+            currentPage = 1;
+            renderTable(document.getElementById('user-search')?.value || "");
         };
     }
 
@@ -166,6 +180,10 @@ function renderFormView(container) {
                                         <option value="resigning">退職手続き中</option>
                                         <option value="retired">退職済</option>
                                     </select>
+                                </div>
+                                <div class="input-group" id="resignation-date-group" style="margin: 0; display: none;">
+                                    <label style="font-weight: 700; color: #475569;">退職日</label>
+                                    <input type="date" id="user-resignation-date" style="background: white;">
                                 </div>
                                 <div class="input-group" style="margin: 0;">
                                     <label style="font-weight: 700; color: #475569;">権限レベル <span style="color: #ef4444;">*</span></label>
@@ -285,6 +303,22 @@ function renderFormView(container) {
             document.getElementById('user-display-name').value = editingUserData.DisplayName || '';
             document.getElementById('user-job-title').value = editingUserData.JobTitle || '';
             document.getElementById('user-visa-expiry').value = editingUserData.visa_expiry_date || '';
+            document.getElementById('user-resignation-date').value = editingUserData.ResignationDate || '';
+        }
+
+        const statusSel = document.getElementById('user-status');
+        const resGroup = document.getElementById('resignation-date-group');
+        if (statusSel && resGroup) {
+            const toggleResDate = () => {
+                if (statusSel.value === 'resigning' || statusSel.value === 'retired') {
+                    resGroup.style.display = 'block';
+                } else {
+                    resGroup.style.display = 'none';
+                    document.getElementById('user-resignation-date').value = '';
+                }
+            };
+            statusSel.addEventListener('change', toggleResDate);
+            toggleResDate(); // 初期表示用
         }
     });
 
@@ -319,6 +353,7 @@ function setupFormLogic() {
             'DisplayName': document.getElementById('user-display-name').value,
             'JobTitle': document.getElementById('user-job-title').value,
             'Status': document.getElementById('user-status').value,
+            'ResignationDate': document.getElementById('user-resignation-date')?.value || '',
             'visa_expiry_date': document.getElementById('user-visa-expiry').value,
             'UpdatedAt': new Date().toISOString()
         };
@@ -443,10 +478,18 @@ async function fetchStoreOptions() {
 function renderTable(filter = "") {
     const tbody = document.getElementById('users-table-body');
     const countLabel = document.getElementById('users-count');
+    const includeRetired = document.getElementById('user-include-retired')?.checked || false;
     if (!tbody) return;
 
     try {
+        const todayStr = new Date().toISOString().substring(0, 10);
         const filtered = cachedUsers.filter(u => {
+            // 退職者の除外処理
+            if (!includeRetired) {
+                if (u.Status === 'retired' || u.Status === '退職済') return false;
+                if ((u.Status === 'resigning' || u.Status === '退職手続き中') && u.ResignationDate && u.ResignationDate < todayStr) return false;
+            }
+
             const f = filter.toLowerCase();
             return (u.Name || '').toLowerCase().includes(f) || 
                    (u.EmployeeCode || '').toLowerCase().includes(f);

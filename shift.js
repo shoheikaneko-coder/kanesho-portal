@@ -1254,8 +1254,24 @@ async function loadStoreStaff(sid, sname) {
         
         const snaps = await Promise.all([getDocs(q1), getDocs(q2), getDocs(q3)]);
         const userMap = new Map();
+        const slotStartStr = formatDateJST(currentSlot.startDate);
         snaps.forEach(s => s.forEach(d => userMap.set(d.id, { id: d.id, ...d.data() })));
-        allStoreUsers = Array.from(userMap.values()).filter(u => u.Role !== 'Tablet' && u.Role !== '店舗タブレット');
+        
+        allStoreUsers = Array.from(userMap.values()).filter(u => {
+            if (u.Role === 'Tablet' || u.Role === '店舗タブレット') return false;
+            
+            if (u.ResignationDate && u.ResignationDate < slotStartStr) {
+                if (u.Status === 'retired' || u.Status === '退職済' || u.Status === 'resigning' || u.Status === '退職手続き中') {
+                    return false;
+                }
+            }
+            
+            if (!u.ResignationDate && (u.Status === 'retired' || u.Status === '退職済')) {
+                return false;
+            }
+            
+            return true;
+        });
     } catch (e) { console.error("Error loading store staff:", e); }
 }
 
