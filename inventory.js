@@ -1389,11 +1389,17 @@ function renderSettingsView(container) {
                             <input type="text" id="settings-supplier-filter" list="supplier-datalist" placeholder="業者絞込..." 
                                    value="${settingsSelectedSupplier === 'ALL' ? '' : settingsSelectedSupplier}"
                                    style="font-size: 0.75rem; padding: 0.4rem; border-radius: 6px;">
+                            <datalist id="supplier-datalist">
+                                ${vendors.map(v => `<option value="${v}">`).join('')}
+                            </datalist>
                         </div>
                         <div class="input-group" style="margin:0;">
                             <input type="text" id="settings-category-filter-new" list="category-datalist" placeholder="カテゴリ絞込..." 
                                    value="${settingsSelectedCategory === 'ALL' ? '' : settingsSelectedCategory}"
                                    style="font-size: 0.75rem; padding: 0.4rem; border-radius: 6px;">
+                            <datalist id="category-datalist">
+                                ${categories.map(c => `<option value="${c}">`).join('')}
+                            </datalist>
                         </div>
                     </div>
                     <div class="input-group" style="margin:0; position: relative;">
