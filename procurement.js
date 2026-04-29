@@ -370,6 +370,10 @@ function render() {
     const catNames = { purchase: '仕入れ・調達', store_prep: '店舗仕込み', ck_prep: 'CK仕込み', transfer: '店舗間移動' };
     headerTitle.textContent = catNames[selectedCategory];
     
+    // カテゴリーに応じて仕入先セクション（業者リスト）の表示/非表示を切り替える
+    const vendorSection = document.getElementById('proc-vendor-section');
+    if (vendorSection) vendorSection.style.display = selectedCategory === 'purchase' ? 'block' : 'none';
+    
     const btnHistory = document.getElementById('btn-proc-history');
     if (btnHistory) btnHistory.style.display = selectedCategory === 'transfer' ? 'block' : 'none';
 
