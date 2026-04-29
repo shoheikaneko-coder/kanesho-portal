@@ -105,12 +105,12 @@ function renderListView(container) {
 
 function renderFormView(container) {
     const isEdit = !!editingUserData;
-    container.innerHTML = \`
+    container.innerHTML = `
         <div class="glass-panel animate-fade-in" style="max-width: 1000px; margin: 0 auto; padding: 0; overflow: hidden;">
             <div style="padding: 1.5rem 2rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
                 <h3 style="margin: 0; font-size: 1.25rem; color: #1e293b; display: flex; align-items: center; gap: 0.8rem;">
-                    <i class="fas \${isEdit ? 'fa-user-edit' : 'fa-user-plus'}" style="color: var(--primary);"></i>
-                    \${isEdit ? 'ユーザー情報の編集' : '新規ユーザーの登録'}
+                    <i class="fas ${isEdit ? 'fa-user-edit' : 'fa-user-plus'}" style="color: var(--primary);"></i>
+                    ${isEdit ? 'ユーザー情報の編集' : '新規ユーザーの登録'}
                 </h3>
                 <button id="btn-form-back" class="btn" style="background: white; border: 1px solid var(--border); color: var(--text-secondary);">
                     <i class="fas fa-times"></i> キャンセル
@@ -237,7 +237,7 @@ function renderFormView(container) {
                         </div>
 
                         <!-- 操作案内ツール (編集時のみ) -->
-                        <div id="password-info-section" style="display: \${isEdit ? 'block' : 'none'}; border: 1px dashed #cbd5e1; border-radius: 12px; padding: 1.5rem; background: white;">
+                        <div id="password-info-section" style="display: ${isEdit ? 'block' : 'none'}; border: 1px dashed #cbd5e1; border-radius: 12px; padding: 1.5rem; background: white;">
                             <p style="font-size: 0.9rem; font-weight: 700; margin-top: 0; margin-bottom: 1rem; color: #475569; display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-share-alt"></i> 設定情報の共有</p>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                                 <button type="button" id="btn-send-reset-email" class="btn" style="background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; font-size: 0.85rem; padding: 0.8rem;">
@@ -264,7 +264,7 @@ function renderFormView(container) {
                 </form>
             </div>
         </div>
-    \`;
+    `;
 
     document.getElementById('btn-form-back').onclick = document.getElementById('btn-form-cancel').onclick = () => {
         currentView = 'list';
