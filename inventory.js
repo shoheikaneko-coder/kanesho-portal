@@ -1702,7 +1702,7 @@ function renderSettingsItems() {
     let html = '';
     sortedTimingIds.forEach(tId => {
         const items = inventoryData.filter(d => d.確認タイミング === tId);
-        if (items.length === 0 && !Object.keys(timingMaster).includes(tId)) return;
+        if (items.length === 0) return;
 
         const tName = timingMaster[tId] || '未設定・その他';
         const isCollapsed = settingsCollapsedTimings.has(tId);
