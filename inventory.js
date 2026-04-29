@@ -1820,60 +1820,7 @@ async function loadStoreInventory(internalCode) {
     }
 }
 
-                });
-            }
 
-            data.sort((a, b) => (productMap[a.ProductID] || '').localeCompare(productMap[b.ProductID] || ''));
-
-            if (data.length === 0) {
-                container.innerHTML = `<div style="text-align:center; padding: 3rem; color: var(--text-secondary); font-size: 0.9rem;">
-                    ${settingsSearchQuery || settingsSelectedCategory !== 'ALL' ? '該当する品目はありません' : '登録されている品目はありません'}
-                </div>`;
-                return;
-            }
-
-            container.innerHTML = data.map(item => {
-                const name = productMap[item.ProductID] || '不明な品目';
-                const ing = cachedIngredients.find(ing => String(ing.item_id) === String(item.ProductID));
-                const sup = cachedSuppliers.find(s => String(s.vendor_id || s.id) === String(ing?.vendor_id));
-                const supName = sup?.vendor_name || '-';
-
-                return `
-                    <div style="display: flex; align-items: center; padding: 0.75rem 1rem; border-bottom: 1px solid #f1f5f9; transition: background 0.1s;">
-                        <div style="flex: 2; min-width: 0;">
-                            <div style="font-size: 0.9rem; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                ${item.display_name || name}
-                            </div>
-                            ${item.display_name ? `<div style="font-size: 0.65rem; color: var(--text-secondary);">${name}</div>` : ''}
-                        </div>
-                        <div style="flex: 1; font-size: 0.75rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${supName}</div>
-                        <div style="width: 100px; text-align: center; display: flex; justify-content: space-around;">
-                            <button class="btn-edit-item-master" data-id="${item.id}" style="background:none; border:none; color:var(--primary); cursor:pointer; font-size: 1.1rem;"><i class="fas fa-cog"></i></button>
-                            <button class="btn-remove-item" data-id="${item.id}" style="background:none; border:none; color:var(--accent); cursor:pointer; font-size: 1.1rem;"><i class="fas fa-trash-alt"></i></button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            // Re-bind listeners
-            container.querySelectorAll('.btn-edit-item-master').forEach(btn => {
-                btn.onclick = () => showItemSettingsModal(btn.dataset.id);
-            });
-            container.querySelectorAll('.btn-remove-item').forEach(btn => {
-                btn.onclick = () => removeStoreItem(btn.dataset.id);
-            });
-        }
-    } catch (err) {
-        console.error("renderSettingsItems error:", err);
-        container.innerHTML = `<div style="text-align:center; padding: 2rem; color: #ef4444;">
-            <p>描画エラーが発生しました</p>
-            <p style="font-size: 0.7rem; color: var(--text-secondary);">${err.message}</p>
-        </div>`;
-        // Emergency overlay hide
-        const overlayLoad = document.getElementById('inv-loading-overlay');
-        if (overlayLoad) overlayLoad.style.display = 'none';
-    }
-}
 
 function renderChips(type, dataList) {
     const container = document.getElementById(type === 'category' ? 'inv-settings-category-chips' : 'inv-settings-supplier-chips');
