@@ -345,6 +345,8 @@ let settingsSearchQuery = '';
 let settingsBulkMode = false;
 let settingsSelectedCategory = 'ALL';
 let settingsSelectedSupplier = 'ALL';
+let settingsCollapsedTimings = new Set();
+let settingsInitialized = false;
 
 /**
  * Helper to determine if an item is a valid inventory target
@@ -1350,6 +1352,13 @@ function openInvSettings() {
 function renderSettingsView(container) {
     if (!selectedStore) return;
 
+    // 初回表示時のみ、すべてのタイミングをデフォルトで閉じる
+    if (!settingsInitialized) {
+        const allTimings = [...new Set(inventoryData.map(d => d.確認タイミング))];
+        settingsCollapsedTimings = new Set(allTimings);
+        settingsInitialized = true;
+    }
+
     // Filter manageable items using unified logic
     const manageableItems = cachedItems.filter(isInventoryTarget);
     const categories = [...new Set(manageableItems.map(i => i.category || i.カテゴリー || 'その他'))].sort();
@@ -1612,12 +1621,19 @@ async function removeStoreItem(storeItemId) {
     if(overlay) overlay.style.display = 'flex';
 
     try {
+        // Optimistic delete from local data
+        inventoryData = inventoryData.filter(i => i.id !== storeItemId);
+        renderSettingsItems();
+        render();
+
         await deleteDoc(doc(db, "m_store_items", storeItemId));
         await loadStoreInventory(selectedStore.code);
         renderSettingsItems();
         render();
     } catch (err) {
         showAlert('エラー', '削除に失敗しました: ' + err.message);
+        await loadStoreInventory(selectedStore.code);
+        renderSettingsItems();
     } finally {
         if(overlay) overlay.style.display = 'none';
     }
@@ -1673,45 +1689,50 @@ function renderSettingsItems() {
     });
 
 
-    // --- 2. Render Store Management List (Grouped by Timing) ---
-    const timingIds = [...new Set(inventoryData.map(d => d.確認タイミング))].sort();
+    // --- 2. Render Store Management List (Accordion by Timing) ---
+    const timingIds = [...new Set(inventoryData.map(d => d.確認タイミング))];
     Object.keys(timingMaster).forEach(tId => { if(!timingIds.includes(tId)) timingIds.push(tId); });
 
-    let html = '';
     const sortedTimingIds = timingIds.sort((a,b) => {
         const countA = inventoryData.filter(d => d.確認タイミング === a).length;
         const countB = inventoryData.filter(d => d.確認タイミング === b).length;
         return countB - countA;
     });
 
+    let html = '';
     sortedTimingIds.forEach(tId => {
         const items = inventoryData.filter(d => d.確認タイミング === tId);
         if (items.length === 0 && !Object.keys(timingMaster).includes(tId)) return;
 
         const tName = timingMaster[tId] || '未設定・その他';
+        const isCollapsed = settingsCollapsedTimings.has(tId);
         
         html += `
-            <div class="timing-group" style="margin-bottom: 1.5rem;">
-                <div style="display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.6rem; padding-bottom: 0.4rem; border-bottom: 2px solid #f1f5f9;">
-                    <span style="font-size: 0.85rem; font-weight: 900; color: #1e293b;">${tName}</span>
-                    <span style="font-size: 0.7rem; color: var(--text-secondary); background: #f1f5f9; padding: 0.1rem 0.5rem; border-radius: 10px;">${items.length}品目</span>
+            <div class="timing-accordion-v2" style="margin-bottom: 0.8rem; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <div class="timing-header-btn" data-id="${tId}" style="display: flex; align-items: center; gap: 0.8rem; padding: 0.8rem 1rem; background: ${isCollapsed ? '#fff' : '#f8fafc'}; cursor: pointer; user-select: none; transition: background 0.2s;">
+                    <i class="fas ${isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'}" style="width: 1rem; color: #94a3b8; font-size: 0.8rem;"></i>
+                    <span style="font-size: 0.85rem; font-weight: 800; color: #1e293b; flex: 1;">${tName}</span>
+                    <span style="font-size: 0.65rem; color: var(--text-secondary); background: #f1f5f9; padding: 0.1rem 0.6rem; border-radius: 10px; font-weight: 700;">${items.length}品目</span>
                 </div>
-                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.6rem;">
-                    ${items.map(item => {
-                        const name = productMap[item.ProductID] || '不明';
-                        return `
-                            <div style="display: flex; align-items: center; gap: 0.8rem; padding: 0.6rem 0.8rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;">
-                                <div style="flex: 1; min-width: 0;">
-                                    <div style="font-size: 0.85rem; font-weight: 800; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.display_name || name}</div>
-                                    <div style="font-size: 0.65rem; color: var(--text-secondary);">${item.location_label || '場所未設定'} / ${item.定数 || 0} ${item.display_unit || ''}</div>
+                <div style="display: ${isCollapsed ? 'none' : 'block'}; border-top: 1px solid #f1f5f9;">
+                    ${items.length === 0 ? 
+                        `<div style="padding: 1.5rem; text-align: center; color: #94a3b8; font-size: 0.75rem;">このタイミングに登録された品目はありません</div>` :
+                        items.map(item => {
+                            const name = productMap[item.ProductID] || '不明';
+                            return `
+                                <div style="display: flex; align-items: center; gap: 0.8rem; padding: 0.8rem 1rem; border-bottom: 1px solid #f1f5f9;">
+                                    <div style="flex: 1; min-width: 0;">
+                                        <div style="font-size: 0.85rem; font-weight: 800; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.display_name || name}</div>
+                                        <div style="font-size: 0.65rem; color: var(--text-secondary); margin-top: 0.1rem;">${item.location_label || '場所未設定'} / ${item.定数 || 0} ${item.display_unit || ''}</div>
+                                    </div>
+                                    <div style="display: flex; gap: 0.4rem;">
+                                        <button class="btn-edit-item-master" data-id="${item.id}" style="width: 34px; height: 34px; border-radius: 10px; border: 1px solid #e2e8f0; background: white; color: #64748b; cursor: pointer; transition: all 0.2s;"><i class="fas fa-cog"></i></button>
+                                        <button class="btn-remove-item" data-id="${item.id}" style="width: 34px; height: 34px; border-radius: 10px; border: 1px solid #fee2e2; background: white; color: #ef4444; cursor: pointer; transition: all 0.2s;"><i class="fas fa-trash-alt"></i></button>
+                                    </div>
                                 </div>
-                                <div style="display: flex; gap: 0.3rem;">
-                                    <button class="btn-edit-item-master" data-id="${item.id}" style="width: 32px; height: 32px; border-radius: 8px; border: 1px solid #cbd5e1; background: white; color: var(--text-secondary); cursor: pointer;"><i class="fas fa-cog"></i></button>
-                                    <button class="btn-remove-item" data-id="${item.id}" style="width: 32px; height: 32px; border-radius: 8px; border: 1px solid #fecaca; background: white; color: #ef4444; cursor: pointer;"><i class="fas fa-trash-alt"></i></button>
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
+                            `;
+                        }).join('')
+                    }
                 </div>
             </div>
         `;
@@ -1719,8 +1740,22 @@ function renderSettingsItems() {
 
     storeContainer.innerHTML = html || `<div style="padding:4rem; text-align:center; color:var(--text-secondary);">管理リストは空です</div>`;
 
-    storeContainer.querySelectorAll('.btn-edit-item-master').forEach(btn => {
+    // Accordion Toggle Listeners
+    storeContainer.querySelectorAll('.timing-header-btn').forEach(btn => {
         btn.onclick = () => {
+            const tId = btn.dataset.id;
+            if (settingsCollapsedTimings.has(tId)) {
+                settingsCollapsedTimings.delete(tId);
+            } else {
+                settingsCollapsedTimings.add(tId);
+            }
+            renderSettingsItems();
+        };
+    });
+
+    storeContainer.querySelectorAll('.btn-edit-item-master').forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
             const id = btn.dataset.id;
             const item = inventoryData.find(i => i.id === id);
             if(item) showItemSettingsModal(id);
@@ -1728,7 +1763,10 @@ function renderSettingsItems() {
     });
 
     storeContainer.querySelectorAll('.btn-remove-item').forEach(btn => {
-        btn.onclick = () => removeStoreItem(btn.dataset.id);
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            removeStoreItem(btn.dataset.id);
+        };
     });
 }
 
