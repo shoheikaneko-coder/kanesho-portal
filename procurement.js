@@ -134,10 +134,14 @@ let cachedIngredients = [];
 let cachedSuppliers = [];
 let currentUser = null;
 
-export async function initProcurementPage(user) {
+export async function initProcurementPage(user, category = null) {
     currentUser = user;
     selectedVendor = null;
     collapsedItems.clear();
+
+    if (category) {
+        selectedCategory = category;
+    }
 
     await showLoading(true);
     try {

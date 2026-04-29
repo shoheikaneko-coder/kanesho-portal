@@ -10,6 +10,7 @@ import { storesPageHtml, initStoresPage } from './stores.js?v=31';
 import { usersPageHtml, initUsersPage } from './users.js?v=31';
 import { inventoryPageHtml, initInventoryPage } from './inventory.js?v=33';
 import { procurementPageHtml, initProcurementPage } from './procurement.js?v=10';
+import { opsHubMainPageHtml, initOpsHubMainPage } from './ops_hub_main.js';
 import { stocktakePageHtml, initStocktakePage } from './stocktake.js?v=1';
 import { inventoryHistoryPageHtml, initInventoryHistoryPage } from './inventory_history.js?v=1';
 import { productsPageHtml, initProductsPage } from './products.js?v=20260425_2158';
@@ -60,6 +61,7 @@ const defaultMenuItems = [
     { id: 'utility_hub', name: '便利機能', icon: 'fa-lightbulb', category: 'ハブ' },
     { id: 'master_hub', name: '設定', icon: 'fa-cog', category: 'ハブ' },
     
+    { id: 'ops_hub_main', name: '在庫・仕入/仕込', icon: 'fa-boxes-stacked', category: 'サブ機能' },
     { id: 'dashboard', name: '分析ダッシュボード', icon: 'fa-chart-line', category: 'サブ機能' },
     { id: 'shift_submission', name: 'シフト提出・確認', icon: 'fa-calendar-alt', category: 'サブ機能' },
     { id: 'shift_admin', name: 'シフト作成・調整', icon: 'fa-user-edit', category: 'サブ機能' },
@@ -94,6 +96,7 @@ const pageParentMap = {
     'sales': 'ops_hub',
     'inventory': 'ops_hub',
     'procurement': 'ops_hub',
+    'ops_hub_main': 'ops_hub',
     'recipe_viewer': 'ops_hub',
     'menu_order': 'ops_hub',
     'calendar_viewer': 'ops_hub',
@@ -284,7 +287,7 @@ async function renderSidebar(user) {
     if (role === 'Admin' || role === '管理者') {
         allowed = defaultMenuItems.map(m => m.id);
         // 全般的な権限を付与
-        const adminPerms = ['sales','attendance','inventory','procurement','stocktake','inventory_history','store_items','product_analysis','home_performance','shift_admin','shift_submission','attendance_check','users','invite_navi','loans','role_permissions','stores','products','suppliers','sales_correction','csv_export','csv_import','calendar_admin','goals_admin','goals_store','line_share','daily_sakes','bottle_keep'];
+        const adminPerms = ['sales','attendance','inventory','procurement','ops_hub_main','stocktake','inventory_history','store_items','product_analysis','home_performance','shift_admin','shift_submission','attendance_check','users','invite_navi','loans','role_permissions','stores','products','suppliers','sales_correction','csv_export','csv_import','calendar_admin','goals_admin','goals_store','line_share','daily_sakes','bottle_keep'];
         adminPerms.forEach(id => { if (!allowed.includes(id)) allowed.push(id); });
     } else {
         try {
@@ -468,6 +471,11 @@ function showPage(target) {
                 updateHeaderTitle('営業実績報告');
                 pageContent.innerHTML = salesPageHtml;
                 initSalesPage();
+                break;
+            case 'ops_hub_main':
+                updateHeaderTitle('在庫・仕入/仕込');
+                pageContent.innerHTML = opsHubMainPageHtml;
+                initOpsHubMainPage(state.currentUser);
                 break;
             case 'inventory':
                 updateHeaderTitle('在庫チェック');
