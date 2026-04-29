@@ -105,117 +105,158 @@ function renderListView(container) {
 
 function renderFormView(container) {
     const isEdit = !!editingUserData;
-    container.innerHTML = `
-        <div class="glass-panel animate-fade-in" style="max-width: 750px; margin: 0 auto; padding: 0; overflow: hidden;">
+    container.innerHTML = \`
+        <div class="glass-panel animate-fade-in" style="max-width: 1000px; margin: 0 auto; padding: 0; overflow: hidden;">
             <div style="padding: 1.5rem 2rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
                 <h3 style="margin: 0; font-size: 1.25rem; color: #1e293b; display: flex; align-items: center; gap: 0.8rem;">
-                    <i class="fas ${isEdit ? 'fa-user-edit' : 'fa-user-plus'}" style="color: var(--primary);"></i>
-                    ${isEdit ? 'ユーザー情報の編集' : '新規ユーザーの登録'}
+                    <i class="fas \${isEdit ? 'fa-user-edit' : 'fa-user-plus'}" style="color: var(--primary);"></i>
+                    \${isEdit ? 'ユーザー情報の編集' : '新規ユーザーの登録'}
                 </h3>
                 <button id="btn-form-back" class="btn" style="background: white; border: 1px solid var(--border); color: var(--text-secondary);">
                     <i class="fas fa-times"></i> キャンセル
                 </button>
             </div>
             
-            <div style="padding: 2.5rem;">
-                <form id="user-form" style="display: flex; flex-direction: column; gap: 1.5rem;">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-                        <div class="input-group">
-                            <label style="font-weight: 700; color: #475569;">従業員コード (TKC連携用)</label>
-                            <input type="text" id="user-code" placeholder="例: 135" required style="font-family: monospace; font-size: 1.1rem;">
+            <div style="padding: 2rem; background: #f8fafc;">
+                <form id="user-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start;">
+                    
+                    <!-- 左カラム -->
+                    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                        
+                        <!-- 基本情報カード -->
+                        <div class="glass-panel" style="padding: 1.5rem; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                            <h4 style="margin-top: 0; margin-bottom: 1.2rem; color: var(--primary); border-bottom: 2px solid #f1f5f9; padding-bottom: 0.8rem; font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-id-card"></i> 基本情報
+                            </h4>
+                            <div style="display: flex; flex-direction: column; gap: 1.2rem;">
+                                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1.2rem;">
+                                    <div class="input-group" style="margin: 0;">
+                                        <label style="font-weight: 700; color: #475569;">従業員コード <span style="color: #ef4444;">*</span></label>
+                                        <input type="text" id="user-code" placeholder="例: 135" required style="font-family: monospace; font-size: 1.1rem;">
+                                    </div>
+                                    <div class="input-group" style="margin: 0;">
+                                        <label style="font-weight: 700; color: #475569;">お名前 <span style="color: #ef4444;">*</span></label>
+                                        <input type="text" id="user-name" required placeholder="例: 山田 太郎" style="font-size: 1.1rem;">
+                                    </div>
+                                </div>
+                                <div class="input-group" style="margin: 0;">
+                                    <label style="font-weight: 700; color: #475569;">シフト表示名 (ニックネーム)</label>
+                                    <input type="text" id="user-display-name" placeholder="例: 太郎" style="font-size: 1.1rem; background: #fffdf0; border: 1px solid #fde68a;">
+                                    <p style="font-size: 0.75rem; color: #b45309; margin-top: 0.3rem;">※シフト表に短く表示したい場合のみ入力</p>
+                                </div>
+                            </div>
                         </div>
-                        <div class="input-group">
-                            <label style="font-weight: 700; color: #475569;">お名前</label>
-                            <input type="text" id="user-name" required placeholder="例: 山田 太郎" style="font-size: 1.1rem;">
+
+                        <!-- 所属・権限カード -->
+                        <div class="glass-panel" style="padding: 1.5rem; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                            <h4 style="margin-top: 0; margin-bottom: 1.2rem; color: var(--primary); border-bottom: 2px solid #f1f5f9; padding-bottom: 0.8rem; font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-briefcase"></i> 所属・権限
+                            </h4>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem;">
+                                <div class="input-group" style="margin: 0;">
+                                    <label style="font-weight: 700; color: #475569;">所属店舗 <span style="color: #ef4444;">*</span></label>
+                                    <select id="user-store-select" required style="background: white; font-weight: 600;">
+                                        <option value="">店舗を選択...</option>
+                                    </select>
+                                </div>
+                                <div class="input-group" style="margin: 0;">
+                                    <label style="font-weight: 700; color: #475569;">在職状況 <span style="color: #ef4444;">*</span></label>
+                                    <select id="user-status" required style="background: white; font-weight: 600;">
+                                        <option value="active">在職中</option>
+                                        <option value="resigning">退職手続き中</option>
+                                        <option value="retired">退職済</option>
+                                    </select>
+                                </div>
+                                <div class="input-group" style="margin: 0;">
+                                    <label style="font-weight: 700; color: #475569;">権限レベル <span style="color: #ef4444;">*</span></label>
+                                    <select id="user-role" required style="background: white; font-weight: 600;">
+                                        <option value="Staff">一般社員</option>
+                                        <option value="PartTimer">アルバイトスタッフ</option>
+                                        <option value="Tablet">店舗タブレット</option>
+                                        <option value="Manager">店長</option>
+                                        <option value="Admin">管理者</option>
+                                    </select>
+                                </div>
+                                <div class="input-group" style="margin: 0;">
+                                    <label style="font-weight: 700; color: #475569;">表示役職</label>
+                                    <input type="text" id="user-job-title" placeholder="副店長等" style="background: #f0fdf4; border: 1px solid #bbf7d0;">
+                                </div>
+                            </div>
                         </div>
-                        <div class="input-group">
-                            <label style="font-weight: 700; color: #475569;">シフト表示名 (ニックネーム)</label>
-                            <input type="text" id="user-display-name" placeholder="例: 太郎" style="font-size: 1.1rem; background: #fffdf0; border: 1px solid #fde68a;">
-                            <p style="font-size: 0.7rem; color: #b45309; margin-top: 0.2rem;">※シフト表に短く表示したい場合のみ入力</p>
+
+                    </div>
+
+                    <!-- 右カラム -->
+                    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                        
+                        <!-- アカウント・ログイン情報カード -->
+                        <div class="glass-panel" style="padding: 1.5rem; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                            <h4 style="margin-top: 0; margin-bottom: 1.2rem; color: var(--primary); border-bottom: 2px solid #f1f5f9; padding-bottom: 0.8rem; font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-key"></i> アカウント・ログイン情報
+                            </h4>
+                            <div style="display: flex; flex-direction: column; gap: 1.2rem;">
+                                <div class="input-group" style="margin: 0;">
+                                    <label style="font-weight: 700; color: #475569;">メールアドレス (ログイン用ID)</label>
+                                    <input type="email" id="user-email" placeholder="example@kaneshow.jp">
+                                    <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.3rem;">※ポータルへのログインに使用します</p>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; background: #f1f5f9; padding: 1.2rem; border-radius: 12px; margin-top: 0.5rem;">
+                                    <div class="input-group" style="margin: 0;">
+                                        <label style="font-weight: 700; color: #334155;">打刻パスワード</label>
+                                        <input type="text" id="user-password" placeholder="例: 1234" maxlength="4" style="font-family: monospace; text-align: center; font-size: 1.25rem; letter-spacing: 0.2em;">
+                                        <p style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.3rem; text-align: center;">※数字4桁</p>
+                                    </div>
+                                    <div class="input-group" style="margin: 0;">
+                                        <label style="font-weight: 700; color: #334155;">ログインパスワード</label>
+                                        <input type="password" id="user-login-password" placeholder="••••••••" style="font-size: 1.1rem;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 外国人スタッフ情報カード -->
+                        <div class="glass-panel" style="padding: 1.5rem; background: #fffcf0; border: 1px solid #fde68a; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                            <h4 style="margin-top: 0; margin-bottom: 1.2rem; color: #b45309; border-bottom: 1px solid #fde68a; padding-bottom: 0.8rem; font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-globe"></i> 外国人スタッフ情報
+                            </h4>
+                            <div style="display: flex; flex-direction: column; gap: 1.2rem;">
+                                <div class="input-group" style="margin: 0;">
+                                    <label style="font-weight: 700; color: #92400e;">VISA期限</label>
+                                    <input type="date" id="user-visa-expiry" style="background: white; font-weight: 600; border: 1px solid #fcd34d;">
+                                </div>
+                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-top: 0.5rem;">
+                                    <div style="flex: 1;">
+                                        <label style="font-weight: 800; color: #92400e; display: block; margin-bottom: 0.2rem;">週28時間制限 (留学生など)</label>
+                                        <p style="font-size: 0.75rem; color: #b45309; margin: 0;">チェックを入れるとシフト画面で超過アラートが有効になります</p>
+                                    </div>
+                                    <div class="switch-container">
+                                        <input type="checkbox" id="user-28h-limit" style="width: 20px; height: 20px; cursor: pointer; accent-color: #d97706;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 操作案内ツール (編集時のみ) -->
+                        <div id="password-info-section" style="display: \${isEdit ? 'block' : 'none'}; border: 1px dashed #cbd5e1; border-radius: 12px; padding: 1.5rem; background: white;">
+                            <p style="font-size: 0.9rem; font-weight: 700; margin-top: 0; margin-bottom: 1rem; color: #475569; display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-share-alt"></i> 設定情報の共有</p>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <button type="button" id="btn-send-reset-email" class="btn" style="background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; font-size: 0.85rem; padding: 0.8rem;">
+                                    <i class="fas fa-share-square"></i> ログイン情報をコピー
+                                </button>
+                                <button type="button" id="btn-show-clock-in-pw" class="btn" style="background: #fdf2f8; color: #db2777; border: 1px solid #fbcfe8; font-size: 0.85rem; padding: 0.8rem;">
+                                    <i class="fas fa-key"></i> 打刻PWを案内
+                                </button>
+                            </div>
+                            <p style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.8rem; text-align: center;">※クリックすると各案内文がクリップボードにコピーされます</p>
                         </div>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem;">
-                        <div class="input-group">
-                            <label style="font-weight: 700; color: #475569;">所属店舗</label>
-                            <select id="user-store-select" required style="background: white; font-weight: 600;">
-                                <option value="">店舗を選択...</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label style="font-weight: 700; color: #475569;">在職状況</label>
-                            <select id="user-status" required style="background: white; font-weight: 600;">
-                                <option value="active">在職中</option>
-                                <option value="resigning">退職手続き中</option>
-                                <option value="retired">退職済</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label style="font-weight: 700; color: #475569;">権限レベル</label>
-                            <select id="user-role" required style="background: white; font-weight: 600;">
-                                <option value="Staff">一般社員</option>
-                                <option value="PartTimer">アルバイトスタッフ</option>
-                                <option value="Tablet">店舗タブレット</option>
-                                <option value="Manager">店長</option>
-                                <option value="Admin">管理者</option>
-                            </select>
-                        </div>
-                        <div class="input-group">
-                            <label style="font-weight: 700; color: #475569;">表示役職</label>
-                            <input type="text" id="user-job-title" placeholder="副店長等" style="background: #f0fdf4; border: 1px solid #bbf7d0;">
-                        </div>
-                    </div>
-
-                    <div class="glass-panel" style="padding: 1rem 1.5rem; background: #fffcf0; border: 1px solid #fde68a; display: flex; align-items: center; gap: 1rem;">
-                        <div style="flex: 1;">
-                            <label style="font-weight: 800; color: #92400e; display: block; margin-bottom: 0.2rem;">週28時間制限 (留学生など)</label>
-                            <p style="font-size: 0.75rem; color: #b45309; margin: 0;">チェックを入れるとシフト管理画面で28h超過アラートが有効になります</p>
-                        </div>
-                        <div class="switch-container">
-                            <input type="checkbox" id="user-28h-limit" style="width: 20px; height: 20px; cursor: pointer;">
-                        </div>
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-                        <div class="input-group">
-                            <label style="font-weight: 700; color: #475569;">メールアドレス (ログイン用ID)</label>
-                            <input type="email" id="user-email" placeholder="example@kaneshow.jp">
-                            <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.3rem;">※ポータルへのログインに使用します</p>
-                        </div>
-                        <div class="input-group">
-                            <label style="font-weight: 700; color: #475569;">VISA期限 (外国人スタッフ用)</label>
-                            <input type="date" id="user-visa-expiry" style="background: white; font-weight: 600;">
-                        </div>
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; background: #f1f5f9; padding: 1.5rem; border-radius: 12px;">
-                        <div class="input-group">
-                            <label style="font-weight: 700; color: #334155;">打刻パスワード (数字4桁)</label>
-                            <input type="text" id="user-password" placeholder="例: 1234" maxlength="4" style="font-family: monospace; text-align: center; font-size: 1.25rem; letter-spacing: 0.2em;">
-                        </div>
-                        <div class="input-group">
-                            <label style="font-weight: 700; color: #334155;">ログインパスワード</label>
-                            <input type="password" id="user-login-password" placeholder="••••••••" style="font-size: 1.1rem;">
-                        </div>
-                    </div>
-
-                    <!-- 操作案内ツール (編集時のみ) -->
-                    <div id="password-info-section" style="display: ${isEdit ? 'block' : 'none'}; border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; background: white;">
-                        <p style="font-size: 0.85rem; font-weight: 700; margin-top: 0; margin-bottom: 1rem; color: #475569;">設定情報の共有</p>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                            <button type="button" id="btn-send-reset-email" class="btn" style="background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; font-size: 0.85rem; padding: 0.8rem;">
-                                <i class="fas fa-share-square"></i> ログイン情報をコピー
-                            </button>
-                            <button type="button" id="btn-show-clock-in-pw" class="btn" style="background: #fdf2f8; color: #db2777; border: 1px solid #fbcfe8; font-size: 0.85rem; padding: 0.8rem;">
-                                <i class="fas fa-key"></i> 打刻PWを案内
-                            </button>
-                        </div>
-                        <p style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.8rem; text-align: center;">※クリックすると各案内の案内文がクリップボードにコピーされます</p>
-                    </div>
-
-                    <div style="display: flex; gap: 1rem; margin-top: 1rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
-                        <button type="button" id="btn-form-cancel" class="btn" style="flex: 1; background: #f1f5f9; color: var(--text-secondary); font-weight: 700;">キャンセル</button>
-                        <button type="submit" class="btn btn-primary" style="flex: 2; padding: 1rem; font-weight: 800; font-size: 1.1rem;">
+                    <!-- アクションボタンエリア -->
+                    <div style="grid-column: 1 / -1; display: flex; gap: 1rem; margin-top: 1rem; padding-top: 1.5rem; border-top: 1px solid #e2e8f0; justify-content: flex-end;">
+                        <button type="button" id="btn-form-cancel" class="btn" style="padding: 1rem 2rem; background: white; border: 1px solid var(--border); color: var(--text-secondary); font-weight: 700;">
+                            キャンセル
+                        </button>
+                        <button type="submit" class="btn btn-primary" style="padding: 1rem 3rem; font-weight: 800; font-size: 1.1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
                             <i class="fas fa-save" style="margin-right: 0.5rem;"></i>
                             ユーザー情報を保存
                         </button>
@@ -223,7 +264,7 @@ function renderFormView(container) {
                 </form>
             </div>
         </div>
-    `;
+    \`;
 
     document.getElementById('btn-form-back').onclick = document.getElementById('btn-form-cancel').onclick = () => {
         currentView = 'list';
