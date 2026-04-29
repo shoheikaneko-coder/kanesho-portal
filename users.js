@@ -366,6 +366,8 @@ function setupFormLogic() {
                 await addDoc(collection(db, "m_users"), newUser);
                 showAlert('成功', '登録しました。');
             }
+            // 保存後に最新データを再取得してキャッシュを更新し、即座に一覧へ反映させる
+            await fetchUsersData();
             currentView = 'list';
             renderView();
         } catch (err) { 
