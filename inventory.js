@@ -344,6 +344,7 @@ let currentUser = null;
 let settingsSearchQuery = '';
 let settingsBulkMode = false;
 let settingsSelectedCategory = 'ALL';
+let settingsSelectedSupplier = 'ALL';
 
 /**
  * Helper to determine if an item is a valid inventory target
