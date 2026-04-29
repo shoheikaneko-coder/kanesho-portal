@@ -1353,181 +1353,135 @@ function renderSettingsView(container) {
     // Filter manageable items using unified logic
     const manageableItems = cachedItems.filter(isInventoryTarget);
     const categories = [...new Set(manageableItems.map(i => i.category || i.カテゴリー || 'その他'))].sort();
+    
+    // Get all unique vendors for datalist
+    const vendors = [...new Set(cachedSuppliers.map(s => s.vendor_name).filter(Boolean))].sort();
 
     container.innerHTML = `
-        <!-- Header: Search & Filter Controls -->
-        <div class="glass-panel" style="padding: 1.5rem; background: #f8fafc; border: 1px solid var(--border); border-radius: 16px; display: flex; flex-direction: column; gap: 1rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="margin: 0; font-size: 1.1rem; font-weight: 800;">
-                    ${settingsBulkMode ? '<i class="fas fa-layer-group" style="color:var(--primary);"></i> 一括登録モード' : '<i class="fas fa-list-check" style="color:var(--primary);"></i> 現在の管理リスト'}
-                </h3>
-                <div style="display: flex; align-items: center; gap: 0.8rem; background: #e2e8f0; padding: 0.4rem 1rem; border-radius: 20px;">
-                    <span style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary);">一括登録モード</span>
-                    <label class="switch" style="position: relative; display: inline-block; width: 40px; height: 20px;">
-                        <input type="checkbox" id="settings-bulk-toggle" ${settingsBulkMode ? 'checked' : ''} style="opacity: 0; width: 0; height: 0;">
-                        <span class="slider round" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .4s; border-radius: 20px;"></span>
-                    </label>
-                </div>
+        <!-- Header: Store Info & Action -->
+        <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: flex-end;">
+            <div>
+                <span style="background: var(--primary); color: white; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.7rem; font-weight: 800; vertical-align: middle; margin-right: 0.5rem;">SETTING</span>
+                <h2 style="display: inline-block; margin: 0; font-size: 1.5rem; font-weight: 900; color: var(--text-primary);">[${selectedStore.name}] 在庫マスタ設定</h2>
             </div>
-
-            <div style="display: flex; gap: 0.8rem;">
-                <!-- Integrated Category Select -->
-                <select id="settings-category-filter" style="width: 160px; padding: 0 1rem; border-radius: 12px; border: 2px solid #e2e8f0; font-weight: 800; font-size: 0.85rem; cursor: pointer; outline: none;">
-                    <option value="ALL">全カテゴリ</option>
-                    ${categories.map(c => `<option value="${c}" ${settingsSelectedCategory === c ? 'selected' : ''}>${c}</option>`).join('')}
-                </select>
-                
-                <!-- Search Box -->
-                <div class="input-group" style="margin: 0; flex: 1; position: relative;">
-                    <i class="fas fa-search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary); pointer-events: none; z-index: 1;"></i>
-                    <input type="text" id="inv-master-search" placeholder="${settingsBulkMode ? '追加したい品目を検索...' : '管理リスト内を検索...'}" value="${settingsSearchQuery}" style="padding-left: 2.5rem; height: 45px; border-radius: 12px; border: 2px solid #e2e8f0; font-size: 0.95rem; font-weight: 700;">
-                    <!-- Floating Results for quick add in Normal Mode -->
-                    <div id="inv-master-quick-add-results" style="position: absolute; top: 50px; left: 0; width: 100%; background: white; border-radius: 12px; box-shadow: var(--shadow-primary); border: 1px solid var(--border); z-index: 100; display: none; max-height: 250px; overflow-y: auto;"></div>
-                </div>
+            <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary);">
+                登録済み: <span style="color: var(--primary); font-weight: 800;">${inventoryData.length}</span> 品目
             </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 350px; gap: 2rem; align-items: start;">
-            <!-- Left: Main List Area -->
-            <div class="glass-panel" style="padding: 0; overflow: hidden; display: flex; flex-direction: column; background: white; border: 1px solid var(--border); border-radius: 16px;">
-                <div style="padding: 0.5rem; background: #f1f5f9; border-bottom: 1px solid var(--border); display: flex; font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase;">
-                    ${settingsBulkMode ? '<div style="width: 40px;"></div>' : ''}
-                    <div style="flex: 2; padding: 0.5rem 1rem;">品目名</div>
-                    <div style="flex: 1; padding: 0.5rem;">仕入先</div>
-                    <div style="width: ${settingsBulkMode ? '40px' : '100px'}; padding: 0.5rem; text-align: center;">操作</div>
+        <div style="display: grid; grid-template-columns: 380px 1fr 280px; gap: 1.5rem; height: calc(100vh - 250px); min-height: 500px;">
+            
+            <!-- Column 1: Master Catalog (Add New) -->
+            <div class="glass-panel" style="display: flex; flex-direction: column; padding: 0; overflow: hidden; background: #f8fafc; border: 1px solid var(--border);">
+                <div style="padding: 1.2rem; background: white; border-bottom: 1px solid var(--border);">
+                    <h3 style="margin: 0 0 1rem 0; font-size: 0.95rem; font-weight: 800;"><i class="fas fa-search-plus" style="color: var(--primary);"></i> マスタから追加</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.8rem;">
+                        <div class="input-group" style="margin:0;">
+                            <input type="text" id="settings-supplier-filter" list="supplier-datalist" placeholder="業者名で絞り込み..." 
+                                   value="${settingsSelectedSupplier === 'ALL' ? '' : settingsSelectedSupplier}"
+                                   style="font-size: 0.75rem; padding: 0.5rem; border-radius: 8px;">
+                            <datalist id="supplier-datalist">
+                                ${vendors.map(v => `<option value="${v}">`).join('')}
+                            </datalist>
+                        </div>
+                        <div class="input-group" style="margin:0;">
+                            <input type="text" id="settings-category-filter-new" list="category-datalist" placeholder="カテゴリで絞り込み..." 
+                                   value="${settingsSelectedCategory === 'ALL' ? '' : settingsSelectedCategory}"
+                                   style="font-size: 0.75rem; padding: 0.5rem; border-radius: 8px;">
+                            <datalist id="category-datalist">
+                                ${categories.map(c => `<option value="${c}">`).join('')}
+                            </datalist>
+                        </div>
+                    </div>
+                    <div class="input-group" style="margin:0; position: relative;">
+                        <i class="fas fa-search" style="position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%); font-size: 0.8rem; color: #94a3b8;"></i>
+                        <input type="text" id="inv-master-search-new" placeholder="品目名・ふりがなで検索..." 
+                               value="${settingsSearchQuery}" 
+                               style="padding-left: 2.2rem; font-size: 0.85rem; border-radius: 8px; border: 2px solid var(--border);">
+                    </div>
                 </div>
-                <div id="inv-settings-list" style="height: 50vh; overflow-y: auto; background: white;">
-                    <!-- Rows injected by renderSettingsItems -->
+
+                <div id="inv-master-catalog-list" style="flex: 1; overflow-y: auto; padding: 0.5rem;">
+                    <!-- Master Items injected here -->
                 </div>
-                ${settingsBulkMode ? `
-                <div style="padding: 1.2rem; background: #f8fafc; border-top: 1px solid var(--border); text-align: right;">
-                    <button id="btn-bulk-add-save" class="btn btn-primary" style="padding: 0.8rem 2rem; font-weight: 800; border-radius: 12px; box-shadow: var(--shadow-primary);">選択した品目を一括追加</button>
+
+                <div style="padding: 1rem; background: white; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 600;">※登録済みの品目は表示されません</div>
+                    <button id="btn-bulk-add-catalog" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.75rem; font-weight: 800; border-radius: 8px;">選択項目を一括追加</button>
                 </div>
-                ` : `
-                <div style="padding: 1rem; background: #f8fafc; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.5rem;">
-                    <i class="fas fa-info-circle"></i> ⚙️アイコンで詳細設定（定数や場所）、🗑️アイコンでリストからの削除を行えます。
-                </div>
-                `}
             </div>
 
-            <!-- Right Column: Timing Management -->
-            <div class="glass-panel" style="padding: 1.5rem; background: white; border: 1px solid var(--border); border-radius: 16px; align-self: start;">
-                <h3 style="margin: 0 0 1.5rem 0; font-size: 1.1rem; font-weight: 800;"><i class="fas fa-clock" style="color: var(--primary);"></i> タイミング設定</h3>
-                <div id="timing-master-list" style="display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1.5rem;"></div>
-                <div style="display: flex; gap: 0.6rem;">
-                    <input type="text" id="new-timing-name" placeholder="例: 15時チェック" style="flex: 1; padding: 0.7rem; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 0.9rem; font-weight: 600;">
-                    <button id="btn-add-timing" class="btn btn-secondary" style="padding: 0.7rem; border-radius: 10px; width: 45px; height: 45px;"><i class="fas fa-plus"></i></button>
+            <!-- Column 2: Management List (Current Inventory) -->
+            <div class="glass-panel" style="display: flex; flex-direction: column; padding: 0; overflow: hidden; background: white; border: 1px solid var(--border);">
+                <div style="padding: 1.2rem; border-bottom: 1px solid var(--border); background: white; display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin: 0; font-size: 0.95rem; font-weight: 800;"><i class="fas fa-list-check" style="color: var(--primary);"></i> 現在の管理リスト</h3>
+                    <div id="settings-store-stats" style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary);"></div>
+                </div>
+                
+                <div id="inv-settings-store-list" style="flex: 1; overflow-y: auto; padding: 1rem;">
+                    <!-- Grouped Store Items injected here -->
+                </div>
+            </div>
+
+            <!-- Column 3: Timing & Meta -->
+            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                <!-- Timing Management -->
+                <div class="glass-panel" style="padding: 1.5rem; background: white; border: 1px solid var(--border); border-radius: 16px;">
+                    <h3 style="margin: 0 0 1rem 0; font-size: 0.95rem; font-weight: 800;"><i class="fas fa-clock" style="color: var(--primary);"></i> タイミング管理</h3>
+                    <div id="timing-master-list-new" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 300px; overflow-y: auto; margin-bottom: 1rem; padding-right: 0.3rem;"></div>
+                    <div style="display: flex; gap: 0.4rem;">
+                        <input type="text" id="new-timing-name-new" placeholder="新規タイミング名..." style="flex: 1; padding: 0.5rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.8rem; font-weight: 600;">
+                        <button id="btn-add-timing-new" class="btn btn-secondary" style="padding: 0.5rem; width: 36px; height: 36px;"><i class="fas fa-plus"></i></button>
+                    </div>
+                </div>
+
+                <!-- Info Box -->
+                <div class="glass-panel" style="padding: 1rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px;">
+                    <h4 style="margin: 0 0 0.5rem 0; font-size: 0.8rem; font-weight: 800; color: #1e40af;"><i class="fas fa-info-circle"></i> ヒント</h4>
+                    <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.75rem; color: #1e40af; line-height: 1.5; font-weight: 600;">
+                        <li>右側の [⚙️] で保管場所や定数を個別に設定できます。</li>
+                        <li>タイミングを削除すると、そのタイミングの品目が「未設定」に移動します。</li>
+                    </ul>
                 </div>
             </div>
         </div>
     `;
 
-    // Dynamic Slider CSS (Inline)
-    const styleId = 'bulk-toggle-style';
-    if (!document.getElementById(styleId)) {
-        const style = document.createElement('style');
-        style.id = styleId;
-        style.innerHTML = `
-            .switch input:checked + .slider { background-color: var(--primary) !important; }
-            .switch input:checked + .slider:before { transform: translateX(20px); }
-            .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
-        `;
-        document.head.appendChild(style);
-    }
-
     // Bind Events
-    const toggle = document.getElementById('settings-bulk-toggle');
-    toggle.onchange = (e) => {
-        settingsBulkMode = e.target.checked;
-        settingsSearchQuery = ''; // Reset search when switching
-        renderSettingsView(container);
-    };
-
-    const categorySelect = document.getElementById('settings-category-filter');
-    categorySelect.onchange = (e) => {
-        settingsSelectedCategory = e.target.value;
+    const supplierInput = document.getElementById('settings-supplier-filter');
+    supplierInput.onchange = (e) => {
+        settingsSelectedSupplier = e.target.value || 'ALL';
         renderSettingsItems();
     };
 
-    const searchInput = document.getElementById('inv-master-search');
+    const categoryInput = document.getElementById('settings-category-filter-new');
+    categoryInput.onchange = (e) => {
+        settingsSelectedCategory = e.target.value || 'ALL';
+        renderSettingsItems();
+    };
+
+    const searchInput = document.getElementById('inv-master-search-new');
     searchInput.oninput = (e) => {
         settingsSearchQuery = e.target.value;
-        if (!settingsBulkMode) {
-            handleQuickAddSearch(e.target.value);
-        } else {
-            renderSettingsItems();
-        }
+        renderSettingsItems();
     };
 
-    if (settingsBulkMode) {
-        document.getElementById('btn-bulk-add-save').onclick = handleBulkAddSave;
-    }
+    document.getElementById('btn-bulk-add-catalog').onclick = async () => {
+        const checkedPids = Array.from(document.querySelectorAll('.catalog-chk:checked')).map(el => el.value);
+        if (checkedPids.length === 0) return;
+        if (!confirm(`${checkedPids.length}件の品目を一括登録しますか？`)) return;
+        
+        await handleBulkAddPids(checkedPids);
+    };
 
-    document.getElementById('btn-add-timing').onclick = addTimingMaster;
+    document.getElementById('btn-add-timing-new').onclick = addTimingMaster;
 
-    try {
-        renderSettingsItems();
-    } catch (e) {
-        console.error("renderSettingsItems failed:", e);
-        const listContainer = document.getElementById('inv-settings-list');
-        if (listContainer) listContainer.innerHTML = '<div style="color:red;padding:1rem;">品目リストの描画に失敗しました: ' + e.message + '</div>';
-    }
-
-    try {
-        renderTimingMasterList();
-    } catch (e) {
-        console.error("renderTimingMasterList failed:", e);
-    }
+    renderSettingsItems();
+    renderTimingMasterList();
 }
 
 function handleQuickAddSearch(query) {
-    const resultsContainer = document.getElementById('inv-master-quick-add-results');
-    if (!query || query.length < 1) {
-        resultsContainer.style.display = 'none';
-        return;
-    }
-
-    const existingPids = new Set(inventoryData.map(i => String(i.ProductID)));
-    const matches = cachedItems.filter(i => {
-        const q = query.toLowerCase();
-        const nameMatch = (i.name || '').toLowerCase().includes(q);
-        const furiganaMatch = (i.furigana || i.ふりがな || '').toLowerCase().includes(q);
-        if (!nameMatch && !furiganaMatch) return false;
-        
-        // Exclude menus
-        const menu = cachedMenus.find(m => String(m.item_id) === String(i.id));
-        if (menu && menu.is_sub_recipe !== true) return false;
-        
-        // Filter by category if selected
-        if (settingsSelectedCategory !== 'ALL') {
-            const cat = i.category || i.カテゴリー || 'その他';
-            if (cat !== settingsSelectedCategory) return false;
-        }
-
-        return !existingPids.has(String(i.id));
-    }).slice(0, 8);
-
-    if (matches.length === 0) {
-        resultsContainer.innerHTML = `<div style="padding: 1rem; color: var(--text-secondary); font-size: 0.85rem;">該当する品目はありません</div>`;
-    } else {
-        resultsContainer.innerHTML = matches.map(i => `
-            <div class="search-result-row" data-id="${i.id}" style="padding: 0.8rem 1rem; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background 0.1s;">
-                <div style="font-size: 0.9rem; font-weight: 700;">${i.name}</div>
-                <div style="font-size: 0.7rem; color: var(--text-secondary);">${i.category || i.カテゴリー || 'カテゴリーなし'}</div>
-            </div>
-        `).join('');
-    }
-    resultsContainer.style.display = 'block';
-
-    resultsContainer.querySelectorAll('.search-result-row').forEach(row => {
-        row.onclick = async () => {
-            const pid = row.dataset.id;
-            resultsContainer.style.display = 'none';
-            document.getElementById('inv-master-search').value = '';
-            settingsSearchQuery = '';
-            await addStoreItem(pid);
-        };
-    });
+    // This is now replaced by the persistent catalog column
 }
 
 async function handleBulkAddSave() {
@@ -1655,22 +1609,165 @@ async function removeStoreItem(storeItemId) {
     if (!confirm('この品目を管理リストから削除しますか？\n(定数や保管場所の設定データも消去されます)')) return;
     
     const overlay = document.getElementById('inv-loading-overlay');
-    overlay.style.display = 'flex';
+    if(overlay) overlay.style.display = 'flex';
 
     try {
         await deleteDoc(doc(db, "m_store_items", storeItemId));
         await loadStoreInventory(selectedStore.code);
         renderSettingsItems();
-        render(); // Update main dashboard
+        render();
     } catch (err) {
         showAlert('エラー', '削除に失敗しました: ' + err.message);
     } finally {
-        overlay.style.display = 'none';
+        if(overlay) overlay.style.display = 'none';
+    }
+}
+
+function renderSettingsItems() {
+    const catalogContainer = document.getElementById('inv-master-catalog-list');
+    const storeContainer = document.getElementById('inv-settings-store-list');
+    if (!catalogContainer || !storeContainer) return;
+
+    // --- 1. Render Master Catalog (Items NOT in store) ---
+    const existingPids = new Set(inventoryData.map(i => String(i.ProductID)));
+    let catalogItems = cachedItems.filter(i => isInventoryTarget(i) && !existingPids.has(String(i.id)));
+
+    // Filters for Catalog
+    if (settingsSelectedCategory !== 'ALL') {
+        catalogItems = catalogItems.filter(i => (i.category || i.カテゴリー || 'その他') === settingsSelectedCategory);
+    }
+    if (settingsSelectedSupplier !== 'ALL') {
+        catalogItems = catalogItems.filter(i => {
+            const ing = cachedIngredients.find(ing => String(ing.item_id) === String(i.id));
+            const sup = cachedSuppliers.find(s => String(s.vendor_id || s.id) === String(ing?.vendor_id));
+            return sup?.vendor_name === settingsSelectedSupplier;
+        });
+    }
+    if (settingsSearchQuery) {
+        const q = settingsSearchQuery.toLowerCase();
+        catalogItems = catalogItems.filter(i => (i.name || '').toLowerCase().includes(q) || (i.furigana || i.ふりがな || '').toLowerCase().includes(q));
+    }
+
+    catalogItems.sort((a,b) => (a.name || '').localeCompare(b.name || ''));
+
+    catalogContainer.innerHTML = catalogItems.length === 0 ? 
+        `<div style="padding:2rem; text-align:center; color:var(--text-secondary); font-size:0.8rem;">該当する品目はありません</div>` :
+        catalogItems.map(i => `
+            <div style="display: flex; align-items: center; padding: 0.6rem 0.8rem; background: white; border-radius: 8px; margin-bottom: 0.4rem; border: 1px solid #f1f5f9; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                <input type="checkbox" class="catalog-chk" value="${i.id}" style="margin-right: 0.8rem; width: 16px; height: 16px;">
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${i.name}</div>
+                    <div style="font-size: 0.65rem; color: var(--text-secondary);">${i.category || 'カテゴリなし'}</div>
+                </div>
+                <button class="btn-quick-add" data-id="${i.id}" style="background: var(--surface-darker); border: 1px solid var(--border); color: var(--primary); padding: 0.3rem 0.6rem; border-radius: 6px; cursor: pointer; font-size: 0.7rem; font-weight: 800;">
+                    <i class="fas fa-plus"></i> 追加
+                </button>
+            </div>
+        `).join('');
+
+    catalogContainer.querySelectorAll('.btn-quick-add').forEach(btn => {
+        btn.onclick = async () => {
+            const pid = btn.dataset.id;
+            await addStoreItem(pid);
+        };
+    });
+
+
+    // --- 2. Render Store Management List (Grouped by Timing) ---
+    const timingIds = [...new Set(inventoryData.map(d => d.確認タイミング))].sort();
+    Object.keys(timingMaster).forEach(tId => { if(!timingIds.includes(tId)) timingIds.push(tId); });
+
+    let html = '';
+    const sortedTimingIds = timingIds.sort((a,b) => {
+        const countA = inventoryData.filter(d => d.確認タイミング === a).length;
+        const countB = inventoryData.filter(d => d.確認タイミング === b).length;
+        return countB - countA;
+    });
+
+    sortedTimingIds.forEach(tId => {
+        const items = inventoryData.filter(d => d.確認タイミング === tId);
+        if (items.length === 0 && !Object.keys(timingMaster).includes(tId)) return;
+
+        const tName = timingMaster[tId] || '未設定・その他';
+        
+        html += `
+            <div class="timing-group" style="margin-bottom: 1.5rem;">
+                <div style="display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.6rem; padding-bottom: 0.4rem; border-bottom: 2px solid #f1f5f9;">
+                    <span style="font-size: 0.85rem; font-weight: 900; color: #1e293b;">${tName}</span>
+                    <span style="font-size: 0.7rem; color: var(--text-secondary); background: #f1f5f9; padding: 0.1rem 0.5rem; border-radius: 10px;">${items.length}品目</span>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.6rem;">
+                    ${items.map(item => {
+                        const name = productMap[item.ProductID] || '不明';
+                        return `
+                            <div style="display: flex; align-items: center; gap: 0.8rem; padding: 0.6rem 0.8rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;">
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="font-size: 0.85rem; font-weight: 800; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.display_name || name}</div>
+                                    <div style="font-size: 0.65rem; color: var(--text-secondary);">${item.location_label || '場所未設定'} / ${item.定数 || 0} ${item.display_unit || ''}</div>
+                                </div>
+                                <div style="display: flex; gap: 0.3rem;">
+                                    <button class="btn-edit-item-master" data-id="${item.id}" style="width: 32px; height: 32px; border-radius: 8px; border: 1px solid #cbd5e1; background: white; color: var(--text-secondary); cursor: pointer;"><i class="fas fa-cog"></i></button>
+                                    <button class="btn-remove-item" data-id="${item.id}" style="width: 32px; height: 32px; border-radius: 8px; border: 1px solid #fecaca; background: white; color: #ef4444; cursor: pointer;"><i class="fas fa-trash-alt"></i></button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    });
+
+    storeContainer.innerHTML = html || `<div style="padding:4rem; text-align:center; color:var(--text-secondary);">管理リストは空です</div>`;
+
+    storeContainer.querySelectorAll('.btn-edit-item-master').forEach(btn => {
+        btn.onclick = () => {
+            const id = btn.dataset.id;
+            const item = inventoryData.find(i => i.id === id);
+            if(item) showItemSettingsModal(id);
+        };
+    });
+
+    storeContainer.querySelectorAll('.btn-remove-item').forEach(btn => {
+        btn.onclick = () => removeStoreItem(btn.dataset.id);
+    });
+}
+
+async function handleBulkAddPids(pids) {
+    const overlay = document.getElementById('inv-loading-overlay');
+    if(overlay) overlay.style.display = 'flex';
+
+    const fallbackTimingId = Object.keys(timingMaster)[0] || "DAILY_ALL";
+
+    try {
+        const batch = [];
+        for (const pid of pids) {
+            const docId = `${selectedStore.code}_${pid}`;
+            batch.push(setDoc(doc(db, "m_store_items", docId), {
+                StoreID: selectedStore.code,
+                ProductID: pid,
+                確認タイミング: fallbackTimingId,
+                定数: 0,
+                location_label: "未配置",
+                保管場所: "未配置",
+                is_confirmed: false,
+                個数: 0,
+                updated_at: new Date().toISOString()
+            }));
+        }
+        await Promise.all(batch);
+        await loadStoreInventory(selectedStore.code);
+        renderSettingsItems();
+        render(); 
+        showAlert('成功', `${pids.length}件の品目を追加しました`);
+    } catch (err) {
+        showAlert('エラー', '一括追加に失敗しました: ' + err.message);
+    } finally {
+        if(overlay) overlay.style.display = 'none';
     }
 }
 
 async function renderTimingMasterList() {
-    const list = document.getElementById('timing-master-list');
+    const list = document.getElementById('timing-master-list-new');
     if (!list) return;
     
     list.innerHTML = Object.keys(timingMaster).map(id => `
@@ -1686,21 +1783,23 @@ window.deleteTimingMaster = async (id) => {
     try {
         await deleteDoc(doc(db, "m_check_timings", id));
         delete timingMaster[id];
-        renderSettingsView(document.getElementById('inv-main-content'));
+        renderSettingsItems();
+        renderTimingMasterList();
     } catch (err) {
         alert('削除エラー: ' + err.message);
     }
 };
 
 async function addTimingMaster() {
-    const name = document.getElementById('new-timing-name').value.trim();
+    const name = document.getElementById('new-timing-name-new').value.trim();
     if (!name) return;
     try {
         const id = 'T' + Date.now();
         await setDoc(doc(db, "m_check_timings", id), { ID: id, 確認タイミング: name });
         timingMaster[id] = name;
-        document.getElementById('new-timing-name').value = '';
-        renderSettingsView(document.getElementById('inv-main-content'));
+        document.getElementById('new-timing-name-new').value = '';
+        renderSettingsItems();
+        renderTimingMasterList();
     } catch (err) {
         alert('追加エラー: ' + err.message);
     }
@@ -1715,102 +1814,12 @@ async function loadStoreInventory(internalCode) {
         const snap = await getDocs(q);
         inventoryData = [];
         snap.forEach(d => inventoryData.push({ id: d.id, ...d.data() }));
-        console.log(`Loaded ${inventoryData.length} items for store ${internalCode}`);
-
         await loadTheoreticalStocks(internalCode);
     } catch (err) {
         console.error("Error loading store inventory:", err);
     }
 }
 
-
-
-function renderSettingsItems() {
-    const container = document.getElementById('inv-settings-list');
-    if (!container) return;
-
-    try {
-        if (settingsBulkMode) {
-            // --- Mode B: Master Items (Bulk Add) ---
-            const existingPids = new Set(inventoryData.map(i => String(i.ProductID)));
-            
-            let itemsToShow = cachedItems.filter(i => {
-                if (!isInventoryTarget(i)) return false;
-                if (existingPids.has(String(i.id))) return false;
-
-                const itemName = (i.name || i.Name || '').toLowerCase();
-                const itemCat = String(i.category || i.カテゴリー || 'その他');
-
-                if (settingsSelectedCategory !== 'ALL' && itemCat !== settingsSelectedCategory) return false;
-                if (settingsSearchQuery) {
-                    const q = settingsSearchQuery.toLowerCase();
-                    const furigana = (i.furigana || i.ふりがな || '').toLowerCase();
-                    if (!itemName.includes(q) && !furigana.includes(q)) return false;
-                }
-                return true;
-            });
-
-            itemsToShow.sort((a, b) => {
-                const nameA = a.name || a.Name || '';
-                const nameB = b.name || b.Name || '';
-                return nameA.localeCompare(nameB);
-            });
-
-            if (itemsToShow.length === 0) {
-                container.innerHTML = `<div style="text-align:center; padding: 3rem; color: var(--text-secondary); font-size: 0.9rem;">該当する未登録品目はありません</div>`;
-                return;
-            }
-
-            container.innerHTML = itemsToShow.map(i => {
-                const pid = String(i.id || '');
-                const displayName = i.name || i.Name || '名称未設定';
-                
-                // 仕入れ先・自家製判定 (安全なアクセス)
-                const ing = (cachedIngredients || []).find(ing => ing && String(ing.item_id || '') === pid);
-                const vendor = (cachedSuppliers || []).find(v => v && (String(v.vendor_id || v.id) === String(ing?.vendor_id || '')));
-                const menu = (cachedMenus || []).find(m => m && (String(m.item_id || '') === pid || String(m.id || '') === pid));
-                const isSub = menu?.is_sub_recipe === true;
-
-                let vendorDisplay = '';
-                if (isSub) {
-                    vendorDisplay = '<span style="color: #2563eb; font-weight: 700;">自家製原材料</span>';
-                } else if (vendor) {
-                    vendorDisplay = vendor.vendor_name || '名称不明';
-                } else {
-                    vendorDisplay = '<span style="color: #ef4444; font-weight: 600;">業者未登録</span>';
-                }
-
-                return `
-                    <label style="display: flex; align-items: center; padding: 0.75rem 1rem; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background 0.1s;">
-                        <div style="width: 40px;"><input type="checkbox" class="bulk-add-chk" value="${pid}" style="width: 18px; height: 18px; cursor: pointer;"></div>
-                        <div style="flex: 2; font-size: 0.9rem; font-weight: 700; color: var(--text-primary);">${displayName}</div>
-                        <div style="flex: 1; font-size: 0.75rem; color: var(--text-secondary);">${vendorDisplay}</div>
-                        <div style="width: 40px; text-align: center;"><i class="fas fa-plus" style="color: var(--primary); opacity: 0.3;"></i></div>
-                    </label>
-                `;
-            }).join('');
-
-        } else {
-            // --- Mode A: Management (Current Inventory) ---
-            let data = [...inventoryData];
-
-            // Category Filter
-            if (settingsSelectedCategory !== 'ALL') {
-                data = data.filter(d => {
-                    const raw = cachedItems.find(i => String(i.id) === String(d.ProductID));
-                    const cat = String(raw?.category || raw?.カテゴリー || 'その他');
-                    return cat === settingsSelectedCategory;
-                });
-            }
-
-            // Search Filter
-            if (settingsSearchQuery) {
-                const q = settingsSearchQuery.toLowerCase();
-                data = data.filter(d => {
-                    const name = (productMap[d.ProductID] || '').toLowerCase();
-                    const raw = cachedItems.find(i => String(i.id) === String(d.ProductID));
-                    const furigana = (raw?.furigana || raw?.ふりがな || '').toLowerCase();
-                    return name.includes(q) || furigana.includes(q);
                 });
             }
 
