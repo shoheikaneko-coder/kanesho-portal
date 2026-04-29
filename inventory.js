@@ -538,13 +538,18 @@ function render() {
     }
 
     // 2. Render Sidebar Timings
-    const rawTimings = [...new Set(inventoryData.map(d => d.確認タイミング))].filter(t => t).sort();
+    const rawTimings = [...new Set(inventoryData.map(d => d.確認タイミング || ''))].sort((a,b) => {
+        if (a === '') return -1;
+        if (b === '') return 1;
+        return a.localeCompare(b);
+    });
+    
     sidebarTimings.innerHTML = rawTimings.map(tCode => {
-        const tName = timingMaster[tCode] || tCode;
-        const itemsInTiming = inventoryData.filter(d => d.確認タイミング === tCode);
+        const tName = tCode ? (timingMaster[tCode] || tCode) : "⚠️ タイミング未設定";
+        const itemsInTiming = inventoryData.filter(d => (d.確認タイミング || '') === tCode);
         const confirmedItems = itemsInTiming.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed));
         const isAllDone = itemsInTiming.length > 0 && confirmedItems.length === itemsInTiming.length;
-        const isActive = selectedTiming && selectedTiming.id === tCode;
+        const isActive = selectedTiming && (selectedTiming.id || '') === tCode;
         
         return `
             <div class="timing-item ${isActive ? 'active' : ''}" data-code="${tCode}" data-name="${tName}">
@@ -648,7 +653,7 @@ window.hideMasterSettings = () => {
 };
 
 function renderChecklist(container) {
-    let items = inventoryData.filter(d => d.確認タイミング === selectedTiming.id);
+    let items = inventoryData.filter(d => (d.確認タイミング || '') === (selectedTiming.id || ''));
     
     // 検索フィルタの適用
     if (inventorySearchQuery) {
@@ -1594,7 +1599,7 @@ async function addStoreItem(pid) {
         await setDoc(doc(db, "m_store_items", docId), {
             StoreID: selectedStore.code,
             ProductID: pid,
-            確認タイミング: fallbackTimingId,
+            確認タイミング: "",
             定数: 0,
             location_label: "未配置",
             保管場所: "未配置",
@@ -1690,21 +1695,23 @@ function renderSettingsItems() {
 
 
     // --- 2. Render Store Management List (Accordion by Timing) ---
-    const timingIds = [...new Set(inventoryData.map(d => d.確認タイミング))];
+    const timingIds = [...new Set(inventoryData.map(d => d.確認タイミング || ''))];
     Object.keys(timingMaster).forEach(tId => { if(!timingIds.includes(tId)) timingIds.push(tId); });
 
     const sortedTimingIds = timingIds.sort((a,b) => {
-        const countA = inventoryData.filter(d => d.確認タイミング === a).length;
-        const countB = inventoryData.filter(d => d.確認タイミング === b).length;
+        if (a === '') return -1;
+        if (b === '') return 1;
+        const countA = inventoryData.filter(d => (d.確認タイミング || '') === a).length;
+        const countB = inventoryData.filter(d => (d.確認タイミング || '') === b).length;
         return countB - countA;
     });
 
     let html = '';
     sortedTimingIds.forEach(tId => {
-        const items = inventoryData.filter(d => d.確認タイミング === tId);
+        const items = inventoryData.filter(d => (d.確認タイミング || '') === tId);
         if (items.length === 0) return;
 
-        const tName = timingMaster[tId] || '未設定・その他';
+        const tName = tId ? (timingMaster[tId] || tId) : "⚠️ タイミング未設定";
         const isCollapsed = settingsCollapsedTimings.has(tId);
         
         html += `
@@ -1783,7 +1790,7 @@ async function handleBulkAddPids(pids) {
             batch.push(setDoc(doc(db, "m_store_items", docId), {
                 StoreID: selectedStore.code,
                 ProductID: pid,
-                確認タイミング: fallbackTimingId,
+                確認タイミング: "",
                 定数: 0,
                 location_label: "未配置",
                 保管場所: "未配置",
