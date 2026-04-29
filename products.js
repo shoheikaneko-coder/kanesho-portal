@@ -969,20 +969,27 @@ function setupIncrementalSearch() {
             const isSub = menu?.is_sub_recipe;
             
             let priceStr = "";
+            let vendorName = "";
             if (isSub) {
                 // 自家製の場合はメニュー価格
                 priceStr = `¥${Math.round(menu.sales_price || 0).toLocaleString()}`;
+                vendorName = "自家製";
             } else {
                 // 原材料の場合は購入価格
                 const ing = cachedIngredients.find(ig => (ig.item_id === item.id || ig.id === item.id));
                 priceStr = ing ? `¥${Math.round(ing.purchase_price || 0).toLocaleString()}` : "";
+                const vendor = cachedVendors.find(v => String(v.vendor_id || v.id) === String(ing?.vendor_id));
+                vendorName = vendor ? vendor.vendor_name : '自社仕込';
             }
 
             return `
                 <div class="search-result-item ${idx === selectedIndex ? 'selected' : ''}" data-id="${item.id}" 
                      style="padding: 0.8rem 1.2rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
-                    <div style="display: flex; flex-direction: column;">
-                        <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 600;">${item.furigana || ''}</span>
+                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                            <span style="font-size: 0.7rem; color: #94a3b8; font-weight: 600;">${item.furigana || ''}</span>
+                            <span style="font-size: 0.65rem; color: #64748b; font-weight: 800; background: #f1f5f9; padding: 1px 6px; border-radius: 4px; border: 1px solid #e2e8f0;">${vendorName}</span>
+                        </div>
                         <div style="font-weight: 800; font-size: 1.05rem; color: #1e293b;">
                             <i class="fas ${isSub ? 'fa-mortar-pestle' : 'fa-seedling'}" style="color: ${isSub ? '#0ea5e9' : '#10b981'}; margin-right: 0.5rem;"></i>
                             ${item.name}
