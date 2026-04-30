@@ -1,17 +1,27 @@
 import { db } from './firebase.js';
-import { collection, getDocs, doc, getDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, getDocs, doc, getDoc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getEffectivePrice } from './cost_engine.js?v=9';
+import { showAlert } from './ui_utils.js';
 
 export const dashboardPageHtml = `
         <!-- フィルターバー -->
         <div class="glass-panel" style="padding: 1.2rem 1.5rem; margin-bottom: 1.5rem;">
             <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
-                <div style="display: flex; flex-direction: column; gap: 0.3rem; flex: 1; min-width: 130px;">
-                    <label style="font-size: 0.78rem; color: var(--text-secondary); font-weight: 600;">開始日</label>
-                    <input type="date" id="dash-date-from" style="padding: 0.5rem 0.8rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem;">
+                <div id="dash-date-filter-group" style="display: flex; gap: 1rem; flex: 2;">
+                    <div style="display: flex; flex-direction: column; gap: 0.3rem; flex: 1; min-width: 130px;">
+                        <label style="font-size: 0.78rem; color: var(--text-secondary); font-weight: 600;">開始日</label>
+                        <input type="date" id="dash-date-from" style="padding: 0.5rem 0.8rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem;">
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.3rem; flex: 1; min-width: 130px;">
+                        <label style="font-size: 0.78rem; color: var(--text-secondary); font-weight: 600;">終了日</label>
+                        <input type="date" id="dash-date-to" style="padding: 0.5rem 0.8rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem;">
+                    </div>
                 </div>
-                <div style="display: flex; flex-direction: column; gap: 0.3rem; flex: 1; min-width: 130px;">
-                    <label style="font-size: 0.78rem; color: var(--text-secondary); font-weight: 600;">終了日</label>
-                    <input type="date" id="dash-date-to" style="padding: 0.5rem 0.8rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem;">
+                <div id="dash-month-filter-group" style="display: none; flex-direction: column; gap: 0.3rem; flex: 1; min-width: 130px;">
+                    <label style="font-size: 0.78rem; color: var(--text-secondary); font-weight: 600;">対象年月</label>
+                    <select id="dash-month-filter" style="padding: 0.5rem 0.8rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; background: white;">
+                        <option value="">データ取得中...</option>
+                    </select>
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 0.3rem; flex: 1; min-width: 130px;">
                     <label style="font-size: 0.78rem; color: var(--text-secondary); font-weight: 600;">店舗</label>
@@ -37,6 +47,7 @@ export const dashboardPageHtml = `
             <button class="dash-tab-btn" data-tab="tab-daily"><i class="fas fa-list"></i> 日別詳細レポート</button>
             <button class="dash-tab-btn" data-tab="tab-monthly"><i class="fas fa-table"></i> 店舗別・月別集計</button>
             <button class="dash-tab-btn" data-tab="tab-analytics"><i class="fas fa-chart-bar"></i> 多角分析</button>
+            <button class="dash-tab-btn" data-tab="tab-product-analysis"><i class="fas fa-utensils"></i> 商品分析</button>
         </div>
 
         <!-- コンテンツエリア -->
@@ -208,6 +219,81 @@ export const dashboardPageHtml = `
                     </div>
                 </div>
             </div>
+
+            <!-- タブ5: 商品分析 (4つの窓) -->
+            <div id="tab-product-analysis" class="dash-tab-content" style="display: none;">
+                <div class="animate-fade-in">
+                    <!-- 4 Windows Grid -->
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
+                        <!-- Window 1: ABC Analysis -->
+                        <div class="glass-panel" style="padding: 1.5rem;">
+                            <h4 style="margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">1. ABC分析 (粗利ベース)</h4>
+                            <div id="dash-chart-abc" style="height: 300px; display: flex; align-items: flex-end; justify-content: center; background: rgba(0,0,0,0.02); border-radius: 8px; padding-bottom: 1rem;">
+                                <span style="color: var(--text-secondary);">「表示」をクリックすると集計されます</span>
+                            </div>
+                        </div>
+
+                        <!-- Window 2: Menu Engineering -->
+                        <div class="glass-panel" style="padding: 1.5rem;">
+                            <h4 style="margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">2. 粗利ミックス (Menu Engineering)</h4>
+                            <div id="dash-chart-matrix" style="height: 300px; position: relative; border: 1px solid var(--border); background: white; border-radius: 8px;">
+                                <div style="position: absolute; top:0; left:50%; bottom:0; border-left: 1px dashed #ccc;"></div>
+                                <div style="position: absolute; left:0; top:50%; right:0; border-top: 1px dashed #ccc;"></div>
+                                <div style="position: absolute; bottom: 5px; left: 5px; font-size: 0.7rem; color: #999;">収益性 →</div>
+                                <div style="position: absolute; top: 5px; left: 5px; font-size: 0.7rem; color: #999; writing-mode: vertical-rl;">人気度 →</div>
+                                <div id="dash-matrix-plot" style="width: 100%; height: 100%; position: relative;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Window 3: Order Probability -->
+                        <div class="glass-panel" style="padding: 1.5rem;">
+                            <h4 style="margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">3. 注文確率 (販売数 / 来客数)</h4>
+                            <div id="dash-chart-probability" style="height: 300px; background: rgba(0,0,0,0.02); border-radius: 8px; overflow-y: auto;">
+                                <table class="data-table" style="font-size: 0.8rem; width: 100%;">
+                                    <thead><tr><th>商品名</th><th style="text-align:center;">数量</th><th style="text-align:center;">確率</th></tr></thead>
+                                    <tbody id="dash-probability-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Window 4: Consumption Gap -->
+                        <div class="glass-panel" style="padding: 1.5rem;">
+                            <h4 style="margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">4. 実食量/ロス分析 (理論 vs 実)</h4>
+                            <div id="dash-chart-loss" style="height: 300px; background: rgba(0,0,0,0.02); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                <p style="font-size: 0.8rem; padding: 2rem; text-align: center; color: var(--text-secondary);">
+                                    棚卸しデータ(t_inventory_logs)と連携して、理論消費と実消費の差異を可視化します（開発予定）
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detail Data Table -->
+                    <div class="glass-panel" style="padding: 1.5rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h4 style="margin: 0;">分析データ詳細</h4>
+                            <button id="dash-btn-export-analysis" class="btn btn-sm" style="background: var(--surface-darker);"><i class="fas fa-file-excel"></i> CSV出力</button>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="data-table" style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                                <thead>
+                                    <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+                                        <th style="padding: 0.8rem;">商品名</th>
+                                        <th style="padding: 0.8rem; text-align: center;">販売数</th>
+                                        <th style="padding: 0.8rem; text-align: center;">売上高</th>
+                                        <th style="padding: 0.8rem; text-align: center;">原価</th>
+                                        <th style="padding: 0.8rem; text-align: center;">粗利額</th>
+                                        <th style="padding: 0.8rem; text-align: center;">粗利率</th>
+                                        <th style="padding: 0.8rem; text-align: center;">ランク</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dash-analysis-results-body">
+                                    <tr><td colspan="7" style="text-align: center; padding: 3rem; color: var(--text-secondary);">店舗と月を選択して表示をクリックしてください</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- モーダル -->
@@ -310,13 +396,32 @@ export async function initDashboardPage() {
             const targetTab = e.currentTarget.getAttribute('data-tab');
             e.currentTarget.classList.add('active');
             document.getElementById(targetTab).style.display = 'block';
+
+            // フィルターの表示切替
+            const dateGroup = document.getElementById('dash-date-filter-group');
+            const monthGroup = document.getElementById('dash-month-filter-group');
+            if (targetTab === 'tab-product-analysis') {
+                if (dateGroup) dateGroup.style.display = 'none';
+                if (monthGroup) monthGroup.style.display = 'flex';
+            } else {
+                if (dateGroup) dateGroup.style.display = 'flex';
+                if (monthGroup) monthGroup.style.display = 'none';
+            }
         });
     });
 
     await loadFilterOptions();
+    await initProductAnalysisTab();
     await refreshDashboard();
     
-    document.getElementById('dash-apply-btn').onclick = refreshDashboard;
+    document.getElementById('dash-apply-btn').onclick = () => {
+        const activeTab = document.querySelector('.dash-tab-btn.active').getAttribute('data-tab');
+        if (activeTab === 'tab-product-analysis') {
+            runProductAnalysis();
+        } else {
+            refreshDashboard();
+        }
+    };
 }
 
 async function loadPersonalDashboard() {
@@ -725,6 +830,225 @@ async function refreshDashboard() {
         if (mtbody) mtbody.innerHTML = '<tr><td colspan="12" style="text-align:center; color:var(--danger);">読込失敗</td></tr>';
         if (document.getElementById('dash-loading-overlay')) document.getElementById('dash-loading-overlay').style.display = 'none';
     }
+}
+
+// --- 商品分析 (Product Analysis) 専用ロジック ---
+
+async function initProductAnalysisTab() {
+    try {
+        const monthSelect = document.getElementById('dash-month-filter');
+        if (!monthSelect) return;
+
+        // t_monthly_sales から対象年月を収集
+        const salesSnap = await getDocs(collection(db, "t_monthly_sales"));
+        const months = new Set();
+        salesSnap.forEach(d => months.add(d.data().year_month));
+        
+        const sortedMonths = Array.from(months).sort().reverse();
+        monthSelect.innerHTML = sortedMonths.map(m => `<option value="${m}">${m}</option>`).join('') || '<option value="">データなし</option>';
+        
+        // CSV出力イベント
+        const btnExport = document.getElementById('dash-btn-export-analysis');
+        if (btnExport) {
+            btnExport.onclick = () => {
+                if (!window.__cachedProductAnalysisData || window.__cachedProductAnalysisData.length === 0) {
+                    showAlert('エラー', 'エクスポートするデータがありません。分析を実行してください。');
+                    return;
+                }
+                exportProductAnalysisCSV(window.__cachedProductAnalysisData);
+            };
+        }
+    } catch (e) {
+        console.error("initProductAnalysisTab error:", e);
+    }
+}
+
+async function runProductAnalysis() {
+    const storeId = document.getElementById('dash-store-filter').value;
+    const yearMonth = document.getElementById('dash-month-filter').value;
+
+    if (storeId === 'all' || !yearMonth) {
+        showAlert('情報入力不足', '「店舗」と「対象年月」を具体的に選択してください（全店舗一括分析は未対応です）');
+        return;
+    }
+
+    const loadingOverlay = document.getElementById('dash-loading-overlay');
+    if (loadingOverlay) loadingOverlay.style.display = 'flex';
+
+    try {
+        // 1. 客数取得 (t_performanceから)
+        const perfSnap = await getDocs(query(collection(db, "t_performance"), where("store_id", "==", storeId), where("year_month", "==", yearMonth)));
+        let totalCustomers = 0;
+        perfSnap.forEach(d => {
+            totalCustomers += (d.data().customer_count || 0);
+        });
+
+        // 2. Dinii 売上取得
+        const q = query(collection(db, "t_monthly_sales"), where("store_id", "==", storeId), where("year_month", "==", yearMonth));
+        const salesSnap = await getDocs(q);
+        const monthlySales = salesSnap.docs.map(d => d.data()).filter(ms => ms.is_total);
+
+        if (monthlySales.length === 0) {
+            showAlert('通知', '該当月の売上データが見つかりません。Dinii CSVをインポートしてください。');
+            renderProductResults([], 0);
+            return;
+        }
+
+        // 3. マスタ & 原価エンジン用キャッシュ
+        const [itemSnap, ingSnap, menuSnap] = await Promise.all([
+            getDocs(collection(db, "m_items")),
+            getDocs(collection(db, "m_ingredients")),
+            getDocs(collection(db, "m_menus"))
+        ]);
+        const cache = {
+            items: itemSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+            ingredients: ingSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+            menus: menuSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+        };
+
+        // 4. 原価計算とマージ
+        const results = monthlySales.map(ms => {
+            const menu = cache.menus.find(m => m.dinii_id === ms.dinii_id);
+            const itemId = menu ? menu.item_id : null;
+            
+            const costPerUnit = itemId ? getEffectivePrice(itemId, cache) : 0;
+            const qty = ms.quantity_sold || 0;
+            const sales = ms.total_sales || (ms.unit_price * qty) || 0;
+            const totalCost = costPerUnit * qty;
+            const profit = sales - totalCost;
+            const margin = sales > 0 ? (profit / sales) * 100 : 0;
+
+            return {
+                name: ms.menu_name,
+                qty: qty,
+                sales: sales,
+                cost: totalCost,
+                profit: profit,
+                margin: Math.round(margin * 10) / 10,
+                itemId: itemId
+            };
+        });
+
+        // 5. ABC分析 (粗利ベース)
+        results.sort((a, b) => b.profit - a.profit);
+        let cumulativeProfit = 0;
+        const totalProfitSum = results.reduce((sum, r) => sum + r.profit, 0);
+        
+        results.forEach(r => {
+            cumulativeProfit += r.profit;
+            const pct = totalProfitSum > 0 ? (cumulativeProfit / totalProfitSum) * 100 : 100;
+            if (pct <= 70) r.rank = 'A';
+            else if (pct <= 90) r.rank = 'B';
+            else r.rank = 'C';
+        });
+
+        window.__cachedProductAnalysisData = results;
+        renderProductResults(results, totalCustomers);
+
+    } catch (e) {
+        console.error("runProductAnalysis error:", e);
+        showAlert('分析エラー', e.message);
+    } finally {
+        if (loadingOverlay) loadingOverlay.style.display = 'none';
+    }
+}
+
+function renderProductResults(data, totalCustomers) {
+    const tbody = document.getElementById('dash-analysis-results-body');
+    const probBody = document.getElementById('dash-probability-body');
+    if (!tbody || !probBody) return;
+
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 3rem; color: var(--text-secondary);">データがありません</td></tr>';
+        probBody.innerHTML = '';
+        return;
+    }
+
+    // 注文確率
+    probBody.innerHTML = data.slice(0, 50).map(r => {
+        const prob = totalCustomers > 0 ? (r.qty / totalCustomers) * 100 : 0;
+        return `<tr><td style="padding: 0.5rem;">${r.name}</td><td style="text-align:center;">${r.qty}</td><td style="text-align:center;">${prob.toFixed(1)}%</td></tr>`;
+    }).join('');
+
+    // 詳細テーブル
+    tbody.innerHTML = data.map(r => `
+        <tr style="border-bottom: 1px solid var(--border);">
+            <td style="padding: 0.8rem;">${r.name}</td>
+            <td style="padding: 0.8rem; text-align: center;">${r.qty}</td>
+            <td style="padding: 0.8rem; text-align: center;">¥${Math.round(r.sales).toLocaleString()}</td>
+            <td style="padding: 0.8rem; text-align: center; color: var(--text-secondary);">¥${Math.round(r.cost).toLocaleString()}</td>
+            <td style="padding: 0.8rem; text-align: center; font-weight: 700;">¥${Math.round(r.profit).toLocaleString()}</td>
+            <td style="padding: 0.8rem; text-align: center;">${r.margin}%</td>
+            <td style="padding: 0.8rem; text-align: center;">
+                <span class="badge ${r.rank === 'A' ? 'badge-active' : (r.rank === 'B' ? 'badge-pending' : 'badge-inactive')}">${r.rank}</span>
+            </td>
+        </tr>
+    `).join('');
+
+    // 粗利ミックス (Menu Engineering Matrix)
+    const matrixPlot = document.getElementById('dash-matrix-plot');
+    if (matrixPlot) {
+        matrixPlot.innerHTML = '';
+        const avgQty = data.reduce((sum, r) => sum + r.qty, 0) / data.length;
+        const avgMargin = data.reduce((sum, r) => sum + r.margin, 0) / data.length;
+
+        data.forEach(r => {
+            const dot = document.createElement('div');
+            dot.style.position = 'absolute';
+            const x = Math.min(95, Math.max(5, (r.margin / (avgMargin * 2 || 1)) * 50));
+            const y = Math.min(95, Math.max(5, (r.qty / (avgQty * 2 || 1)) * 50));
+            dot.style.left = `${x}%`;
+            dot.style.bottom = `${y}%`;
+            dot.style.width = '10px';
+            dot.style.height = '10px';
+            dot.style.borderRadius = '50%';
+            dot.style.background = r.rank === 'A' ? 'var(--primary)' : (r.rank === 'B' ? 'var(--secondary)' : '#94a3b8');
+            dot.style.border = '2px solid white';
+            dot.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+            dot.style.cursor = 'pointer';
+            dot.title = `${r.name}\n数量: ${r.qty}\n粗利率: ${r.margin}%`;
+            matrixPlot.appendChild(dot);
+        });
+    }
+
+    // ABCチャート (棒グラフ)
+    const abcChart = document.getElementById('dash-chart-abc');
+    if (abcChart) {
+        const aCount = data.filter(r => r.rank === 'A').length;
+        const bCount = data.filter(r => r.rank === 'B').length;
+        const cCount = data.filter(r => r.rank === 'C').length;
+        const maxCount = Math.max(aCount, bCount, cCount, 1);
+        abcChart.innerHTML = `
+            <div style="display: flex; align-items: flex-end; gap: 1.5rem; width: 80%; height: 200px;">
+                <div style="flex:1; background: var(--primary); height: ${(aCount/maxCount)*100}%; border-radius: 6px 6px 0 0; text-align: center; color: white; font-size: 0.75rem; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 5px;">
+                    <div>Aランク</div><div style="font-weight:800;">${aCount}</div>
+                </div>
+                <div style="flex:1; background: var(--secondary); height: ${(bCount/maxCount)*100}%; border-radius: 6px 6px 0 0; text-align: center; color: white; font-size: 0.75rem; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 5px;">
+                    <div>Bランク</div><div style="font-weight:800;">${bCount}</div>
+                </div>
+                <div style="flex:1; background: #94a3b8; height: ${(cCount/maxCount)*100}%; border-radius: 6px 6px 0 0; text-align: center; color: white; font-size: 0.75rem; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 5px;">
+                    <div>Cランク</div><div style="font-weight:800;">${cCount}</div>
+                </div>
+            </div>
+        `;
+    }
+}
+
+function exportProductAnalysisCSV(data) {
+    let csv = "\uFEFF商品名,販売数,売上高,原価,粗利額,粗利率,ランク\n";
+    data.forEach(r => {
+        csv += `"${r.name}",${r.qty},${Math.round(r.sales)},${Math.round(r.cost)},${Math.round(r.profit)},${r.margin},${r.rank}\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    const month = document.getElementById('dash-month-filter').value;
+    link.setAttribute("href", url);
+    link.setAttribute("download", `商品分析_${month}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 function renderAllTabs(records, goals, totalOpH, totalCkH, daily, storeMap, storeFilter, userMap, dateFrom, dateTo) {
@@ -1291,4 +1615,223 @@ function showDrilldown(ym, sid, sname, daily) {
     });
     modal.style.display = 'flex';
     setTimeout(() => { modal.classList.add('show'); }, 10);
+}
+
+// --- 商品分析 (Product Analysis) 専用ロジック ---
+
+async function initProductAnalysisTab() {
+    try {
+        const monthSelect = document.getElementById('dash-month-filter');
+        if (!monthSelect) return;
+
+        // t_monthly_sales から対象年月を収集
+        const salesSnap = await getDocs(collection(db, "t_monthly_sales"));
+        const months = new Set();
+        salesSnap.forEach(d => months.add(d.data().year_month));
+        
+        const sortedMonths = Array.from(months).sort().reverse();
+        monthSelect.innerHTML = sortedMonths.map(m => `<option value="${m}">${m}</option>`).join('') || '<option value="">データなし</option>';
+        
+        // CSV出力イベント
+        const btnExport = document.getElementById('dash-btn-export-analysis');
+        if (btnExport) {
+            btnExport.onclick = () => {
+                if (!window.__cachedProductAnalysisData || window.__cachedProductAnalysisData.length === 0) {
+                    showAlert('エラー', 'エクスポートするデータがありません。分析を実行してください。');
+                    return;
+                }
+                exportProductAnalysisCSV(window.__cachedProductAnalysisData);
+            };
+        }
+    } catch (e) {
+        console.error("initProductAnalysisTab error:", e);
+    }
+}
+
+async function runProductAnalysis() {
+    const storeId = document.getElementById('dash-store-filter').value;
+    const yearMonth = document.getElementById('dash-month-filter').value;
+
+    if (storeId === 'all' || !yearMonth) {
+        showAlert('情報入力不足', '「店舗」と「対象年月」を具体的に選択してください（全店舗一括分析は未対応です）');
+        return;
+    }
+
+    const loadingOverlay = document.getElementById('dash-loading-overlay');
+    if (loadingOverlay) loadingOverlay.style.display = 'flex';
+
+    try {
+        // 1. 客数取得 (t_performanceから)
+        const perfSnap = await getDocs(query(collection(db, "t_performance"), where("store_id", "==", storeId), where("year_month", "==", yearMonth)));
+        let totalCustomers = 0;
+        perfSnap.forEach(d => {
+            totalCustomers += (d.data().customer_count || 0);
+        });
+
+        // 2. Dinii 売上取得
+        const q = query(collection(db, "t_monthly_sales"), where("store_id", "==", storeId), where("year_month", "==", yearMonth));
+        const salesSnap = await getDocs(q);
+        const monthlySales = salesSnap.docs.map(d => d.data()).filter(ms => ms.is_total);
+
+        if (monthlySales.length === 0) {
+            showAlert('通知', '該当月の売上データが見つかりません。Dinii CSVをインポートしてください。');
+            renderProductResults([], 0);
+            return;
+        }
+
+        // 3. マスタ & 原価エンジン用キャッシュ
+        const [itemSnap, ingSnap, menuSnap] = await Promise.all([
+            getDocs(collection(db, "m_items")),
+            getDocs(collection(db, "m_ingredients")),
+            getDocs(collection(db, "m_menus"))
+        ]);
+        const cache = {
+            items: itemSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+            ingredients: ingSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+            menus: menuSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+        };
+
+        // 4. 原価計算とマージ
+        const results = monthlySales.map(ms => {
+            const menu = cache.menus.find(m => m.dinii_id === ms.dinii_id);
+            const itemId = menu ? menu.item_id : null;
+            
+            const costPerUnit = itemId ? getEffectivePrice(itemId, cache) : 0;
+            const qty = ms.quantity_sold || 0;
+            const sales = ms.total_sales || (ms.unit_price * qty) || 0;
+            const totalCost = costPerUnit * qty;
+            const profit = sales - totalCost;
+            const margin = sales > 0 ? (profit / sales) * 100 : 0;
+
+            return {
+                name: ms.menu_name,
+                qty: qty,
+                sales: sales,
+                cost: totalCost,
+                profit: profit,
+                margin: Math.round(margin * 10) / 10,
+                itemId: itemId
+            };
+        });
+
+        // 5. ABC分析 (粗利ベース)
+        results.sort((a, b) => b.profit - a.profit);
+        let cumulativeProfit = 0;
+        const totalProfitSum = results.reduce((sum, r) => sum + r.profit, 0);
+        
+        results.forEach(r => {
+            cumulativeProfit += r.profit;
+            const pct = totalProfitSum > 0 ? (cumulativeProfit / totalProfitSum) * 100 : 100;
+            if (pct <= 70) r.rank = 'A';
+            else if (pct <= 90) r.rank = 'B';
+            else r.rank = 'C';
+        });
+
+        window.__cachedProductAnalysisData = results;
+        renderProductResults(results, totalCustomers);
+
+    } catch (e) {
+        console.error("runProductAnalysis error:", e);
+        showAlert('分析エラー', e.message);
+    } finally {
+        if (loadingOverlay) loadingOverlay.style.display = 'none';
+    }
+}
+
+function renderProductResults(data, totalCustomers) {
+    const tbody = document.getElementById('dash-analysis-results-body');
+    const probBody = document.getElementById('dash-probability-body');
+    if (!tbody || !probBody) return;
+
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 3rem; color: var(--text-secondary);">データがありません</td></tr>';
+        probBody.innerHTML = '';
+        return;
+    }
+
+    // 注文確率
+    probBody.innerHTML = data.slice(0, 50).map(r => {
+        const prob = totalCustomers > 0 ? (r.qty / totalCustomers) * 100 : 0;
+        return `<tr><td style="padding: 0.5rem;">${r.name}</td><td style="text-align:center;">${r.qty}</td><td style="text-align:center;">${prob.toFixed(1)}%</td></tr>`;
+    }).join('');
+
+    // 詳細テーブル
+    tbody.innerHTML = data.map(r => `
+        <tr style="border-bottom: 1px solid var(--border);">
+            <td style="padding: 0.8rem;">${r.name}</td>
+            <td style="padding: 0.8rem; text-align: center;">${r.qty}</td>
+            <td style="padding: 0.8rem; text-align: center;">¥${Math.round(r.sales).toLocaleString()}</td>
+            <td style="padding: 0.8rem; text-align: center; color: var(--text-secondary);">¥${Math.round(r.cost).toLocaleString()}</td>
+            <td style="padding: 0.8rem; text-align: center; font-weight: 700;">¥${Math.round(r.profit).toLocaleString()}</td>
+            <td style="padding: 0.8rem; text-align: center;">${r.margin}%</td>
+            <td style="padding: 0.8rem; text-align: center;">
+                <span class="badge ${r.rank === 'A' ? 'badge-active' : (r.rank === 'B' ? 'badge-pending' : 'badge-inactive')}">${r.rank}</span>
+            </td>
+        </tr>
+    `).join('');
+
+    // 粗利ミックス (Menu Engineering Matrix)
+    const matrixPlot = document.getElementById('dash-matrix-plot');
+    if (matrixPlot) {
+        matrixPlot.innerHTML = '';
+        const avgQty = data.reduce((sum, r) => sum + r.qty, 0) / data.length;
+        const avgMargin = data.reduce((sum, r) => sum + r.margin, 0) / data.length;
+
+        data.forEach(r => {
+            const dot = document.createElement('div');
+            dot.style.position = 'absolute';
+            const x = Math.min(95, Math.max(5, (r.margin / (avgMargin * 2 || 1)) * 50));
+            const y = Math.min(95, Math.max(5, (r.qty / (avgQty * 2 || 1)) * 50));
+            dot.style.left = `${x}%`;
+            dot.style.bottom = `${y}%`;
+            dot.style.width = '10px';
+            dot.style.height = '10px';
+            dot.style.borderRadius = '50%';
+            dot.style.background = r.rank === 'A' ? 'var(--primary)' : (r.rank === 'B' ? 'var(--secondary)' : '#94a3b8');
+            dot.style.border = '2px solid white';
+            dot.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+            dot.style.cursor = 'pointer';
+            dot.title = `${r.name}\n数量: ${r.qty}\n粗利率: ${r.margin}%`;
+            matrixPlot.appendChild(dot);
+        });
+    }
+
+    // ABCチャート (棒グラフ)
+    const abcChart = document.getElementById('dash-chart-abc');
+    if (abcChart) {
+        const aCount = data.filter(r => r.rank === 'A').length;
+        const bCount = data.filter(r => r.rank === 'B').length;
+        const cCount = data.filter(r => r.rank === 'C').length;
+        const maxCount = Math.max(aCount, bCount, cCount, 1);
+        abcChart.innerHTML = `
+            <div style="display: flex; align-items: flex-end; gap: 1.5rem; width: 80%; height: 200px;">
+                <div style="flex:1; background: var(--primary); height: ${(aCount/maxCount)*100}%; border-radius: 6px 6px 0 0; text-align: center; color: white; font-size: 0.75rem; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 5px;">
+                    <div>Aランク</div><div style="font-weight:800;">${aCount}</div>
+                </div>
+                <div style="flex:1; background: var(--secondary); height: ${(bCount/maxCount)*100}%; border-radius: 6px 6px 0 0; text-align: center; color: white; font-size: 0.75rem; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 5px;">
+                    <div>Bランク</div><div style="font-weight:800;">${bCount}</div>
+                </div>
+                <div style="flex:1; background: #94a3b8; height: ${(cCount/maxCount)*100}%; border-radius: 6px 6px 0 0; text-align: center; color: white; font-size: 0.75rem; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 5px;">
+                    <div>Cランク</div><div style="font-weight:800;">${cCount}</div>
+                </div>
+            </div>
+        `;
+    }
+}
+
+function exportProductAnalysisCSV(data) {
+    let csv = "\uFEFF商品名,販売数,売上高,原価,粗利額,粗利率,ランク\n";
+    data.forEach(r => {
+        csv += `"${r.name}",${r.qty},${Math.round(r.sales)},${Math.round(r.cost)},${Math.round(r.profit)},${r.margin},${r.rank}\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    const month = document.getElementById('dash-month-filter').value;
+    link.setAttribute("href", url);
+    link.setAttribute("download", `商品分析_${month}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }

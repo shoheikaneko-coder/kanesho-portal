@@ -24,7 +24,6 @@ import { rolePermissionsPageHtml, initRolePermissionsPage } from './role_permiss
 import { menuOrderPageHtml, initMenuOrderPage } from './menu_order.js?v=7';
 import { dailySakesPageHtml, initDailySakesPage } from './daily_sakes.js?v=116';
 import { csvImportPageHtml, initCsvImportPage } from './csv_import.js?v=7';
-import { productAnalysisPageHtml, initProductAnalysisPage } from './product_analysis.js?v=31';
 import { notificationsPageHtml, initNotificationsPage } from './notifications.js?v=116';
 import { calendarAdminPageHtml, initCalendarAdminPage, calendarViewerPageHtml, initCalendarViewerPage } from './calendar.js?v=63';
 import { goalsAdminPageHtml, initGoalsAdminPage, goalsStorePageHtml, initGoalsStorePage } from './goals.js?v=7';
@@ -117,7 +116,6 @@ const pageParentMap = {
     'csv_export': 'master_hub',
     'csv_import': 'master_hub',
     'sales_correction': 'master_hub',
-    'product_analysis': 'master_hub',
     'calendar_admin': 'master_hub',
     'goals_admin': 'master_hub',
     'goals_store': 'ops_hub',
@@ -287,7 +285,7 @@ async function renderSidebar(user) {
     if (role === 'Admin' || role === '管理者') {
         allowed = defaultMenuItems.map(m => m.id);
         // 全般的な権限を付与
-        const adminPerms = ['sales','attendance','inventory','procurement','ops_hub_main','stocktake','inventory_history','store_items','product_analysis','home_performance','shift_admin','shift_submission','attendance_check','users','invite_navi','loans','role_permissions','stores','products','suppliers','sales_correction','csv_export','csv_import','calendar_admin','goals_admin','goals_store','line_share','daily_sakes','bottle_keep'];
+        const adminPerms = ['sales','attendance','inventory','procurement','ops_hub_main','stocktake','inventory_history','store_items','home_performance','shift_admin','shift_submission','attendance_check','users','invite_navi','loans','role_permissions','stores','products','suppliers','sales_correction','csv_export','csv_import','calendar_admin','goals_admin','goals_store','line_share','daily_sakes','bottle_keep'];
         adminPerms.forEach(id => { if (!allowed.includes(id)) allowed.push(id); });
     } else {
         try {
@@ -546,11 +544,6 @@ function showPage(target) {
                 pageTitle.textContent = '営業実績修正';
                 pageContent.innerHTML = salesCorrectionPageHtml;
                 initSalesCorrectionPage();
-                break;
-            case 'product_analysis':
-                pageTitle.textContent = '商品分析（4つの窓）';
-                pageContent.innerHTML = productAnalysisPageHtml;
-                initProductAnalysisPage();
                 break;
             case 'csv_import':
                 pageTitle.textContent = 'CSVデータインポート';
