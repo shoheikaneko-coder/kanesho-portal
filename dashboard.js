@@ -1,7 +1,5 @@
 import { db } from './firebase.js';
 import { collection, getDocs, doc, getDoc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-import { getEffectivePrice } from './cost_engine.js?v=9';
-import { showAlert } from './ui_utils.js';
 
 export const dashboardPageHtml = `
         <!-- フィルターバー -->
@@ -830,224 +828,6 @@ async function refreshDashboard() {
     }
 }
 
-// --- 商品分析 (Product Analysis) 専用ロジック ---
-
-async function initProductAnalysisTab() {
-    try {
-        const monthSelect = document.getElementById('dash-month-filter');
-        if (!monthSelect) return;
-
-        // t_monthly_sales から対象年月を収集
-        const salesSnap = await getDocs(collection(db, "t_monthly_sales"));
-        const months = new Set();
-        salesSnap.forEach(d => months.add(d.data().year_month));
-        
-        const sortedMonths = Array.from(months).sort().reverse();
-        monthSelect.innerHTML = sortedMonths.map(m => `<option value="${m}">${m}</option>`).join('') || '<option value="">データなし</option>';
-        
-        // CSV出力イベント
-        const btnExport = document.getElementById('dash-btn-export-analysis');
-        if (btnExport) {
-            btnExport.onclick = () => {
-                if (!window.__cachedProductAnalysisData || window.__cachedProductAnalysisData.length === 0) {
-                    showAlert('エラー', 'エクスポートするデータがありません。分析を実行してください。');
-                    return;
-                }
-                exportProductAnalysisCSV(window.__cachedProductAnalysisData);
-            };
-        }
-    } catch (e) {
-        console.error("initProductAnalysisTab error:", e);
-    }
-}
-
-async function runProductAnalysis() {
-    const storeId = document.getElementById('dash-store-filter').value;
-    const yearMonth = document.getElementById('dash-month-filter').value;
-
-    if (storeId === 'all' || !yearMonth) {
-        showAlert('情報入力不足', '「店舗」と「対象年月」を具体的に選択してください（全店舗一括分析は未対応です）');
-        return;
-    }
-
-    const loadingOverlay = document.getElementById('dash-loading-overlay');
-    if (loadingOverlay) loadingOverlay.style.display = 'flex';
-
-    try {
-        // 1. 客数取得 (t_performanceから)
-        const perfSnap = await getDocs(query(collection(db, "t_performance"), where("store_id", "==", storeId), where("year_month", "==", yearMonth)));
-        let totalCustomers = 0;
-        perfSnap.forEach(d => {
-            totalCustomers += (d.data().customer_count || 0);
-        });
-
-        // 2. Dinii 売上取得
-        const q = query(collection(db, "t_monthly_sales"), where("store_id", "==", storeId), where("year_month", "==", yearMonth));
-        const salesSnap = await getDocs(q);
-        const monthlySales = salesSnap.docs.map(d => d.data()).filter(ms => ms.is_total);
-
-        if (monthlySales.length === 0) {
-            showAlert('通知', '該当月の売上データが見つかりません。Dinii CSVをインポートしてください。');
-            renderProductResults([], 0);
-            return;
-        }
-
-        // 3. マスタ & 原価エンジン用キャッシュ
-        const [itemSnap, ingSnap, menuSnap] = await Promise.all([
-            getDocs(collection(db, "m_items")),
-            getDocs(collection(db, "m_ingredients")),
-            getDocs(collection(db, "m_menus"))
-        ]);
-        const cache = {
-            items: itemSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-            ingredients: ingSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-            menus: menuSnap.docs.map(d => ({ id: d.id, ...d.data() }))
-        };
-
-        // 4. 原価計算とマージ
-        const results = monthlySales.map(ms => {
-            const menu = cache.menus.find(m => m.dinii_id === ms.dinii_id);
-            const itemId = menu ? menu.item_id : null;
-            
-            const costPerUnit = itemId ? getEffectivePrice(itemId, cache) : 0;
-            const qty = ms.quantity_sold || 0;
-            const sales = ms.total_sales || (ms.unit_price * qty) || 0;
-            const totalCost = costPerUnit * qty;
-            const profit = sales - totalCost;
-            const margin = sales > 0 ? (profit / sales) * 100 : 0;
-
-            return {
-                name: ms.menu_name,
-                qty: qty,
-                sales: sales,
-                cost: totalCost,
-                profit: profit,
-                margin: Math.round(margin * 10) / 10,
-                itemId: itemId
-            };
-        });
-
-        // 5. ABC分析 (粗利ベース)
-        results.sort((a, b) => b.profit - a.profit);
-        let cumulativeProfit = 0;
-        const totalProfitSum = results.reduce((sum, r) => sum + r.profit, 0);
-        
-        results.forEach(r => {
-            cumulativeProfit += r.profit;
-            const pct = totalProfitSum > 0 ? (cumulativeProfit / totalProfitSum) * 100 : 100;
-            if (pct <= 70) r.rank = 'A';
-            else if (pct <= 90) r.rank = 'B';
-            else r.rank = 'C';
-        });
-
-        window.__cachedProductAnalysisData = results;
-        renderProductResults(results, totalCustomers);
-
-    } catch (e) {
-        console.error("runProductAnalysis error:", e);
-        showAlert('分析エラー', e.message);
-    } finally {
-        if (loadingOverlay) loadingOverlay.style.display = 'none';
-    }
-}
-
-function renderProductResults(data, totalCustomers) {
-    const tbody = document.getElementById('dash-analysis-results-body');
-    const probBody = document.getElementById('dash-probability-body');
-    if (!tbody || !probBody) return;
-
-    if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 3rem; color: var(--text-secondary);">データがありません</td></tr>';
-        probBody.innerHTML = '';
-        return;
-    }
-
-    // 注文確率
-    probBody.innerHTML = data.slice(0, 50).map(r => {
-        const prob = totalCustomers > 0 ? (r.qty / totalCustomers) * 100 : 0;
-        return `<tr><td style="padding: 0.5rem;">${r.name}</td><td style="text-align:center;">${r.qty}</td><td style="text-align:center;">${prob.toFixed(1)}%</td></tr>`;
-    }).join('');
-
-    // 詳細テーブル
-    tbody.innerHTML = data.map(r => `
-        <tr style="border-bottom: 1px solid var(--border);">
-            <td style="padding: 0.8rem;">${r.name}</td>
-            <td style="padding: 0.8rem; text-align: center;">${r.qty}</td>
-            <td style="padding: 0.8rem; text-align: center;">¥${Math.round(r.sales).toLocaleString()}</td>
-            <td style="padding: 0.8rem; text-align: center; color: var(--text-secondary);">¥${Math.round(r.cost).toLocaleString()}</td>
-            <td style="padding: 0.8rem; text-align: center; font-weight: 700;">¥${Math.round(r.profit).toLocaleString()}</td>
-            <td style="padding: 0.8rem; text-align: center;">${r.margin}%</td>
-            <td style="padding: 0.8rem; text-align: center;">
-                <span class="badge ${r.rank === 'A' ? 'badge-active' : (r.rank === 'B' ? 'badge-pending' : 'badge-inactive')}">${r.rank}</span>
-            </td>
-        </tr>
-    `).join('');
-
-    // 粗利ミックス (Menu Engineering Matrix)
-    const matrixPlot = document.getElementById('dash-matrix-plot');
-    if (matrixPlot) {
-        matrixPlot.innerHTML = '';
-        const avgQty = data.reduce((sum, r) => sum + r.qty, 0) / data.length;
-        const avgMargin = data.reduce((sum, r) => sum + r.margin, 0) / data.length;
-
-        data.forEach(r => {
-            const dot = document.createElement('div');
-            dot.style.position = 'absolute';
-            const x = Math.min(95, Math.max(5, (r.margin / (avgMargin * 2 || 1)) * 50));
-            const y = Math.min(95, Math.max(5, (r.qty / (avgQty * 2 || 1)) * 50));
-            dot.style.left = `${x}%`;
-            dot.style.bottom = `${y}%`;
-            dot.style.width = '10px';
-            dot.style.height = '10px';
-            dot.style.borderRadius = '50%';
-            dot.style.background = r.rank === 'A' ? 'var(--primary)' : (r.rank === 'B' ? 'var(--secondary)' : '#94a3b8');
-            dot.style.border = '2px solid white';
-            dot.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
-            dot.style.cursor = 'pointer';
-            dot.title = `${r.name}\n数量: ${r.qty}\n粗利率: ${r.margin}%`;
-            matrixPlot.appendChild(dot);
-        });
-    }
-
-    // ABCチャート (棒グラフ)
-    const abcChart = document.getElementById('dash-chart-abc');
-    if (abcChart) {
-        const aCount = data.filter(r => r.rank === 'A').length;
-        const bCount = data.filter(r => r.rank === 'B').length;
-        const cCount = data.filter(r => r.rank === 'C').length;
-        const maxCount = Math.max(aCount, bCount, cCount, 1);
-        abcChart.innerHTML = `
-            <div style="display: flex; align-items: flex-end; gap: 1.5rem; width: 80%; height: 200px;">
-                <div style="flex:1; background: var(--primary); height: ${(aCount/maxCount)*100}%; border-radius: 6px 6px 0 0; text-align: center; color: white; font-size: 0.75rem; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 5px;">
-                    <div>Aランク</div><div style="font-weight:800;">${aCount}</div>
-                </div>
-                <div style="flex:1; background: var(--secondary); height: ${(bCount/maxCount)*100}%; border-radius: 6px 6px 0 0; text-align: center; color: white; font-size: 0.75rem; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 5px;">
-                    <div>Bランク</div><div style="font-weight:800;">${bCount}</div>
-                </div>
-                <div style="flex:1; background: #94a3b8; height: ${(cCount/maxCount)*100}%; border-radius: 6px 6px 0 0; text-align: center; color: white; font-size: 0.75rem; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: 5px;">
-                    <div>Cランク</div><div style="font-weight:800;">${cCount}</div>
-                </div>
-            </div>
-        `;
-    }
-}
-
-function exportProductAnalysisCSV(data) {
-    let csv = "\uFEFF商品名,販売数,売上高,原価,粗利額,粗利率,ランク\n";
-    data.forEach(r => {
-        csv += `"${r.name}",${r.qty},${Math.round(r.sales)},${Math.round(r.cost)},${Math.round(r.profit)},${r.margin},${r.rank}\n`;
-    });
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    const month = document.getElementById('dash-month-filter').value;
-    link.setAttribute("href", url);
-    link.setAttribute("download", `商品分析_${month}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
 
 function renderAllTabs(records, goals, totalOpH, totalCkH, daily, storeMap, storeFilter, userMap, dateFrom, dateTo) {
     // グローバル変数の初期化
@@ -1619,6 +1399,7 @@ function showDrilldown(ym, sid, sname, daily) {
 
 async function initProductAnalysisTab() {
     try {
+        const { showAlert } = await import('./ui_utils.js');
         const monthSelect = document.getElementById('dash-month-filter');
         if (!monthSelect) return;
 
@@ -1651,6 +1432,7 @@ async function runProductAnalysis() {
     const yearMonth = document.getElementById('dash-month-filter').value;
 
     if (storeId === 'all' || !yearMonth) {
+        const { showAlert } = await import('./ui_utils.js');
         showAlert('情報入力不足', '「店舗」と「対象年月」を具体的に選択してください（全店舗一括分析は未対応です）');
         return;
     }
@@ -1672,6 +1454,7 @@ async function runProductAnalysis() {
         const monthlySales = salesSnap.docs.map(d => d.data()).filter(ms => ms.is_total);
 
         if (monthlySales.length === 0) {
+            const { showAlert } = await import('./ui_utils.js');
             showAlert('通知', '該当月の売上データが見つかりません。Dinii CSVをインポートしてください。');
             renderProductResults([], 0);
             return;
@@ -1694,6 +1477,7 @@ async function runProductAnalysis() {
             const menu = cache.menus.find(m => m.dinii_id === ms.dinii_id);
             const itemId = menu ? menu.item_id : null;
             
+            const { getEffectivePrice } = await import('./cost_engine.js?v=10');
             const costPerUnit = itemId ? getEffectivePrice(itemId, cache) : 0;
             const qty = ms.quantity_sold || 0;
             const sales = ms.total_sales || (ms.unit_price * qty) || 0;
@@ -1730,6 +1514,7 @@ async function runProductAnalysis() {
 
     } catch (e) {
         console.error("runProductAnalysis error:", e);
+        const { showAlert } = await import('./ui_utils.js');
         showAlert('分析エラー', e.message);
     } finally {
         if (loadingOverlay) loadingOverlay.style.display = 'none';
