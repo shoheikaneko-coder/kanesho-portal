@@ -3,7 +3,7 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/fi
 import { collection, getDocs, query, where, getDoc, doc, updateDoc, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 // 各ページのインポート
-import { dashboardPageHtml, initDashboardPage } from './dashboard.js?v=118';
+import { dashboardPageHtml, initDashboardPage } from './dashboard.js?v=20260430_01';
 import { attendancePageHtml, initAttendancePage } from './attendance.js?v=110';
 import { salesPageHtml, initSalesPage } from './sales.js?v=110';
 import { storesPageHtml, initStoresPage } from './stores.js?v=31';

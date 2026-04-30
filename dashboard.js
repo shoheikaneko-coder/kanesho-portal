@@ -440,7 +440,6 @@ async function loadPersonalDashboard() {
             const today = new Date().toISOString().split('T')[0];
             const sid = user.StoreID || user.StoreId;
             // 本日のシフト人数をカウント
-            const { collection, query, where, getDocs } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
             let q = query(collection(db, "t_shifts"), where("date", "==", today), where("status", "==", "confirmed"));
             const snap = await getDocs(q);
             let count = 0;
@@ -455,7 +454,6 @@ async function loadPersonalDashboard() {
             nextMonth.setDate(nextMonth.getDate() + 35);
             const eDate = nextMonth.toISOString().split('T')[0];
 
-            const { collection, query, where, getDocs } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
             // インデックス不要の検索 (日付範囲のみで取得)
             const q = query(
                 collection(db, "t_shifts"), 
