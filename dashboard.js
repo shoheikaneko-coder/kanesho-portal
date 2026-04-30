@@ -317,7 +317,6 @@ export const dashboardPageHtml = `
                 </div>
             </div>
         </div>
-    </div>
 `;
 
 window.closeDrilldown = () => {
