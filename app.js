@@ -3,7 +3,22 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/fi
 import { collection, getDocs, query, where, getDoc, doc, updateDoc, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 // 各ページのインポート
-import { dashboardPageHtml, initDashboardPage } from './dashboard.js?v=20260430_02';
+// ダッシュボードモジュールの動的読み込み
+let dashboardPageHtml = '';
+let initDashboardPage = null;
+
+(async () => {
+    try {
+        const module = await import('./dashboard.js?v=20260430_03');
+        dashboardPageHtml = module.dashboardPageHtml;
+        initDashboardPage = module.initDashboardPage;
+        console.log("Dashboard module loaded successfully.");
+    } catch (e) {
+        console.error("Dashboard load failed:", e);
+        // ログイン画面などでアラートを出すと邪魔なため、コンソールに詳細を出力
+        window.__dashboardLoadError = e;
+    }
+})();
 import { attendancePageHtml, initAttendancePage } from './attendance.js?v=110';
 import { salesPageHtml, initSalesPage } from './sales.js?v=110';
 import { storesPageHtml, initStoresPage } from './stores.js?v=31';
@@ -447,8 +462,20 @@ function showPage(target) {
                 break;
             case 'dashboard':
                 updateHeaderTitle('ダッシュボード');
-                pageContent.innerHTML = dashboardPageHtml;
-                initDashboardPage();
+                if (!initDashboardPage) {
+                    pageContent.innerHTML = `
+                        <div style="padding:2rem; text-align:center;">
+                            <h3 style="color:var(--danger);">ダッシュボードの読み込みに失敗しました</h3>
+                            <p style="font-size:0.9rem; color:var(--text-secondary); margin-top:1rem;">
+                                エラー内容: ${window.__dashboardLoadError ? window.__dashboardLoadError.message : 'モジュールが見つかりません'}
+                            </p>
+                            <button class="btn" onclick="location.reload()" style="margin-top:1.5rem; background:var(--primary); color:white;">ページを再読み込み</button>
+                        </div>
+                    `;
+                } else {
+                    pageContent.innerHTML = dashboardPageHtml;
+                    initDashboardPage();
+                }
                 break;
             case 'manager_meeting':
                 updateHeaderTitle('店長会議資料');
