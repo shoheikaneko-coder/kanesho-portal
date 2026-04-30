@@ -218,9 +218,10 @@ function renderFormViewMobile(container) {
                     <div class="smart-accordion-content">
                         <div class="pro-form-field">
                             <label class="pro-form-label">仕入業者</label>
-                            <select id="ing-vendor-id" class="recipe-pro-input">
-                                <option value="">業者を選択...</option>
-                            </select>
+                            <div style="position: relative;">
+                                <input type="text" id="ing-vendor-name" list="vendor-datalist" placeholder="業者名を入力..." class="recipe-pro-input" style="font-weight: 600;">
+                                <input type="hidden" id="ing-vendor-id">
+                            </div>
                         </div>
                         
                         <div class="pro-form-grid">
@@ -635,7 +636,12 @@ function renderStandardFormPC(container) {
                             <div class="input-group compact-input" style="margin-bottom: 1rem;">
                                 <label style="font-size: 0.8rem; font-weight: 700;">デフォルト仕入先</label>
                                 <div style="display: flex; gap: 0.5rem; align-items: center; width: 100%;">
-                                    <select id="ing-vendor-id" style="width: calc(100% - 52px); flex: none; padding: 0.6rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.9rem;"></select>
+                                    <div style="position: relative; flex: 1;">
+                                        <input type="text" id="ing-vendor-name" list="vendor-datalist" placeholder="業者名を入力..." 
+                                               style="width: 100%; padding: 0.6rem; border-radius: 8px; border: 1px solid var(--border); font-size: 0.9rem; font-weight: 600;">
+                                        <input type="hidden" id="ing-vendor-id">
+                                        <datalist id="vendor-datalist"></datalist>
+                                    </div>
                                     <a href="index.html?page=suppliers" target="_blank" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; color: #64748b; font-size: 1.4rem; text-decoration: none;" title="別タブで業者マスタを開く">
                                         <span class="fas fa-cog" style="position: static !important; display: block;"></span>
                                     </a>
@@ -1590,31 +1596,49 @@ function setupFormLogic() {
             if (document.getElementById('ing-purchase-price')) document.getElementById('ing-purchase-price').value = ing?.purchase_price || 0;
             if (document.getElementById('ing-yield-rate')) document.getElementById('ing-yield-rate').value = ing?.yield_rate || 1.0;
             
-            const vendorSelect = document.getElementById('ing-vendor-id');
-            if (vendorSelect) {
-                vendorSelect.innerHTML = '<option value="">業者を選択...</option>';
-                cachedVendors.forEach(v => {
-                    const opt = document.createElement('option');
-                    opt.value = v.vendor_id || v.id;
-                    opt.textContent = v.vendor_name;
-                    if (ing?.vendor_id === opt.value) opt.selected = true;
-                    vendorSelect.appendChild(opt);
-                });
+            const vendorNameInput = document.getElementById('ing-vendor-name');
+            const vendorIdHidden = document.getElementById('ing-vendor-id');
+            const vendorDatalist = document.getElementById('vendor-datalist');
+
+            if (vendorNameInput && vendorDatalist) {
+                vendorDatalist.innerHTML = cachedVendors.map(v => `<option value="${v.vendor_name}">`).join('');
+                
+                const currentVendor = cachedVendors.find(v => (v.vendor_id || v.id) === ing?.vendor_id);
+                if (currentVendor) {
+                    vendorNameInput.value = currentVendor.vendor_name;
+                    vendorIdHidden.value = currentVendor.vendor_id || currentVendor.id;
+                }
+
+                vendorNameInput.oninput = (e) => {
+                    const val = e.target.value;
+                    const found = cachedVendors.find(v => v.vendor_name === val);
+                    if (found) {
+                        vendorIdHidden.value = found.vendor_id || found.id;
+                    } else {
+                        vendorIdHidden.value = "";
+                    }
+                };
             }
         }
     } else {
         currentRecipe = [];
         renderRecipeRows();
         if (currentTab === 'ingredients') {
-            const vendorSelect = document.getElementById('ing-vendor-id');
-            if (vendorSelect) {
-                vendorSelect.innerHTML = '<option value="">業者を選択...</option>';
-                cachedVendors.forEach(v => {
-                    const opt = document.createElement('option');
-                    opt.value = v.vendor_id || v.id;
-                    opt.textContent = v.vendor_name;
-                    vendorSelect.appendChild(opt);
-                });
+            const vendorNameInput = document.getElementById('ing-vendor-name');
+            const vendorIdHidden = document.getElementById('ing-vendor-id');
+            const vendorDatalist = document.getElementById('vendor-datalist');
+
+            if (vendorNameInput && vendorDatalist) {
+                vendorDatalist.innerHTML = cachedVendors.map(v => `<option value="${v.vendor_name}">`).join('');
+                vendorNameInput.oninput = (e) => {
+                    const val = e.target.value;
+                    const found = cachedVendors.find(v => v.vendor_name === val);
+                    if (found) {
+                        vendorIdHidden.value = found.vendor_id || found.id;
+                    } else {
+                        vendorIdHidden.value = "";
+                    }
+                };
             }
         }
     }
