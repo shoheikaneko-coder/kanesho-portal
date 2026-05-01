@@ -230,7 +230,7 @@ function renderTables() {
         return pAsc ? valA - valB : valB - valA;
     });
 
-    const probBody = document.getElementById(\'product-prob-body\');
+    const probBody = document.getElementById('product-prob-body');
     if (probBody) {
         probBody.innerHTML = probData.slice(0, 50).map(r => `
             <tr>
@@ -238,7 +238,7 @@ function renderTables() {
                 <td style="text-align:right;">${r.qty.toLocaleString()}</td>
                 <td style="text-align:right;">${r.prob.toFixed(1)}%</td>
             </tr>
-        `).join(\'\');
+        `).join('');
     }
 
     // 2. 詳細テーブルのソート
@@ -249,8 +249,8 @@ function renderTables() {
         let valB = b[dKey];
         
         // ランクのソート（A < B < C）
-        if (dKey === \'rank\') {
-            const ranks = { \'A\': 1, \'B\': 2, \'C\': 3 };
+        if (dKey === 'rank') {
+            const ranks = { 'A': 1, 'B': 2, 'C': 3 };
             valA = ranks[valA] || 99;
             valB = ranks[valB] || 99;
         }
@@ -260,7 +260,7 @@ function renderTables() {
         return valA < valB ? 1 : -1;
     });
 
-    const detailBody = document.getElementById(\'product-detail-body\');
+    const detailBody = document.getElementById('product-detail-body');
     if (detailBody) {
         detailBody.innerHTML = detailData.map(r => `
             <tr>
@@ -271,12 +271,12 @@ function renderTables() {
                 <td style="text-align:right; font-weight:700;">¥${Math.round(r.profit).toLocaleString()}</td>
                 <td style="text-align:right;">${r.margin}%</td>
                 <td style="text-align:center;">
-                    <span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 800; background: ${r.rank === \'A\' ? \'#ecfdf5\' : (r.rank === \'B\' ? \'#fffbeb\' : \'#f1f5f9\')}; color: ${r.rank === \'A\' ? \'#059669\' : (r.rank === \'B\' ? \'#d97706\' : \'#64748b\')};">
+                    <span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 800; background: ${r.rank === 'A' ? '#ecfdf5' : (r.rank === 'B' ? '#fffbeb' : '#f1f5f9')}; color: ${r.rank === 'A' ? '#059669' : (r.rank === 'B' ? '#d97706' : '#64748b')};">
                         ${r.rank}
                     </span>
                 </td>
             </tr>
-        `).join(\'\');
+        `).join('');
     }
 }
 
@@ -293,7 +293,7 @@ function getMonthsInRange(start, end) {
 
 function renderCharts(data) {
     // ABCグラフ
-    const abcChart = document.getElementById(\'product-abc-chart\');
+    const abcChart = document.getElementById('product-abc-chart');
     if (abcChart) {
         const counts = { A: 0, B: 0, C: 0 };
         data.forEach(r => counts[r.rank]++);
@@ -314,25 +314,25 @@ function renderCharts(data) {
     }
 
     // マトリックス
-    const matrixPlot = document.getElementById(\'product-matrix-plot\');
+    const matrixPlot = document.getElementById('product-matrix-plot');
     if (matrixPlot) {
-        matrixPlot.innerHTML = \'\';
+        matrixPlot.innerHTML = '';
         const avgQty = data.reduce((sum, r) => sum + r.qty, 0) / data.length;
         const avgMargin = data.reduce((sum, r) => sum + r.margin, 0) / data.length;
 
         data.forEach(r => {
-            const dot = document.createElement(\'div\');
-            dot.style.position = \'absolute\';
+            const dot = document.createElement('div');
+            dot.style.position = 'absolute';
             const x = Math.min(95, Math.max(5, (r.margin / (avgMargin * 2)) * 50));
             const y = Math.min(95, Math.max(5, (r.qty / (avgQty * 2)) * 50));
             
             dot.style.left = `${x}%`;
             dot.style.bottom = `${y}%`;
-            dot.style.width = \'8px\';
-            dot.style.height = \'8px\';
-            dot.style.borderRadius = \'50%\';
-            dot.style.background = r.rank === \'A\' ? \'var(--primary)\' : \'var(--text-secondary)\';
-            dot.style.opacity = \'0.6\';
+            dot.style.width = '8px';
+            dot.style.height = '8px';
+            dot.style.borderRadius = '50%';
+            dot.style.background = r.rank === 'A' ? 'var(--primary)' : 'var(--text-secondary)';
+            dot.style.opacity = '0.6';
             dot.title = `${r.name}: ${r.qty}個 / ${r.margin}%`;
             matrixPlot.appendChild(dot);
         });
