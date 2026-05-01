@@ -57,6 +57,8 @@ function renderView() {
 function renderViewPC(container) {
     if (currentView === 'form') {
         renderFormViewPC(container);
+    } else if (currentView === 'batch_category') {
+        renderBatchCategoryViewPC(container);
     } else {
         renderListViewPC(container);
     }
@@ -1098,6 +1100,11 @@ function renderListViewPC(container) {
                 <p style="font-size: 0.85rem; color: var(--text-secondary);">販売メニュー、自家製食材、仕入品を一括管理します</p>
             </div>
             <div style="display: flex; gap: 0.8rem;">
+                ${currentTab === 'menus' ? `
+                <button class="btn" id="btn-batch-category" style="padding: 0.8rem 1.2rem; font-weight: 700; background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; border-radius: 10px; transition: all 0.2s;">
+                    <i class="fas fa-layer-group" style="color: #6366f1;"></i> 一括区分設定
+                </button>
+                ` : ''}
                 <button class="btn btn-primary" id="btn-add-item" style="padding: 0.8rem 1.5rem; font-weight: 700;">
                     <i class="fas fa-plus"></i> 新規登録
                 </button>
@@ -1161,6 +1168,254 @@ function renderListViewPC(container) {
     // Re-attach listeners for list view
     setupListViewListeners();
     renderTable(currentSearchQuery);
+}
+
+function renderBatchCategoryViewPC(container) {
+    let unassignedOnly = true;
+    let batchSearchQuery = '';
+
+    function refreshBatchList() {
+        const body = document.getElementById('batch-category-body');
+        if (!body) return;
+
+        let items = cachedItems.filter(item => {
+            const menu = cachedMenus.find(m => m.item_id === item.id);
+            return menu && !menu.is_sub_recipe;
+        });
+
+        if (unassignedOnly) {
+            items = items.filter(item => !item.major_category || item.major_category === 'その他' || item.major_category === '');
+        }
+
+        if (batchSearchQuery) {
+            const q = batchSearchQuery.toLowerCase();
+            const qHira = toHiragana(q);
+            items = items.filter(item => {
+                const name = (item.name || '').toLowerCase();
+                const nameHira = toHiragana(name);
+                const furi = (item.furigana || '').toLowerCase();
+                return name.includes(q) || nameHira.includes(qHira) || furi.includes(q);
+            });
+        }
+
+        document.getElementById('batch-count').textContent = `対象商品: ${items.length} 件`;
+
+        body.innerHTML = items.map(item => `
+            <tr data-id="${item.id}" class="batch-row" style="border-bottom: 1px solid var(--border); transition: background 0.3s;">
+                <td style="padding: 1rem; width: 40px;">
+                    <input type="checkbox" class="batch-select" data-id="${item.id}" style="width: 18px; height: 18px;">
+                </td>
+                <td style="padding: 1rem;">
+                    <div style="font-weight: 800; font-size: 1rem; color: #1e293b;">${item.name}</div>
+                    <div style="font-size: 0.75rem; color: #94a3b8;">${item.category || 'カテゴリー未設定'}</div>
+                </td>
+                <td style="padding: 1rem; text-align: center;">
+                    <span class="batch-current-badge" id="badge-${item.id}" style="font-size: 0.75rem; font-weight: 800; padding: 4px 12px; border-radius: 6px; background: ${item.major_category ? '#f1f5f9' : '#fff1f2'}; color: ${item.major_category ? '#475569' : '#e11d48'};">
+                        ${item.major_category || '未設定'}
+                    </span>
+                </td>
+                <td style="padding: 1rem; text-align: right;">
+                    <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                        <button class="batch-btn food" onclick="window.updateItemMajorCategory('${item.id}', 'フード')">フード</button>
+                        <button class="batch-btn drink" onclick="window.updateItemMajorCategory('${item.id}', 'ドリンク')">ドリンク</button>
+                        <button class="batch-btn otoshi" onclick="window.updateItemMajorCategory('${item.id}', 'お通し')">お通し</button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    container.innerHTML = `
+        <style>
+            .batch-btn {
+                padding: 6px 16px;
+                border: none;
+                border-radius: 8px;
+                font-weight: 800;
+                font-size: 0.85rem;
+                cursor: pointer;
+                transition: all 0.2s;
+                min-width: 80px;
+            }
+            .batch-btn.food { background: #fff7ed; color: #c2410c; border: 1.2px solid #fdba74; }
+            .batch-btn.food:hover { background: #ea580c; color: white; border-color: #ea580c; }
+            .batch-btn.drink { background: #eff6ff; color: #1d4ed8; border: 1.2px solid #93c5fd; }
+            .batch-btn.drink:hover { background: #2563eb; color: white; border-color: #2563eb; }
+            .batch-btn.otoshi { background: #fdf4ff; color: #a21caf; border: 1.2px solid #f5d0fe; }
+            .batch-btn.otoshi:hover { background: #c026d3; color: white; border-color: #c026d3; }
+            
+            .batch-row.just-updated { background: #f0fdf4 !important; }
+        </style>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <div>
+                <h2 style="margin-bottom: 0.2rem; display: flex; align-items: center; gap: 0.8rem;">
+                    <i class="fas fa-layer-group" style="color: #6366f1;"></i>
+                    仕分けセンター（メニュー区分一括設定）
+                </h2>
+                <p style="font-size: 0.85rem; color: var(--text-secondary);">全商品の「フード/ドリンク/お通し」区分を高速に設定します</p>
+            </div>
+            <button class="btn" id="btn-batch-back" style="background: white; border: 1.5px solid #e2e8f0; color: #64748b; font-weight: 700; border-radius: 10px;">
+                <i class="fas fa-arrow-left"></i> 一覧に戻る
+            </button>
+        </div>
+
+        <div class="glass-panel" style="padding: 0; overflow: hidden; display: flex; flex-direction: column;">
+            <div style="padding: 1.5rem; background: #f8fafc; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; gap: 1.5rem; align-items: center;">
+                    <div class="input-group" style="margin-bottom: 0; width: 300px;">
+                        <i class="fas fa-search" style="top: 0.8rem;"></i>
+                        <input type="text" id="batch-search" placeholder="商品名で絞り込み..." style="padding-top: 0.6rem; padding-bottom: 0.6rem;">
+                    </div>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 700; color: #475569; font-size: 0.9rem;">
+                        <input type="checkbox" id="batch-unassigned-only" checked style="width: 18px; height: 18px;"> 未設定のみ表示
+                    </label>
+                </div>
+                <div id="batch-count" style="font-weight: 800; color: #64748b;">対象商品: ...</div>
+            </div>
+
+            <div style="max-height: calc(100vh - 350px); overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead style="position: sticky; top: 0; background: #fff; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                        <tr style="text-align: left; color: #64748b; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; border-bottom: 2px solid var(--border);">
+                            <th style="padding: 1rem; width: 40px;"><input type="checkbox" id="batch-select-all" style="width: 18px; height: 18px;"></th>
+                            <th style="padding: 1rem;">商品名 / カテゴリー</th>
+                            <th style="padding: 1rem; text-align: center;">現在の区分</th>
+                            <th style="padding: 1rem; text-align: right;">クイック設定</th>
+                        </tr>
+                    </thead>
+                    <tbody id="batch-category-body"></tbody>
+                </table>
+            </div>
+
+            <!-- フローティング一括操作バー -->
+            <div id="batch-action-bar" style="display: none; padding: 1rem 2rem; background: #1e293b; color: white; justify-content: space-between; align-items: center; border-radius: 12px; margin: 1.5rem; position: sticky; bottom: 1.5rem; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);">
+                <div style="font-weight: 800;">
+                    <span id="selected-count" style="background: var(--primary); padding: 2px 10px; border-radius: 20px; margin-right: 0.5rem;">0</span>
+                    件選択中
+                </div>
+                <div style="display: flex; gap: 0.8rem; align-items: center;">
+                    <span style="font-size: 0.85rem; opacity: 0.8;">選択した項目を一括設定:</span>
+                    <button class="batch-btn food" onclick="window.bulkUpdateMajorCategory('フード')">フード</button>
+                    <button class="batch-btn drink" onclick="window.bulkUpdateMajorCategory('ドリンク')">ドリンク</button>
+                    <button class="batch-btn otoshi" onclick="window.bulkUpdateMajorCategory('お通し')">お通し</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // グローバルに関数を登録
+    window.updateItemMajorCategory = async (itemId, category) => {
+        try {
+            const row = document.querySelector(`tr[data-id="${itemId}"]`);
+            if (row) row.classList.add('just-updated');
+            
+            await updateDoc(doc(db, "m_items", itemId), {
+                major_category: category,
+                updated_at: new Date().toISOString()
+            });
+
+            // キャッシュ更新
+            const item = cachedItems.find(i => i.id === itemId);
+            if (item) item.major_category = category;
+
+            // UI更新
+            const badge = document.getElementById(`badge-${itemId}`);
+            if (badge) {
+                badge.textContent = category;
+                badge.style.background = '#f1f5f9';
+                badge.style.color = '#475569';
+            }
+
+            // 未設定のみ表示の場合、数秒後に消す
+            if (unassignedOnly) {
+                setTimeout(() => {
+                    if (row) row.style.opacity = '0';
+                    setTimeout(() => refreshBatchList(), 300);
+                }, 800);
+            }
+        } catch (e) {
+            console.error("Batch update error:", e);
+            showAlert("エラー", "更新に失敗しました");
+        }
+    };
+
+    window.bulkUpdateMajorCategory = async (category) => {
+        const selected = Array.from(document.querySelectorAll('.batch-select:checked')).map(cb => cb.dataset.id);
+        if (selected.length === 0) return;
+
+        showConfirm('一括設定', `${selected.length}件を「${category}」に設定しますか？`, async () => {
+            try {
+                const promises = selected.map(id => updateDoc(doc(db, "m_items", id), {
+                    major_category: category,
+                    updated_at: new Date().toISOString()
+                }));
+                await Promise.all(promises);
+
+                // キャッシュ更新
+                selected.forEach(id => {
+                    const item = cachedItems.find(i => i.id === id);
+                    if (item) item.major_category = category;
+                });
+
+                showAlert("完了", `${selected.length}件を更新しました`);
+                refreshBatchList();
+                document.getElementById('batch-action-bar').style.display = 'none';
+            } catch (e) {
+                console.error("Bulk update error:", e);
+                showAlert("エラー", "一部の更新に失敗しました");
+            }
+        });
+    };
+
+    // リスナー
+    setTimeout(() => {
+        const backBtn = document.getElementById('btn-batch-back');
+        if (backBtn) backBtn.onclick = () => { currentView = 'list'; renderView(); };
+
+        const unassignedCheck = document.getElementById('batch-unassigned-only');
+        if (unassignedCheck) {
+            unassignedCheck.onchange = () => {
+                unassignedOnly = unassignedCheck.checked;
+                refreshBatchList();
+            };
+        }
+
+        const searchInput = document.getElementById('batch-search');
+        if (searchInput) {
+            searchInput.oninput = () => {
+                batchSearchQuery = searchInput.value;
+                refreshBatchList();
+            };
+        }
+
+        const selectAll = document.getElementById('batch-select-all');
+        if (selectAll) {
+            selectAll.onchange = () => {
+                const cbs = document.querySelectorAll('.batch-select');
+                cbs.forEach(cb => cb.checked = selectAll.checked);
+                updateActionBar();
+            };
+        }
+
+        document.getElementById('batch-category-body').addEventListener('change', (e) => {
+            if (e.target.classList.contains('batch-select')) {
+                updateActionBar();
+            }
+        });
+
+        function updateActionBar() {
+            const count = document.querySelectorAll('.batch-select:checked').length;
+            const bar = document.getElementById('batch-action-bar');
+            const countLabel = document.getElementById('selected-count');
+            if (bar && countLabel) {
+                bar.style.display = count > 0 ? 'flex' : 'none';
+                countLabel.textContent = count;
+            }
+        }
+
+        refreshBatchList();
+    }, 0);
 }
 
 /**
@@ -1469,6 +1724,14 @@ function setupListViewListeners() {
         btnAdd.onclick = () => {
             editingItemData = null;
             currentView = 'form';
+            renderView();
+        };
+    }
+
+    const btnBatch = container.querySelector('#btn-batch-category');
+    if (btnBatch) {
+        btnBatch.onclick = () => {
+            currentView = 'batch_category';
             renderView();
         };
     }
