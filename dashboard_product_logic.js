@@ -6,6 +6,8 @@ import { getEffectivePrice } from './cost_engine.js?v=9';
 let lastResults = [];
 let lastTotalCustomers = 0;
 let abcMetric = 'profit'; // 'profit' or 'qty'
+let selectedCategory = 'all'; // 'all', 'フード', 'ドリンク'
+let includeOtoshi = true;
 let sortStates = {
     prob: { key: 'qty', asc: false },
     detail: { key: 'profit', asc: false }
@@ -45,6 +47,38 @@ function injectComponentStyles() {
             color: var(--primary);
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
+        .abc-filter-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px dashed var(--border);
+        }
+        .abc-chip-group {
+            display: flex;
+            gap: 0.4rem;
+        }
+        .abc-chip {
+            padding: 2px 10px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: white;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .abc-chip:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        .abc-chip.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
     `;
     document.head.appendChild(style);
 }
@@ -71,7 +105,17 @@ export async function renderProductAnalysis(containerId, filters) {
                         <button class="abc-toggle-btn ${abcMetric === 'qty' ? 'active' : ''}" onclick="window._handleAbcMetricChange('qty')">出数</button>
                     </div>
                 </div>
-                <div id="product-abc-chart" style="height: 250px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.01); border-radius: 8px;">
+                <div class="abc-filter-bar">
+                    <div class="abc-chip-group">
+                        <button class="abc-chip ${selectedCategory === 'all' ? 'active' : ''}" onclick="window._handleAbcFilterChange('category', 'all')">全商品</button>
+                        <button class="abc-chip ${selectedCategory === 'フード' ? 'active' : ''}" onclick="window._handleAbcFilterChange('category', 'フード')">フード</button>
+                        <button class="abc-chip ${selectedCategory === 'ドリンク' ? 'active' : ''}" onclick="window._handleAbcFilterChange('category', 'ドリンク')">ドリンク</button>
+                    </div>
+                    <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; color: var(--text-secondary); cursor: pointer; font-weight: 600;">
+                        <input type="checkbox" id="abc-include-otoshi" ${includeOtoshi ? 'checked' : ''} onchange="window._handleAbcFilterChange('otoshi', this.checked)"> お通しを含める
+                    </label>
+                </div>
+                <div id="product-abc-chart" style="height: 250px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.01); border-radius: 8px; margin-top: 1rem;">
                     <i class="fas fa-spinner fa-spin" style="color: var(--primary);"></i>
                 </div>
             </div>
@@ -144,17 +188,28 @@ export async function renderProductAnalysis(containerId, filters) {
     window._handleAbcMetricChange = (metric) => {
         abcMetric = metric;
         // UI状態の更新
-        const btns = document.querySelectorAll('.abc-toggle-btn');
+        const btns = document.querySelectorAll('.abc-toggle-group .abc-toggle-btn');
         btns.forEach(b => {
             b.classList.toggle('active', b.textContent === (metric === 'profit' ? '粗利' : '出数'));
         });
         const label = document.getElementById('abc-metric-label');
         if (label) label.textContent = `(${metric === 'profit' ? '粗利' : '出数'}ベース)`;
 
-        // ランクの再計算と描画
-        assignAbcRanks(lastResults, abcMetric);
-        renderCharts(lastResults);
-        renderTables();
+        refreshAbcDisplay();
+    };
+
+    window._handleAbcFilterChange = (type, value) => {
+        if (type === 'category') {
+            selectedCategory = value;
+            const chips = document.querySelectorAll('.abc-chip');
+            const labels = { all: '全商品', フード: 'フード', ドリンク: 'ドリンク' };
+            chips.forEach(c => {
+                c.classList.toggle('active', c.textContent === labels[value]);
+            });
+        } else if (type === 'otoshi') {
+            includeOtoshi = value;
+        }
+        refreshAbcDisplay();
     };
 
     try {
@@ -216,8 +271,13 @@ export async function renderProductAnalysis(containerId, filters) {
         const results = Object.values(productMap).map(p => {
             const totalCost = p.costPerUnit * p.qty;
             const profit = p.sales - totalCost;
+            
+            const item = cache.items.find(i => i.id === p.itemId);
+            const category = item ? (item.major_category || item.category || 'その他') : 'その他';
+
             return {
                 ...p,
+                category: category,
                 cost: totalCost,
                 profit: profit,
                 margin: p.sales > 0 ? Math.round((profit / p.sales) * 1000) / 10 : 0,
@@ -225,15 +285,12 @@ export async function renderProductAnalysis(containerId, filters) {
             };
         });
 
-        assignAbcRanks(results, abcMetric);
-
         lastResults = results;
         lastTotalCustomers = totalCustomers;
 
         // 初期表示
         updateSortIcons();
-        renderCharts(lastResults);
-        renderTables();
+        refreshAbcDisplay();
 
     } catch (e) {
         console.error("Product analysis logic error:", e);
@@ -252,6 +309,24 @@ function handleSort(key, type) {
 
     updateSortIcons();
     renderTables();
+}
+
+function refreshAbcDisplay() {
+    const filtered = lastResults.filter(r => {
+        // お通し除外フィルタ
+        if (!includeOtoshi && r.category === 'お通し') return false;
+        
+        // カテゴリフィルタ
+        if (selectedCategory !== 'all') {
+            if (r.category !== selectedCategory) return false;
+        }
+        
+        return true;
+    });
+
+    assignAbcRanks(filtered, abcMetric);
+    renderCharts(filtered);
+    renderTables(filtered);
 }
 
 function assignAbcRanks(data, metric = 'profit') {
@@ -282,9 +357,10 @@ function updateSortIcons() {
     });
 }
 
-function renderTables() {
-    const probData = [...lastResults];
-    const detailData = [...lastResults];
+function renderTables(displayData = null) {
+    const dataToUse = displayData || lastResults;
+    const probData = [...dataToUse];
+    const detailData = [...dataToUse];
 
     // 1. 注文確率テーブルのソート
     const pKey = sortStates.prob.key;
