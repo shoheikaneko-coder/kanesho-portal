@@ -47,13 +47,16 @@ function injectComponentStyles() {
             color: var(--primary);
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
-        .abc-filter-bar {
+        .abc-global-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-top: 0.5rem;
-            padding-top: 0.5rem;
-            border-top: 1px dashed var(--border);
+            margin-bottom: 1.5rem;
+            padding: 0.8rem 1.5rem;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            border: 1px solid var(--border);
         }
         .abc-chip-group {
             display: flex;
@@ -94,28 +97,31 @@ export async function renderProductAnalysis(containerId, filters) {
     
     // UIのスケルトンを表示
     container.innerHTML = `
+        <!-- グローバル・コントロールバー -->
+        <div class="abc-global-bar">
+            <div class="abc-chip-group">
+                <span class="abc-chip-label"><i class="fas fa-filter"></i> カテゴリー別:</span>
+                <button class="abc-chip ${selectedCategory === 'all' ? 'active' : ''}" onclick="window._handleAbcFilterChange('category', 'all')">全商品</button>
+                <button class="abc-chip ${selectedCategory === 'フード' ? 'active' : ''}" onclick="window._handleAbcFilterChange('category', 'フード')">フード</button>
+                <button class="abc-chip ${selectedCategory === 'ドリンク' ? 'active' : ''}" onclick="window._handleAbcFilterChange('category', 'ドリンク')">ドリンク</button>
+            </div>
+            <label style="display: flex; align-items: center; gap: 0.6rem; font-size: 0.85rem; color: var(--text-primary); cursor: pointer; font-weight: 700; background: #f8fafc; padding: 0.5rem 1rem; border-radius: 10px; border: 1px solid var(--border);">
+                <input type="checkbox" id="abc-include-otoshi" ${includeOtoshi ? 'checked' : ''} onchange="window._handleAbcFilterChange('otoshi', this.checked)" style="width: 1.1rem; height: 1.1rem; accent-color: var(--primary);"> お通しを含める
+            </label>
+        </div>
+
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
             <div class="glass-panel" style="padding: 1.5rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
                     <h4 style="margin: 0; font-size: 0.95rem;">
-                        <i class="fas fa-chart-pie" style="color: var(--primary);"></i> 1. ABC分析 <span id="abc-metric-label" style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 400;">(粗利ベース)</span>
+                        <i class="fas fa-chart-pie" style="color: var(--primary);"></i> 1. ABC分析 <span id="abc-metric-label" style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 400;">(${abcMetric === 'profit' ? '粗利' : '出数'}ベース)</span>
                     </h4>
                     <div class="abc-toggle-group">
                         <button class="abc-toggle-btn ${abcMetric === 'profit' ? 'active' : ''}" onclick="window._handleAbcMetricChange('profit')">粗利</button>
                         <button class="abc-toggle-btn ${abcMetric === 'qty' ? 'active' : ''}" onclick="window._handleAbcMetricChange('qty')">出数</button>
                     </div>
                 </div>
-                <div class="abc-filter-bar">
-                    <div class="abc-chip-group">
-                        <button class="abc-chip ${selectedCategory === 'all' ? 'active' : ''}" onclick="window._handleAbcFilterChange('category', 'all')">全商品</button>
-                        <button class="abc-chip ${selectedCategory === 'フード' ? 'active' : ''}" onclick="window._handleAbcFilterChange('category', 'フード')">フード</button>
-                        <button class="abc-chip ${selectedCategory === 'ドリンク' ? 'active' : ''}" onclick="window._handleAbcFilterChange('category', 'ドリンク')">ドリンク</button>
-                    </div>
-                    <label style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; color: var(--text-secondary); cursor: pointer; font-weight: 600;">
-                        <input type="checkbox" id="abc-include-otoshi" ${includeOtoshi ? 'checked' : ''} onchange="window._handleAbcFilterChange('otoshi', this.checked)"> お通しを含める
-                    </label>
-                </div>
-                <div id="product-abc-chart" style="height: 250px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.01); border-radius: 8px; margin-top: 1rem;">
+                <div id="product-abc-chart" style="height: 250px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.01); border-radius: 8px;">
                     <i class="fas fa-spinner fa-spin" style="color: var(--primary);"></i>
                 </div>
             </div>
