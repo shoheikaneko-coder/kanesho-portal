@@ -68,28 +68,14 @@ function getVal(data, keys) {
 function parseTime(val) {
     if (!val && val !== 0) return 0;
     if (typeof val === 'number') return val;
-    const s = String(val).trim();
-    if (s.includes(':')) {
-        const parts = s.split(':');
-        const h = parseInt(parts[0], 10) || 0;
-        const m = parseInt(parts[1], 10) || 0;
-        return h + (m / 60);
-    }
     return Number(String(val).replace(/[^\d.-]/g, '')) || 0;
 }
 
 function normalizeDate(val) {
     if (!val && val !== 0) return '';
-    const num = Number(val);
-    if (!isNaN(num) && num > 30000 && num < 60000) {
-        const d = new Date(Math.round((num - 25569) * 86400 * 1000));
-        return d.toISOString().substring(0, 10);
-    }
     let str = String(val).replace(/\//g, '-').replace(/\./g, '-');
     const parts = str.split('-');
-    if (parts.length === 3) {
-        return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
-    }
+    if (parts.length === 3) return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
     return str;
 }
 
@@ -166,9 +152,6 @@ async function processCSV(text, filename, logFn) {
     }
 }
 
-/**
- * Dinii売上実績CSV専用のインポート処理
- */
 async function processDiniiCSV(text, filename, logFn) {
     const rows = text.split(/\r?\n/).filter(l => l.trim() !== "").map(l => l.split(','));
     const headers = rows[0].map(h => h.trim().replace(/^"/, '').replace(/"$/, ''));
@@ -205,7 +188,6 @@ async function processDiniiCSV(text, filename, logFn) {
         const diniiId = getVal(rowObj, map.dinii_id);
         if (!diniiId) continue;
 
-        // 【重要】カンマを除去してから数値化する
         const rawQty = getVal(rowObj, map.quantity_sold);
         const qty = parseFloat(String(rawQty || 0).replace(/[^\d.-]/g, '')) || 0;
         const choiceId = getVal(rowObj, map.choice_id);
@@ -221,16 +203,13 @@ async function processDiniiCSV(text, filename, logFn) {
 
         if (!finalData.total_sales) finalData.total_sales = (finalData.quantity_sold || 0) * (finalData.unit_price || 0);
 
-        if (!menuGroups[diniiId]) menuGroups[diniiId] = { totalRow: null, maxQtyRow: null, maxQty: -1 };
+        if (!menuGroups[diniiId]) menuGroups[diniiId] = { winner: null, maxQty: -1 };
         const entry = { data: finalData, choiceId: choiceId || 'main', qty: qty };
 
-        if (!choiceId || choiceId === "" || choiceId === "null") {
-            menuGroups[diniiId].totalRow = entry;
-        } else {
-            if (qty > menuGroups[diniiId].maxQty) {
-                menuGroups[diniiId].maxQty = qty;
-                menuGroups[diniiId].maxQtyRow = entry;
-            }
+        // 【改善】チョイスIDの有無に関わらず、単純に販売数が最大なものをそのメニューの「正解」とする
+        if (qty > menuGroups[diniiId].maxQty) {
+            menuGroups[diniiId].maxQty = qty;
+            menuGroups[diniiId].winner = entry;
         }
     }
 
@@ -238,7 +217,7 @@ async function processDiniiCSV(text, filename, logFn) {
     let count = 0;
     for (const mId in menuGroups) {
         const group = menuGroups[mId];
-        const winner = group.totalRow || group.maxQtyRow;
+        const winner = group.winner;
         if (winner) {
             winner.data.is_total = true;
             const fd = winner.data;
@@ -251,13 +230,10 @@ async function processDiniiCSV(text, filename, logFn) {
                 }
             }
 
-            // 【重要】重複防止のためのクリーンアップ
-            // このメニューIDに紐付く古い「合計行（is_total: true）」のデータをすべて削除する
+            // 重複防止のクリーンアップ（この品目の古い合計行を全削除）
             const oldDocsQ = query(collection(db, "t_monthly_sales"), 
-                where("store_id", "==", fd.store_id), 
-                where("year_month", "==", fd.year_month), 
-                where("dinii_id", "==", mId),
-                where("is_total", "==", true)
+                where("store_id", "==", fd.store_id), where("year_month", "==", fd.year_month), 
+                where("dinii_id", "==", mId), where("is_total", "==", true)
             );
             const oldDocsSnap = await getDocs(oldDocsQ);
             const batch = writeBatch(db);
