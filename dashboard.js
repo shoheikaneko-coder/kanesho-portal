@@ -38,7 +38,13 @@ export const dashboardPageHtml = `
             <button class="dash-tab-btn" data-tab="tab-monthly"><i class="fas fa-table"></i> 店舗別・月別集計</button>
             <button class="dash-tab-btn" data-tab="tab-analytics"><i class="fas fa-chart-bar"></i> 多角分析</button>
             <button class="dash-tab-btn" data-tab="tab-product-analysis"><i class="fas fa-box"></i> 商品分析</button>
+            <div style="margin-left: auto; padding-left: 1rem; display: flex; align-items: center;">
+                <button id="btn-dash-goto-import" class="btn btn-sm" style="background: var(--surface); border: 1px solid var(--border); color: var(--text-primary); font-weight: 700; white-space: nowrap;">
+                    <i class="fas fa-cloud-upload-alt" style="color: var(--primary);"></i> データインポート
+                </button>
+            </div>
         </div>
+
 
 
         <!-- コンテンツエリア -->
@@ -345,7 +351,20 @@ export async function initDashboardPage() {
     await refreshDashboard();
     
     document.getElementById('dash-apply-btn').onclick = refreshDashboard;
+
+    // データインポート画面への遷移ボタン
+    const gotoImportBtn = document.getElementById('btn-dash-goto-import');
+    if (gotoImportBtn) {
+        gotoImportBtn.onclick = () => {
+            if (window.navigateTo) {
+                window.navigateTo('csv_import');
+            } else {
+                window.location.search = '?page=csv_import';
+            }
+        };
+    }
 }
+
 
 async function loadPersonalDashboard() {
     const section = document.getElementById('dash-personal-section');
