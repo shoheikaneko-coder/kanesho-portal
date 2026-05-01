@@ -262,7 +262,17 @@ function renderTables() {
 
     const detailBody = document.getElementById('product-detail-body');
     if (detailBody) {
-        detailBody.innerHTML = detailData.map(r => `
+        // 合計の計算
+        let totalQty = 0;
+        let totalSales = 0;
+        let totalProfit = 0;
+        detailData.forEach(r => {
+            totalQty += r.qty;
+            totalSales += r.sales;
+            totalProfit += r.profit;
+        });
+
+        const rowsHtml = detailData.map(r => `
             <tr>
                 <td>${r.name}</td>
                 <td style="text-align:right;">${r.qty.toLocaleString()}</td>
@@ -277,6 +287,21 @@ function renderTables() {
                 </td>
             </tr>
         `).join('');
+
+        // 合計行の追加
+        const footerHtml = `
+            <tr style="background: #f8fafc; font-weight: 800; border-top: 2px solid #cbd5e1;">
+                <td style="padding: 1rem 0.5rem;">合計</td>
+                <td style="padding: 1rem 0.5rem; text-align:right;">${totalQty.toLocaleString()}</td>
+                <td style="padding: 1rem 0.5rem; text-align:right;">¥${Math.round(totalSales).toLocaleString()}</td>
+                <td style="padding: 1rem 0.5rem; text-align:right; color: var(--text-secondary);">-</td>
+                <td style="padding: 1rem 0.5rem; text-align:right; color: var(--primary);">¥${Math.round(totalProfit).toLocaleString()}</td>
+                <td style="padding: 1rem 0.5rem; text-align:right;">${totalSales > 0 ? ((totalProfit / totalSales) * 100).toFixed(1) : 0}%</td>
+                <td style="padding: 1rem 0.5rem;"></td>
+            </tr>
+        `;
+
+        detailBody.innerHTML = rowsHtml + footerHtml;
     }
 }
 
