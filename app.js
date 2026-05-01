@@ -406,7 +406,7 @@ window.onpopstate = (event) => {
     }
 };
 
-function showPage(target) {
+async function showPage(target) {
     state.currentPage = target;
     const pageContent = document.getElementById('page-content');
     const pageTitle = document.getElementById('page-title');
