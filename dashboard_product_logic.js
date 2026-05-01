@@ -205,14 +205,14 @@ function handleSort(key, type) {
 function updateSortIcons() {
     // 全てのアイコンをリセット
     const icons = document.querySelectorAll('[id^="sort-icon-"]');
-    icons.forEach(i => i.innerHTML = \'<i class="fas fa-sort" style="color: #ccc; font-size: 0.7rem; margin-left: 4px;"></i>\');
+    icons.forEach(i => i.innerHTML = '<i class="fas fa-sort" style="color: #ccc; font-size: 0.7rem; margin-left: 4px;"></i>');
 
     // アクティブなアイコンを更新
     Object.keys(sortStates).forEach(type => {
         const state = sortStates[type];
         const icon = document.getElementById(`sort-icon-${type}-${state.key}`);
         if (icon) {
-            icon.innerHTML = `<i class="fas fa-sort-${state.asc ? \'up\' : \'down\'}" style="color: var(--primary); font-size: 0.7rem; margin-left: 4px;"></i>`;
+            icon.innerHTML = `<i class="fas fa-sort-${state.asc ? 'up' : 'down'}" style="color: var(--primary); font-size: 0.7rem; margin-left: 4px;"></i>`;
         }
     });
 }
