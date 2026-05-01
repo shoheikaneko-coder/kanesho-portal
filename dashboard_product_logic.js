@@ -76,9 +76,9 @@ export async function renderProductAnalysis(containerId, filters) {
                         <tr style="cursor: pointer;">
                             <th>商品名</th>
                             <th style="text-align:right;" onclick="window._handleProductSort('qty', 'detail')">販売数 <span id="sort-icon-detail-qty"></span></th>
-                            <th style="text-align:right;" onclick="window._handleProductSort('sales', 'detail')">売上高 <span id="sort-icon-detail-sales"></span></th>
+                            <th style="text-align:right;" onclick="window._handleProductSort('sales', 'detail')">売上高(税抜) <span id="sort-icon-detail-sales"></span></th>
                             <th style="text-align:right;" onclick="window._handleProductSort('cost', 'detail')">原価 <span id="sort-icon-detail-cost"></span></th>
-                            <th style="text-align:right;" onclick="window._handleProductSort('profit', 'detail')">粗利額 <span id="sort-icon-detail-profit"></span></th>
+                            <th style="text-align:right;" onclick="window._handleProductSort('profit', 'detail')">粗利額(税抜) <span id="sort-icon-detail-profit"></span></th>
                             <th style="text-align:right;" onclick="window._handleProductSort('margin', 'detail')">粗利率 <span id="sort-icon-detail-margin"></span></th>
                             <th style="text-align:center;" onclick="window._handleProductSort('rank', 'detail')">ランク <span id="sort-icon-detail-rank"></span></th>
                         </tr>
@@ -291,7 +291,7 @@ function renderTables() {
         // 合計行の追加
         const footerHtml = `
             <tr style="background: #f8fafc; font-weight: 800; border-top: 2px solid #cbd5e1;">
-                <td style="padding: 1rem 0.5rem;">合計</td>
+                <td style="padding: 1rem 0.5rem;">合計(税抜)</td>
                 <td style="padding: 1rem 0.5rem; text-align:right;">${totalQty.toLocaleString()}</td>
                 <td style="padding: 1rem 0.5rem; text-align:right;">¥${Math.round(totalSales).toLocaleString()}</td>
                 <td style="padding: 1rem 0.5rem; text-align:right; color: var(--text-secondary);">-</td>

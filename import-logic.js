@@ -201,7 +201,9 @@ async function processDiniiCSV(text, filename, logFn) {
             finalData[k] = v !== undefined ? v : "";
         });
 
-        if (!finalData.total_sales) finalData.total_sales = (finalData.quantity_sold || 0) * (finalData.unit_price || 0);
+        // 【重要】売上高は常に「税抜」で統一する
+        // CSVの「販売金額(税込)」を無視し、必ず「数量 × 売価(税抜)」で計算する
+        finalData.total_sales = (finalData.quantity_sold || 0) * (finalData.unit_price || 0);
 
         if (!menuGroups[diniiId]) menuGroups[diniiId] = { winner: null, maxQty: -1 };
         const entry = { data: finalData, choiceId: choiceId || 'main', qty: qty };
