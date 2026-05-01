@@ -1100,11 +1100,9 @@ function renderListViewPC(container) {
                 <p style="font-size: 0.85rem; color: var(--text-secondary);">販売メニュー、自家製食材、仕入品を一括管理します</p>
             </div>
             <div style="display: flex; gap: 0.8rem;">
-                ${currentTab === 'menus' ? `
-                <button class="btn" id="btn-batch-category" style="padding: 0.8rem 1.2rem; font-weight: 700; background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; border-radius: 10px; transition: all 0.2s;">
-                    <i class="fas fa-layer-group" style="color: #6366f1;"></i> 一括区分設定
+                <button class="btn" id="btn-batch-category" style="padding: 0.8rem 1.5rem; font-weight: 800; background: #6366f1; color: white; border: none; border-radius: 10px; transition: all 0.2s; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); display: flex !important; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-layer-group"></i> 一括区分設定
                 </button>
-                ` : ''}
                 <button class="btn btn-primary" id="btn-add-item" style="padding: 0.8rem 1.5rem; font-weight: 700;">
                     <i class="fas fa-plus"></i> 新規登録
                 </button>
