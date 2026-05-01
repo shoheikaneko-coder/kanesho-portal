@@ -198,6 +198,7 @@ export async function renderProductAnalysis(containerId, filters) {
  * PC版：商品分析ダッシュボードの描画
  */
 function renderProductAnalysisPC(container) {
+    container.innerHTML = `
         <!-- グローバル・コントロールバー -->
         <div class="abc-global-bar">
             <div class="abc-chip-group">
