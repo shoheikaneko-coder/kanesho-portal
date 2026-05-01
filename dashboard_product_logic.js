@@ -169,6 +169,7 @@ export async function renderProductAnalysis(containerId, filters) {
                 <table class="dash-data-table" style="min-width: 100%;">
                     <thead style="position: sticky; top: 0; background: white; z-index: 2;">
                         <tr style="cursor: pointer;">
+                            <th style="width: 40px; text-align: center;">#</th>
                             <th>商品名</th>
                             <th style="text-align:right;" onclick="window._handleProductSort('qty', 'detail')">販売数 <span id="sort-icon-detail-qty"></span></th>
                             <th style="text-align:right;" onclick="window._handleProductSort('sales', 'detail')">売上高(税抜) <span id="sort-icon-detail-sales"></span></th>
@@ -426,8 +427,9 @@ function renderTables(displayData = null) {
             totalProfit += r.profit;
         });
 
-        const rowsHtml = detailData.map(r => `
+        const rowsHtml = detailData.map((r, index) => `
             <tr>
+                <td style="text-align: center; color: var(--text-secondary); font-size: 0.75rem; font-weight: 700;">${index + 1}</td>
                 <td>${r.name}</td>
                 <td style="text-align:right;">${r.qty.toLocaleString()}</td>
                 <td style="text-align:right;">¥${Math.round(r.sales).toLocaleString()}</td>
@@ -445,6 +447,7 @@ function renderTables(displayData = null) {
         // 合計行の追加
         const footerHtml = `
             <tr style="background: #f8fafc; font-weight: 800; border-top: 2px solid #cbd5e1;">
+                <td style="padding: 1rem 0.5rem;"></td>
                 <td style="padding: 1rem 0.5rem;">合計(税抜)</td>
                 <td style="padding: 1rem 0.5rem; text-align:right;">${totalQty.toLocaleString()}</td>
                 <td style="padding: 1rem 0.5rem; text-align:right;">¥${Math.round(totalSales).toLocaleString()}</td>
