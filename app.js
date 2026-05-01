@@ -3,7 +3,8 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/fi
 import { collection, getDocs, query, where, getDoc, doc, updateDoc, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 // 各ページのインポート
-import { dashboardPageHtml, initDashboardPage } from './dashboard.js?v=118';
+// import { dashboardPageHtml, initDashboardPage } from './dashboard.js?v=118'; // 動的インポートに変更
+
 import { attendancePageHtml, initAttendancePage } from './attendance.js?v=110';
 import { salesPageHtml, initSalesPage } from './sales.js?v=110';
 import { storesPageHtml, initStoresPage } from './stores.js?v=31';
@@ -449,9 +450,27 @@ function showPage(target) {
                 break;
             case 'dashboard':
                 updateHeaderTitle('ダッシュボード');
-                pageContent.innerHTML = dashboardPageHtml;
-                initDashboardPage();
+                try {
+                    // ダッシュボードが壊れていてもログインを阻害しないよう動的インポート
+                    const { dashboardPageHtml, initDashboardPage } = await import('./dashboard.js?v=119');
+                    pageContent.innerHTML = dashboardPageHtml;
+                    await initDashboardPage();
+                } catch (err) {
+                    console.error("Dashboard module load error:", err);
+                    pageContent.innerHTML = `
+                        <div class="glass-panel" style="padding: 3rem; text-align: center; margin: 2rem;">
+                            <i class="fas fa-exclamation-triangle fa-3x" style="color: var(--danger); margin-bottom: 1.5rem;"></i>
+                            <h2 style="color: var(--text-primary); margin-bottom: 0.5rem;">ダッシュボードを読み込めませんでした</h2>
+                            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">システムの一部（ダッシュボード）でエラーが発生しています。管理者に連絡してください。</p>
+                            <code style="display: block; padding: 1rem; background: #f1f5f9; border-radius: 8px; font-size: 0.8rem; color: var(--danger); margin-bottom: 1.5rem; text-align: left; overflow-x: auto;">
+                                ${err.message}
+                            </code>
+                            <button onclick="location.reload()" class="btn btn-primary">再読み込みを試す</button>
+                        </div>
+                    `;
+                }
                 break;
+
             case 'manager_meeting':
                 updateHeaderTitle('店長会議資料');
                 pageContent.innerHTML = managerMeetingPageHtml;

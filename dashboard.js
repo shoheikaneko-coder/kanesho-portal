@@ -37,7 +37,9 @@ export const dashboardPageHtml = `
             <button class="dash-tab-btn" data-tab="tab-daily"><i class="fas fa-list"></i> 日別詳細レポート</button>
             <button class="dash-tab-btn" data-tab="tab-monthly"><i class="fas fa-table"></i> 店舗別・月別集計</button>
             <button class="dash-tab-btn" data-tab="tab-analytics"><i class="fas fa-chart-bar"></i> 多角分析</button>
+            <button class="dash-tab-btn" data-tab="tab-product-analysis"><i class="fas fa-box"></i> 商品分析</button>
         </div>
+
 
         <!-- コンテンツエリア -->
         <div id="dash-contents-area" style="position: relative;">
@@ -208,7 +210,18 @@ export const dashboardPageHtml = `
                     </div>
                 </div>
             </div>
+
+            <!-- タブ5: 商品分析 -->
+            <div id="tab-product-analysis" class="dash-tab-content" style="display: none;">
+                <div id="product-analysis-container">
+                    <div style="padding: 3rem; text-align: center; color: var(--text-secondary);">
+                        <i class="fas fa-info-circle fa-2x" style="margin-bottom: 1rem;"></i>
+                        <p>「表示」ボタンをクリックして分析を開始してください</p>
+                    </div>
+                </div>
+            </div>
         </div>
+
 
         <!-- モーダル -->
         <div id="drilldown-modal" class="modal-overlay">
@@ -303,15 +316,30 @@ export async function initDashboardPage() {
     // タブ切り替え設定
     const tabBtns = document.querySelectorAll('.dash-tab-btn');
     tabBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', async (e) => {
             tabBtns.forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.dash-tab-content').forEach(c => c.style.display = 'none');
             
             const targetTab = e.currentTarget.getAttribute('data-tab');
             e.currentTarget.classList.add('active');
-            document.getElementById(targetTab).style.display = 'block';
+            const targetEl = document.getElementById(targetTab);
+            if (targetEl) targetEl.style.display = 'block';
+
+            // 商品分析タブが選択された場合、初回読み込みまたは更新を行う
+            if (targetTab === 'tab-product-analysis') {
+                const dateFrom    = document.getElementById('dash-date-from').value;
+                const dateTo      = document.getElementById('dash-date-to').value;
+                const storeFilter = document.getElementById('dash-store-filter').value;
+                try {
+                    const { renderProductAnalysis } = await import('./dashboard_product_logic.js?v=1');
+                    await renderProductAnalysis('product-analysis-container', { storeId: storeFilter, dateFrom, dateTo });
+                } catch (e) {
+                    console.error("Product analysis load error:", e);
+                }
+            }
         });
     });
+
 
     await loadFilterOptions();
     await refreshDashboard();
@@ -756,7 +784,16 @@ function renderAllTabs(records, goals, totalOpH, totalCkH, daily, storeMap, stor
     
     // タブ4: 多角分析チャート
     renderAnalyticsTab(nonCkDaily);
+
+    // タブ5: 商品分析 (現在開いている場合のみ即座に更新)
+    const activeTab = document.querySelector('.dash-tab-btn.active')?.getAttribute('data-tab');
+    if (activeTab === 'tab-product-analysis') {
+        import('./dashboard_product_logic.js?v=1').then(m => {
+            m.renderProductAnalysis('product-analysis-container', { storeId: storeFilter, dateFrom, dateTo });
+        });
+    }
 }
+
 
 function renderKPIs(recs, goals = { sales: 0, customers: 0, sph_op: 0, sph_total: 0 }, forcedOpH = null, forcedCkH = null) {
     let s=0, c=0, opH=0, ckH=0;
