@@ -5,27 +5,70 @@ import { getEffectivePrice } from './cost_engine.js?v=9';
 // モジュールレベルでのデータ保持（再ソート用）
 let lastResults = [];
 let lastTotalCustomers = 0;
+let abcMetric = 'profit'; // 'profit' or 'qty'
 let sortStates = {
     prob: { key: 'qty', asc: false },
     detail: { key: 'profit', asc: false }
 };
 
 /**
+ * セグメントコントロール用のCSSを注入
+ */
+function injectComponentStyles() {
+    if (document.getElementById('product-analysis-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'product-analysis-styles';
+    style.textContent = `
+        .abc-toggle-group {
+            display: flex;
+            background: #f1f5f9;
+            padding: 2px;
+            border-radius: 8px;
+            gap: 2px;
+        }
+        .abc-toggle-btn {
+            border: none;
+            background: transparent;
+            padding: 4px 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #64748b;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .abc-toggle-btn:hover {
+            color: var(--primary);
+        }
+        .abc-toggle-btn.active {
+            background: white;
+            color: var(--primary);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+/**
  * 商品分析（4つの窓）をレンダリングする
  */
 export async function renderProductAnalysis(containerId, filters) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-
+    injectComponentStyles();
     const { storeId, dateFrom, dateTo } = filters;
     
     // UIのスケルトンを表示
     container.innerHTML = `
         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
             <div class="glass-panel" style="padding: 1.5rem;">
-                <h4 style="margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; font-size: 0.95rem;">
-                    <i class="fas fa-chart-pie" style="color: var(--primary);"></i> 1. ABC分析 (粗利ベース)
-                </h4>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+                    <h4 style="margin: 0; font-size: 0.95rem;">
+                        <i class="fas fa-chart-pie" style="color: var(--primary);"></i> 1. ABC分析 <span id="abc-metric-label" style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 400;">(粗利ベース)</span>
+                    </h4>
+                    <div class="abc-toggle-group">
+                        <button class="abc-toggle-btn ${abcMetric === 'profit' ? 'active' : ''}" onclick="window._handleAbcMetricChange('profit')">粗利</button>
+                        <button class="abc-toggle-btn ${abcMetric === 'qty' ? 'active' : ''}" onclick="window._handleAbcMetricChange('qty')">出数</button>
+                    </div>
+                </div>
                 <div id="product-abc-chart" style="height: 250px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.01); border-radius: 8px;">
                     <i class="fas fa-spinner fa-spin" style="color: var(--primary);"></i>
                 </div>
@@ -96,6 +139,22 @@ export async function renderProductAnalysis(containerId, filters) {
         handleSort(key, type);
     };
 
+    window._handleAbcMetricChange = (metric) => {
+        abcMetric = metric;
+        // UI状態の更新
+        const btns = document.querySelectorAll('.abc-toggle-btn');
+        btns.forEach(b => {
+            b.classList.toggle('active', b.textContent === (metric === 'profit' ? '粗利' : '出数'));
+        });
+        const label = document.getElementById('abc-metric-label');
+        if (label) label.textContent = `(${metric === 'profit' ? '粗利' : '出数'}ベース)`;
+
+        // ランクの再計算と描画
+        assignAbcRanks(lastResults, abcMetric);
+        renderCharts(lastResults);
+        renderTables();
+    };
+
     try {
         const months = getMonthsInRange(dateFrom, dateTo);
         let totalCustomers = 0;
@@ -164,16 +223,7 @@ export async function renderProductAnalysis(containerId, filters) {
             };
         });
 
-        results.sort((a, b) => b.profit - a.profit);
-        let cumulativeProfit = 0;
-        const totalProfitSum = results.reduce((sum, r) => sum + r.profit, 0);
-        results.forEach(r => {
-            cumulativeProfit += r.profit;
-            const pct = (cumulativeProfit / totalProfitSum) * 100;
-            if (pct <= 70) r.rank = 'A';
-            else if (pct <= 90) r.rank = 'B';
-            else r.rank = 'C';
-        });
+        assignAbcRanks(results, abcMetric);
 
         lastResults = results;
         lastTotalCustomers = totalCustomers;
@@ -200,6 +250,19 @@ function handleSort(key, type) {
 
     updateSortIcons();
     renderTables();
+}
+
+function assignAbcRanks(data, metric = 'profit') {
+    data.sort((a, b) => b[metric] - a[metric]);
+    let cumulative = 0;
+    const total = data.reduce((sum, r) => sum + r[metric], 0);
+    data.forEach(r => {
+        cumulative += r[metric];
+        const pct = (total > 0) ? (cumulative / total) * 100 : 100;
+        if (pct <= 70) r.rank = 'A';
+        else if (pct <= 90) r.rank = 'B';
+        else r.rank = 'C';
+    });
 }
 
 function updateSortIcons() {
