@@ -2,6 +2,14 @@ import { db } from './firebase.js';
 import { collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getEffectivePrice } from './cost_engine.js?v=9';
 
+// モジュールレベルでのデータ保持（再ソート用）
+let lastResults = [];
+let lastTotalCustomers = 0;
+let sortStates = {
+    prob: { key: 'qty', asc: false },
+    detail: { key: 'profit', asc: false }
+};
+
 /**
  * 商品分析（4つの窓）をレンダリングする
  */
@@ -39,7 +47,11 @@ export async function renderProductAnalysis(containerId, filters) {
                 <div style="height: 250px; overflow-y: auto;">
                     <table class="dash-data-table" style="min-width: 100%; font-size: 0.8rem;">
                         <thead style="position: sticky; top: 0; background: white; z-index: 2;">
-                            <tr><th>商品名</th><th style="text-align:right;">数量</th><th style="text-align:right;">確率</th></tr>
+                            <tr style="cursor: pointer;">
+                                <th>商品名</th>
+                                <th style="text-align:right;" onclick="window._handleProductSort('qty', 'prob')">数量 <span id="sort-icon-prob-qty"></span></th>
+                                <th style="text-align:right;" onclick="window._handleProductSort('prob', 'prob')">確率 <span id="sort-icon-prob-prob"></span></th>
+                            </tr>
                         </thead>
                         <tbody id="product-prob-body"></tbody>
                     </table>
@@ -61,14 +73,14 @@ export async function renderProductAnalysis(containerId, filters) {
             <div class="dash-table-wrapper" style="max-height: 400px;">
                 <table class="dash-data-table" style="min-width: 100%;">
                     <thead style="position: sticky; top: 0; background: white; z-index: 2;">
-                        <tr>
+                        <tr style="cursor: pointer;">
                             <th>商品名</th>
-                            <th style="text-align:right;">販売数</th>
-                            <th style="text-align:right;">売上高</th>
-                            <th style="text-align:right;">原価</th>
-                            <th style="text-align:right;">粗利額</th>
-                            <th style="text-align:right;">粗利率</th>
-                            <th style="text-align:center;">ランク</th>
+                            <th style="text-align:right;" onclick="window._handleProductSort('qty', 'detail')">販売数 <span id="sort-icon-detail-qty"></span></th>
+                            <th style="text-align:right;" onclick="window._handleProductSort('sales', 'detail')">売上高 <span id="sort-icon-detail-sales"></span></th>
+                            <th style="text-align:right;" onclick="window._handleProductSort('cost', 'detail')">原価 <span id="sort-icon-detail-cost"></span></th>
+                            <th style="text-align:right;" onclick="window._handleProductSort('profit', 'detail')">粗利額 <span id="sort-icon-detail-profit"></span></th>
+                            <th style="text-align:right;" onclick="window._handleProductSort('margin', 'detail')">粗利率 <span id="sort-icon-detail-margin"></span></th>
+                            <th style="text-align:center;" onclick="window._handleProductSort('rank', 'detail')">ランク <span id="sort-icon-detail-rank"></span></th>
                         </tr>
                     </thead>
                     <tbody id="product-detail-body">
@@ -79,23 +91,22 @@ export async function renderProductAnalysis(containerId, filters) {
         </div>
     `;
 
+    // グローバルに関数を登録（HTMLのonclickから呼べるように）
+    window._handleProductSort = (key, type) => {
+        handleSort(key, type);
+    };
+
     try {
-        // 1. データの取得 (t_performance から客数、t_monthly_sales から商品別売上)
-        // 期間内の月をリスト化
         const months = getMonthsInRange(dateFrom, dateTo);
-        
         let totalCustomers = 0;
         let monthlySales = [];
 
-        // 並列で取得
         const promises = months.map(async (ym) => {
-            // 客数
             let qPerf = query(collection(db, "t_performance"), where("year_month", "==", ym));
             if (storeId !== 'all') qPerf = query(qPerf, where("store_id", "==", storeId));
             const snapPerf = await getDocs(qPerf);
             snapPerf.forEach(d => totalCustomers += (d.data().customer_count || 0));
 
-            // 商品別売上
             let qSales = query(collection(db, "t_monthly_sales"), where("year_month", "==", ym));
             if (storeId !== 'all') qSales = query(qSales, where("store_id", "==", storeId));
             const snapSales = await getDocs(qSales);
@@ -112,7 +123,6 @@ export async function renderProductAnalysis(containerId, filters) {
             return;
         }
 
-        // 2. マスタと原価計算エンジンの準備
         const [itemSnap, ingSnap, menuSnap] = await Promise.all([
             getDocs(collection(db, "m_items")),
             getDocs(collection(db, "m_ingredients")),
@@ -124,7 +134,6 @@ export async function renderProductAnalysis(containerId, filters) {
             menus: menuSnap.docs.map(d => ({ id: d.id, ...d.data() }))
         };
 
-        // 3. 商品ごとの集計
         const productMap = {};
         monthlySales.forEach(ms => {
             const key = ms.menu_name;
@@ -150,11 +159,11 @@ export async function renderProductAnalysis(containerId, filters) {
                 ...p,
                 cost: totalCost,
                 profit: profit,
-                margin: p.sales > 0 ? Math.round((profit / p.sales) * 1000) / 10 : 0
+                margin: p.sales > 0 ? Math.round((profit / p.sales) * 1000) / 10 : 0,
+                prob: totalCustomers > 0 ? (p.qty / totalCustomers) * 100 : 0
             };
         });
 
-        // 4. ABC分析ランキング (粗利額ベース)
         results.sort((a, b) => b.profit - a.profit);
         let cumulativeProfit = 0;
         const totalProfitSum = results.reduce((sum, r) => sum + r.profit, 0);
@@ -166,12 +175,108 @@ export async function renderProductAnalysis(containerId, filters) {
             else r.rank = 'C';
         });
 
-        // 5. レンダリング
-        renderCharts(results, totalCustomers);
+        lastResults = results;
+        lastTotalCustomers = totalCustomers;
+
+        // 初期表示
+        updateSortIcons();
+        renderCharts(lastResults);
+        renderTables();
 
     } catch (e) {
         console.error("Product analysis logic error:", e);
         container.innerHTML = `<div class="glass-panel" style="padding: 3rem; text-align: center; color: var(--danger);">エラーが発生しました: ${e.message}</div>`;
+    }
+}
+
+function handleSort(key, type) {
+    const state = sortStates[type];
+    if (state.key === key) {
+        state.asc = !state.asc;
+    } else {
+        state.key = key;
+        state.asc = false; // デフォルトは降順（大きい順）
+    }
+
+    updateSortIcons();
+    renderTables();
+}
+
+function updateSortIcons() {
+    // 全てのアイコンをリセット
+    const icons = document.querySelectorAll('[id^="sort-icon-"]');
+    icons.forEach(i => i.innerHTML = \'<i class="fas fa-sort" style="color: #ccc; font-size: 0.7rem; margin-left: 4px;"></i>\');
+
+    // アクティブなアイコンを更新
+    Object.keys(sortStates).forEach(type => {
+        const state = sortStates[type];
+        const icon = document.getElementById(`sort-icon-${type}-${state.key}`);
+        if (icon) {
+            icon.innerHTML = `<i class="fas fa-sort-${state.asc ? \'up\' : \'down\'}" style="color: var(--primary); font-size: 0.7rem; margin-left: 4px;"></i>`;
+        }
+    });
+}
+
+function renderTables() {
+    const probData = [...lastResults];
+    const detailData = [...lastResults];
+
+    // 1. 注文確率テーブルのソート
+    const pKey = sortStates.prob.key;
+    const pAsc = sortStates.prob.asc;
+    probData.sort((a, b) => {
+        const valA = a[pKey];
+        const valB = b[pKey];
+        return pAsc ? valA - valB : valB - valA;
+    });
+
+    const probBody = document.getElementById(\'product-prob-body\');
+    if (probBody) {
+        probBody.innerHTML = probData.slice(0, 50).map(r => `
+            <tr>
+                <td>${r.name}</td>
+                <td style="text-align:right;">${r.qty.toLocaleString()}</td>
+                <td style="text-align:right;">${r.prob.toFixed(1)}%</td>
+            </tr>
+        `).join(\'\');
+    }
+
+    // 2. 詳細テーブルのソート
+    const dKey = sortStates.detail.key;
+    const dAsc = sortStates.detail.asc;
+    detailData.sort((a, b) => {
+        let valA = a[dKey];
+        let valB = b[dKey];
+        
+        // ランクのソート（A < B < C）
+        if (dKey === \'rank\') {
+            const ranks = { \'A\': 1, \'B\': 2, \'C\': 3 };
+            valA = ranks[valA] || 99;
+            valB = ranks[valB] || 99;
+        }
+
+        if (valA === valB) return 0;
+        if (dAsc) return valA > valB ? 1 : -1;
+        return valA < valB ? 1 : -1;
+    });
+
+    const detailBody = document.getElementById(\'product-detail-body\');
+    if (detailBody) {
+        detailBody.innerHTML = detailData.map(r => `
+            <tr>
+                <td>${r.name}</td>
+                <td style="text-align:right;">${r.qty.toLocaleString()}</td>
+                <td style="text-align:right;">¥${Math.round(r.sales).toLocaleString()}</td>
+                <td style="text-align:right; color: var(--text-secondary);">¥${Math.round(r.cost).toLocaleString()}</td>
+                <td style="text-align:right; font-weight:700;">¥${Math.round(r.profit).toLocaleString()}</td>
+                <td style="text-align:right;">${r.margin}%</td>
+                <td style="text-align:center;">
+                    <span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 800; background: ${r.rank === \'A\' ? \'#ecfdf5\' : (r.rank === \'B\' ? \'#fffbeb\' : \'#f1f5f9\')}; color: ${r.rank === \'A\' ? \'#059669\' : (r.rank === \'B\' ? \'#d97706\' : \'#64748b\')};">
+                        ${r.rank}
+                    </span>
+                </td>
+            </tr>
+        `).join(\'\');
     }
 }
 
@@ -186,38 +291,9 @@ function getMonthsInRange(start, end) {
     return months;
 }
 
-function renderCharts(data, totalCustomers) {
-    // 注文確率
-    const probBody = document.getElementById('product-prob-body');
-    if (probBody) {
-        probBody.innerHTML = data.slice(0, 50).map(r => {
-            const prob = totalCustomers > 0 ? (r.qty / totalCustomers) * 100 : 0;
-            return `<tr><td>${r.name}</td><td style="text-align:right;">${r.qty.toLocaleString()}</td><td style="text-align:right;">${prob.toFixed(1)}%</td></tr>`;
-        }).join('');
-    }
-
-    // 詳細テーブル
-    const detailBody = document.getElementById('product-detail-body');
-    if (detailBody) {
-        detailBody.innerHTML = data.map(r => `
-            <tr>
-                <td>${r.name}</td>
-                <td style="text-align:right;">${r.qty.toLocaleString()}</td>
-                <td style="text-align:right;">¥${Math.round(r.sales).toLocaleString()}</td>
-                <td style="text-align:right; color: var(--text-secondary);">¥${Math.round(r.cost).toLocaleString()}</td>
-                <td style="text-align:right; font-weight:700;">¥${Math.round(r.profit).toLocaleString()}</td>
-                <td style="text-align:right;">${r.margin}%</td>
-                <td style="text-align:center;">
-                    <span style="padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: 800; background: ${r.rank === 'A' ? '#ecfdf5' : (r.rank === 'B' ? '#fffbeb' : '#f1f5f9')}; color: ${r.rank === 'A' ? '#059669' : (r.rank === 'B' ? '#d97706' : '#64748b')};">
-                        ${r.rank}
-                    </span>
-                </td>
-            </tr>
-        `).join('');
-    }
-
+function renderCharts(data) {
     // ABCグラフ
-    const abcChart = document.getElementById('product-abc-chart');
+    const abcChart = document.getElementById(\'product-abc-chart\');
     if (abcChart) {
         const counts = { A: 0, B: 0, C: 0 };
         data.forEach(r => counts[r.rank]++);
@@ -238,25 +314,25 @@ function renderCharts(data, totalCustomers) {
     }
 
     // マトリックス
-    const matrixPlot = document.getElementById('product-matrix-plot');
+    const matrixPlot = document.getElementById(\'product-matrix-plot\');
     if (matrixPlot) {
-        matrixPlot.innerHTML = '';
+        matrixPlot.innerHTML = \'\';
         const avgQty = data.reduce((sum, r) => sum + r.qty, 0) / data.length;
         const avgMargin = data.reduce((sum, r) => sum + r.margin, 0) / data.length;
 
         data.forEach(r => {
-            const dot = document.createElement('div');
-            dot.style.position = 'absolute';
+            const dot = document.createElement(\'div\');
+            dot.style.position = \'absolute\';
             const x = Math.min(95, Math.max(5, (r.margin / (avgMargin * 2)) * 50));
             const y = Math.min(95, Math.max(5, (r.qty / (avgQty * 2)) * 50));
             
             dot.style.left = `${x}%`;
             dot.style.bottom = `${y}%`;
-            dot.style.width = '8px';
-            dot.style.height = '8px';
-            dot.style.borderRadius = '50%';
-            dot.style.background = r.rank === 'A' ? 'var(--primary)' : 'var(--text-secondary)';
-            dot.style.opacity = '0.6';
+            dot.style.width = \'8px\';
+            dot.style.height = \'8px\';
+            dot.style.borderRadius = \'50%\';
+            dot.style.background = r.rank === \'A\' ? \'var(--primary)\' : \'var(--text-secondary)\';
+            dot.style.opacity = \'0.6\';
             dot.title = `${r.name}: ${r.qty}個 / ${r.margin}%`;
             matrixPlot.appendChild(dot);
         });
