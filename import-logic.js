@@ -107,9 +107,14 @@ export async function processFile(file, logFn) {
         const decoder = new TextDecoder('shift-jis');
         const text = decoder.decode(arrayBuffer);
         
-        // Diniiフォーマットの簡易検知
+        // Diniiフォーマットの検知
         if (text.includes('メニューID') || text.includes('商品コード') || text.includes('dinii')) {
-            // v48: Dinii専用インポートエンジンを実行
+            // 売上実績（出数）かマスタ（メニュー登録）かを判定
+            if (text.includes('数量') || text.includes('出数') || text.includes('売上金額') || text.includes('販売金額')) {
+                // 売上実績としてインポート (t_monthly_salesへ)
+                return await processDiniiCSV(text, file.name, logFn);
+            }
+            // v48: Dinii専用マスタインポートエンジンを実行 (m_menusへ)
             return await processDiniiMasterCSV(text, file.name, logFn);
         }
         return await processCSV(text, file.name, logFn);
@@ -287,11 +292,15 @@ async function processDiniiCSV(text, filename, logFn) {
     const data = rows.slice(1).map(r => r.map(c => c.replace(/^"/, '').replace(/"$/, '')));
 
     const storeMapByName = {};
+    const storeMapByDiniiId = {}; // Dinii店舗IDからの紐付け用
     const snap = await getDocs(collection(db, "m_stores"));
     snap.forEach(d => {
         const s = d.data();
-        if (s.store_name) storeMapByName[normalize(s.store_name)] = d.data().store_id;
+        const sid = s.store_id || d.id;
+        if (s.store_name) storeMapByName[normalize(s.store_name)] = sid;
+        if (s.dinii_store_id) storeMapByDiniiId[normalize(s.dinii_store_id)] = sid;
     });
+
 
     let targetYM = "";
     if (window._import_context?.yearMonth) {
@@ -303,13 +312,11 @@ async function processDiniiCSV(text, filename, logFn) {
     }
     if (!targetYM) return;
 
-    let storeId = "";
-    if (window._import_context?.storeId) {
-        storeId = window._import_context.storeId;
-    } else {
-        storeId = prompt("インポート先の店舗IDを入力してください（例: S01）", "");
+    let storeIdContext = window._import_context?.storeId || "";
+    if (!storeIdContext) {
+        logFn("警告: インポート先店舗が選択されていません。CSV内の店舗IDによる自動紐付けを試みます。", 'orange');
     }
-    if (!storeId) return;
+
 
     logFn(`Dinii売上データのインポート中 (${targetYM})...`);
     let count = 0;
@@ -328,11 +335,22 @@ async function processDiniiCSV(text, filename, logFn) {
         const rowObj = {};
         headers.forEach((h, idx) => rowObj[h] = rowArr[idx]);
 
+        // 店舗IDの特定 (CSV内のDinii店舗IDを優先)
+        const csvDiniiStoreId = getVal(rowObj, ['店舗ID', '店舗 ID', 'StoreID']);
+        const mappedSid = csvDiniiStoreId ? storeMapByDiniiId[normalize(csvDiniiStoreId)] : null;
+        const finalStoreId = mappedSid || storeIdContext;
+
+        if (!finalStoreId) {
+            if (i === 0) logFn("エラー: 店舗の紐付けに失敗しました。店舗マスタのDinii店舗IDを確認してください。", 'red');
+            continue;
+        }
+
         const finalData = {
-            store_id: storeId,
+            store_id: finalStoreId,
             year_month: targetYM,
             updated_at: new Date().toISOString()
         };
+
 
         Object.keys(map).forEach(key => {
             if (['store_id', 'year_month'].includes(key)) return;
@@ -371,7 +389,8 @@ async function processDiniiCSV(text, filename, logFn) {
         }
 
         // ドキュメントIDの生成 (行番号 _i を排除し、データ固有のキーにすることで重複保存を防止)
-        const docId = `${storeId}_${targetYM}_${finalData.dinii_id || 'no_id'}_${choiceId || 'main'}`;
+        const docId = `${finalStoreId}_${targetYM}_${finalData.dinii_id || 'no_id'}_${choiceId || 'main'}`;
+
         await setDoc(doc(db, "t_monthly_sales", docId), finalData);
         count++;
     }
