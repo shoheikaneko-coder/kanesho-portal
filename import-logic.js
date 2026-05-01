@@ -152,6 +152,9 @@ async function processCSV(text, filename, logFn) {
     }
 }
 
+/**
+ * Dinii売上実績CSV専用のインポート処理
+ */
 async function processDiniiCSV(text, filename, logFn) {
     const rows = text.split(/\r?\n/).filter(l => l.trim() !== "").map(l => l.split(','));
     const headers = rows[0].map(h => h.trim().replace(/^"/, '').replace(/"$/, ''));
@@ -175,7 +178,8 @@ async function processDiniiCSV(text, filename, logFn) {
     const menuItemsMap = {}; 
     menusSnap.forEach(d => { if (d.data().dinii_id) menuItemsMap[d.data().dinii_id] = { docId: d.id, ...d.data() }; });
 
-    const menuGroups = {}; 
+    // メニューIDごとの集計バッファ
+    const menuAggregates = {}; // diniiId -> { qty, sales, data }
     const map = SCHEMA_MAP.t_monthly_sales;
 
     for (const rowArr of data) {
@@ -188,65 +192,58 @@ async function processDiniiCSV(text, filename, logFn) {
         const diniiId = getVal(rowObj, map.dinii_id);
         if (!diniiId) continue;
 
-        const rawQty = getVal(rowObj, map.quantity_sold);
-        const qty = parseFloat(String(rawQty || 0).replace(/[^\d.-]/g, '')) || 0;
         const choiceId = getVal(rowObj, map.choice_id);
+        
+        // 【重要】チョイスIDが空欄（または空欄とみなせるもの）だけを合算対象とする
+        // これにより、カテゴリー分散された合計行をすべて集計しつつ、オプション行（二重計上）を排除する
+        if (!choiceId || choiceId === "" || choiceId === "null") {
+            const rawQty = getVal(rowObj, map.quantity_sold);
+            const qty = parseFloat(String(rawQty || 0).replace(/[^\d.-]/g, '')) || 0;
+            const unitPrice = parseFloat(String(getVal(rowObj, map.unit_price) || 0).replace(/[^\d.-]/g, '')) || 0;
 
-        const finalData = { store_id: sid, year_month: targetYM, dinii_id: diniiId, updated_at: new Date().toISOString() };
-        Object.keys(map).forEach(k => {
-            if (['store_id', 'year_month', 'dinii_id'].includes(k)) return;
-            let v = getVal(rowObj, map[k]);
-            if (k === 'quantity_sold') v = qty;
-            else if (NUMERIC_FIELDS.includes(k)) v = parseFloat(String(v || 0).replace(/[^\d.-]/g, '')) || 0;
-            finalData[k] = v !== undefined ? v : "";
-        });
+            if (!menuAggregates[diniiId]) {
+                const finalData = { store_id: sid, year_month: targetYM, dinii_id: diniiId, updated_at: new Date().toISOString() };
+                Object.keys(map).forEach(k => {
+                    if (['store_id', 'year_month', 'dinii_id'].includes(k)) return;
+                    finalData[k] = getVal(rowObj, map[k]) || "";
+                });
+                menuAggregates[diniiId] = { qty: 0, sales: 0, data: finalData, unitPrice: unitPrice };
+            }
 
-        // 【重要】売上高は常に「税抜」で統一する
-        // CSVの「販売金額(税込)」を無視し、必ず「数量 × 売価(税抜)」で計算する
-        finalData.total_sales = (finalData.quantity_sold || 0) * (finalData.unit_price || 0);
-
-        if (!menuGroups[diniiId]) menuGroups[diniiId] = { winner: null, maxQty: -1 };
-        const entry = { data: finalData, choiceId: choiceId || 'main', qty: qty };
-
-        // 【改善】チョイスIDの有無に関わらず、単純に販売数が最大なものをそのメニューの「正解」とする
-        if (qty > menuGroups[diniiId].maxQty) {
-            menuGroups[diniiId].maxQty = qty;
-            menuGroups[diniiId].winner = entry;
+            menuAggregates[diniiId].qty += qty;
+            menuAggregates[diniiId].sales += (qty * unitPrice);
         }
     }
 
     logFn(`データベースのクリーンアップと保存を開始します...`);
     let count = 0;
-    for (const mId in menuGroups) {
-        const group = menuGroups[mId];
-        const winner = group.winner;
-        if (winner) {
-            winner.data.is_total = true;
-            const fd = winner.data;
+    for (const dId in menuAggregates) {
+        const agg = menuAggregates[dId];
+        agg.data.quantity_sold = agg.qty;
+        agg.data.total_sales = agg.sales;
+        agg.data.is_total = true;
 
-            // マスタ同期
-            if (menuItemsMap[mId]) {
-                const master = menuItemsMap[mId];
-                if (master.name !== fd.menu_name || master.sales_price !== fd.unit_price) {
-                    await updateDoc(doc(db, "m_menus", master.docId), { name: fd.menu_name, sales_price: fd.unit_price, updated_at: new Date().toISOString() });
-                }
+        // マスタ同期
+        if (menuItemsMap[dId]) {
+            const master = menuItemsMap[dId];
+            if (master.name !== agg.data.menu_name) {
+                await updateDoc(doc(db, "m_menus", master.docId), { name: agg.data.menu_name, updated_at: new Date().toISOString() });
             }
-
-            // 重複防止のクリーンアップ（この品目の古い合計行を全削除）
-            const oldDocsQ = query(collection(db, "t_monthly_sales"), 
-                where("store_id", "==", fd.store_id), where("year_month", "==", fd.year_month), 
-                where("dinii_id", "==", mId), where("is_total", "==", true)
-            );
-            const oldDocsSnap = await getDocs(oldDocsQ);
-            const batch = writeBatch(db);
-            oldDocsSnap.forEach(d => batch.delete(d.ref));
-            await batch.commit();
-
-            // 新しいデータを固定IDで保存
-            const docId = `${fd.store_id}_${fd.year_month}_${mId}_TOTAL`;
-            await setDoc(doc(db, "t_monthly_sales", docId), fd);
-            count++;
         }
+
+        // 重複防止のクリーンアップ
+        const oldDocsQ = query(collection(db, "t_monthly_sales"), 
+            where("store_id", "==", agg.data.store_id), where("year_month", "==", agg.data.year_month), 
+            where("dinii_id", "==", dId), where("is_total", "==", true)
+        );
+        const oldDocsSnap = await getDocs(oldDocsQ);
+        const batch = writeBatch(db);
+        oldDocsSnap.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+
+        const docId = `${agg.data.store_id}_${agg.data.year_month}_${dId}_TOTAL`;
+        await setDoc(doc(db, "t_monthly_sales", docId), agg.data);
+        count++;
     }
-    logFn(`インポート完了（${count} 品目のデータを最新に更新しました）`, 'green');
+    logFn(`インポート完了（${count} 品目のデータを最新に集計・更新しました）`, 'green');
 }
