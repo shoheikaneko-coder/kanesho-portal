@@ -1,5 +1,5 @@
 import { db } from './firebase.js';
-import { collection, doc, setDoc, getDocs, orderBy, query, where, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, doc, setDoc, getDocs, orderBy, query, where, updateDoc, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { processDiniiCSV as processDiniiMasterCSV } from './dinii_import.js';
 
 const SCHEMA_MAP = {
@@ -47,19 +47,12 @@ const SCHEMA_MAP = {
 };
 
 const ATTENDANCE_TYPE_MAP = {
-    '出勤': 'check_in',
-    '退勤': 'check_out',
-    '休憩開始': 'break_start',
-    '休憩終了': 'break_end',
-    'check_in': 'check_in',
-    'check_out': 'check_out',
-    'break_start': 'break_start',
-    'break_end': 'break_end'
+    '出勤': 'check_in', '退勤': 'check_out', '休憩開始': 'break_start', '休憩終了': 'break_end'
 };
 
 const NUMERIC_FIELDS = ['amount', 'customer_count', 'cash_diff', 'total_labor_hours', 'late_night_labor_hours', 'attendance_days', 'seat_count', 'quantity_sold', 'unit_price', 'total_sales'];
 
-function normalize(s) { return String(s).replace(/[\s\u3000]/g, '').toLowerCase(); }
+function normalize(s) { return String(s || "").replace(/[\s\u3000]/g, '').toLowerCase(); }
 
 function getVal(data, keys) {
     if (!data) return undefined;
@@ -82,7 +75,7 @@ function parseTime(val) {
         const m = parseInt(parts[1], 10) || 0;
         return h + (m / 60);
     }
-    return Number(s.replace(/[^\d.-]/g, '')) || 0;
+    return Number(String(val).replace(/[^\d.-]/g, '')) || 0;
 }
 
 function normalizeDate(val) {
@@ -103,10 +96,8 @@ function normalizeDate(val) {
 export async function processFile(file, logFn) {
     const arrayBuffer = await file.arrayBuffer();
     if (file.name.endsWith('.csv')) {
-        logFn("CSVファイルを検出しました。読み込みを開始します...");
         const decoder = new TextDecoder('shift-jis');
         const text = decoder.decode(arrayBuffer);
-        
         if (text.includes('メニューID') || text.includes('商品コード') || text.includes('dinii')) {
             if (text.includes('数量') || text.includes('出数') || text.includes('売上金額') || text.includes('販売金額')) {
                 return await processDiniiCSV(text, file.name, logFn);
@@ -121,110 +112,65 @@ export async function processFile(file, logFn) {
 }
 
 async function processExcelWorkbook(workbook, logFn) {
-    const checkedSheets = workbook.SheetNames.filter(name => {
-        const clean = normalize(name);
-        return SCHEMA_MAP[clean] || clean === 'stores' || clean === 'm_stores';
-    });
-    if (checkedSheets.length === 0) {
-        logFn("対象となるシートが見つかりませんでした。", 'red');
-        return;
-    }
-    for (const sheetName of checkedSheets) {
-        logFn(`[${sheetName}] 処理開始...`);
+    for (const sheetName of workbook.SheetNames) {
+        const clean = normalize(sheetName);
+        if (!SCHEMA_MAP[clean] && clean !== 'stores' && clean !== 'm_stores') continue;
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "", blankrows: false });
-        let colName = sheetName.trim();
-        const cleanName = normalize(colName);
-        if (cleanName === 'stores' || cleanName === 'm_stores') colName = 'm_stores';
+        let colName = (clean === 'stores' || clean === 'm_stores') ? 'm_stores' : clean;
         const map = SCHEMA_MAP[colName];
-        if (!map) continue;
-        for (let i = 0; i < jsonData.length; i++) {
-            const row = jsonData[i];
+        for (const row of jsonData) {
             const finalData = {};
-            Object.keys(map).forEach(key => {
-                let val = getVal(row, map[key]);
-                if (key === 'date') val = normalizeDate(val);
-                if (['total_labor_hours', 'late_night_labor_hours'].includes(key)) val = parseTime(val);
-                else if (NUMERIC_FIELDS.includes(key)) val = Number(String(val).replace(/[^\d.-]/g, '')) || 0;
-                finalData[key] = val !== undefined ? val : "";
+            Object.keys(map).forEach(k => {
+                let v = getVal(row, map[k]);
+                if (k === 'date') v = normalizeDate(v);
+                else if (NUMERIC_FIELDS.includes(k)) v = Number(String(v || 0).replace(/[^\d.-]/g, '')) || 0;
+                finalData[k] = v !== undefined ? v : "";
             });
-            if (colName === 't_attendance' && finalData.type) {
-                const mapped = ATTENDANCE_TYPE_MAP[finalData.type];
-                if (mapped) finalData.type = mapped;
-            }
-            if (finalData.date) {
-                finalData.year_month = finalData.date.substring(0, 7);
-            }
-            let docId = null;
-            if (colName === 't_performance' && finalData.date && finalData.store_id) docId = `${finalData.store_id}_${finalData.date}`;
-            else if (colName === 'm_stores' && finalData.store_id) docId = String(finalData.store_id);
-            const docRef = docId ? doc(db, colName, docId) : doc(collection(db, colName));
-            await setDoc(docRef, finalData);
+            let docId = (colName === 't_performance' && finalData.date && finalData.store_id) ? `${finalData.store_id}_${finalData.date}` : (colName === 'm_stores' ? String(finalData.store_id) : null);
+            await setDoc(docId ? doc(db, colName, docId) : doc(collection(db, colName)), finalData);
         }
-        logFn(`[${sheetName}] 完了`, 'green');
     }
 }
 
-const performanceCache = {};
 async function getOperatingDates(storeId, yearMonth) {
-    const cacheKey = `${storeId}_${yearMonth}`;
-    if (performanceCache[cacheKey]) return performanceCache[cacheKey];
     const dates = [];
-    try {
-        const q = query(collection(db, "t_performance"), where("store_id", "==", storeId), where("year_month", "==", yearMonth));
-        const snap = await getDocs(q);
-        snap.forEach(d => { if (d.data().date) dates.push(d.data().date); });
-    } catch (e) { console.error(e); }
-    performanceCache[cacheKey] = dates.sort();
-    return performanceCache[cacheKey];
+    const q = query(collection(db, "t_performance"), where("store_id", "==", storeId), where("year_month", "==", yearMonth));
+    const snap = await getDocs(q);
+    snap.forEach(d => { if (d.data().date) dates.push(d.data().date); });
+    return dates.sort();
 }
 
 async function processCSV(text, filename, logFn) {
     const rows = text.split(/\r?\n/).filter(line => line.trim() !== "").map(line => line.split(','));
     const headers = rows[0].map(h => h.trim().replace(/^"/, '').replace(/"$/, ''));
     const data = rows.slice(1).map(r => r.map(c => c.replace(/^"/, '').replace(/"$/, '')));
-    const storeMapByName = {};
+    const storeMap = {};
     const snap = await getDocs(collection(db, "m_stores"));
-    snap.forEach(d => {
-        const s = d.data();
-        if (s.store_name) storeMapByName[normalize(s.store_name)] = s.store_id; 
-    });
-    let targetYM = "";
+    snap.forEach(d => { if (d.data().store_name) storeMap[normalize(d.data().store_name)] = d.data().store_id; });
     const m = filename.match(/(\d{4})[-_]?(\d{2})/);
-    if (m) targetYM = `${m[1]}-${m[2]}`;
-    else targetYM = prompt(`[${filename}] の対象年月を yyyy-mm 形式で入力してください`, new Date().toISOString().substring(0, 7));
+    const targetYM = m ? `${m[1]}-${m[2]}` : prompt("yyyy-mm:", new Date().toISOString().substring(0, 7));
     if (!targetYM) return;
-    logFn(`勤怠データの同期中...`);
-    let count = 0;
-    for (let i = 0; i < data.length; i++) {
-        const rowArr = data[i];
-        const rowObj = {};
-        headers.forEach((h, idx) => rowObj[h] = rowArr[idx]);
-        const 所属名 = getVal(rowObj, ['所属名', '店舗名', 'store_name']);
-        const storeId = 所属名 ? storeMapByName[normalize(所属名)] : null;
+    for (const rowArr of data) {
+        const rowObj = {}; headers.forEach((h, idx) => rowObj[h] = rowArr[idx]);
+        const storeId = storeMap[normalize(getVal(rowObj, ['所属名', '店舗名']))];
         if (!storeId) continue;
-        const totalH = parseTime(getVal(rowObj, ['総労働時間', 'total_labor_hours']));
-        const staffId = getVal(rowObj, ['従業員コード', 'staff_id']);
-        const staffName = getVal(rowObj, ['名前', '氏名', 'staff_name']);
+        const totalH = parseTime(getVal(rowObj, ['総労働時間']));
+        const staffId = getVal(rowObj, ['従業員コード']);
+        const staffName = getVal(rowObj, ['名前']);
         const opDates = await getOperatingDates(storeId, targetYM);
-        if (opDates.length > 0) {
-            const dailyH = totalH / opDates.length;
-            for (const d of opDates) {
-                const finalData = { staff_id: staffId, staff_name: staffName, total_labor_hours: dailyH, store_id: storeId, date: d, year_month: targetYM };
-                const docId = `${storeId}_${staffId}_${d}`;
-                await setDoc(doc(db, "t_attendance", docId), finalData);
-            }
-            count++;
+        for (const d of opDates) {
+            const finalData = { staff_id: staffId, staff_name: staffName, total_labor_hours: totalH / opDates.length, store_id: storeId, date: d, year_month: targetYM };
+            await setDoc(doc(db, "t_attendance", `${storeId}_${staffId}_${d}`), finalData);
         }
     }
-    logFn(`完了`, 'green');
 }
 
 /**
  * Dinii売上実績CSV専用のインポート処理
  */
 async function processDiniiCSV(text, filename, logFn) {
-    const rows = text.split(/\r?\n/).filter(line => line.trim() !== "").map(line => line.split(','));
+    const rows = text.split(/\r?\n/).filter(l => l.trim() !== "").map(l => l.split(','));
     const headers = rows[0].map(h => h.trim().replace(/^"/, '').replace(/"$/, ''));
     const data = rows.slice(1).map(r => r.map(c => c.replace(/^"/, '').replace(/"$/, '')));
 
@@ -232,79 +178,52 @@ async function processDiniiCSV(text, filename, logFn) {
     const storesSnap = await getDocs(collection(db, "m_stores"));
     storesSnap.forEach(d => {
         const s = d.data();
-        const sid = s.store_id || d.id;
-        if (s.dinii_store_id) storeMapByDiniiId[normalize(s.dinii_store_id)] = sid;
+        if (s.dinii_store_id) storeMapByDiniiId[normalize(s.dinii_store_id)] = s.store_id || d.id;
     });
 
-    let targetYM = "";
-    if (window._import_context?.yearMonth) {
-        targetYM = window._import_context.yearMonth;
-    } else {
-        const m = filename.match(/(\d{4})[-_]?(\d{2})/);
-        if (m) targetYM = `${m[1]}-${m[2]}`;
-        else targetYM = prompt(`[${filename}] yyyy-mm:`, new Date().toISOString().substring(0, 7));
-    }
+    const m = filename.match(/(\d{4})[-_]?(\d{2})/);
+    const targetYM = window._import_context?.yearMonth || (m ? `${m[1]}-${m[2]}` : prompt("yyyy-mm:", new Date().toISOString().substring(0, 7)));
     if (!targetYM) return;
 
-    let storeIdContext = window._import_context?.storeId || "";
+    const storeIdContext = window._import_context?.storeId || "";
     logFn(`Dinii売上データの集計中 (${targetYM})...`);
     
-    // マスタ同期用キャッシュ
     const menusSnap = await getDocs(collection(db, "m_menus"));
     const menuItemsMap = {}; 
-    menusSnap.forEach(d => {
-        const m = d.data();
-        if (m.dinii_id) menuItemsMap[m.dinii_id] = { docId: d.id, ...m };
-    });
+    menusSnap.forEach(d => { if (d.data().dinii_id) menuItemsMap[d.data().dinii_id] = { docId: d.id, ...d.data() }; });
 
     const menuGroups = {}; 
     const map = SCHEMA_MAP.t_monthly_sales;
 
-    // --- ここからループ開始 ---
-    for (let i = 0; i < data.length; i++) {
-        const rowArr = data[i];
+    for (const rowArr of data) {
         if (rowArr.length < 2) continue;
-        const rowObj = {};
-        headers.forEach((h, idx) => rowObj[h] = rowArr[idx]);
+        const rowObj = {}; headers.forEach((h, idx) => rowObj[h] = rowArr[idx]);
 
-        const csvDiniiStoreId = getVal(rowObj, ['店舗ID', '店舗 ID', 'StoreID']);
-        const mappedSid = csvDiniiStoreId ? storeMapByDiniiId[normalize(csvDiniiStoreId)] : null;
-        const finalStoreId = mappedSid || storeIdContext;
-        if (!finalStoreId) continue;
+        const sid = storeMapByDiniiId[normalize(getVal(rowObj, ['店舗ID', '店舗 ID', 'StoreID']))] || storeIdContext;
+        if (!sid) continue;
 
         const diniiId = getVal(rowObj, map.dinii_id);
         if (!diniiId) continue;
 
-        const qty = parseFloat(getVal(rowObj, map.quantity_sold)) || 0;
+        // 【重要】カンマを除去してから数値化する
+        const rawQty = getVal(rowObj, map.quantity_sold);
+        const qty = parseFloat(String(rawQty || 0).replace(/[^\d.-]/g, '')) || 0;
         const choiceId = getVal(rowObj, map.choice_id);
-        const isActuallyEmptyChoice = (!choiceId || choiceId === "" || choiceId === "null" || choiceId === "other"); // otherも合計扱いにする可能性を考慮
 
-        const finalData = {
-            store_id: finalStoreId,
-            year_month: targetYM,
-            dinii_id: diniiId,
-            updated_at: new Date().toISOString()
-        };
-
-        Object.keys(map).forEach(key => {
-            if (['store_id', 'year_month', 'dinii_id'].includes(key)) return;
-            let val = getVal(rowObj, map[key]);
-            if (key === 'quantity_sold') val = qty;
-            if (key === 'unit_price' || key === 'total_sales') val = parseFloat(String(val).replace(/[^\d.-]/g, '')) || 0;
-            finalData[key] = val !== undefined ? val : "";
+        const finalData = { store_id: sid, year_month: targetYM, dinii_id: diniiId, updated_at: new Date().toISOString() };
+        Object.keys(map).forEach(k => {
+            if (['store_id', 'year_month', 'dinii_id'].includes(k)) return;
+            let v = getVal(rowObj, map[k]);
+            if (k === 'quantity_sold') v = qty;
+            else if (NUMERIC_FIELDS.includes(k)) v = parseFloat(String(v || 0).replace(/[^\d.-]/g, '')) || 0;
+            finalData[k] = v !== undefined ? v : "";
         });
 
-        if (!finalData.total_sales || finalData.total_sales === 0) {
-            finalData.total_sales = (finalData.quantity_sold || 0) * (finalData.unit_price || 0);
-        }
+        if (!finalData.total_sales) finalData.total_sales = (finalData.quantity_sold || 0) * (finalData.unit_price || 0);
 
-        if (!menuGroups[diniiId]) {
-            menuGroups[diniiId] = { totalRow: null, maxQtyRow: null, maxQty: -1 };
-        }
-
+        if (!menuGroups[diniiId]) menuGroups[diniiId] = { totalRow: null, maxQtyRow: null, maxQty: -1 };
         const entry = { data: finalData, choiceId: choiceId || 'main', qty: qty };
 
-        // 判定ロジック: チョイスIDが空なら合計行、そうでなければ最大値候補
         if (!choiceId || choiceId === "" || choiceId === "null") {
             menuGroups[diniiId].totalRow = entry;
         } else {
@@ -320,32 +239,34 @@ async function processDiniiCSV(text, filename, logFn) {
     for (const mId in menuGroups) {
         const group = menuGroups[mId];
         const winner = group.totalRow || group.maxQtyRow;
-        
         if (winner) {
             winner.data.is_total = true;
-            const finalData = winner.data;
+            const fd = winner.data;
 
             // マスタ同期
             if (menuItemsMap[mId]) {
                 const master = menuItemsMap[mId];
-                if (master.name !== finalData.menu_name || master.sales_price !== finalData.unit_price) {
-                    await updateDoc(doc(db, "m_menus", master.docId), {
-                        name: finalData.menu_name,
-                        sales_price: finalData.unit_price,
-                        updated_at: new Date().toISOString()
-                    });
+                if (master.name !== fd.menu_name || master.sales_price !== fd.unit_price) {
+                    await updateDoc(doc(db, "m_menus", master.docId), { name: fd.menu_name, sales_price: fd.unit_price, updated_at: new Date().toISOString() });
                 }
             }
 
-            // 【重要】確実に上書きするためのID生成ルール
-            // 以前の不整合なデータ（_otherなど）を上書き・排除するため、合計行は必ず _TOTAL サフィックスで保存する
-            const docId = `${finalData.store_id}_${targetYM}_${mId}_TOTAL`;
-            
-            // 以前の形式（_mainや_otherなど）で保存された is_total: true のデータが残っている可能性を排除するため、
-            // 念のためこのメニューの古いデータを特定して削除する（もしIDが異なる場合）
-            // ※これは少し重い処理になるため、まずは固定IDでの上書きを優先します。
-            
-            await setDoc(doc(db, "t_monthly_sales", docId), finalData);
+            // 【重要】重複防止のためのクリーンアップ
+            // このメニューIDに紐付く古い「合計行（is_total: true）」のデータをすべて削除する
+            const oldDocsQ = query(collection(db, "t_monthly_sales"), 
+                where("store_id", "==", fd.store_id), 
+                where("year_month", "==", fd.year_month), 
+                where("dinii_id", "==", mId),
+                where("is_total", "==", true)
+            );
+            const oldDocsSnap = await getDocs(oldDocsQ);
+            const batch = writeBatch(db);
+            oldDocsSnap.forEach(d => batch.delete(d.ref));
+            await batch.commit();
+
+            // 新しいデータを固定IDで保存
+            const docId = `${fd.store_id}_${fd.year_month}_${mId}_TOTAL`;
+            await setDoc(doc(db, "t_monthly_sales", docId), fd);
             count++;
         }
     }
