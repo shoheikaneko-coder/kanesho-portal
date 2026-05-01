@@ -212,7 +212,7 @@ async function processCSV(text, filename, logFn) {
     const snap = await getDocs(collection(db, "m_stores"));
     snap.forEach(d => {
         const s = d.data();
-        if (s.store_name) storeMapByName[normalize(s.store_name)] = d.data().store_id; // id フィールドではなく store_id を使う
+        if (s.store_name) storeMapByName[normalize(s.store_name)] = d.data().store_id; 
     });
 
     let targetYM = "";
@@ -237,7 +237,6 @@ async function processCSV(text, filename, logFn) {
         const staffId = getVal(rowObj, ['従業員コード', 'staff_id']);
         const staffName = getVal(rowObj, ['名前', '氏名', 'staff_name']);
         
-        // 営業日の取得
         const opDates = await getOperatingDates(storeId, targetYM);
         
         if (opDates.length > 0) {
@@ -250,18 +249,17 @@ async function processCSV(text, filename, logFn) {
                     staff_name: staffName,
                     total_labor_hours: dailyH,
                     late_night_labor_hours: dailyMidH,
-                    attendance_days: 1 / opDates.length, // 月間で計1日になるように按分
+                    attendance_days: 1 / opDates.length,
                     store_id: storeId,
                     date: d,
                     year_month: targetYM,
-                    timestamp: `${d}T12:00:00Z` // ダミーのタイムスタンプ
+                    timestamp: `${d}T12:00:00Z`
                 };
                 const docId = `${storeId}_${staffId}_${d}`;
                 await setDoc(doc(db, "t_attendance", docId), finalData);
             }
             count++;
         } else {
-            // 営業日が見つからない場合は1日に全投入
             logFn(`[警告] ${所属名} の ${targetYM} の営業データが見つかりません。1日にまとめて登録します。`, 'orange');
             const d = `${targetYM}-01`;
             const finalData = {
@@ -291,16 +289,13 @@ async function processDiniiCSV(text, filename, logFn) {
     const headers = rows[0].map(h => h.trim().replace(/^"/, '').replace(/"$/, ''));
     const data = rows.slice(1).map(r => r.map(c => c.replace(/^"/, '').replace(/"$/, '')));
 
-    const storeMapByName = {};
-    const storeMapByDiniiId = {}; // Dinii店舗IDからの紐付け用
+    const storeMapByDiniiId = {};
     const snap = await getDocs(collection(db, "m_stores"));
     snap.forEach(d => {
         const s = d.data();
         const sid = s.store_id || d.id;
-        if (s.store_name) storeMapByName[normalize(s.store_name)] = sid;
         if (s.dinii_store_id) storeMapByDiniiId[normalize(s.dinii_store_id)] = sid;
     });
-
 
     let targetYM = "";
     if (window._import_context?.yearMonth) {
@@ -313,86 +308,98 @@ async function processDiniiCSV(text, filename, logFn) {
     if (!targetYM) return;
 
     let storeIdContext = window._import_context?.storeId || "";
-    if (!storeIdContext) {
-        logFn("警告: インポート先店舗が選択されていません。CSV内の店舗IDによる自動紐付けを試みます。", 'orange');
-    }
-
-
-    logFn(`Dinii売上データのインポート中 (${targetYM})...`);
-    let count = 0;
-    const map = SCHEMA_MAP.t_monthly_sales;
-
-    // 店舗の全メニューマスタを取得（Dinii連携用）
-    const menusSnap = await getDocs(query(collection(db, "m_menus")));
-    const menuItemsMap = {}; // dinii_id -> { docId, itemId, name, sales_price }
+    logFn(`Dinii売上データの集計中 (${targetYM})...`);
+    
+    // マスタ同期用のキャッシュを取得
+    const menusSnap = await getDocs(collection(db, "m_menus"));
+    const menuItemsMap = {}; 
     menusSnap.forEach(d => {
         const m = d.data();
         if (m.dinii_id) menuItemsMap[m.dinii_id] = { docId: d.id, ...m };
     });
 
+    const menuGroups = {}; // menuId -> { totalRow: null, maxQtyRow: null, maxQty: -1 }
+    const map = SCHEMA_MAP.t_monthly_sales;
+
     for (let i = 0; i < data.length; i++) {
         const rowArr = data[i];
+        if (rowArr.length < 2) continue;
         const rowObj = {};
         headers.forEach((h, idx) => rowObj[h] = rowArr[idx]);
 
-        // 店舗IDの特定 (CSV内のDinii店舗IDを優先)
         const csvDiniiStoreId = getVal(rowObj, ['店舗ID', '店舗 ID', 'StoreID']);
         const mappedSid = csvDiniiStoreId ? storeMapByDiniiId[normalize(csvDiniiStoreId)] : null;
         const finalStoreId = mappedSid || storeIdContext;
+        if (!finalStoreId) continue;
 
-        if (!finalStoreId) {
-            if (i === 0) logFn("エラー: 店舗の紐付けに失敗しました。店舗マスタのDinii店舗IDを確認してください。", 'red');
-            continue;
-        }
+        const diniiId = getVal(rowObj, map.dinii_id);
+        if (!diniiId) continue;
+
+        const qty = parseFloat(getVal(rowObj, map.quantity_sold)) || 0;
+        const choiceId = getVal(rowObj, map.choice_id);
+        const isActuallyEmptyChoice = (!choiceId || choiceId === "" || choiceId === "null");
 
         const finalData = {
             store_id: finalStoreId,
             year_month: targetYM,
+            dinii_id: diniiId,
             updated_at: new Date().toISOString()
         };
 
-
         Object.keys(map).forEach(key => {
-            if (['store_id', 'year_month'].includes(key)) return;
+            if (['store_id', 'year_month', 'dinii_id'].includes(key)) return;
             let val = getVal(rowObj, map[key]);
-            if (NUMERIC_FIELDS.includes(key)) val = Number(String(val).replace(/[^\d.-]/g, '')) || 0;
+            if (key === 'quantity_sold') val = qty;
+            if (key === 'unit_price' || key === 'total_sales') val = parseFloat(String(val).replace(/[^\d.-]/g, '')) || 0;
             finalData[key] = val !== undefined ? val : "";
         });
 
-        // チョイスID判定
-        const choiceId = getVal(rowObj, map.choice_id);
-        finalData.is_total = (!choiceId || choiceId === "");
+        // 売上金額の再計算 (単価 * 数量) ※CSVの値が不安定な場合があるため
+        if (!finalData.total_sales || finalData.total_sales === 0) {
+            finalData.total_sales = (finalData.quantity_sold || 0) * (finalData.unit_price || 0);
+        }
 
-        // 売上金額の再計算 (販売数 * 売価(税抜))
-        finalData.total_sales = (finalData.quantity_sold || 0) * (finalData.unit_price || 0);
+        if (!menuGroups[diniiId]) {
+            menuGroups[diniiId] = { totalRow: null, maxQtyRow: null, maxQty: -1 };
+        }
 
-        if (!finalData.dinii_id && !finalData.menu_name) continue;
+        const entry = { data: finalData, choiceId: choiceId || 'main', qty: qty };
 
-        // マスタ同期: Dinii ID が一致し、かつ合計行の場合のみ実行
-        if (finalData.dinii_id && finalData.is_total && menuItemsMap[finalData.dinii_id]) {
-            const master = menuItemsMap[finalData.dinii_id];
-            // 名称または価格が異なる場合に更新
-            if (master.name !== finalData.menu_name || master.sales_price !== finalData.unit_price) {
-                await updateDoc(doc(db, "m_menus", master.docId), {
-                    name: finalData.menu_name,
-                    sales_price: finalData.unit_price,
-                    updated_at: new Date().toISOString()
-                });
-                // 更新後、m_items 名も同期
-                if (master.item_id) {
-                    await updateDoc(doc(db, "m_items", master.item_id), {
-                        name: finalData.menu_name,
+        if (isActuallyEmptyChoice) {
+            menuGroups[diniiId].totalRow = entry;
+        } else {
+            if (qty > menuGroups[diniiId].maxQty) {
+                menuGroups[diniiId].maxQty = qty;
+                menuGroups[diniiId].maxQtyRow = entry;
+            }
+        }
+    }
+
+    logFn(`データベースへの書き込みを開始します...`);
+    let count = 0;
+    for (const mId in menuGroups) {
+        const group = menuGroups[mId];
+        const winner = group.totalRow || group.maxQtyRow;
+        
+        if (winner) {
+            winner.data.is_total = true;
+            
+            // マスタ同期（名称や価格の反映）
+            if (menuItemsMap[mId]) {
+                const master = menuItemsMap[mId];
+                if (master.name !== winner.data.menu_name || master.sales_price !== winner.data.unit_price) {
+                    await updateDoc(doc(db, "m_menus", master.docId), {
+                        name: winner.data.menu_name,
+                        sales_price: winner.data.unit_price,
                         updated_at: new Date().toISOString()
                     });
                 }
             }
+
+            const docId = `${winner.data.store_id}_${targetYM}_${mId}_${winner.choiceId}`;
+            await setDoc(doc(db, "t_monthly_sales", docId), winner.data);
+            count++;
         }
-
-        // ドキュメントIDの生成 (行番号 _i を排除し、データ固有のキーにすることで重複保存を防止)
-        const docId = `${finalStoreId}_${targetYM}_${finalData.dinii_id || 'no_id'}_${choiceId || 'main'}`;
-
-        await setDoc(doc(db, "t_monthly_sales", docId), finalData);
-        count++;
     }
-    logFn(`[${filename}] 完了（${count} 品目の売上データをインポートしました）`, 'green');
+    logFn(`[${filename}] インポート完了（${count} 品目のデータを更新しました）`, 'green');
 }
