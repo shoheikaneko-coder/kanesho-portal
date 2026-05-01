@@ -310,7 +310,7 @@ function handleSort(key, type) {
         state.asc = !state.asc;
     } else {
         state.key = key;
-        state.asc = false; // デフォルトは降順（大きい順）
+        state.asc = false;
     }
 
     updateSortIcons();
@@ -318,7 +318,14 @@ function handleSort(key, type) {
 }
 
 function refreshAbcDisplay() {
-    const filtered = lastResults.filter(r => {
+    const filtered = getFilteredResults();
+    assignAbcRanks(filtered, abcMetric);
+    renderCharts(filtered);
+    renderTables(filtered);
+}
+
+function getFilteredResults() {
+    return lastResults.filter(r => {
         // お通し除外フィルタ
         if (!includeOtoshi && r.category === 'お通し') return false;
         
@@ -329,10 +336,6 @@ function refreshAbcDisplay() {
         
         return true;
     });
-
-    assignAbcRanks(filtered, abcMetric);
-    renderCharts(filtered);
-    renderTables(filtered);
 }
 
 function assignAbcRanks(data, metric = 'profit') {
@@ -364,7 +367,11 @@ function updateSortIcons() {
 }
 
 function renderTables(displayData = null) {
-    const dataToUse = displayData || lastResults;
+    let dataToUse = displayData;
+    if (!dataToUse) {
+        dataToUse = getFilteredResults();
+        assignAbcRanks(dataToUse, abcMetric);
+    }
     const probData = [...dataToUse];
     const detailData = [...dataToUse];
 
