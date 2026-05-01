@@ -54,6 +54,8 @@ function injectComponentStyles() {
  */
 export async function renderProductAnalysis(containerId, filters) {
     injectComponentStyles();
+    const container = document.getElementById(containerId);
+    if (!container) return;
     const { storeId, dateFrom, dateTo } = filters;
     
     // UIのスケルトンを表示
