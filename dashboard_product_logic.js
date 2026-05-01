@@ -182,6 +182,40 @@ export async function renderProductAnalysis(containerId, filters) {
         lastResults = results;
         lastTotalCustomers = totalCustomers;
 
+        // グローバルに関数を登録（HTMLのonclickから呼べるように、デバイスに関わらず登録）
+        window._handleProductSort = (key, type) => {
+            handleSort(key, type);
+        };
+
+        window._handleAbcMetricChange = (metric) => {
+            abcMetric = metric;
+            // UI状態の更新 (PC/Mobile両対応)
+            const btns = document.querySelectorAll('.abc-toggle-group .abc-toggle-btn');
+            btns.forEach(b => {
+                const isMatch = (metric === 'profit' && (b.textContent.includes('粗利') || b.innerText.includes('粗利'))) || 
+                                (metric === 'qty' && (b.textContent.includes('出数') || b.innerText.includes('出数')));
+                b.classList.toggle('active', isMatch);
+            });
+            const label = document.getElementById('abc-metric-label');
+            if (label) label.textContent = `(${metric === 'profit' ? '粗利' : '出数'}ベース)`;
+
+            refreshAbcDisplay();
+        };
+
+        window._handleAbcFilterChange = (type, value) => {
+            if (type === 'category') {
+                selectedCategory = value;
+                const chips = document.querySelectorAll('.abc-chip');
+                const labels = { all: '全商品', フード: 'フード', ドリンク: 'ドリンク' };
+                chips.forEach(c => {
+                    c.classList.toggle('active', c.textContent.trim() === labels[value]);
+                });
+            } else if (type === 'otoshi') {
+                includeOtoshi = value;
+            }
+            refreshAbcDisplay();
+        };
+
         // デバイスに応じて描画を振り分け
         if (isMobile) {
             renderProductAnalysisMobile(container);
@@ -289,38 +323,6 @@ function renderProductAnalysisPC(container) {
             </div>
         </div>
     `;
-
-    // グローバルに関数を登録（HTMLのonclickから呼べるように）
-    window._handleProductSort = (key, type) => {
-        handleSort(key, type);
-    };
-
-    window._handleAbcMetricChange = (metric) => {
-        abcMetric = metric;
-        // UI状態の更新
-        const btns = document.querySelectorAll('.abc-toggle-group .abc-toggle-btn');
-        btns.forEach(b => {
-            b.classList.toggle('active', b.textContent === (metric === 'profit' ? '粗利' : '出数'));
-        });
-        const label = document.getElementById('abc-metric-label');
-        if (label) label.textContent = `(${metric === 'profit' ? '粗利' : '出数'}ベース)`;
-
-        refreshAbcDisplay();
-    };
-
-    window._handleAbcFilterChange = (type, value) => {
-        if (type === 'category') {
-            selectedCategory = value;
-            const chips = document.querySelectorAll('.abc-chip');
-            const labels = { all: '全商品', フード: 'フード', ドリンク: 'ドリンク' };
-            chips.forEach(c => {
-                c.classList.toggle('active', c.textContent === labels[value]);
-            });
-        } else if (type === 'otoshi') {
-            includeOtoshi = value;
-        }
-        refreshAbcDisplay();
-    };
 
     // 初期表示
     updateSortIcons();
@@ -475,7 +477,7 @@ function handleSort(key, type) {
     }
 
     updateSortIcons();
-    renderTables();
+    refreshAbcDisplay();
 }
 
 function refreshAbcDisplay() {
