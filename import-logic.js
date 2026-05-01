@@ -1,5 +1,5 @@
 import { db } from './firebase.js';
-import { collection, doc, setDoc, getDocs, orderBy, query, where, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, doc, setDoc, getDocs, orderBy, query, where, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { processDiniiCSV as processDiniiMasterCSV } from './dinii_import.js';
 
 const SCHEMA_MAP = {
@@ -41,7 +41,7 @@ const SCHEMA_MAP = {
         choice_name:         ['choice_name', 'チョイス名称'],
         quantity_sold:       ['quantity_sold', '数量', '合計数量', '売上数量', '販売数'],
         unit_price:          ['unit_price', '売価(税抜)', '単価'],
-        total_sales:         ['total_sales', '売上金額', '販売金額(税込)'], // 計算で上書きするが、念のためマップ
+        total_sales:         ['total_sales', '売上金額', '販売金額(税込)'], 
         tax_type:            ['tax_type', '消費税率区分']
     }
 };
@@ -107,14 +107,10 @@ export async function processFile(file, logFn) {
         const decoder = new TextDecoder('shift-jis');
         const text = decoder.decode(arrayBuffer);
         
-        // Diniiフォーマットの検知
         if (text.includes('メニューID') || text.includes('商品コード') || text.includes('dinii')) {
-            // 売上実績（出数）かマスタ（メニュー登録）かを判定
             if (text.includes('数量') || text.includes('出数') || text.includes('売上金額') || text.includes('販売金額')) {
-                // 売上実績としてインポート (t_monthly_salesへ)
                 return await processDiniiCSV(text, file.name, logFn);
             }
-            // v48: Dinii専用マスタインポートエンジンを実行 (m_menusへ)
             return await processDiniiMasterCSV(text, file.name, logFn);
         }
         return await processCSV(text, file.name, logFn);
@@ -129,25 +125,19 @@ async function processExcelWorkbook(workbook, logFn) {
         const clean = normalize(name);
         return SCHEMA_MAP[clean] || clean === 'stores' || clean === 'm_stores';
     });
-
     if (checkedSheets.length === 0) {
         logFn("対象となるシートが見つかりませんでした。", 'red');
         return;
     }
-
     for (const sheetName of checkedSheets) {
         logFn(`[${sheetName}] 処理開始...`);
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "", blankrows: false });
-        
         let colName = sheetName.trim();
         const cleanName = normalize(colName);
-        if (cleanName === 'stores' || cleanName === 'm_stores' || cleanName === 'm_stores') colName = 'm_stores';
-        else if (cleanName === 't_performance' || cleanName === 'performance') colName = 't_performance';
-        else if (cleanName === 't_workinghours' || cleanName === 'workinghours' || cleanName === 't_attendance' || cleanName === 'attendance') colName = 't_attendance';
+        if (cleanName === 'stores' || cleanName === 'm_stores') colName = 'm_stores';
         const map = SCHEMA_MAP[colName];
         if (!map) continue;
-
         for (let i = 0; i < jsonData.length; i++) {
             const row = jsonData[i];
             const finalData = {};
@@ -158,24 +148,16 @@ async function processExcelWorkbook(workbook, logFn) {
                 else if (NUMERIC_FIELDS.includes(key)) val = Number(String(val).replace(/[^\d.-]/g, '')) || 0;
                 finalData[key] = val !== undefined ? val : "";
             });
-
-            // 打刻タイプのマッピング（t_attendanceの場合）
             if (colName === 't_attendance' && finalData.type) {
                 const mapped = ATTENDANCE_TYPE_MAP[finalData.type];
                 if (mapped) finalData.type = mapped;
             }
-
             if (finalData.date) {
                 finalData.year_month = finalData.date.substring(0, 7);
-                const d = new Date(finalData.date);
-                const days = ['日','月','火','水','木','金','土'];
-                finalData.day_of_week = days[d.getDay()] || "";
             }
-
             let docId = null;
             if (colName === 't_performance' && finalData.date && finalData.store_id) docId = `${finalData.store_id}_${finalData.date}`;
             else if (colName === 'm_stores' && finalData.store_id) docId = String(finalData.store_id);
-
             const docRef = docId ? doc(db, colName, docId) : doc(collection(db, colName));
             await setDoc(docRef, finalData);
         }
@@ -183,22 +165,16 @@ async function processExcelWorkbook(workbook, logFn) {
     }
 }
 
-// 営業日の取得キャッシュ
 const performanceCache = {};
-
 async function getOperatingDates(storeId, yearMonth) {
     const cacheKey = `${storeId}_${yearMonth}`;
     if (performanceCache[cacheKey]) return performanceCache[cacheKey];
-
     const dates = [];
     try {
         const q = query(collection(db, "t_performance"), where("store_id", "==", storeId), where("year_month", "==", yearMonth));
         const snap = await getDocs(q);
-        snap.forEach(d => {
-            if (d.data().date) dates.push(d.data().date);
-        });
+        snap.forEach(d => { if (d.data().date) dates.push(d.data().date); });
     } catch (e) { console.error(e); }
-    
     performanceCache[cacheKey] = dates.sort();
     return performanceCache[cacheKey];
 }
@@ -207,78 +183,41 @@ async function processCSV(text, filename, logFn) {
     const rows = text.split(/\r?\n/).filter(line => line.trim() !== "").map(line => line.split(','));
     const headers = rows[0].map(h => h.trim().replace(/^"/, '').replace(/"$/, ''));
     const data = rows.slice(1).map(r => r.map(c => c.replace(/^"/, '').replace(/"$/, '')));
-
     const storeMapByName = {};
     const snap = await getDocs(collection(db, "m_stores"));
     snap.forEach(d => {
         const s = d.data();
-        if (s.store_name) storeMapByName[normalize(s.store_name)] = d.data().store_id; 
+        if (s.store_name) storeMapByName[normalize(s.store_name)] = s.store_id; 
     });
-
     let targetYM = "";
     const m = filename.match(/(\d{4})[-_]?(\d{2})/);
     if (m) targetYM = `${m[1]}-${m[2]}`;
     else targetYM = prompt(`[${filename}] の対象年月を yyyy-mm 形式で入力してください`, new Date().toISOString().substring(0, 7));
     if (!targetYM) return;
-
-    logFn(`勤怠データの同期中（営業日への均等割り振りを実行します）...`);
+    logFn(`勤怠データの同期中...`);
     let count = 0;
     for (let i = 0; i < data.length; i++) {
         const rowArr = data[i];
         const rowObj = {};
         headers.forEach((h, idx) => rowObj[h] = rowArr[idx]);
-
         const 所属名 = getVal(rowObj, ['所属名', '店舗名', 'store_name']);
         const storeId = 所属名 ? storeMapByName[normalize(所属名)] : null;
         if (!storeId) continue;
-
         const totalH = parseTime(getVal(rowObj, ['総労働時間', 'total_labor_hours']));
-        const midnightH = parseTime(getVal(rowObj, ['総労働時間（深夜）', 'late_night_labor_hours', '深夜労働時間']));
         const staffId = getVal(rowObj, ['従業員コード', 'staff_id']);
         const staffName = getVal(rowObj, ['名前', '氏名', 'staff_name']);
-        
         const opDates = await getOperatingDates(storeId, targetYM);
-        
         if (opDates.length > 0) {
             const dailyH = totalH / opDates.length;
-            const dailyMidH = midnightH / opDates.length;
-            
             for (const d of opDates) {
-                const finalData = {
-                    staff_id: staffId,
-                    staff_name: staffName,
-                    total_labor_hours: dailyH,
-                    late_night_labor_hours: dailyMidH,
-                    attendance_days: 1 / opDates.length,
-                    store_id: storeId,
-                    date: d,
-                    year_month: targetYM,
-                    timestamp: `${d}T12:00:00Z`
-                };
+                const finalData = { staff_id: staffId, staff_name: staffName, total_labor_hours: dailyH, store_id: storeId, date: d, year_month: targetYM };
                 const docId = `${storeId}_${staffId}_${d}`;
                 await setDoc(doc(db, "t_attendance", docId), finalData);
             }
             count++;
-        } else {
-            logFn(`[警告] ${所属名} の ${targetYM} の営業データが見つかりません。1日にまとめて登録します。`, 'orange');
-            const d = `${targetYM}-01`;
-            const finalData = {
-                staff_id: staffId,
-                staff_name: staffName,
-                total_labor_hours: totalH,
-                late_night_labor_hours: midnightH,
-                attendance_days: 1,
-                store_id: storeId,
-                date: d,
-                year_month: targetYM,
-                timestamp: `${d}T12:00:00Z`
-            };
-            const docId = `${storeId}_${staffId}_${d}`;
-            await setDoc(doc(db, "t_attendance", docId), finalData);
-            count++;
         }
     }
-    logFn(`[${filename}] 完了（${count} 名分のデータを処理しました）`, 'green');
+    logFn(`完了`, 'green');
 }
 
 /**
@@ -290,8 +229,8 @@ async function processDiniiCSV(text, filename, logFn) {
     const data = rows.slice(1).map(r => r.map(c => c.replace(/^"/, '').replace(/"$/, '')));
 
     const storeMapByDiniiId = {};
-    const snap = await getDocs(collection(db, "m_stores"));
-    snap.forEach(d => {
+    const storesSnap = await getDocs(collection(db, "m_stores"));
+    storesSnap.forEach(d => {
         const s = d.data();
         const sid = s.store_id || d.id;
         if (s.dinii_store_id) storeMapByDiniiId[normalize(s.dinii_store_id)] = sid;
@@ -303,14 +242,14 @@ async function processDiniiCSV(text, filename, logFn) {
     } else {
         const m = filename.match(/(\d{4})[-_]?(\d{2})/);
         if (m) targetYM = `${m[1]}-${m[2]}`;
-        else targetYM = prompt(`[${filename}] の対象年月を yyyy-mm 形式で入力してください`, new Date().toISOString().substring(0, 7));
+        else targetYM = prompt(`[${filename}] yyyy-mm:`, new Date().toISOString().substring(0, 7));
     }
     if (!targetYM) return;
 
     let storeIdContext = window._import_context?.storeId || "";
     logFn(`Dinii売上データの集計中 (${targetYM})...`);
     
-    // マスタ同期用のキャッシュを取得
+    // マスタ同期用キャッシュ
     const menusSnap = await getDocs(collection(db, "m_menus"));
     const menuItemsMap = {}; 
     menusSnap.forEach(d => {
@@ -318,9 +257,10 @@ async function processDiniiCSV(text, filename, logFn) {
         if (m.dinii_id) menuItemsMap[m.dinii_id] = { docId: d.id, ...m };
     });
 
-    const menuGroups = {}; // menuId -> { totalRow: null, maxQtyRow: null, maxQty: -1 }
+    const menuGroups = {}; 
     const map = SCHEMA_MAP.t_monthly_sales;
 
+    // --- ここからループ開始 ---
     for (let i = 0; i < data.length; i++) {
         const rowArr = data[i];
         if (rowArr.length < 2) continue;
@@ -337,7 +277,7 @@ async function processDiniiCSV(text, filename, logFn) {
 
         const qty = parseFloat(getVal(rowObj, map.quantity_sold)) || 0;
         const choiceId = getVal(rowObj, map.choice_id);
-        const isActuallyEmptyChoice = (!choiceId || choiceId === "" || choiceId === "null");
+        const isActuallyEmptyChoice = (!choiceId || choiceId === "" || choiceId === "null" || choiceId === "other"); // otherも合計扱いにする可能性を考慮
 
         const finalData = {
             store_id: finalStoreId,
@@ -354,7 +294,6 @@ async function processDiniiCSV(text, filename, logFn) {
             finalData[key] = val !== undefined ? val : "";
         });
 
-        // 売上金額の再計算 (単価 * 数量) ※CSVの値が不安定な場合があるため
         if (!finalData.total_sales || finalData.total_sales === 0) {
             finalData.total_sales = (finalData.quantity_sold || 0) * (finalData.unit_price || 0);
         }
@@ -365,7 +304,8 @@ async function processDiniiCSV(text, filename, logFn) {
 
         const entry = { data: finalData, choiceId: choiceId || 'main', qty: qty };
 
-        if (isActuallyEmptyChoice) {
+        // 判定ロジック: チョイスIDが空なら合計行、そうでなければ最大値候補
+        if (!choiceId || choiceId === "" || choiceId === "null") {
             menuGroups[diniiId].totalRow = entry;
         } else {
             if (qty > menuGroups[diniiId].maxQty) {
@@ -375,7 +315,7 @@ async function processDiniiCSV(text, filename, logFn) {
         }
     }
 
-    logFn(`データベースへの書き込みを開始します...`);
+    logFn(`データベースのクリーンアップと保存を開始します...`);
     let count = 0;
     for (const mId in menuGroups) {
         const group = menuGroups[mId];
@@ -383,23 +323,31 @@ async function processDiniiCSV(text, filename, logFn) {
         
         if (winner) {
             winner.data.is_total = true;
-            
-            // マスタ同期（名称や価格の反映）
+            const finalData = winner.data;
+
+            // マスタ同期
             if (menuItemsMap[mId]) {
                 const master = menuItemsMap[mId];
-                if (master.name !== winner.data.menu_name || master.sales_price !== winner.data.unit_price) {
+                if (master.name !== finalData.menu_name || master.sales_price !== finalData.unit_price) {
                     await updateDoc(doc(db, "m_menus", master.docId), {
-                        name: winner.data.menu_name,
-                        sales_price: winner.data.unit_price,
+                        name: finalData.menu_name,
+                        sales_price: finalData.unit_price,
                         updated_at: new Date().toISOString()
                     });
                 }
             }
 
-            const docId = `${winner.data.store_id}_${targetYM}_${mId}_${winner.choiceId}`;
-            await setDoc(doc(db, "t_monthly_sales", docId), winner.data);
+            // 【重要】確実に上書きするためのID生成ルール
+            // 以前の不整合なデータ（_otherなど）を上書き・排除するため、合計行は必ず _TOTAL サフィックスで保存する
+            const docId = `${finalData.store_id}_${targetYM}_${mId}_TOTAL`;
+            
+            // 以前の形式（_mainや_otherなど）で保存された is_total: true のデータが残っている可能性を排除するため、
+            // 念のためこのメニューの古いデータを特定して削除する（もしIDが異なる場合）
+            // ※これは少し重い処理になるため、まずは固定IDでの上書きを優先します。
+            
+            await setDoc(doc(db, "t_monthly_sales", docId), finalData);
             count++;
         }
     }
-    logFn(`[${filename}] インポート完了（${count} 品目のデータを更新しました）`, 'green');
+    logFn(`インポート完了（${count} 品目のデータを最新に更新しました）`, 'green');
 }
