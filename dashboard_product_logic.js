@@ -87,16 +87,117 @@ function injectComponentStyles() {
 }
 
 /**
- * 商品分析（4つの窓）をレンダリングする
+ * 商品分析（4つの窓）をレンダリングする (エントリポイント)
  */
 export async function renderProductAnalysis(containerId, filters) {
     injectComponentStyles();
     const container = document.getElementById(containerId);
     if (!container) return;
+
     const { storeId, dateFrom, dateTo } = filters;
+    const isMobile = window.innerWidth <= 1024;
     
-    // UIのスケルトンを表示
+    // UIのスケルトンを表示 (ローディング)
     container.innerHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 5rem 0; color: var(--text-secondary);">
+            <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 1rem; color: var(--primary);"></i>
+            <p>分析データを集計中...</p>
+        </div>
+    `;
+
+    try {
+        const months = getMonthsInRange(dateFrom, dateTo);
+        let totalCustomers = 0;
+        let monthlySales = [];
+
+        const promises = months.map(async (ym) => {
+            let qPerf = query(collection(db, "t_performance"), where("year_month", "==", ym));
+            if (storeId !== 'all') qPerf = query(qPerf, where("store_id", "==", storeId));
+            const snapPerf = await getDocs(qPerf);
+            snapPerf.forEach(d => totalCustomers += (d.data().customer_count || 0));
+
+            let qSales = query(collection(db, "t_monthly_sales"), where("year_month", "==", ym));
+            if (storeId !== 'all') qSales = query(qSales, where("store_id", "==", storeId));
+            const snapSales = await getDocs(qSales);
+            snapSales.forEach(d => {
+                const data = d.data();
+                if (data.is_total) monthlySales.push(data);
+            });
+        });
+
+        await Promise.all(promises);
+
+        if (monthlySales.length === 0) {
+            container.innerHTML = `<div class="glass-panel" style="padding: 3rem; text-align: center;">該当期間のメニュー別売上データが見つかりません。</div>`;
+            return;
+        }
+
+        const [itemSnap, ingSnap, menuSnap] = await Promise.all([
+            getDocs(collection(db, "m_items")),
+            getDocs(collection(db, "m_ingredients")),
+            getDocs(collection(db, "m_menus"))
+        ]);
+        const cache = {
+            items: itemSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+            ingredients: ingSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+            menus: menuSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+        };
+
+        const productMap = {};
+        monthlySales.forEach(ms => {
+            const key = ms.menu_name;
+            if (!productMap[key]) {
+                const menu = cache.menus.find(m => m.dinii_id === ms.dinii_id || m.menu_name === ms.menu_name);
+                const itemId = menu ? menu.item_id : null;
+                productMap[key] = {
+                    name: ms.menu_name,
+                    qty: 0,
+                    sales: 0,
+                    itemId: itemId,
+                    costPerUnit: itemId ? getEffectivePrice(itemId, cache) : 0
+                };
+            }
+            productMap[key].qty += (ms.quantity_sold || 0);
+            productMap[key].sales += (ms.total_sales || 0);
+        });
+
+        const results = Object.values(productMap).map(p => {
+            const totalCost = p.costPerUnit * p.qty;
+            const profit = p.sales - totalCost;
+            
+            const item = cache.items.find(i => i.id === p.itemId);
+            const category = item ? (item.major_category || item.category || 'その他') : 'その他';
+
+            return {
+                ...p,
+                category: category,
+                cost: totalCost,
+                profit: profit,
+                margin: p.sales > 0 ? Math.round((profit / p.sales) * 1000) / 10 : 0,
+                prob: totalCustomers > 0 ? (p.qty / totalCustomers) * 100 : 0
+            };
+        });
+
+        lastResults = results;
+        lastTotalCustomers = totalCustomers;
+
+        // デバイスに応じて描画を振り分け
+        if (isMobile) {
+            renderProductAnalysisMobile(container);
+        } else {
+            renderProductAnalysisPC(container);
+        }
+
+    } catch (e) {
+        console.error("Product analysis logic error:", e);
+        container.innerHTML = `<div class="glass-panel" style="padding: 3rem; text-align: center; color: var(--danger);">エラーが発生しました: ${e.message}</div>`;
+    }
+}
+
+/**
+ * PC版：商品分析ダッシュボードの描画
+ */
+function renderProductAnalysisPC(container) {
         <!-- グローバル・コントロールバー -->
         <div class="abc-global-bar">
             <div class="abc-chip-group">
@@ -219,90 +320,40 @@ export async function renderProductAnalysis(containerId, filters) {
         refreshAbcDisplay();
     };
 
-    try {
-        const months = getMonthsInRange(dateFrom, dateTo);
-        let totalCustomers = 0;
-        let monthlySales = [];
+    // 初期表示
+    updateSortIcons();
+    refreshAbcDisplay();
+}
 
-        const promises = months.map(async (ym) => {
-            let qPerf = query(collection(db, "t_performance"), where("year_month", "==", ym));
-            if (storeId !== 'all') qPerf = query(qPerf, where("store_id", "==", storeId));
-            const snapPerf = await getDocs(qPerf);
-            snapPerf.forEach(d => totalCustomers += (d.data().customer_count || 0));
-
-            let qSales = query(collection(db, "t_monthly_sales"), where("year_month", "==", ym));
-            if (storeId !== 'all') qSales = query(qSales, where("store_id", "==", storeId));
-            const snapSales = await getDocs(qSales);
-            snapSales.forEach(d => {
-                const data = d.data();
-                if (data.is_total) monthlySales.push(data);
-            });
-        });
-
-        await Promise.all(promises);
-
-        if (monthlySales.length === 0) {
-            container.innerHTML = `<div class="glass-panel" style="padding: 3rem; text-align: center;">該当期間のメニュー別売上データが見つかりません。</div>`;
-            return;
-        }
-
-        const [itemSnap, ingSnap, menuSnap] = await Promise.all([
-            getDocs(collection(db, "m_items")),
-            getDocs(collection(db, "m_ingredients")),
-            getDocs(collection(db, "m_menus"))
-        ]);
-        const cache = {
-            items: itemSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-            ingredients: ingSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-            menus: menuSnap.docs.map(d => ({ id: d.id, ...d.data() }))
-        };
-
-        const productMap = {};
-        monthlySales.forEach(ms => {
-            const key = ms.menu_name;
-            if (!productMap[key]) {
-                const menu = cache.menus.find(m => m.dinii_id === ms.dinii_id || m.menu_name === ms.menu_name);
-                const itemId = menu ? menu.item_id : null;
-                productMap[key] = {
-                    name: ms.menu_name,
-                    qty: 0,
-                    sales: 0,
-                    itemId: itemId,
-                    costPerUnit: itemId ? getEffectivePrice(itemId, cache) : 0
-                };
-            }
-            productMap[key].qty += (ms.quantity_sold || 0);
-            productMap[key].sales += (ms.total_sales || 0);
-        });
-
-        const results = Object.values(productMap).map(p => {
-            const totalCost = p.costPerUnit * p.qty;
-            const profit = p.sales - totalCost;
+/**
+ * スマホ版：商品分析ダッシュボードの描画 (独立した開発スペース)
+ */
+function renderProductAnalysisMobile(container) {
+    // 現在はPC版をベースに、スマホで見やすいように単純化したものを表示（将来的にここを改造する）
+    container.innerHTML = `
+        <div style="padding: 1rem;">
+            <div style="background: #1e293b; color: white; padding: 1rem; border-radius: 12px; margin-bottom: 1rem;">
+                <h3 style="margin:0; font-size: 1rem;"><i class="fas fa-mobile-alt"></i> スマホ版分析モード</h3>
+                <p style="margin: 0.5rem 0 0; font-size: 0.75rem; opacity: 0.8;">※スマホ専用UIを現在構築中です。現在はPC版の簡易版を表示しています。</p>
+            </div>
             
-            const item = cache.items.find(i => i.id === p.itemId);
-            const category = item ? (item.major_category || item.category || 'その他') : 'その他';
+            <div id="mobile-abc-summary" class="glass-panel" style="padding: 1.5rem; margin-bottom: 1rem;">
+                <h4 style="margin: 0 0 1rem; font-size: 0.9rem;">1. ABC分析ランク分布</h4>
+                <div id="product-abc-chart" style="height: 200px;"></div>
+            </div>
 
-            return {
-                ...p,
-                category: category,
-                cost: totalCost,
-                profit: profit,
-                margin: p.sales > 0 ? Math.round((profit / p.sales) * 1000) / 10 : 0,
-                prob: totalCustomers > 0 ? (p.qty / totalCustomers) * 100 : 0
-            };
-        });
+            <div class="glass-panel" style="padding: 1.5rem;">
+                <h4 style="margin: 0 0 1rem; font-size: 0.9rem;">商品別ランキング</h4>
+                <div id="product-detail-body">
+                    <!-- ここに簡易リストを表示予定 -->
+                    <p style="text-align:center; padding: 2rem; color: var(--text-secondary);">詳細リスト準備中...</p>
+                </div>
+            </div>
+        </div>
+    `;
 
-        lastResults = results;
-        lastTotalCustomers = totalCustomers;
-
-        // 初期表示
-        updateSortIcons();
-        refreshAbcDisplay();
-
-    } catch (e) {
-        console.error("Product analysis logic error:", e);
-        container.innerHTML = `<div class="glass-panel" style="padding: 3rem; text-align: center; color: var(--danger);">エラーが発生しました: ${e.message}</div>`;
-    }
+    // 最小限の初期化
+    refreshAbcDisplay();
 }
 
 function handleSort(key, type) {
