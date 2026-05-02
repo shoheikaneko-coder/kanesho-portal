@@ -480,6 +480,7 @@ let selectedCells = []; // [{uid, date}]
 let dailyGoalSales = {};
 let adminMode = false;
 let calendarData = {}; // { YYYY-MM-DD: { type, is_holiday, label } }
+let viewerActiveSlot = null; // 閲覧画面用のアクティブスロット
 
 const injectStyles = () => {
     if (document.getElementById('shift-styles')) return;
@@ -2763,260 +2764,308 @@ async function applyFixedSchedules() {
  */
 
 export const shiftViewerPageHtml = `
-    <div class="animate-fade-in" id="shift-viewer-container" style="max-width: 900px; margin: 0 auto; padding-bottom: 5rem;">
-        <!-- パーソナル・ヘッダー -->
-        <div class="glass-panel" style="padding: 1.5rem; margin-bottom: 2rem; border-left: 5px solid var(--primary); display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, white 0%, #fff5f5 100%);">
-            <div>
-                <h3 id="viewer-user-name" style="margin: 0; font-size: 1.4rem; font-weight: 900; color: var(--primary);">読み込み中...</h3>
-                <p id="viewer-period-label" style="margin: 0.3rem 0 0 0; font-size: 0.9rem; color: var(--text-secondary); font-weight: 700;">確定シフト・ダッシュボード</p>
-            </div>
-            <div style="text-align: right; display: flex; align-items: center; gap: 1rem;">
-                <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 900;">
-                    <i class="fas fa-calendar-check"></i>
+    <div class="animate-fade-in" id="shift-viewer-container" style="max-width: 100%; padding-bottom: 5rem;">
+        
+        <!-- ナビゲーション・アクションバー -->
+        <div class="glass-panel" style="padding: 1rem 1.5rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid var(--primary); background: white;">
+            <div style="display: flex; align-items: center; gap: 1.5rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <button id="btn-viewer-prev" class="btn btn-secondary btn-sm" style="padding: 0.5rem 0.8rem;"><i class="fas fa-chevron-left"></i> 前へ</button>
+                    <button id="btn-viewer-today" class="btn btn-secondary btn-sm" style="padding: 0.5rem 1rem; font-weight: 800;">今日</button>
+                    <button id="btn-viewer-next" class="btn btn-secondary btn-sm" style="padding: 0.5rem 0.8rem;">次へ <i class="fas fa-chevron-right"></i></button>
                 </div>
+                <h3 id="viewer-current-period-label" style="margin: 0; font-size: 1.2rem; font-weight: 900; color: var(--text-primary);">読み込み中...</h3>
+            </div>
+            <div id="viewer-action-area" style="display: flex; align-items: center; gap: 1rem;">
+                <button id="btn-viewer-ics" class="btn btn-primary" style="display: none; font-size: 0.85rem; font-weight: 800;"><i class="fas fa-calendar-plus"></i> カレンダーに追加</button>
             </div>
         </div>
 
-        <div id="viewer-timeline-container" style="display: flex; flex-direction: column; gap: 2rem;">
-            <!-- 各スロット（前半・後半）がここに生成される -->
-            <div style="text-align: center; padding: 4rem; color: var(--text-secondary);">
-                <i class="fas fa-spinner fa-spin fa-2x"></i><br><br>シフトデータを読み込んでいます...
+        <!-- メイングリッド表示エリア -->
+        <div class="glass-panel" style="padding: 0; overflow: hidden; border: 1px solid var(--border); position: relative; background: white;">
+            <div style="overflow-x: auto; max-height: 80vh; overflow-y: auto;">
+                <table id="shift-viewer-grid-table" style="width: 100%; border-collapse: separate; border-spacing: 0; min-width: 1000px;">
+                    <thead id="viewer-grid-header"></thead>
+                    <tbody id="viewer-grid-body"></tbody>
+                </table>
             </div>
         </div>
     </div>
-` + `
+
     <style>
-        .slot-section {
-            position: relative;
-            background: white;
-            border-radius: 16px;
-            padding: 1.5rem;
-            border: 1px solid var(--border);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
+        #shift-viewer-grid-table th, #shift-viewer-grid-table td { 
+            border: 1px solid #f1f5f9; 
+            text-align: center; 
+            padding: 0;
         }
-        .slot-section.past {
+        .viewer-staff-cell { 
+            position: sticky; 
+            left: 0; 
+            z-index: 10; 
+            background: #fff; 
+            padding: 1rem 1.5rem !important; 
+            font-weight: 800; 
+            text-align: left !important; 
+            border-right: 2px solid #e2e8f0 !important;
+            box-shadow: 4px 0 8px rgba(0,0,0,0.03);
+            white-space: nowrap;
+        }
+        .viewer-date-hdr { 
+            position: sticky; 
+            top: 0; 
+            z-index: 20; 
+            background: #f8fafc; 
+            padding: 1rem 0.5rem !important; 
+            font-size: 0.8rem; 
+            font-weight: 900; 
+            min-width: 80px;
+            border-bottom: 2px solid #e2e8f0 !important;
+        }
+        .viewer-staff-cell.is-me {
+            background: #fff5f5;
+            color: var(--primary);
+        }
+        .viewer-date-hdr.is-today {
+            background: #fee2e2;
+            color: #ef4444;
+            border-bottom: 3px solid #ef4444 !important;
+        }
+        .viewer-grid-cell {
+            height: 80px;
+            background: #fff;
+            transition: background 0.2s;
+        }
+        .viewer-grid-cell:hover {
             background: #f1f5f9;
-            opacity: 0.8;
-            filter: grayscale(0.5);
         }
-        .slot-section.current {
-            border: 2px solid var(--primary);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        .viewer-grid-cell.is-today {
+            background: rgba(254, 226, 226, 0.2);
         }
-        .slot-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.2rem;
-            padding-bottom: 0.8rem;
-            border-bottom: 1px dashed var(--border);
-        }
-        .slot-label {
-            font-size: 1.1rem;
-            font-weight: 900;
-            color: var(--text-primary);
-        }
-        .slot-badge {
-            font-size: 0.7rem;
-            padding: 0.2rem 0.6rem;
-            border-radius: 20px;
+        .viewer-shift-box {
+            background: var(--primary);
+            color: white;
+            margin: 4px;
+            padding: 8px 4px;
+            border-radius: 8px;
+            font-size: 0.75rem;
             font-weight: 800;
-        }
-        .badge-past { background: #e2e8f0; color: #64748b; }
-        .badge-current { background: #fee2e2; color: #ef4444; border: 1px solid #fecaca; }
-        .badge-future { background: #f0f9ff; color: #0369a1; }
-        
-        .personal-shift-row {
-            display: flex;
-            align-items: center;
-            padding: 0.8rem;
-            border-radius: 12px;
-            background: #f8fafc;
-            margin-bottom: 0.6rem;
-            gap: 1rem;
-            border: 1px solid transparent;
-        }
-        .personal-shift-row.help {
-            background: #f5f3ff;
-            border-color: #ddd6fe;
-        }
-        
-        .official-stamp {
-            position: absolute;
-            bottom: 15px;
-            right: 25px;
-            width: 75px;
-            height: 75px;
-            border: 4px solid #dc2626;
-            border-radius: 50%;
-            color: #dc2626;
             display: flex;
             flex-direction: column;
-            align-items: center;
             justify-content: center;
-            font-size: 0.85rem;
-            font-weight: 900;
-            line-height: 1.1;
-            transform: rotate(-15deg);
-            opacity: 0.5;
-            pointer-events: none;
-            user-select: none;
-            background: rgba(255,255,255,0.7);
-            z-index: 5;
+            height: calc(100% - 8px);
+            box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);
         }
-        .official-stamp span { font-size: 0.5rem; letter-spacing: 1px; }
-
-        .btn-ics {
-            background: white;
-            color: var(--text-primary);
-            border: 1px solid var(--border);
-            font-size: 0.75rem;
-            padding: 0.4rem 0.8rem;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
+        .viewer-shift-box.is-help {
+            background: #7c3aed;
+            box-shadow: 0 2px 4px rgba(124, 58, 237, 0.2);
         }
-        .btn-ics:hover {
-            background: #f8fafc;
-            border-color: var(--primary);
-            color: var(--primary);
+        .viewer-shift-time {
+            font-size: 1rem;
+            letter-spacing: -0.5px;
+        }
+        .viewer-shift-store {
+            font-size: 0.6rem;
+            opacity: 0.8;
+            margin-top: 2px;
+        }
+        .viewer-holiday-label {
+            font-size: 0.6rem;
+            color: #ef4444;
+            display: block;
+            margin-top: 2px;
         }
     </style>
 `;
 
 export async function initShiftViewerPage() {
-    console.log("Initializing Rolling Shift Dashboard...");
+    console.log("Initializing Team Shift Viewer...");
     const me = JSON.parse(localStorage.getItem('currentUser'));
     if (!me) return;
 
-    document.getElementById('viewer-user-name').textContent = me.Name;
-    const container = document.getElementById('viewer-timeline-container');
-    if (!container) return;
+    const isTablet = (me.Role === 'Tablet' || me.Role === '店舗タブレット');
+    const sid = me.StoreID || me.StoreId || 'UNKNOWN';
 
+    // 1. スロット情報の準備
+    const rollingSlots = getRollingSlots();
+    if (!viewerActiveSlot) {
+        viewerActiveSlot = rollingSlots.find(s => s.isCurrent) || rollingSlots[0];
+    }
+
+    // 2. データの取得 (カレンダー、店舗、全ユーザー、確定シフト)
+    const loader = showLoader();
     try {
-        // 1. ローリング6スロットを取得
-        const slots = getRollingSlots();
+        await fetchCalendarData(sid);
         
-        // 2. 店舗リストを取得 (他店舗名の解決用)
+        // 店舗リスト
         const storeMap = {};
-        try {
-            const storeSnap = await getDocs(collection(db, "m_stores"));
-            storeSnap.forEach(doc => {
-                const d = doc.data();
-                storeMap[String(d.store_id || d.id)] = d.store_name || d.name || '不明な店舗';
-            });
-        } catch (e) { console.warn("Store map fetch error:", e); }
+        const storeSnap = await getDocs(collection(db, "m_stores"));
+        storeSnap.forEach(doc => {
+            const d = doc.data();
+            storeMap[String(d.store_id || d.id)] = d.store_name || d.name || '不明';
+        });
 
-        // 3. 全期間の自分のシフトを一括取得
-        // ※ 複合インデックス制限を避けるため、userIdのみで取得し、メモリ内で日付・ステータスをフィルタリングします
-        const q = query(collection(db, "t_shifts"), 
-            where("userId", "==", me.id)
-        );
-        const snap = await getDocs(q);
-        const allUserShifts = snap.docs.map(d => d.data());
+        // 店舗ユーザーリスト
+        const userSnap = await getDocs(query(collection(db, "m_users"), where("StoreId", "==", sid)));
+        let allUsers = [];
+        userSnap.forEach(d => allUsers.push({ id: d.id, ...d.data() }));
+        // 50音順 or 役職順などのソートがあればここで実施
+        allUsers.sort((a, b) => (a.Name || "").localeCompare(b.Name || ""));
+
+        // 期間内の確定シフトを一括取得
+        const startYMD = formatDateJST(viewerActiveSlot.startDate);
+        const endYMD = formatDateJST(viewerActiveSlot.endDate);
+        const shiftSnap = await getDocs(query(collection(db, "t_shifts"), 
+            where("storeId", "==", sid),
+            where("status", "==", "confirmed"),
+            where("date", ">=", startYMD),
+            where("date", "<=", endYMD)
+        ));
         
-        // メモリ内で絞り込み
-        const overallStart = formatDateJST(slots[0].startDate);
-        const overallEnd = formatDateJST(slots[slots.length-1].endDate);
-        const shiftData = allUserShifts.filter(s => 
-            s.status === "confirmed" && 
-            s.date >= overallStart && 
-            s.date <= overallEnd
-        );
+        const periodShifts = shiftSnap.docs.map(d => d.data());
 
-        // 4. 各スロットの描画
-        container.innerHTML = slots.map(slot => {
-            const slotShifts = shiftData.filter(s => s.date >= formatDateJST(slot.startDate) && s.date <= formatDateJST(slot.endDate));
-            slotShifts.sort((a,b) => a.date.localeCompare(b.date));
+        // ヘルプスタッフの解決（自店舗以外からのシフトがある場合）
+        // ※ 余裕があれば実装。現状は storeId で絞っているため、他店舗から自店舗への応援のみ取得される。
 
-            const isFuture = !slot.isPast && !slot.isCurrent;
-            const isConfirmed = slotShifts.length > 0;
-            
-            let statusBadge = `<span class="slot-badge badge-past">終了</span>`;
-            if (slot.isCurrent) statusBadge = `<span class="slot-badge badge-current">現在</span>`;
-            if (isFuture) statusBadge = `<span class="slot-badge badge-future">予定</span>`;
-
-            let contentHtml = "";
-            if (isConfirmed) {
-                contentHtml = slotShifts.map(s => {
-                    const dateObj = new Date(s.date);
-                    const dayOfWeek = ['日','月','火','水','木','金','土'][dateObj.getDay()];
-                    const dateColor = dateObj.getDay() === 0 ? '#ef4444' : (dateObj.getDay() === 6 ? '#2563eb' : 'var(--text-primary)');
-                    
-                    const shiftStoreId = String(s.storeId || s.StoreID || '');
-                    const isHelp = shiftStoreId !== '' && shiftStoreId !== String(me.StoreID || me.StoreId);
-
-                    return `
-                        <div class="personal-shift-row ${isHelp ? 'help' : ''}">
-                            <div style="flex: 0 0 45px; text-align: center; border-right: 1px solid var(--border); color: ${dateColor};">
-                                <div style="font-size: 0.65rem; font-weight: 700;">${s.date.split('-')[2]}</div>
-                                <div style="font-size: 0.8rem; font-weight: 900;">(${dayOfWeek})</div>
-                            </div>
-                            <div style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.4rem; font-weight: 800; font-size: 1rem;">
-                                <span>${s.start}</span>
-                                <span style="opacity:0.2;">-</span>
-                                <span>${s.end}</span>
-                            </div>
-                            <div style="flex: 1; font-size: 0.75rem; font-weight: 700; color: ${isHelp ? '#7c3aed' : 'var(--text-secondary)'}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                ${isHelp ? `<i class="fas fa-map-marker-alt"></i> ${s.storeName || storeMap[shiftStoreId] || '他店舗'}` : '<i class="fas fa-home"></i> 本店'}
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-                
-                contentHtml += `
-                    <div class="official-stamp">
-                        <div style="font-size: 0.5rem; letter-spacing: 1px; opacity: 0.8;">KANESHO</div>
-                        <div style="font-size: 1.1rem; line-height: 1; margin: 2px 0;">かね将</div>
-                        <div style="font-size: 0.5rem; letter-spacing: 1px; opacity: 0.8;">OFFICIAL</div>
-                    </div>
-                `;
-            } else {
-                if (isFuture) {
-                    contentHtml = `<div style="text-align:center; padding:1.5rem; color:var(--text-secondary); background:#f8fafc; border-radius:12px; border:2px dashed var(--border); font-size: 0.85rem;">
-                        <i class="fas fa-tools" style="margin-right:5px;"></i> 調整中...
-                    </div>`;
-                } else {
-                    contentHtml = `<div style="text-align:center; padding:1rem; color:var(--text-secondary); font-size:0.8rem; opacity: 0.6;">予定はありませんでした</div>`;
-                }
-            }
-
-            return `
-                <div class="slot-section ${slot.isPast ? 'past' : ''} ${slot.isCurrent ? 'current' : ''}" id="slot-${slot.id}">
-                    <div class="slot-header">
-                        <div style="display: flex; align-items: center; gap: 0.6rem;">
-                            <span class="slot-label">${slot.label}</span>
-                            ${statusBadge}
-                        </div>
-                        ${isConfirmed ? `<button class="btn-ics" onclick="window.downloadShiftIcs('${slot.id}')"><i class="fas fa-file-export"></i> カレンダー追加</button>` : ''}
-                    </div>
-                    <div class="slot-content" style="position: relative;">
-                        ${contentHtml}
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-        // ICSダウンロード用に関数をグローバル公開
-        window.downloadShiftIcs = (slotId) => {
-            const slot = slots.find(s => s.id === slotId);
-            if (!slot) return;
-            const targetShifts = shiftData.filter(s => s.date >= formatDateJST(slot.startDate) && s.date <= formatDateJST(slot.endDate));
-            if (targetShifts.length === 0) return;
-            generateAndDownloadIcs(targetShifts, slot.label);
-        };
+        // 3. 描画
+        renderShiftViewerGrid(viewerActiveSlot, allUsers, periodShifts, storeMap, me, isTablet);
+        setupShiftViewerEvents(rollingSlots, sid);
 
     } catch (error) {
-        console.error("Shift Viewer Loading Error:", error);
-        container.innerHTML = `<div style="text-align:center; padding:3rem; color:#ef4444;">
-            <i class="fas fa-exclamation-triangle fa-2x"></i><br><br>
-            データの読み込み中にエラーが発生しました。<br>
-            <span style="font-size:0.8rem; opacity:0.8;">${error.message}</span>
-        </div>`;
+        console.error("Shift Viewer Error:", error);
+    } finally {
+        if (loader) loader.remove();
+    }
+}
+
+function renderShiftViewerGrid(slot, users, shifts, storeMap, me, isTablet) {
+    const header = document.getElementById('viewer-grid-header');
+    const body = document.getElementById('viewer-grid-body');
+    const label = document.getElementById('viewer-current-period-label');
+    const icsBtn = document.getElementById('btn-viewer-ics');
+    if (!header || !body || !label) return;
+
+    label.textContent = `${slot.year}年 ${slot.label}`;
+    
+    // ICSボタンの制御
+    if (icsBtn) {
+        const myShifts = shifts.filter(s => s.userId === me.id);
+        if (!isTablet && myShifts.length > 0) {
+            icsBtn.style.display = 'block';
+            icsBtn.onclick = () => generateAndDownloadIcs(myShifts, slot.label);
+        } else {
+            icsBtn.style.display = 'none';
+        }
+    }
+
+    const todayYMD = formatDateJST(new Date());
+
+    // ヘッダー（日付行）
+    let dates = [];
+    let curr = new Date(slot.startDate);
+    while (curr <= slot.endDate) {
+        dates.push(new Date(curr));
+        curr.setDate(curr.getDate() + 1);
+    }
+
+    header.innerHTML = `
+        <tr>
+            <th class="viewer-staff-cell">スタッフ</th>
+            ${dates.map(d => {
+                const ymd = formatDateJST(d);
+                const isToday = (ymd === todayYMD);
+                const dayStr = d.getDate();
+                const weekStr = ['日','月','火','水','木','金','土'][d.getDay()];
+                const cal = calendarData[ymd] || {};
+                const isHoliday = cal.is_holiday || (d.getDay() === 0);
+                const isSat = (d.getDay() === 6);
+                
+                let color = 'inherit';
+                if (isHoliday) color = '#ef4444';
+                else if (isSat) color = '#2563eb';
+
+                return `
+                    <th class="viewer-date-hdr ${isToday ? 'is-today' : ''}" style="color: ${color};">
+                        <div style="font-size: 1rem;">${dayStr}</div>
+                        <div style="font-size: 0.7rem;">(${weekStr})</div>
+                        ${cal.label ? `<span class="viewer-holiday-label">${cal.label}</span>` : ''}
+                    </th>
+                `;
+            }).join('')}
+        </tr>
+    `;
+
+    // ボディ（従業員行）
+    // 自分の行を先頭に持ってくる（タブレット以外）
+    let sortedUsers = [...users];
+    if (!isTablet) {
+        const myIndex = sortedUsers.findIndex(u => u.id === me.id);
+        if (myIndex > -1) {
+            const myUser = sortedUsers.splice(myIndex, 1)[0];
+            sortedUsers.unshift(myUser);
+        }
+    }
+
+    body.innerHTML = sortedUsers.map(user => {
+        const isMe = (user.id === me.id && !isTablet);
+        return `
+            <tr>
+                <td class="viewer-staff-cell ${isMe ? 'is-me' : ''}">${user.Name || '不明'}</td>
+                ${dates.map(d => {
+                    const ymd = formatDateJST(d);
+                    const isToday = (ymd === todayYMD);
+                    const dayShifts = shifts.filter(s => s.userId === user.id && s.date === ymd);
+                    
+                    return `
+                        <td class="viewer-grid-cell ${isToday ? 'is-today' : ''}">
+                            ${dayShifts.map(s => {
+                                const isHelp = String(s.storeId || '') !== String(me.StoreID || me.StoreId);
+                                return `
+                                    <div class="viewer-shift-box ${isHelp ? 'is-help' : ''}">
+                                        <div class="viewer-shift-time">${s.start}-${s.end}</div>
+                                        ${isHelp ? `<div class="viewer-shift-store">${storeMap[s.storeId] || '他店舗'}</div>` : ''}
+                                    </div>
+                                `;
+                            }).join('')}
+                        </td>
+                    `;
+                }).join('')}
+            </tr>
+        `;
+    }).join('');
+}
+
+function setupShiftViewerEvents(slots, sid) {
+    const prevBtn = document.getElementById('btn-viewer-prev');
+    const nextBtn = document.getElementById('btn-viewer-next');
+    const todayBtn = document.getElementById('btn-viewer-today');
+
+    const currentIndex = slots.findIndex(s => s.id === viewerActiveSlot.id);
+
+    if (prevBtn) {
+        prevBtn.disabled = (currentIndex <= 0);
+        prevBtn.onclick = () => {
+            if (currentIndex > 0) {
+                viewerActiveSlot = slots[currentIndex - 1];
+                initShiftViewerPage();
+            }
+        };
+    }
+
+    if (nextBtn) {
+        nextBtn.disabled = (currentIndex >= slots.length - 1);
+        nextBtn.onclick = () => {
+            if (currentIndex < slots.length - 1) {
+                viewerActiveSlot = slots[currentIndex + 1];
+                initShiftViewerPage();
+            }
+        };
+    }
+
+    if (todayBtn) {
+        todayBtn.onclick = () => {
+            viewerActiveSlot = slots.find(s => s.isCurrent) || slots[0];
+            initShiftViewerPage();
+        };
     }
 }
 

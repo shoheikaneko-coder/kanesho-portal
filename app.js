@@ -710,8 +710,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnHeaderShift) {
         btnHeaderShift.onclick = () => {
             const role = state.currentUser?.Role;
-            // 店舗タブレット以外は「自分のシフト表」へ直接遷移
-            if (role === 'Tablet' || role === '店舗タブレット') return;
+            // 店舗タブレットでも「シフト表」へ遷移可能にする
             window.navigateTo('shift_viewer');
         };
     }
@@ -772,8 +771,7 @@ document.addEventListener('DOMContentLoaded', () => {
             item.onclick = (e) => {
                 const target = e.currentTarget.dataset.target;
                 if (target === 'shift_viewer') {
-                    const role = state.currentUser?.Role;
-                    if (role === 'Tablet' || role === '店舗タブレット') return;
+                    // タブレットでも閲覧可能にするため制限を解除
                 }
                 window.navigateTo(target);
                 headerViewMenu.classList.remove('show');
