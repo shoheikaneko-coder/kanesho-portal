@@ -653,28 +653,46 @@ window.hideMasterSettings = () => {
 };
 
 function renderChecklist(container) {
-    let items = inventoryData.filter(d => (d.確認タイミング || '') === (selectedTiming.id || ''));
-    
+    let items = [];
+    let isGlobalSearch = false;
+
     // 検索フィルタの適用
     if (inventorySearchQuery) {
+        isGlobalSearch = true;
         const q = inventorySearchQuery.toLowerCase();
-        items = items.filter(item => {
+        // 全データから検索
+        items = inventoryData.filter(item => {
             const masterName = (productMap[item.ProductID] || '').toLowerCase();
             const displayName = (item.display_name || '').toLowerCase();
             const location = (item.location_label || item.保管場所 || '').toLowerCase();
             return masterName.includes(q) || displayName.includes(q) || location.includes(q);
         });
-    }
 
-    document.getElementById('inv-current-title').textContent = `${selectedStore.name} / ${selectedTiming.name}`;
+        // 検索結果があるロケーション（棚）は強制的に展開する
+        items.forEach(item => {
+            const loc = item.location_label || item.保管場所 || '未設定';
+            if (collapsedSections.has(loc)) {
+                collapsedSections.delete(loc);
+            }
+        });
+        
+        document.getElementById('inv-current-title').innerHTML = `
+            <span style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">全タイミングから検索中:</span> 
+            <span style="color: var(--primary);">${inventorySearchQuery}</span>
+        `;
+    } else {
+        // 通常時：選択中のタイミングで絞り込み
+        items = inventoryData.filter(d => (d.確認タイミング || '') === (selectedTiming.id || ''));
+        document.getElementById('inv-current-title').textContent = `${selectedStore.name} / ${selectedTiming.name}`;
+    }
     
     const confirmedCount = items.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed)).length;
-    document.getElementById('inv-stats').textContent = `完了: ${confirmedCount} / ${items.length}`;
+    document.getElementById('inv-stats').textContent = `${isGlobalSearch ? 'ヒット' : '完了'}: ${isGlobalSearch ? items.length : confirmedCount + ' / ' + items.length}`;
 
-    renderInventoryTable(container, items);
+    renderInventoryTable(container, items, isGlobalSearch);
 }
 
-function renderInventoryTable(container, items) {
+function renderInventoryTable(container, items, isGlobalSearch) {
     // Sort items by location_label then name
     items.sort((a, b) => {
         const locA = a.location_label || a.保管場所 || '未設定';
@@ -730,7 +748,7 @@ function renderInventoryTable(container, items) {
                             ${isCompleted ? '<i class="fas fa-check-circle" style="color:var(--primary); font-size: 0.9rem;"></i>' : ''}
                         </div>
                         <div class="progress">${confirmedCount} / ${totalCount}</div>
-                        <button class="section-confirm-btn" data-loc="${loc}">
+                        <button class="section-confirm-btn" data-loc="${loc}" style="display: ${isGlobalSearch ? 'none' : 'flex'}">
                             <i class="fas fa-check-double"></i> この棚を完了
                         </button>
                     </div>
@@ -761,7 +779,10 @@ function renderInventoryTable(container, items) {
                         </div>
                     </td>
                     <td>
-                        <div style="font-weight: 800; font-size: 1rem; color: var(--text-primary);">${displayName}</div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <div style="font-weight: 800; font-size: 1rem; color: var(--text-primary);">${displayName}</div>
+                            ${isGlobalSearch ? `<span style="font-size: 0.65rem; background: #f1f5f9; color: #64748b; padding: 0.1rem 0.4rem; border-radius: 4px; font-weight: 700;">${timingMaster[item.確認タイミング] || '未設定'}</span>` : ''}
+                        </div>
                         ${hasCustomName ? `<div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.1rem;">${masterName}</div>` : ''}
                     </td>
                     <td style="text-align: center;">
@@ -800,7 +821,9 @@ function renderInventoryTable(container, items) {
     if (btnSort) {
         btnSort.onclick = () => {
             sortMode = !sortMode;
-            renderInventoryTable(container, items);
+            // 検索中かどうかを判定して渡す
+            const isGlobalSearch = !!inventorySearchQuery;
+            renderInventoryTable(container, items, isGlobalSearch);
         };
     }
 
@@ -916,6 +939,21 @@ function renderInventoryTable(container, items) {
     inputs.forEach(input => {
         input.onfocus = (e) => {
             editingItem = items.find(i => i.id === input.dataset.id);
+            
+            // 検索モード中で、かつ選択中のタイミングと異なる場合、タイミングを同期させる
+            if (isGlobalSearch && editingItem && editingItem.確認タイミング !== (selectedTiming ? selectedTiming.id : null)) {
+                const tName = timingMaster[editingItem.確認タイミング] || "⚠️ タイミング未設定";
+                selectedTiming = { id: editingItem.確認タイミング, name: tName };
+                
+                // サイドバーのハイライトを更新するために描画
+                // ※ただし input のフォーカスが外れないように注意
+                const sidebarTimings = document.getElementById('inv-timing-list');
+                if (sidebarTimings) {
+                    sidebarTimings.querySelectorAll('.timing-item').forEach(item => {
+                        item.classList.toggle('active', item.dataset.code === (editingItem.確認タイミング || ''));
+                    });
+                }
+            }
         };
         
         input.onkeydown = (e) => {
