@@ -189,8 +189,6 @@ export const procurementMobilePageHtml = `
         </style>
     </div>
 `;
-    </div>
-`;
 
 // State
 let selectedScope = 'store'; // 'store' or 'group'
@@ -581,10 +579,6 @@ function renderMainContent(items) {
             `;
         }
     });
-
-    main.innerHTML = html;
-    attachMainContentListeners(main);
-}
 
     main.innerHTML = html;
     attachMainContentListeners(main);

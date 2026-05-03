@@ -899,51 +899,6 @@ function attachInventoryListeners(container) {
         };
     });
 }
-                        ${isShort && !isConfirmed ? `<span style="font-size: 0.7rem; background: #fef2f2; color: #ef4444; border: 1px solid #fee2e2; border-radius: 4px; padding: 0.1rem 0.4rem; font-weight: 700;">不足 -${shortfall}</span>` : ''}
-                    </div>
-                </div>
-                <div style="display: flex; align-items: center; gap: 0.4rem;">
-                    <div style="text-align: right; min-width: 32px; display: ${hideIndicators ? 'none' : 'block'};">
-                        <div style="font-size: 0.6rem; color: var(--text-secondary); line-height: 1;">定数</div>
-                        <div style="font-weight: 700; font-size: 0.8rem;">${parStock}</div>
-                    </div>
-                    <input type="number" step="any" inputmode="decimal" class="item-qty-input" value="${currentQty}" placeholder="0" data-id="${item.id}" style="width: 55px; padding: 0.4rem; font-size: 0.9rem;">
-                    <button class="btn btn-primary btn-confirm-qty" data-id="${item.id}" style="padding: 0.5rem; min-width: 38px; height: 38px;">
-                        <i class="fas fa-check" style="font-size: 0.8rem;"></i>
-                    </button>
-                </div>
-            </div>
-        `;
-    });
-
-    container.innerHTML = html || `<div style="text-align:center; padding: 2rem; color: var(--text-secondary);">該当する品目はありません。</div>`;
-
-    // Listeners
-    container.querySelectorAll('.item-qty-input').forEach(input => {
-        input.onfocus = () => {
-            editingItem = items.find(i => i.id === input.dataset.id);
-            input.select();
-        };
-        input.oninput = (e) => {
-            const item = items.find(i => i.id === input.dataset.id);
-            item.個数 = e.target.value === "" ? 0 : Number(e.target.value);
-        };
-    });
-
-    container.querySelectorAll('.btn-confirm-qty').forEach(btn => {
-        btn.onclick = () => {
-            const item = items.find(i => i.id === btn.dataset.id);
-            saveItemQty(item);
-        };
-    });
-
-    container.querySelectorAll('.btn-edit-loc').forEach(btn => {
-        btn.onclick = (e) => {
-            e.stopPropagation();
-            openLocEdit(items.find(i => i.id === btn.dataset.id));
-        };
-    });
-}
 
 
 function hideKeypad() {
