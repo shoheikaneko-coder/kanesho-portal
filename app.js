@@ -17,6 +17,7 @@ import { opsHubMainPageHtml, initOpsHubMainPage } from './ops_hub_main.js';
 import { stocktakePageHtml, initStocktakePage } from './stocktake.js?v=1';
 import { inventoryHistoryPageHtml, initInventoryHistoryPage } from './inventory_history.js?v=1';
 import { productsPageHtml, initProductsPage } from './products.js?v=20260425_2158';
+import { productsMobilePageHtml, initProductsMobilePage } from './products_mobile.js';
 import { suppliersPageHtml, initSuppliersPage } from './suppliers.js?v=36';
 import { storeItemsPageHtml, initStoreItemsPage } from './store_items.js?v=31';
 import { recipesViewerPageHtml, initRecipesViewerPage } from './recipes.js?v=7';
@@ -540,8 +541,13 @@ async function showPage(target) {
                 break;
             case 'products':
                 pageTitle.textContent = '商品・レシピマスタ';
-                pageContent.innerHTML = productsPageHtml;
-                initProductsPage(state.currentUser);
+                if (window.innerWidth < 768) {
+                    pageContent.innerHTML = productsMobilePageHtml;
+                    initProductsMobilePage(state.currentUser);
+                } else {
+                    pageContent.innerHTML = productsPageHtml;
+                    initProductsPage(state.currentUser);
+                }
                 break;
             case 'suppliers':
                 pageTitle.textContent = '業者マスタ管理';
