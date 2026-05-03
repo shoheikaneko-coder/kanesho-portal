@@ -4,75 +4,117 @@ import { calculateAllTheoreticalStocks } from './stock_logic.js';
 import { showAlert } from './ui_utils.js';
 
 export const inventoryMobilePageHtml = `
-    <div id="inventory-app" class="animate-fade-in" style="display: flex; flex-direction: column; height: calc(100vh - 80px); overflow: hidden; background: #f8fafc;">
+    <div id="inventory-app" class="animate-fade-in" style="display: flex; flex-direction: column; height: calc(100vh - 80px); overflow: hidden; background: #fff;">
         
-        <!-- Top Nav: Primary Tasks (Check, Transfer, Buy) -->
-        <nav id="inv-task-nav" style="background: white; border-bottom: 1px solid #f1f5f9; padding: 0.8rem 1rem; flex-shrink: 0; display: flex; gap: 0.5rem;">
-            <button class="task-tab active" data-task="inventory"><i class="fas fa-clipboard-check"></i> 在庫チェック</button>
-            <button class="task-tab" data-task="transfer"><i class="fas fa-exchange-alt"></i> 移動</button>
-            <button class="task-tab" data-task="purchase"><i class="fas fa-shopping-cart"></i> 仕入れ</button>
-        </nav>
-
-        <!-- Header: Store & Global Actions -->
-        <header style="background: white; padding: 1rem 1rem 0.5rem 1rem; flex-shrink: 0;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
-                <div onclick="showStoreSelectSheet()" style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; flex: 1; min-width: 0;">
-                    <div style="width: 32px; height: 32px; background: var(--primary); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white;">
-                        <i class="fas fa-store" style="font-size: 0.9rem;"></i>
-                    </div>
-                    <div style="flex: 1; min-width: 0;">
-                        <div style="font-size: 0.65rem; color: #94a3b8; font-weight: 800; text-transform: uppercase;">現在の店舗</div>
-                        <h2 id="display-selected-store-name" style="margin: 0; font-size: 0.95rem; font-weight: 900; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">店舗を選択...</h2>
-                    </div>
-                    <i class="fas fa-chevron-down" style="color: #94a3b8; font-size: 0.7rem;"></i>
+        <!-- Sticky Top Navigation (Filmarks Style Slim Header) -->
+        <header style="background: white; border-bottom: 1px solid #f1f5f9; flex-shrink: 0; z-index: 100;">
+            <!-- Store & Search Integrated Row -->
+            <div style="display: flex; align-items: center; gap: 0.8rem; padding: 0.6rem 1rem; border-bottom: 1px solid #f8fafc;">
+                <div onclick="showStoreSelectSheet()" style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; background: #f8fafc; padding: 0.4rem 0.8rem; border-radius: 8px; flex: 1; min-width: 0;">
+                    <i class="fas fa-store" style="font-size: 0.8rem; color: var(--primary);"></i>
+                    <span id="display-selected-store-name" style="font-size: 0.85rem; font-weight: 800; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">店舗を選択...</span>
+                    <i class="fas fa-chevron-down" style="font-size: 0.6rem; color: #94a3b8;"></i>
                 </div>
-                <div style="display: flex; gap: 0.4rem;">
-                    <!-- Reset button moved here for safety (next to settings) -->
-                    <button id="btn-manual-reset" class="btn-icon-mobile" style="background: #fff5f5; color: #ef4444; border: 1.5px solid #fee2e2;">
-                        <i class="fas fa-undo"></i>
-                    </button>
-                    <button id="btn-inv-settings-mobile" class="btn-icon-mobile" style="background: #f1f5f9; color: #64748b;">
-                        <i class="fas fa-cog"></i>
-                    </button>
-                    <button id="btn-inv-refresh" class="btn-icon-mobile" style="background: #f1f5f9; color: #64748b;">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
+                <div style="display: flex; gap: 0.3rem;">
+                    <button id="btn-manual-reset" class="btn-icon-sm" title="リセット"><i class="fas fa-undo"></i></button>
+                    <button id="btn-inv-refresh" class="btn-icon-sm"><i class="fas fa-sync-alt"></i></button>
                 </div>
             </div>
 
-            <!-- Timing Tabs: Horizontal Scroll with Fade -->
+            <!-- Timing Chips (Slim Horizontal Scroll) -->
             <div class="scroll-fade-container">
-                <div id="inv-timing-nav" class="horizontal-scroll-chips">
-                    <!-- Timing pills injected here -->
+                <div id="inv-timing-nav" class="horizontal-scroll-chips-slim">
+                    <!-- Timing chips injected here -->
+                </div>
+            </div>
+
+            <!-- Integrated Search Bar (Sticky) -->
+            <div style="padding: 0 1rem 0.6rem 1rem;">
+                <div style="position: relative;">
+                    <i class="fas fa-search" style="position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%); color: #cbd5e1; font-size: 0.8rem;"></i>
+                    <input type="text" id="inv-item-search" placeholder="品目を検索..." 
+                           style="width: 100%; height: 36px; padding: 0 0.8rem 0 2.2rem; border-radius: 10px; border: 1.5px solid #f1f5f9; background: #f8fafc; font-size: 0.9rem; font-weight: 700; outline: none;">
                 </div>
             </div>
         </header>
 
-        <!-- Search Bar -->
-        <div style="padding: 0.5rem 1rem 0.8rem 1rem; background: white; border-bottom: 1px solid #e2e8f0; flex-shrink: 0;">
-            <div style="position: relative;">
-                <i class="fas fa-search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.9rem;"></i>
-                <input type="text" id="inv-item-search" placeholder="品目名・場所で検索..." 
-                       style="width: 100%; height: 44px; padding: 0 1rem 0 2.8rem; border-radius: 12px; border: 1.5px solid #f1f5f9; background: #f8fafc; font-size: 0.95rem; font-weight: 700; outline: none;">
-            </div>
-        </div>
-        
-        <!-- Main Area: Card List -->
-        <main id="inv-main-content" style="flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 1rem;">
-            <!-- Cards injected here -->
+        <!-- Main Content: High-Density List Area -->
+        <main id="inv-main-content" style="flex: 1; overflow-y: auto; padding: 0;">
+            <!-- High density rows injected here -->
         </main>
 
-        <!-- Bottom UI: Progress Tracking (No dangerous buttons) -->
-        <footer id="inv-footer-stats" style="background: white; border-top: 1px solid #e2e8f0; padding: 0.8rem 1.2rem; display: none; position: relative; flex-shrink: 0;">
-            <div id="inv-progress-bar" style="position: absolute; top: 0; left: 0; height: 3px; background: #10b981; transition: width 0.3s ease;"></div>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="flex: 1;">
-                    <div id="inv-stats-mobile" style="font-size: 0.95rem; font-weight: 900; color: #1e293b;"></div>
-                    <div id="inv-stats-label" style="font-size: 0.65rem; color: #94a3b8; font-weight: 700; margin-top: 2px;">現在の進捗状況</div>
-                </div>
-                <div id="inv-progress-percent" style="font-size: 1.1rem; font-weight: 900; color: #10b981; font-family: 'Outfit', sans-serif;">0%</div>
+        <!-- Filmarks-Style Bottom Tab Bar -->
+        <footer id="inv-mobile-tab-bar" style="background: white; border-top: 1px solid #f1f5f9; display: flex; height: 60px; padding-bottom: env(safe-area-inset-bottom); flex-shrink: 0; z-index: 100;">
+            <div class="mobile-tab-item active" data-tab="inventory">
+                <i class="fas fa-clipboard-list"></i>
+                <span>在庫チェック</span>
+            </div>
+            <div class="mobile-tab-item" data-tab="procurement">
+                <i class="fas fa-truck-loading"></i>
+                <span>仕入・移動</span>
+            </div>
+            <div class="mobile-tab-item" data-tab="history">
+                <i class="fas fa-history"></i>
+                <span>履歴</span>
+            </div>
+            <div class="mobile-tab-item" data-tab="master">
+                <i class="fas fa-cog"></i>
+                <span>設定</span>
             </div>
         </footer>
+
+        <!-- Tiny Progress Bar above Tab Bar -->
+        <div id="inv-progress-line-container" style="height: 2px; background: #f1f5f9; flex-shrink: 0;">
+            <div id="inv-progress-line" style="height: 100%; width: 0%; background: #10b981; transition: width 0.3s;"></div>
+        </div>
+
+        <!-- Loading overlay -->
+        <div id="inv-loading-overlay" style="display:none; position:fixed; inset:0; background:rgba(255,255,255,0.7); z-index:9999; justify-content:center; align-items:center;">
+             <i class="fas fa-spinner fa-spin" style="font-size: 1.5rem; color: var(--primary);"></i>
+        </div>
+
+        <!-- Store Selection Sheet -->
+        <div id="store-select-sheet" class="bottom-sheet" style="display: none;">
+            <div class="bottom-sheet-backdrop" onclick="closeStoreSelectSheet()"></div>
+            <div class="bottom-sheet-content">
+                <div class="bottom-sheet-handle"></div>
+                <div style="padding: 1rem 1.5rem;">
+                    <h3 style="margin: 0 0 1.2rem 0; font-size: 1.1rem; font-weight: 900; color: #1e293b;">店舗を選択</h3>
+                    <div id="store-sheet-list" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 50vh; overflow-y: auto;">
+                        <!-- Store options injected here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Master Settings Overlay -->
+        <div id="inv-master-settings-overlay" style="display: none; position: fixed; inset: 0; background: white; z-index: 11000; flex-direction: column;">
+            <div style="padding: 1rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+                <h2 style="margin: 0; font-size: 1.1rem; font-weight: 900;">在庫マスタ設定</h2>
+                <button onclick="hideMasterSettings()" class="btn-icon-mobile"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="inv-master-settings-content" style="flex: 1; overflow-y: auto;">
+                <!-- Content injected here -->
+            </div>
+        </div>
+
+        <!-- Item Settings Bottom Sheet -->
+        <div id="inv-item-settings-sheet" class="bottom-sheet" style="display: none;">
+            <div class="bottom-sheet-backdrop" onclick="closeItemSettings()"></div>
+            <div class="bottom-sheet-content">
+                <div class="bottom-sheet-handle"></div>
+                <div style="padding: 1rem 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h3 id="sheet-item-name" style="margin: 0; font-size: 1.2rem; font-weight: 900; color: #1e293b;">品目設定</h3>
+                        <button onclick="closeItemSettings()" style="background: none; border: none; font-size: 1.5rem; color: #94a3b8;"><i class="fas fa-times"></i></button>
+                    </div>
+                    <div id="item-settings-form-content">
+                        <!-- Form elements same as before but slightly tighter -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
         <!-- Loading overlay -->
         <div id="inv-loading-overlay" style="display:none; position:fixed; inset:0; background:rgba(255,255,255,0.75); z-index:9999; justify-content:center; align-items:center;">
@@ -230,202 +272,134 @@ export const inventoryMobilePageHtml = `
         }
         .pro-form-field { display: flex; flex-direction: column; gap: 6px; }
         .pro-form-label { font-size: 0.75rem; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
-    </style>
 
-    <style>
-        .timing-pill {
-            display: inline-flex;
+        .mobile-tab-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
             align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            background: #f1f5f9;
-            color: #64748b;
-            border-radius: 12px;
+            justify-content: center;
+            gap: 4px;
+            color: #94a3b8;
+            font-size: 0.65rem;
             font-weight: 800;
-            font-size: 0.8rem;
-            border: 1.5px solid transparent;
             transition: all 0.2s;
-            cursor: pointer;
-            white-space: nowrap;
         }
-        .timing-pill.active {
+        .mobile-tab-item i { font-size: 1.2rem; }
+        .mobile-tab-item.active { color: var(--primary); }
+
+        .horizontal-scroll-chips-slim {
+            display: flex;
+            gap: 0.6rem;
+            overflow-x: auto;
+            scrollbar-width: none;
+            padding: 0.4rem 1rem 0.8rem 1rem;
+        }
+        .horizontal-scroll-chips-slim::-webkit-scrollbar { display: none; }
+
+        .timing-chip {
+            padding: 0.4rem 0.9rem;
+            background: #f8fafc;
+            color: #64748b;
+            border-radius: 20px;
+            font-weight: 800;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            border: 1.5px solid #f1f5f9;
+        }
+        .timing-chip.active {
             background: #fff;
             color: var(--primary);
             border-color: var(--primary);
-            box-shadow: 0 4px 12px rgba(230, 57, 70, 0.1);
+            box-shadow: 0 2px 6px rgba(230, 57, 70, 0.1);
         }
 
-        /* Fading edges for horizontal scroll */
-        .scroll-fade-container {
-            position: relative;
-            margin: 0 -1rem;
-            padding: 0 1rem;
-        }
-        .scroll-fade-container::after {
-            content: '';
-            position: absolute;
-            top: 0; right: 0; bottom: 0;
-            width: 40px;
-            background: linear-gradient(to right, transparent, white);
-            pointer-events: none;
-        }
-        .horizontal-scroll-chips {
-            display: flex;
-            gap: 0.5rem;
-            overflow-x: auto;
-            scrollbar-width: none;
-            padding: 0.2rem 0 0.8rem 0;
-        }
-        .horizontal-scroll-chips::-webkit-scrollbar { display: none; }
-
-        .task-tab {
-            flex: 1;
-            height: 44px;
-            border-radius: 12px;
-            border: none;
-            background: transparent;
-            color: #64748b;
-            font-weight: 800;
-            font-size: 0.85rem;
+        /* High-Density Row Style */
+        .inv-row {
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            transition: all 0.2s;
-        }
-        .task-tab.active {
-            background: #f1f5f9;
-            color: var(--primary);
-        }
-
-        .inventory-card {
+            padding: 0.8rem 1rem;
+            border-bottom: 1px solid #f8fafc;
+            gap: 0.8rem;
             background: white;
-            border-radius: 18px;
-            padding: 1.2rem;
-            border: 1px solid #e2e8f0;
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-            transition: all 0.2s;
         }
-        .inventory-card.confirmed {
-            background: #f0fdf4;
-            border-color: #bbf7d0;
-        }
-        .inventory-card.shortage:not(.confirmed) {
-            background: #fff5f5;
-            border-color: #fecaca;
-        }
+        .inv-row.confirmed { background: #f0fdf4; }
+        .inv-row.shortage:not(.confirmed) { background: #fff5f5; }
 
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-        }
-        .card-title {
-            font-weight: 900;
-            font-size: 1.1rem;
-            color: #1e293b;
-            line-height: 1.4;
-        }
-        .card-meta {
-            font-size: 0.75rem;
-            color: #94a3b8;
-            font-weight: 700;
-            margin-top: 0.2rem;
-        }
+        .inv-row-content { flex: 1; min-width: 0; }
+        .inv-row-title { font-weight: 900; font-size: 0.95rem; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .inv-row-meta { font-size: 0.65rem; color: #94a3b8; font-weight: 700; margin-top: 1px; }
 
-        .qty-control-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 1rem;
-        }
+        .inv-row-controls { display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0; }
 
-        .qty-stepper-mobile {
+        .qty-stepper-sm {
             display: flex;
             align-items: center;
             background: #f8fafc;
-            border-radius: 14px;
-            padding: 4px;
-            border: 1.5px solid #f1f5f9;
+            border-radius: 8px;
+            padding: 2px;
+            border: 1px solid #f1f5f9;
         }
-        .stepper-btn-mobile {
-            width: 48px;
-            height: 48px;
-            border-radius: 11px;
+        .stepper-btn-sm {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
             background: white;
             color: #1e293b;
             border: none;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            font-size: 1.2rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.8rem;
         }
-        .stepper-btn-mobile:active { transform: scale(0.92); background: #f1f5f9; }
-        
-        .qty-input-mobile {
-            width: 70px;
-            height: 48px;
+        .qty-input-sm {
+            width: 44px;
             border: none;
             background: transparent;
             text-align: center;
-            font-size: 1.5rem;
+            font-size: 1.1rem;
             font-weight: 900;
             color: var(--primary);
             font-family: 'Outfit', sans-serif;
             outline: none;
         }
 
-        .btn-confirm-mobile {
-            width: 56px;
-            height: 56px;
-            border-radius: 18px;
+        .btn-confirm-sm {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
             border: none;
-            background: #e2e8f0;
-            color: #94a3b8;
-            font-size: 1.5rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
+            background: #f1f5f9;
+            color: #cbd5e1;
+            font-size: 1.1rem;
+            display: flex; align-items: center; justify-content: center;
         }
-        .btn-confirm-mobile.active {
-            background: #10b981;
-            color: white;
-            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+        .btn-confirm-sm.active { background: #10b981; color: white; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2); }
+
+        .btn-icon-sm {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: none;
+            background: #f8fafc;
+            color: #94a3b8;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.8rem;
         }
 
-        .location-divider {
-            font-size: 0.75rem;
+        .location-header-sm {
+            padding: 0.4rem 1rem;
+            background: #f8fafc;
+            color: #94a3b8;
+            font-size: 0.7rem;
             font-weight: 900;
-            color: #94a3b8;
             text-transform: uppercase;
-            letter-spacing: 0.1em;
-            margin: 1.5rem 0 0.5rem 0.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
+            letter-spacing: 0.05em;
+            border-top: 1px solid #f1f5f9;
+            border-bottom: 1px solid #f1f5f9;
         }
-        .location-divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: #e2e8f0;
-        }
+    </style>
 
-        /* Bottom Sheet (Modal for Item Settings) */
-        #inv-item-modal .glass-panel {
-            width: 100% !important;
-            border-radius: 24px 24px 0 0 !important;
-            margin-top: auto !important;
-            position: absolute !important;
-            bottom: 0 !important;
-            left: 0 !important;
-        }
-
+    <style>
         .btn-icon-mobile {
             width: 44px;
             height: 44px;
@@ -629,59 +603,36 @@ function render() {
     const main = document.getElementById('inv-main-content');
     if (!main) return;
 
-    // Ensure global FAB is hidden when this page renders (double check)
+    // Hide global FAB
     const globalFab = document.getElementById('fab-main-btn');
     if (globalFab) globalFab.style.display = 'none';
 
-    // Ensure common datalists exist for modal/settings
-    const locs = [...new Set(inventoryData.map(d => d.location_label || d.保管場所).filter(Boolean))].sort();
-    const units = [...new Set(inventoryData.map(d => d.display_unit).filter(Boolean))].sort();
-    let datalists = document.getElementById('inv-datalists');
-    if (!datalists) {
-        datalists = document.createElement('div');
-        datalists.id = 'inv-datalists';
-        document.body.appendChild(datalists);
-    }
-    datalists.innerHTML = `
-        <datalist id="common-locations">${locs.map(l => `<option value="${l}">`).join('')}</datalist>
-        <datalist id="common-units">${units.map(u => `<option value="${u}">`).join('')}</datalist>
-    `;
-
-    // 1. Populate Store UI
+    // Populate Store UI
     const storeDisplay = document.getElementById('display-selected-store-name');
     if (storeDisplay) {
         storeDisplay.textContent = selectedStore ? selectedStore.name : '店舗を選択してください';
     }
 
-    // Auto-select store for users with a fixed StoreID
-    if (!selectedStore && currentUser?.StoreID) {
-        const myStore = allStores.find(s => s.id === currentUser.StoreID || s.code === currentUser.StoreID);
-        if (myStore) {
-            selectedStore = myStore;
-            loadStoreInventory(myStore.code).then(() => render());
-        }
-    }
-
     if (!selectedStore) {
         main.innerHTML = `
-            <div style="text-align:center; padding: 5rem; color: var(--text-secondary);">
-                <i class="fas fa-store-slash" style="font-size: 3rem; margin-bottom: 1.5rem; opacity: 0.3;"></i>
-                <p>店舗を選択して在庫チェックを開始してください</p>
-                <button onclick="showStoreSelectSheet()" class="btn btn-primary" style="margin-top: 1.5rem; border-radius: 12px; padding: 0.8rem 1.5rem;">店舗を選択する</button>
+            <div style="text-align:center; padding: 5rem; color: #94a3b8;">
+                <i class="fas fa-store-slash" style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                <p style="font-size: 0.9rem;">店舗を選択して開始してください</p>
+                <button onclick="showStoreSelectSheet()" class="btn btn-primary" style="margin-top: 1rem; border-radius: 8px;">店舗を選択する</button>
             </div>
         `;
         return;
     }
 
-    // 2. Render Top Navigation Timings (Chips)
+    // 1. Render Slim Timing Chips
     const timingNav = document.getElementById('inv-timing-nav');
-    const rawTimings = [...new Set(inventoryData.map(d => d.確認タイミング || ''))].sort((a,b) => {
-        if (a === '') return -1;
-        if (b === '') return 1;
-        return a.localeCompare(b);
-    });
-    
     if (timingNav) {
+        const rawTimings = [...new Set(inventoryData.map(d => d.確認タイミング || ''))].sort((a,b) => {
+            if (a === '') return -1;
+            if (b === '') return 1;
+            return a.localeCompare(b);
+        });
+
         if (!selectedTiming && rawTimings.length > 0) {
             const firstId = rawTimings[0];
             selectedTiming = { id: firstId, name: timingMaster[firstId] || firstId || '未設定' };
@@ -690,96 +641,71 @@ function render() {
         timingNav.innerHTML = rawTimings.map(tCode => {
             const tName = tCode ? (timingMaster[tCode] || tCode) : "未設定";
             const itemsInTiming = inventoryData.filter(d => (d.確認タイミング || '') === tCode);
-            const confirmedItems = itemsInTiming.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed));
-            const isAllDone = itemsInTiming.length > 0 && confirmedItems.length === itemsInTiming.length;
+            const confirmedCount = itemsInTiming.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed)).length;
             const isActive = selectedTiming && (selectedTiming.id || '') === tCode;
             
             return `
-                <div class="timing-pill ${isActive ? 'active' : ''}" data-code="${tCode}" data-name="${tName}">
-                    <i class="fas ${isAllDone ? 'fa-check-circle' : 'fa-clock'}"></i>
-                    <span>${tName}</span>
-                    <span style="font-size:0.7rem; opacity:0.6; margin-left:2px;">${confirmedItems.length}/${itemsInTiming.length}</span>
+                <div class="timing-chip ${isActive ? 'active' : ''}" data-code="${tCode}" data-name="${tName}">
+                    ${tName} <span style="opacity: 0.5; font-size: 0.65rem; margin-left: 2px;">${confirmedCount}/${itemsInTiming.length}</span>
                 </div>
             `;
         }).join('');
 
-        timingNav.querySelectorAll('.timing-pill').forEach(pill => {
-            pill.onclick = () => {
-                selectedTiming = { id: pill.dataset.code, name: pill.dataset.name };
+        timingNav.querySelectorAll('.timing-chip').forEach(chip => {
+            chip.onclick = () => {
+                selectedTiming = { id: chip.dataset.code, name: chip.dataset.name };
                 inventorySearchQuery = ''; 
                 render();
             };
         });
     }
 
-    // Search input control
+    // 2. Update Progress Line
+    const itemsInCurrentTiming = inventoryData.filter(d => (d.確認タイミング || '') === (selectedTiming ? selectedTiming.id : ''));
+    if (itemsInCurrentTiming.length > 0) {
+        const confirmedCount = itemsInCurrentTiming.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed)).length;
+        const percent = Math.round((confirmedCount / itemsInCurrentTiming.length) * 100);
+        const progressLine = document.getElementById('inv-progress-line');
+        if (progressLine) progressLine.style.width = `${percent}%`;
+    }
+
+    // 3. Bottom Tab Bar Interaction
+    document.querySelectorAll('.mobile-tab-item').forEach(tab => {
+        const tabId = tab.dataset.tab;
+        tab.classList.toggle('active', tabId === 'inventory');
+        tab.onclick = () => {
+            if (tabId === 'procurement') window.navigateTo('procurement');
+            else if (tabId === 'master') showMasterSettings();
+            else if (tabId === 'history') showAlert('近日公開', '履歴機能は現在開発中です。');
+            else render(); // Re-render inventory
+        };
+    });
+
+    // 4. Header Button Listeners
+    const btnReset = document.getElementById('btn-manual-reset');
+    if (btnReset) btnReset.onclick = handleManualReset;
+
+    const btnRefresh = document.getElementById('btn-inv-refresh');
+    if (btnRefresh) btnRefresh.onclick = async () => {
+        const loader = document.getElementById('inv-loading-overlay');
+        loader.style.display = 'flex';
+        await loadStoreInventory(selectedStore.code);
+        render();
+        loader.style.display = 'none';
+    };
+
     const searchInput = document.getElementById('inv-item-search');
     if (searchInput) {
         searchInput.value = inventorySearchQuery;
         searchInput.oninput = (e) => {
             inventorySearchQuery = e.target.value;
-            const mainContent = document.getElementById('inv-main-content');
-            if (mainContent) renderChecklist(mainContent);
+            renderChecklist(main);
         };
     }
 
-    // 3. Render Footer Progress
-    const footer = document.getElementById('inv-footer-stats');
-    const statsEl = document.getElementById('inv-stats-mobile');
-    const progressBar = document.getElementById('inv-progress-bar');
-    const progressPercent = document.getElementById('inv-progress-percent');
-
-    if (footer) {
-        const itemsToCount = inventoryData.filter(d => (d.確認タイミング || '') === (selectedTiming ? selectedTiming.id : ''));
-        if (itemsToCount.length > 0) {
-            const confirmedCount = itemsToCount.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed)).length;
-            const percent = Math.round((confirmedCount / itemsToCount.length) * 100);
-            
-            footer.style.display = 'block';
-            if (statsEl) statsEl.textContent = `${confirmedCount} / ${itemsToCount.length} 件完了`;
-            if (progressBar) progressBar.style.width = `${percent}%`;
-            if (progressPercent) progressPercent.textContent = `${percent}%`;
-        } else {
-            footer.style.display = 'none';
-        }
-    }
-
-    // Header Actions
-    const btnSettings = document.getElementById('btn-inv-settings-mobile');
-    if (btnSettings) {
-        btnSettings.onclick = () => showMasterSettings();
-    }
-    document.getElementById('btn-inv-refresh').onclick = () => {
-        if (selectedStore) loadStoreInventory(selectedStore.code).then(() => render());
-    };
-    
-    // Reset Button (Safe Location in Header)
-    const btnReset = document.getElementById('btn-manual-reset');
-    if (btnReset) {
-        const canReset = currentUser?.Role === 'Admin' || currentUser?.Role === '管理者' || currentUser?.Role === 'Manager' || currentUser?.Role === '店長';
-        btnReset.style.display = canReset ? 'flex' : 'none';
-        btnReset.onclick = handleManualReset;
-    }
-
-    // Task Tab Switching (Switch to Procurement)
-    document.querySelectorAll('.task-tab').forEach(tab => {
-        const task = tab.dataset.task;
-        tab.classList.toggle('active', task === 'inventory');
-        tab.onclick = () => {
-            if (task === 'transfer' || task === 'purchase') {
-                window.navigateTo('procurement');
-            }
-        };
-    });
-
-    // 4. Render Main Checklist
+    // 5. Render Checklist
     if (!selectedTiming) {
-        main.innerHTML = `
-            <div style="text-align:center; padding: 5rem; color: var(--text-secondary);">
-                <i class="fas fa-clock" style="font-size: 3rem; margin-bottom: 1.5rem; opacity: 0.3;"></i>
-                <p>タイミングを選択してください</p>
-            </div>
-        `;
+        main.innerHTML = `<div style="text-align:center; padding: 5rem; color: #94a3b8; font-size: 0.9rem;">タイミングを選択してください</div>`;
     } else {
         renderChecklist(main);
     }
@@ -805,7 +731,6 @@ function showStoreSelectSheet() {
             render();
         };
     });
-
     sheet.style.display = 'flex';
 }
 
@@ -820,17 +745,14 @@ async function showMasterSettings() {
     
     if (overlay && content) {
         if (overlayLoad) overlayLoad.style.display = 'flex';
-        
         try {
-            // Re-load to ensure we have latest data
             await loadStoreInventory(selectedStore.code);
-            overlay.classList.add('active');
+            overlay.style.display = 'flex';
             renderSettingsView(content);
         } catch (err) {
             console.error("Master settings open failed:", err);
             showAlert('エラー', 'データの取得に失敗しました');
         } finally {
-            // Safety: Ensure loading is hidden even if render fails
             if (overlayLoad) overlayLoad.style.display = 'none';
         }
     }
@@ -838,7 +760,7 @@ async function showMasterSettings() {
 
 window.hideMasterSettings = () => {
     const overlay = document.getElementById('inv-master-settings-overlay');
-    if (overlay) overlay.classList.remove('active');
+    if (overlay) overlay.style.display = 'none';
 };
 
 function renderChecklist(container) {
@@ -857,18 +779,10 @@ function renderChecklist(container) {
     } else {
         items = inventoryData.filter(d => (d.確認タイミング || '') === (selectedTiming ? selectedTiming.id : ''));
     }
-    
-    const confirmedCount = items.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed)).length;
-    const statsEl = document.getElementById('inv-stats-mobile');
-    if (statsEl) {
-        statsEl.textContent = `${confirmedCount} / ${items.length} 完了`;
-    }
-
-    renderInventoryCards(container, items, isGlobalSearch);
+    renderInventoryRows(container, items, isGlobalSearch);
 }
 
-function renderInventoryCards(container, items, isGlobalSearch) {
-    // Sort items by location_label then name
+function renderInventoryRows(container, items, isGlobalSearch) {
     items.sort((a, b) => {
         const locA = a.location_label || a.保管場所 || '未設定';
         const locB = b.location_label || b.保管場所 || '未設定';
@@ -876,7 +790,6 @@ function renderInventoryCards(container, items, isGlobalSearch) {
         return (productMap[a.ProductID] || '').localeCompare(productMap[b.ProductID] || '');
     });
 
-    // グルーピング
     const groupedItems = {};
     items.forEach(item => {
         const loc = item.location_label || item.保管場所 || '未設定';
@@ -885,109 +798,87 @@ function renderInventoryCards(container, items, isGlobalSearch) {
     });
 
     let html = '';
-
     Object.keys(groupedItems).forEach(loc => {
-        const locItems = groupedItems[loc];
-        
-        html += `<div class="location-divider"><i class="fas fa-map-marker-alt"></i> ${loc}</div>`;
-
-        locItems.forEach(item => {
+        html += `<div class="location-header-sm">${loc}</div>`;
+        groupedItems[loc].forEach(item => {
             const isConfirmed = isConfirmedToday(item.updated_at, selectedStore.resetTime, item.is_confirmed);
             const currentQty = item.個数 !== undefined ? item.個数 : '';
             const parStock = item.定数 || 0;
             const isShort = (parStock > 0) && (Number(currentQty) < parStock);
-            
             const masterName = productMap[item.ProductID] || '不明';
             const displayName = item.display_name || masterName;
 
             html += `
-                <div class="inventory-card ${isConfirmed ? 'confirmed' : ''} ${isShort && !isConfirmed ? 'shortage' : ''}" data-id="${item.id}">
-                    <div class="card-header">
-                        <div style="flex: 1; min-width: 0;">
-                            <div class="card-title">${displayName}</div>
-                            <div class="card-meta">
-                                ${isGlobalSearch ? `<span style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px; margin-right: 6px;">${timingMaster[item.確認タイミング] || '未設定'}</span>` : ''}
-                                <i class="fas fa-layer-group" style="font-size: 0.7rem; margin-right: 2px;"></i> 定数: ${parStock} ${item.display_unit || ''}
-                            </div>
+                <div class="inv-row ${isConfirmed ? 'confirmed' : ''} ${isShort && !isConfirmed ? 'shortage' : ''}" data-id="${item.id}">
+                    <div class="inv-row-content" onclick="window.showItemSettingsModal('${item.id}')">
+                        <div class="inv-row-title">${displayName}</div>
+                        <div class="inv-row-meta">
+                            ${isGlobalSearch ? `<span style="color:var(--primary); font-weight:800; margin-right:4px;">[${timingMaster[item.確認タイミング] || '未'}]</span>` : ''}
+                            定数: ${parStock}${item.display_unit || ''}
                         </div>
-                        <button class="btn-icon-mobile btn-edit-item" data-id="${item.id}" style="background: #f8fafc; color: #94a3b8; border: 1.5px solid #f1f5f9;">
-                            <i class="fas fa-cog"></i>
-                        </button>
                     </div>
-
-                    <div class="qty-control-row">
-                        <div class="qty-stepper-mobile">
-                            <button class="stepper-btn-mobile btn-minus" data-id="${item.id}"><i class="fas fa-minus"></i></button>
-                            <input type="number" class="qty-input-mobile" value="${currentQty}" placeholder="-" data-id="${item.id}" inputmode="decimal">
-                            <button class="stepper-btn-mobile btn-plus" data-id="${item.id}"><i class="fas fa-plus"></i></button>
+                    <div class="inv-row-controls">
+                        <div class="qty-stepper-sm">
+                            <button class="stepper-btn-sm btn-minus" data-id="${item.id}"><i class="fas fa-minus"></i></button>
+                            <input type="number" class="qty-input-sm" value="${currentQty}" placeholder="-" data-id="${item.id}" inputmode="decimal">
+                            <button class="stepper-btn-sm btn-plus" data-id="${item.id}"><i class="fas fa-plus"></i></button>
                         </div>
-
-                        <div style="display: flex; align-items: center; gap: 0.8rem;">
-                            <span style="font-weight: 900; color: #64748b; font-size: 1.1rem;">${item.display_unit || ''}</span>
-                            <button class="btn-confirm-mobile ${isConfirmed ? 'active' : ''}" data-id="${item.id}">
-                                <i class="fas fa-check"></i>
-                            </button>
-                        </div>
+                        <button class="btn-confirm-sm ${isConfirmed ? 'active' : ''}" data-id="${item.id}">
+                            <i class="fas fa-check"></i>
+                        </button>
                     </div>
                 </div>
             `;
         });
     });
 
-    container.innerHTML = html || `<div style="text-align:center; padding: 3rem; color: #94a3b8;">表示する品目はありません</div>`;
+    container.innerHTML = html || `<div style="text-align:center; padding: 3rem; color: #94a3b8; font-size: 0.85rem;">品目はありません</div>`;
     attachInventoryListeners(container);
 }
+
 function attachInventoryListeners(container) {
-    // Steppers
-    container.querySelectorAll('.stepper-btn-mobile').forEach(btn => {
+    container.querySelectorAll('.stepper-btn-sm').forEach(btn => {
         btn.onclick = async (e) => {
             e.stopPropagation();
             const id = btn.dataset.id;
-            const input = container.querySelector(`.qty-input-mobile[data-id="${id}"]`);
+            const input = container.querySelector(`.qty-input-sm[data-id="${id}"]`);
             const item = inventoryData.find(i => i.id === id);
-            if (!item) return;
+            if (!item || !input) return;
 
             let val = Number(input.value) || 0;
-            if (btn.classList.contains('btn-plus')) {
-                val += 1;
-            } else {
-                val = Math.max(0, val - 1);
-            }
+            val = btn.classList.contains('btn-plus') ? val + 1 : Math.max(0, val - 1);
             
             input.value = val;
             item.個数 = val;
             await saveItemQty(item);
+            const row = container.querySelector(`.inv-row[data-id="${id}"]`);
+            if (row) {
+                const isShort = (item.定数 > 0) && (val < item.定数);
+                row.classList.toggle('shortage', isShort);
+            }
         };
     });
 
-    // Qty Input
-    container.querySelectorAll('.qty-input-mobile').forEach(input => {
+    container.querySelectorAll('.qty-input-sm').forEach(input => {
+        input.onclick = (e) => e.stopPropagation();
         input.onfocus = () => input.select();
         input.onblur = async () => {
             const item = inventoryData.find(i => i.id === input.dataset.id);
             if (item && input.value !== "") {
-                item.個数 = Number(input.value);
+                const val = Number(input.value);
+                item.個数 = val;
                 await saveItemQty(item);
+                const row = container.querySelector(`.inv-row[data-id="${input.dataset.id}"]`);
+                if (row) row.classList.toggle('shortage', (item.定数 > 0) && (val < item.定数));
             }
         };
-        input.onkeydown = (e) => {
-            if (e.key === 'Enter') input.blur();
-        };
+        input.onkeydown = (e) => { if (e.key === 'Enter') input.blur(); };
     });
 
-    // Confirm Button
-    container.querySelectorAll('.btn-confirm-mobile').forEach(btn => {
+    container.querySelectorAll('.btn-confirm-sm').forEach(btn => {
         btn.onclick = (e) => {
             e.stopPropagation();
             toggleItemConfirmation(btn.dataset.id);
-        };
-    });
-
-    // Edit (Master) Button
-    container.querySelectorAll('.btn-edit-item').forEach(btn => {
-        btn.onclick = (e) => {
-            e.stopPropagation();
-            showItemSettingsModal(btn.dataset.id);
         };
     });
 }
