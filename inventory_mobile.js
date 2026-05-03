@@ -6,20 +6,31 @@ import { showAlert } from './ui_utils.js';
 export const inventoryMobilePageHtml = `
     <div id="inventory-app" class="animate-fade-in" style="display: flex; flex-direction: column; height: calc(100vh - 80px); overflow: hidden; background: #f8fafc;">
         
-        <!-- Header: Store Selection & Settings -->
-        <header style="background: white; border-bottom: 1px solid #e2e8f0; padding: 1rem; flex-shrink: 0;">
+        <!-- Top Nav: Primary Tasks (Check, Transfer, Buy) -->
+        <nav id="inv-task-nav" style="background: white; border-bottom: 1px solid #f1f5f9; padding: 0.8rem 1rem; flex-shrink: 0; display: flex; gap: 0.5rem;">
+            <button class="task-tab active" data-task="inventory"><i class="fas fa-clipboard-check"></i> 在庫チェック</button>
+            <button class="task-tab" data-task="transfer"><i class="fas fa-exchange-alt"></i> 移動</button>
+            <button class="task-tab" data-task="purchase"><i class="fas fa-shopping-cart"></i> 仕入れ</button>
+        </nav>
+
+        <!-- Header: Store & Global Actions -->
+        <header style="background: white; padding: 1rem 1rem 0.5rem 1rem; flex-shrink: 0;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
                 <div onclick="showStoreSelectSheet()" style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; flex: 1; min-width: 0;">
                     <div style="width: 32px; height: 32px; background: var(--primary); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white;">
                         <i class="fas fa-store" style="font-size: 0.9rem;"></i>
                     </div>
                     <div style="flex: 1; min-width: 0;">
-                        <div style="font-size: 0.7rem; color: #94a3b8; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">現在の店舗</div>
-                        <h2 id="display-selected-store-name" style="margin: 0; font-size: 1rem; font-weight: 900; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">店舗を選択...</h2>
+                        <div style="font-size: 0.65rem; color: #94a3b8; font-weight: 800; text-transform: uppercase;">現在の店舗</div>
+                        <h2 id="display-selected-store-name" style="margin: 0; font-size: 0.95rem; font-weight: 900; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">店舗を選択...</h2>
                     </div>
-                    <i class="fas fa-chevron-down" style="color: #94a3b8; font-size: 0.8rem; margin-right: 0.5rem;"></i>
+                    <i class="fas fa-chevron-down" style="color: #94a3b8; font-size: 0.7rem;"></i>
                 </div>
-                <div style="display: flex; gap: 0.6rem;">
+                <div style="display: flex; gap: 0.4rem;">
+                    <!-- Reset button moved here for safety (next to settings) -->
+                    <button id="btn-manual-reset" class="btn-icon-mobile" style="background: #fff5f5; color: #ef4444; border: 1.5px solid #fee2e2;">
+                        <i class="fas fa-undo"></i>
+                    </button>
                     <button id="btn-inv-settings-mobile" class="btn-icon-mobile" style="background: #f1f5f9; color: #64748b;">
                         <i class="fas fa-cog"></i>
                     </button>
@@ -29,18 +40,20 @@ export const inventoryMobilePageHtml = `
                 </div>
             </div>
 
-            <!-- Timing Tabs: Horizontal Scroll -->
-            <div id="inv-timing-nav" style="display: flex; gap: 0.5rem; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px;">
-                <!-- Timing pills injected here -->
+            <!-- Timing Tabs: Horizontal Scroll with Fade -->
+            <div class="scroll-fade-container">
+                <div id="inv-timing-nav" class="horizontal-scroll-chips">
+                    <!-- Timing pills injected here -->
+                </div>
             </div>
         </header>
 
-        <!-- Search Bar: Floating Style -->
-        <div style="padding: 0.8rem 1rem; background: white; border-bottom: 1px solid #e2e8f0; flex-shrink: 0;">
+        <!-- Search Bar -->
+        <div style="padding: 0.5rem 1rem 0.8rem 1rem; background: white; border-bottom: 1px solid #e2e8f0; flex-shrink: 0;">
             <div style="position: relative;">
                 <i class="fas fa-search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.9rem;"></i>
                 <input type="text" id="inv-item-search" placeholder="品目名・場所で検索..." 
-                       style="width: 100%; height: 44px; padding: 0 1rem 0 2.8rem; border-radius: 12px; border: 1.5px solid #f1f5f9; background: #f8fafc; font-size: 0.95rem; font-weight: 700; outline: none; transition: all 0.2s;">
+                       style="width: 100%; height: 44px; padding: 0 1rem 0 2.8rem; border-radius: 12px; border: 1.5px solid #f1f5f9; background: #f8fafc; font-size: 0.95rem; font-weight: 700; outline: none;">
             </div>
         </div>
         
@@ -49,15 +62,16 @@ export const inventoryMobilePageHtml = `
             <!-- Cards injected here -->
         </main>
 
-        <!-- Bottom UI: Summary & Reset -->
-        <footer id="inv-footer-stats" style="background: white; border-top: 1px solid #e2e8f0; padding: 0.8rem 1rem; display: none; align-items: center; justify-content: space-between; gap: 1rem; flex-shrink: 0;">
-            <div style="flex: 1;">
-                <div id="inv-stats-mobile" style="font-size: 0.9rem; font-weight: 900; color: #1e293b;"></div>
-                <div style="font-size: 0.7rem; color: #94a3b8; font-weight: 700; margin-top: 2px;">現在の業務の進捗状況</div>
+        <!-- Bottom UI: Progress Tracking (No dangerous buttons) -->
+        <footer id="inv-footer-stats" style="background: white; border-top: 1px solid #e2e8f0; padding: 0.8rem 1.2rem; display: none; position: relative; flex-shrink: 0;">
+            <div id="inv-progress-bar" style="position: absolute; top: 0; left: 0; height: 3px; background: #10b981; transition: width 0.3s ease;"></div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="flex: 1;">
+                    <div id="inv-stats-mobile" style="font-size: 0.95rem; font-weight: 900; color: #1e293b;"></div>
+                    <div id="inv-stats-label" style="font-size: 0.65rem; color: #94a3b8; font-weight: 700; margin-top: 2px;">現在の進捗状況</div>
+                </div>
+                <div id="inv-progress-percent" style="font-size: 1.1rem; font-weight: 900; color: #10b981; font-family: 'Outfit', sans-serif;">0%</div>
             </div>
-            <button id="btn-manual-reset" class="btn" style="padding: 0.6rem 1rem; background: #fff5f5; color: #ef4444; border: 1.5px solid #fee2e2; border-radius: 10px; font-weight: 800; font-size: 0.8rem;">
-                <i class="fas fa-undo"></i> リセット
-            </button>
         </footer>
 
         <!-- Loading overlay -->
@@ -223,21 +237,65 @@ export const inventoryMobilePageHtml = `
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
-            padding: 0.6rem 1.2rem;
+            padding: 0.5rem 1rem;
             background: #f1f5f9;
             color: #64748b;
-            border-radius: 100px;
+            border-radius: 12px;
             font-weight: 800;
-            font-size: 0.85rem;
-            border: 2px solid transparent;
+            font-size: 0.8rem;
+            border: 1.5px solid transparent;
             transition: all 0.2s;
             cursor: pointer;
+            white-space: nowrap;
         }
         .timing-pill.active {
             background: #fff;
             color: var(--primary);
             border-color: var(--primary);
             box-shadow: 0 4px 12px rgba(230, 57, 70, 0.1);
+        }
+
+        /* Fading edges for horizontal scroll */
+        .scroll-fade-container {
+            position: relative;
+            margin: 0 -1rem;
+            padding: 0 1rem;
+        }
+        .scroll-fade-container::after {
+            content: '';
+            position: absolute;
+            top: 0; right: 0; bottom: 0;
+            width: 40px;
+            background: linear-gradient(to right, transparent, white);
+            pointer-events: none;
+        }
+        .horizontal-scroll-chips {
+            display: flex;
+            gap: 0.5rem;
+            overflow-x: auto;
+            scrollbar-width: none;
+            padding: 0.2rem 0 0.8rem 0;
+        }
+        .horizontal-scroll-chips::-webkit-scrollbar { display: none; }
+
+        .task-tab {
+            flex: 1;
+            height: 44px;
+            border-radius: 12px;
+            border: none;
+            background: transparent;
+            color: #64748b;
+            font-weight: 800;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+        }
+        .task-tab.active {
+            background: #f1f5f9;
+            color: var(--primary);
         }
 
         .inventory-card {
@@ -571,6 +629,10 @@ function render() {
     const main = document.getElementById('inv-main-content');
     if (!main) return;
 
+    // Ensure global FAB is hidden when this page renders (double check)
+    const globalFab = document.getElementById('fab-main-btn');
+    if (globalFab) globalFab.style.display = 'none';
+
     // Ensure common datalists exist for modal/settings
     const locs = [...new Set(inventoryData.map(d => d.location_label || d.保管場所).filter(Boolean))].sort();
     const units = [...new Set(inventoryData.map(d => d.display_unit).filter(Boolean))].sort();
@@ -611,7 +673,7 @@ function render() {
         return;
     }
 
-    // 2. Render Top Navigation Timings (Pills)
+    // 2. Render Top Navigation Timings (Chips)
     const timingNav = document.getElementById('inv-timing-nav');
     const rawTimings = [...new Set(inventoryData.map(d => d.確認タイミング || ''))].sort((a,b) => {
         if (a === '') return -1;
@@ -620,6 +682,11 @@ function render() {
     });
     
     if (timingNav) {
+        if (!selectedTiming && rawTimings.length > 0) {
+            const firstId = rawTimings[0];
+            selectedTiming = { id: firstId, name: timingMaster[firstId] || firstId || '未設定' };
+        }
+
         timingNav.innerHTML = rawTimings.map(tCode => {
             const tName = tCode ? (timingMaster[tCode] || tCode) : "未設定";
             const itemsInTiming = inventoryData.filter(d => (d.確認タイミング || '') === tCode);
@@ -656,37 +723,65 @@ function render() {
         };
     }
 
-    // 3. Render Main Content
-    if (!selectedTiming) {
-        main.innerHTML = `
-            <div style="text-align:center; padding: 5rem; color: var(--text-secondary);">
-                <i class="fas fa-clock" style="font-size: 3rem; margin-bottom: 1.5rem; opacity: 0.3;"></i>
-                <p>上部タブからタイミングを選択してください</p>
-            </div>
-        `;
-    } else {
-        renderChecklist(main);
+    // 3. Render Footer Progress
+    const footer = document.getElementById('inv-footer-stats');
+    const statsEl = document.getElementById('inv-stats-mobile');
+    const progressBar = document.getElementById('inv-progress-bar');
+    const progressPercent = document.getElementById('inv-progress-percent');
+
+    if (footer) {
+        const itemsToCount = inventoryData.filter(d => (d.確認タイミング || '') === (selectedTiming ? selectedTiming.id : ''));
+        if (itemsToCount.length > 0) {
+            const confirmedCount = itemsToCount.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed)).length;
+            const percent = Math.round((confirmedCount / itemsToCount.length) * 100);
+            
+            footer.style.display = 'block';
+            if (statsEl) statsEl.textContent = `${confirmedCount} / ${itemsToCount.length} 件完了`;
+            if (progressBar) progressBar.style.width = `${percent}%`;
+            if (progressPercent) progressPercent.textContent = `${percent}%`;
+        } else {
+            footer.style.display = 'none';
+        }
     }
 
     // Header Actions
     const btnSettings = document.getElementById('btn-inv-settings-mobile');
     if (btnSettings) {
-        const canManage = currentUser?.Role === 'Admin' || currentUser?.Role === '管理者' || currentUser?.Role === 'Manager' || currentUser?.Role === '店長';
-        btnSettings.style.display = canManage ? 'flex' : 'none';
         btnSettings.onclick = () => showMasterSettings();
     }
     document.getElementById('btn-inv-refresh').onclick = () => {
         if (selectedStore) loadStoreInventory(selectedStore.code).then(() => render());
     };
-
-    // Manual Reset Button
+    
+    // Reset Button (Safe Location in Header)
     const btnReset = document.getElementById('btn-manual-reset');
-    const footer = document.getElementById('inv-footer-stats');
-    if (btnReset && footer) {
+    if (btnReset) {
         const canReset = currentUser?.Role === 'Admin' || currentUser?.Role === '管理者' || currentUser?.Role === 'Manager' || currentUser?.Role === '店長';
-        footer.style.display = selectedTiming ? 'flex' : 'none';
-        btnReset.style.display = (canReset) ? 'block' : 'none';
+        btnReset.style.display = canReset ? 'flex' : 'none';
         btnReset.onclick = handleManualReset;
+    }
+
+    // Task Tab Switching (Switch to Procurement)
+    document.querySelectorAll('.task-tab').forEach(tab => {
+        const task = tab.dataset.task;
+        tab.classList.toggle('active', task === 'inventory');
+        tab.onclick = () => {
+            if (task === 'transfer' || task === 'purchase') {
+                window.navigateTo('procurement');
+            }
+        };
+    });
+
+    // 4. Render Main Checklist
+    if (!selectedTiming) {
+        main.innerHTML = `
+            <div style="text-align:center; padding: 5rem; color: var(--text-secondary);">
+                <i class="fas fa-clock" style="font-size: 3rem; margin-bottom: 1.5rem; opacity: 0.3;"></i>
+                <p>タイミングを選択してください</p>
+            </div>
+        `;
+    } else {
+        renderChecklist(main);
     }
 }
 
@@ -1176,6 +1271,10 @@ export async function initInventoryMobilePage(user) {
     selectedTiming = null;
     inventoryData = [];
     currentTab = 'tiles';
+
+    // Hide global FAB while on this page to avoid UI collision
+    const globalFab = document.getElementById('fab-main-btn');
+    if (globalFab) globalFab.style.display = 'none';
 
     await loadInitialData();
     render();
