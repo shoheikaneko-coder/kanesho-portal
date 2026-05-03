@@ -4,321 +4,403 @@ import { calculateAllTheoreticalStocks } from './stock_logic.js';
 import { showAlert } from './ui_utils.js';
 
 export const inventoryMobilePageHtml = `
-    <div id="inventory-app" class="animate-fade-in" style="display: flex; height: calc(100vh - 120px); gap: 1rem; overflow: hidden; padding: 0 1rem;">
+    <div id="inventory-app" class="animate-fade-in" style="display: flex; flex-direction: column; height: calc(100vh - 80px); overflow: hidden; background: #f8fafc;">
         
-        <!-- Sidebar: Store & Timing Selection -->
-        <aside id="inv-sidebar" class="glass-panel" style="width: 260px; display: flex; flex-direction: column; gap: 1rem; padding: 1.2rem; flex-shrink: 0;">
-            <div>
-                <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem;">拠点選択</label>
-                <select id="inv-store-select" class="btn" style="width: 100%; background: white; border: 1px solid var(--border); font-size: 0.9rem;">
-                    <option value="">店舗を選択...</option>
-                </select>
-            </div>
-
-            <div style="flex: 1; overflow-y: auto;">
-                <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem; margin-top: 1rem;">確認タイミング</label>
-                <div id="inv-timing-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
-                    <!-- Timings injected here -->
+        <!-- Header: Store Selection & Settings -->
+        <header style="background: white; border-bottom: 1px solid #e2e8f0; padding: 1rem; flex-shrink: 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
+                <div onclick="showStoreSelectSheet()" style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; flex: 1; min-width: 0;">
+                    <div style="width: 32px; height: 32px; background: var(--primary); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white;">
+                        <i class="fas fa-store" style="font-size: 0.9rem;"></i>
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-size: 0.7rem; color: #94a3b8; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">現在の店舗</div>
+                        <h2 id="display-selected-store-name" style="margin: 0; font-size: 1rem; font-weight: 900; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">店舗を選択...</h2>
+                    </div>
+                    <i class="fas fa-chevron-down" style="color: #94a3b8; font-size: 0.8rem; margin-right: 0.5rem;"></i>
                 </div>
-            </div>
-
-            <div style="border-top: 1px solid var(--border); padding-top: 1rem;">
-                <button id="btn-inv-settings" class="btn" style="width: 100%; padding: 0.6rem; background: var(--surface-darker); color: var(--text-secondary); border: 1px solid var(--border); font-size: 0.8rem; font-weight: 600;">
-                    <i class="fas fa-cog"></i> 在庫マスタ設定
-                </button>
-            </div>
-        </aside>
-
-        <!-- Main Area: Inventory Table -->
-        <main class="glass-panel" style="flex: 1; display: flex; flex-direction: column; padding: 0; overflow: hidden;">
-            <div id="inv-table-header" style="padding: 1rem 1.5rem; border-bottom: 2px solid var(--border); background: var(--surface-darker); display: flex; justify-content: space-between; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 0.8rem; flex-shrink: 0;">
-                    <i class="fas fa-warehouse" style="color: var(--primary);"></i>
-                    <h3 id="inv-current-title" style="margin: 0; font-size: 1rem; font-weight: 800;">在庫チェック</h3>
-                </div>
-
-                <!-- Search Box -->
-                <div id="inv-search-container" style="flex: 1; max-width: 350px; margin: 0 1.5rem; position: relative; display: none;">
-                    <i class="fas fa-search" style="position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary); font-size: 0.8rem; pointer-events: none;"></i>
-                    <input type="text" id="inv-item-search" placeholder="品目名で検索..." 
-                           style="width: 100%; padding: 0.5rem 0.8rem 0.5rem 2.2rem; border-radius: 20px; border: 1px solid var(--border); font-size: 0.85rem; font-weight: 600; outline: none; transition: all 0.2s; background: white;">
-                </div>
-
-                <div style="display: flex; align-items: center; gap: 0.8rem; flex-shrink: 0;">
-                    <button id="btn-toggle-sort" class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.75rem; font-weight: 800; border-radius: 8px;">
-                        <i class="fas fa-arrows-alt-v"></i> 並べ替え
+                <div style="display: flex; gap: 0.6rem;">
+                    <button id="btn-inv-settings-mobile" class="btn-icon-mobile" style="background: #f1f5f9; color: #64748b;">
+                        <i class="fas fa-cog"></i>
                     </button>
-                    <div id="inv-stats" style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;"></div>
-                    <button id="btn-manual-reset" class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.75rem; font-weight: 800; border-radius: 8px; color: #ef4444; border-color: #fecaca; display: none;">
-                        <i class="fas fa-undo"></i> リセット
+                    <button id="btn-inv-refresh" class="btn-icon-mobile" style="background: #f1f5f9; color: #64748b;">
+                        <i class="fas fa-sync-alt"></i>
                     </button>
                 </div>
             </div>
-            
-            <div id="inv-main-content" style="flex: 1; overflow-y: auto; padding: 0;">
-                <!-- Table injected here -->
+
+            <!-- Timing Tabs: Horizontal Scroll -->
+            <div id="inv-timing-nav" style="display: flex; gap: 0.5rem; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px;">
+                <!-- Timing pills injected here -->
             </div>
+        </header>
+
+        <!-- Search Bar: Floating Style -->
+        <div style="padding: 0.8rem 1rem; background: white; border-bottom: 1px solid #e2e8f0; flex-shrink: 0;">
+            <div style="position: relative;">
+                <i class="fas fa-search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.9rem;"></i>
+                <input type="text" id="inv-item-search" placeholder="品目名・場所で検索..." 
+                       style="width: 100%; height: 44px; padding: 0 1rem 0 2.8rem; border-radius: 12px; border: 1.5px solid #f1f5f9; background: #f8fafc; font-size: 0.95rem; font-weight: 700; outline: none; transition: all 0.2s;">
+            </div>
+        </div>
+        
+        <!-- Main Area: Card List -->
+        <main id="inv-main-content" style="flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 1rem;">
+            <!-- Cards injected here -->
         </main>
 
+        <!-- Bottom UI: Summary & Reset -->
+        <footer id="inv-footer-stats" style="background: white; border-top: 1px solid #e2e8f0; padding: 0.8rem 1rem; display: none; align-items: center; justify-content: space-between; gap: 1rem; flex-shrink: 0;">
+            <div style="flex: 1;">
+                <div id="inv-stats-mobile" style="font-size: 0.9rem; font-weight: 900; color: #1e293b;"></div>
+                <div style="font-size: 0.7rem; color: #94a3b8; font-weight: 700; margin-top: 2px;">現在の業務の進捗状況</div>
+            </div>
+            <button id="btn-manual-reset" class="btn" style="padding: 0.6rem 1rem; background: #fff5f5; color: #ef4444; border: 1.5px solid #fee2e2; border-radius: 10px; font-weight: 800; font-size: 0.8rem;">
+                <i class="fas fa-undo"></i> リセット
+            </button>
+        </footer>
 
-        <!-- Modals and Overlays (Same as before but hidden) -->
-        <div id="inv-keypad" style="display: none;"></div> <!-- Deprecated mobile keypad wrapper -->
-        
-        <div id="loc-edit-modal" class="modal-overlay" style="display: none; position: fixed !important; inset: 0 !important; background: rgba(0,0,0,0.5) !important; z-index: 10000 !important; align-items: center; justify-content: center;">
-            <div class="glass-panel animate-scale-in" style="width: 100%; max-width: 350px; padding: 1.5rem;">
-                <h3 style="margin-top: 0; margin-bottom: 1.2rem; font-size: 1.1rem; color: var(--text-primary);">
-                    <i class="fas fa-cog" style="color: var(--primary); margin-right: 0.5rem;"></i>品目設定
-                </h3>
-                <div class="input-group" style="margin-bottom: 1rem;"><label style="font-size: 0.8rem;">保管場所ラベル</label><input type="text" id="loc-edit-input" list="loc-datalist" placeholder="例: 冷蔵庫A..." style="font-size: 0.9rem; padding: 0.6rem 0.6rem 0.6rem 2rem;"><i class="fas fa-map-marker-alt" style="top: 2rem; font-size: 0.8rem;"></i><datalist id="loc-datalist"></datalist></div>
-                <div class="input-group" style="margin-bottom: 1.5rem;"><label style="font-size: 0.8rem;">定数 (Par Stock)</label><input type="number" id="loc-par-stock-input" step="any" placeholder="0" style="font-size: 0.9rem; padding: 0.6rem 0.6rem 0.6rem 2rem;"><i class="fas fa-layer-group" style="top: 2rem; font-size: 0.8rem;"></i></div>
-                <div style="display: flex; gap: 0.75rem;"><button id="btn-loc-cancel" class="btn" style="flex: 1; background: #f1f5f9; color: var(--text-secondary); font-size: 0.85rem;">キャンセル</button><button id="btn-loc-save" class="btn btn-primary" style="flex: 1; font-size: 0.85rem;">保存</button></div>
+        <!-- Loading overlay -->
+        <div id="inv-loading-overlay" style="display:none; position:fixed; inset:0; background:rgba(255,255,255,0.75); z-index:9999; justify-content:center; align-items:center;">
+             <div class="glass-panel" style="padding: 2rem; text-align:center;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary);"></i><p style="margin-top:1rem; font-weight:600;">処理中...</p></div>
+        </div>
+
+        <!-- Store Selection Sheet -->
+        <div id="store-select-sheet" class="bottom-sheet" style="display: none;">
+            <div class="bottom-sheet-backdrop" onclick="closeStoreSelectSheet()"></div>
+            <div class="bottom-sheet-content">
+                <div class="bottom-sheet-handle"></div>
+                <div style="padding: 1rem 1.5rem;">
+                    <h3 style="margin: 0 0 1.2rem 0; font-size: 1.1rem; font-weight: 900; color: #1e293b;">店舗を選択</h3>
+                    <div id="store-sheet-list" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 50vh; overflow-y: auto;">
+                        <!-- Store options injected here -->
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div id="inv-loading-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.7); z-index:9999; justify-content:center; align-items:center;">
-             <div class="glass-panel" style="padding: 2rem; text-align:center;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary);"></i><p style="margin-top:1rem; font-weight:600;">処理中...</p></div>
+        <!-- Master Settings Overlay (Reused from desktop but styled for mobile) -->
+        <div id="inv-master-settings-overlay" style="display: none; position: fixed; inset: 0; background: white; z-index: 11000; flex-direction: column;">
+            <div style="padding: 1rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+                <h2 style="margin: 0; font-size: 1.1rem; font-weight: 900;">在庫マスタ設定</h2>
+                <button onclick="hideMasterSettings()" class="btn-icon-mobile"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="inv-master-settings-content" style="flex: 1; overflow-y: auto;">
+                <!-- Content injected here -->
+            </div>
+        </div>
+
+        <!-- Mobile Bottom Sheet for Item Settings -->
+        <div id="inv-item-settings-sheet" class="bottom-sheet" style="display: none;">
+            <div class="bottom-sheet-backdrop" onclick="closeItemSettings()"></div>
+            <div class="bottom-sheet-content">
+                <div class="bottom-sheet-handle"></div>
+                <div style="padding: 1rem 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h3 id="sheet-item-name" style="margin: 0; font-size: 1.2rem; font-weight: 900; color: #1e293b;">品目設定</h3>
+                        <button onclick="closeItemSettings()" style="background: none; border: none; font-size: 1.5rem; color: #94a3b8;"><i class="fas fa-times"></i></button>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                        <div class="pro-form-field">
+                            <label class="pro-form-label">表示名 (店舗独自)</label>
+                            <input type="text" id="sheet-display-name" placeholder="例: 生ビール中" class="mobile-input-v2">
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="pro-form-field">
+                                <label class="pro-form-label">確認タイミング</label>
+                                <select id="sheet-timing" class="mobile-input-v2"></select>
+                            </div>
+                            <div class="pro-form-field">
+                                <label class="pro-form-label">保管場所</label>
+                                <input type="text" id="sheet-location" placeholder="例: 冷蔵庫A" class="mobile-input-v2">
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="pro-form-field">
+                                <label class="pro-form-label">定数 (Par Stock)</label>
+                                <input type="number" id="sheet-par" step="any" placeholder="0" class="mobile-input-v2" style="text-align: center; font-weight: 800;">
+                            </div>
+                            <div class="pro-form-field">
+                                <label class="pro-form-label">管理単位</label>
+                                <input type="text" id="sheet-unit" placeholder="例: 枚" class="mobile-input-v2" style="text-align: center;">
+                            </div>
+                        </div>
+
+                        <div style="background: #f8fafc; padding: 1.2rem; border-radius: 16px; border: 1.5px solid #e2e8f0;">
+                            <label class="pro-form-label" style="margin-bottom: 0.8rem;">単位換算係数</label>
+                            <div style="display: flex; align-items: center; justify-content: center; gap: 0.8rem;">
+                                <span id="sheet-unit-preview" style="font-weight: 900; color: #64748b; font-size: 1rem;">1 単位 ＝</span>
+                                <input type="number" id="sheet-conv" step="any" placeholder="1" class="mobile-input-v2" style="width: 100px; text-align: center; font-weight: 900; border-color: var(--primary);">
+                                <span id="sheet-master-unit" style="font-weight: 800; color: #1e293b; font-size: 1rem; background: #fff; padding: 6px 12px; border-radius: 10px; border: 1.5px solid #e2e8f0;">-</span>
+                            </div>
+                            <p style="font-size: 0.65rem; color: #94a3b8; margin-top: 0.8rem; text-align: center; font-weight: 700;">※1[管理単位]あたりの基本数量(g等)を入力</p>
+                        </div>
+
+                        <div style="background: #fdf2f2; padding: 1.2rem; border-radius: 16px; border: 1.5px solid #fee2e2;">
+                            <label class="pro-form-label" style="color: #b91c1c;">不足時アクション</label>
+                            <select id="sheet-action" class="mobile-input-v2" style="color: #b91c1c; font-weight: 800; border-color: #fca5a5;">
+                                <option value="purchase">仕入れ・購入</option>
+                                <option value="prep">店舗仕込み</option>
+                                <option value="ck_prep">CK仕込み</option>
+                                <option value="transfer">店舗間移動</option>
+                            </select>
+                            
+                            <div id="sheet-source-store-container" style="display: none; margin-top: 1rem;">
+                                <label class="pro-form-label" style="color: #b91c1c;">移動元店舗</label>
+                                <select id="sheet-source-store" class="mobile-input-v2" style="color: #b91c1c; font-weight: 800; border-color: #fca5a5;"></select>
+                            </div>
+                        </div>
+
+                        <button id="btn-sheet-save" class="btn-action-mobile" style="margin-top: 1rem; height: 60px; font-size: 1.1rem;">設定を保存する</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <style>
-        .inventory-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        .inventory-table th { position: sticky; top: 0; background: white; z-index: 10; padding: 0.8rem 1rem; text-align: left; font-size: 0.75rem; color: var(--text-secondary); border-bottom: 1px solid var(--border); }
-        .inventory-table td { padding: 0.8rem 1rem; border-bottom: 1px solid var(--border); transition: background 0.2s; }
-        .inventory-row:hover { background: #f8fafc; }
-        
-        .inventory-row.confirmed { 
-            background: #f0fdf4 !important; 
-            border-left: 4px solid #10b981 !important;
+        .bottom-sheet {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
         }
-        .inventory-row.shortage:not(.confirmed) { background: #fef2f2; border-left: 4px solid #ef4444; }
-        
-        .timing-item { padding: 0.8rem 1rem; border-radius: 10px; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; display: flex; align-items: center; gap: 0.6rem; font-weight: 600; color: var(--text-secondary); }
-        .timing-item:hover { background: #f1f5f9; color: var(--text-primary); }
-        .timing-item.active { background: white; color: var(--primary); border-color: var(--primary); box-shadow: var(--shadow-sm); }
-        
-        .qty-stepper-container {
+        .bottom-sheet-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+        }
+        .bottom-sheet-content {
+            position: relative;
+            background: white;
+            border-radius: 30px 30px 0 0;
+            padding-bottom: env(safe-area-inset-bottom);
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: sheet-slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .bottom-sheet-handle {
+            width: 40px;
+            height: 5px;
+            background: #e2e8f0;
+            border-radius: 10px;
+            margin: 12px auto;
+        }
+        @keyframes sheet-slide-up {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        .mobile-input-v2 {
+            width: 100%;
+            height: 50px;
+            border-radius: 12px;
+            border: 1.5px solid #f1f5f9;
+            background: #f8fafc;
+            padding: 0 1rem;
+            font-size: 1rem;
+            font-weight: 700;
+            color: #1e293b;
+            outline: none;
+            transition: all 0.2s;
+        }
+        .mobile-input-v2:focus {
+            border-color: var(--primary);
+            background: white;
+            box-shadow: 0 0 0 4px rgba(230, 57, 70, 0.1);
+        }
+        .pro-form-field { display: flex; flex-direction: column; gap: 6px; }
+        .pro-form-label { font-size: 0.75rem; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+    </style>
+
+    <style>
+        .timing-pill {
             display: inline-flex;
             align-items: center;
-            background: white;
-            border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            overflow: hidden;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-            margin: 0 auto;
-        }
-        .qty-stepper-container:focus-within {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(230, 57, 70, 0.1);
-            transform: translateY(-1px);
-        }
-        
-        .qty-input { 
-            width: 65px !important; 
-            height: 44px;
-            padding: 0; 
-            border: none !important;
-            border-left: 1px solid #f1f5f9 !important;
-            border-right: 1px solid #f1f5f9 !important;
-            border-radius: 0 !important; 
-            font-weight: 800; 
-            text-align: center; 
-            font-size: 1.25rem; 
-            color: var(--primary); 
-            background: white;
-            outline: none;
-        }
-        
-        .stepper-btn {
-            width: 44px;
-            height: 44px;
-            border: none !important;
-            background: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            color: var(--text-secondary);
-            transition: all 0.2s;
-            font-size: 1rem;
-        }
-        .stepper-btn:hover { background: #f8fafc; color: var(--primary); }
-        .stepper-btn:active { background: #f1f5f9; transform: scale(0.9); }
-
-        .confirm-btn {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 2px solid #e2e8f0;
-            background: white;
-            color: #cbd5e1;
-            cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .confirm-btn.active {
-            background: #10b981;
-            border-color: #10b981;
-            color: white;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-        }
-        .confirm-btn:active { transform: scale(0.9); }
-
-        .section-confirm-btn {
-            font-size: 0.7rem;
-            padding: 0.3rem 0.8rem;
-            background: white;
-            color: #059669;
-            border: 1px solid #bbf7d0;
-            border-radius: 20px;
-            font-weight: 800;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 0.3rem;
-        }
-        .section-confirm-btn:hover { background: #f0fdf4; border-color: #10b981; }
-
-        @media (max-width: 1024px) {
-            #inv-sidebar { width: 220px; }
-        }
-
-        .location-banner {
+            gap: 0.5rem;
+            padding: 0.6rem 1.2rem;
             background: #f1f5f9;
-            border-top: 1px solid #e2e8f0;
-            border-bottom: 1px solid #e2e8f0;
-            padding: 0;
+            color: #64748b;
+            border-radius: 100px;
+            font-weight: 800;
+            font-size: 0.85rem;
+            border: 2px solid transparent;
+            transition: all 0.2s;
             cursor: pointer;
-            user-select: none;
         }
-        .location-banner:hover { background: #e2e8f0; }
-        .location-banner.completed { background: #ecfdf5; }
-        
-        .location-banner td { padding: 0.6rem 0.5rem 0.6rem 1rem !important; border-left: 5px solid #cbd5e1; }
-        .location-banner.completed td { border-left-color: #10b981; }
+        .timing-pill.active {
+            background: #fff;
+            color: var(--primary);
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(230, 57, 70, 0.1);
+        }
 
-        .location-banner .banner-content {
+        .inventory-card {
+            background: white;
+            border-radius: 18px;
+            padding: 1.2rem;
+            border: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+            transition: all 0.2s;
+        }
+        .inventory-card.confirmed {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+        }
+        .inventory-card.shortage:not(.confirmed) {
+            background: #fff5f5;
+            border-color: #fecaca;
+        }
+
+        .card-header {
             display: flex;
             justify-content: space-between;
+            align-items: flex-start;
+        }
+        .card-title {
+            font-weight: 900;
+            font-size: 1.1rem;
+            color: #1e293b;
+            line-height: 1.4;
+        }
+        .card-meta {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            font-weight: 700;
+            margin-top: 0.2rem;
+        }
+
+        .qty-control-row {
+            display: flex;
             align-items: center;
-            width: 100%;
+            justify-content: space-between;
             gap: 1rem;
         }
 
-        .location-banner .title { font-weight: 800; font-size: 0.9rem; display: flex; align-items: center; gap: 0.8rem; color: #334155; }
-        .location-banner .progress { font-size: 0.7rem; font-weight: 800; color: #64748b; background: white; padding: 0.2rem 0.6rem; border-radius: 12px; border: 1px solid #e2e8f0; }
-        .location-banner.completed .progress { color: #059669; border-color: #bbf7d0; }
-
-        .inventory-table tr.hidden { display: none; }
+        .qty-stepper-mobile {
+            display: flex;
+            align-items: center;
+            background: #f8fafc;
+            border-radius: 14px;
+            padding: 4px;
+            border: 1.5px solid #f1f5f9;
+        }
+        .stepper-btn-mobile {
+            width: 48px;
+            height: 48px;
+            border-radius: 11px;
+            background: white;
+            color: #1e293b;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .stepper-btn-mobile:active { transform: scale(0.92); background: #f1f5f9; }
         
-        #inv-loading-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-    }
-    .modal-overlay.active {
-        display: flex;
-        opacity: 1;
-    }
+        .qty-input-mobile {
+            width: 70px;
+            height: 48px;
+            border: none;
+            background: transparent;
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: var(--primary);
+            font-family: 'Outfit', sans-serif;
+            outline: none;
+        }
 
-    /* Master Settings Large Overlay */
-    #inv-master-settings-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(241, 245, 249, 0.98);
-        z-index: 2050;
-        display: none;
-        flex-direction: column;
-        padding: 1rem 2rem;
-        overflow: hidden;
-    }
-    #inv-master-settings-overlay.active {
-        display: flex;
-    }
+        .btn-confirm-mobile {
+            width: 56px;
+            height: 56px;
+            border-radius: 18px;
+            border: none;
+            background: #e2e8f0;
+            color: #94a3b8;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .btn-confirm-mobile.active {
+            background: #10b981;
+            color: white;
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+        }
+
+        .location-divider {
+            font-size: 0.75rem;
+            font-weight: 900;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin: 1.5rem 0 0.5rem 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+        .location-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e2e8f0;
+        }
+
+        /* Bottom Sheet (Modal for Item Settings) */
+        #inv-item-modal .glass-panel {
+            width: 100% !important;
+            border-radius: 24px 24px 0 0 !important;
+            margin-top: auto !important;
+            position: absolute !important;
+            bottom: 0 !important;
+            left: 0 !important;
+        }
+
+        .btn-icon-mobile {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            transition: all 0.2s;
+        }
+        .btn-icon-mobile:active { transform: scale(0.92); background: #e2e8f0; }
+
+        .store-item-row {
+            padding: 1rem;
+            background: white;
+            border-radius: 12px;
+            border: 1.5px solid #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 800;
+            color: #1e293b;
+            transition: all 0.2s;
+        }
+        .store-item-row.active {
+            border-color: var(--primary);
+            background: #fff5f5;
+            color: var(--primary);
+        }
     </style>
 
-    <!-- Item Detail Settings Modal -->
-    <div id="inv-item-modal" class="modal-overlay">
-        <div class="glass-panel animate-scale-in" style="width: 520px; padding: 0; overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow-lg);">
-            <!-- Modal Header -->
-            <div style="padding: 1.2rem 1.5rem; background: var(--surface-darker); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 0.8rem;">
-                    <i class="fas fa-cog" style="color: var(--primary); font-size: 1.1rem;"></i>
-                    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 900; color: var(--text-primary);" id="modal-item-name">品目設定</h3>
-                </div>
-                <button onclick="hideItemModal()" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size: 1.2rem; transition: color 0.2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-secondary)'"><i class="fas fa-times"></i></button>
-            </div>
-
-            <!-- Modal Body -->
-            <div style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; max-height: 85vh; overflow-y: auto;">
-                
-                <!-- Section 1: 基本設定 -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div class="input-group" style="grid-column: span 2; margin: 0;">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">店舗別表示名 <span style="font-weight: 400; color: #94a3b8; font-size: 0.7rem;">(任意・マスタ名は変わりません)</span></label>
-                        <input type="text" id="modal-display-name" placeholder="例: 生ビール中" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 2px solid #f1f5f9; font-weight: 700; font-size: 1rem; color: var(--primary); transition: border-color 0.2s;">
-                    </div>
-                    <div class="input-group" style="margin: 0;">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">確認タイミング</label>
-                        <select id="modal-timing" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 2px solid #f1f5f9; font-weight: 600; background: white; cursor: pointer;"></select>
-                    </div>
-                    <div class="input-group" style="margin: 0;">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">保管場所</label>
-                        <input type="text" id="modal-location" list="common-locations" placeholder="例: 冷蔵庫A" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 2px solid #f1f5f9; font-weight: 600;">
-                    </div>
-                </div>
-
-                <!-- Section 2: 補充アクション (ロジックの前提となる設定) -->
-                <div style="background: #fdf2f2; padding: 1.2rem; border-radius: 12px; border: 1px solid #fee2e2; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div class="input-group" style="margin: 0;">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: #b91c1c; display: block; margin-bottom: 0.4rem;">不足時アクション</label>
-                        <select id="modal-action" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 1px solid #fca5a5; font-weight: 700; background: white; color: #b91c1c;">
-                            <option value="purchase">仕入れ</option>
-                            <option value="prep">店舗仕込み</option>
-                            <option value="ck_prep">CK仕込み</option>
-                            <option value="transfer">移動</option>
-                        </select>
-                    </div>
-                    <div id="modal-source-store-container" class="input-group" style="margin: 0; display: none;">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: #b91c1c; display: block; margin-bottom: 0.4rem;">移動元店舗</label>
-                        <select id="modal-source-store" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 1px solid #fca5a5; font-weight: 700; background: white; color: #b91c1c;"></select>
-                        <div id="modal-source-warning" style="font-size: 0.65rem; color: var(--danger); margin-top: 0.3rem; font-weight: 700; display: none;">※この店舗には品目が登録されていません</div>
-                    </div>
-                </div>
-
-                <!-- Section 3: 在庫管理ロジック -->
-                <div style="background: #f8fafc; padding: 1.2rem; border-radius: 12px; border: 1px solid #e2e8f0; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div class="input-group" style="margin: 0;">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">定数 (Par Stock)</label>
-                        <input type="number" id="modal-par" step="any" placeholder="0" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 2px solid #e2e8f0; text-align: center; font-weight: 800; font-size: 1.1rem; color: var(--primary);">
-                    </div>
-                    <div class="input-group" style="margin: 0;">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">管理単位</label>
-                        <input type="text" id="modal-unit" list="common-units" placeholder="例: 皿 / パック" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 2px solid #e2e8f0; font-weight: 700; text-align: center; color: var(--primary);">
-                    </div>
-                    <div class="input-group" style="grid-column: span 2; margin: 0; padding-top: 0.5rem; border-top: 1px dashed #e2e8f0;">
-                        <label style="font-size: 0.7rem; font-weight: 800; color: #64748b; display: block; margin-bottom: 0.5rem;">単位換算係数 <span style="font-weight: 400; color: #94a3b8;">(1 [管理単位] あたりの基本数量)</span></label>
-                        <div style="display: flex; align-items: center; justify-content: center; gap: 0.8rem; background: white; padding: 0.5rem; border-radius: 10px; border: 1px solid #f1f5f9;">
-                            <span id="modal-unit-preview" style="font-weight: 800; color: #94a3b8; font-size: 0.9rem;">1 単位 ＝</span>
-                            <input type="number" id="modal-conv" step="any" placeholder="1" style="width: 80px; padding: 0.4rem; border-radius: 6px; border: 2px solid var(--primary); text-align: center; font-weight: 800; font-size: 1rem; color: var(--primary);">
-                            <span id="modal-master-unit" style="font-weight: 800; color: var(--text-secondary); font-size: 0.95rem; background: #f8fafc; padding: 0.3rem 0.6rem; border-radius: 6px;">-</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Action Button -->
-                <button id="btn-save-single-item" class="btn btn-primary" style="width: 100%; padding: 1.1rem; margin-top: 0.5rem; font-weight: 900; font-size: 1.1rem; border-radius: 14px; box-shadow: var(--shadow-primary); display: flex; align-items: center; justify-content: center; gap: 0.8rem;">
-                    <i class="fas fa-save"></i> 設定を保存する
-                </button>
-            </div>
-        </div>
-    </div>
+    <!-- Settings and modals are now handled via bottom sheets -->
 
     <!-- Master Settings Large Overlay -->
     <div id="inv-master-settings-overlay">
@@ -506,138 +588,138 @@ function render() {
         <datalist id="common-units">${units.map(u => `<option value="${u}">`).join('')}</datalist>
     `;
 
-    // 1. Populate Store Select (Only once or if changed)
-    if (storeSelect.options.length <= 1) {
-        allStores.sort((a,b) => a.name.localeCompare(b.name)).forEach(s => {
-            const opt = document.createElement('option');
-            opt.value = s.id;
-            opt.textContent = s.name;
-            if (selectedStore && selectedStore.id === s.id) opt.selected = true;
-            storeSelect.appendChild(opt);
-        });
-        
-        // Auto-select store for users with a fixed StoreID
-        if (!selectedStore && currentUser?.StoreID) {
-            const myStore = allStores.find(s => s.id === currentUser.StoreID || s.code === currentUser.StoreID);
-            if (myStore) {
-                selectedStore = myStore;
-                storeSelect.value = myStore.id;
-                loadStoreInventory(myStore.code).then(() => render());
-            }
-        }
+    // 1. Populate Store UI
+    const storeDisplay = document.getElementById('display-selected-store-name');
+    if (storeDisplay) {
+        storeDisplay.textContent = selectedStore ? selectedStore.name : '店舗を選択してください';
+    }
 
-        storeSelect.onchange = async (e) => {
-            const val = e.target.value;
-            if (!val) {
-                selectedStore = null;
-                inventoryData = [];
-            } else {
-                const s = allStores.find(x => x.id === val);
-                selectedStore = s;
-                await loadStoreInventory(s.code);
-            }
-            selectedTiming = null;
-            render();
-        };
+    // Auto-select store for users with a fixed StoreID
+    if (!selectedStore && currentUser?.StoreID) {
+        const myStore = allStores.find(s => s.id === currentUser.StoreID || s.code === currentUser.StoreID);
+        if (myStore) {
+            selectedStore = myStore;
+            loadStoreInventory(myStore.code).then(() => render());
+        }
     }
 
     if (!selectedStore) {
-        sidebarTimings.innerHTML = '<div style="font-size:0.8rem;color:var(--text-secondary);padding:1rem;">店舗を選択してください</div>';
         main.innerHTML = `
             <div style="text-align:center; padding: 5rem; color: var(--text-secondary);">
                 <i class="fas fa-store-slash" style="font-size: 3rem; margin-bottom: 1.5rem; opacity: 0.3;"></i>
-                <p>店舗を選択して在庫管理を開始してください</p>
+                <p>店舗を選択して在庫チェックを開始してください</p>
+                <button onclick="showStoreSelectSheet()" class="btn btn-primary" style="margin-top: 1.5rem; border-radius: 12px; padding: 0.8rem 1.5rem;">店舗を選択する</button>
             </div>
         `;
         return;
     }
 
-    // 2. Render Sidebar Timings
+    // 2. Render Top Navigation Timings (Pills)
+    const timingNav = document.getElementById('inv-timing-nav');
     const rawTimings = [...new Set(inventoryData.map(d => d.確認タイミング || ''))].sort((a,b) => {
         if (a === '') return -1;
         if (b === '') return 1;
         return a.localeCompare(b);
     });
     
-    sidebarTimings.innerHTML = rawTimings.map(tCode => {
-        const tName = tCode ? (timingMaster[tCode] || tCode) : "⚠️ タイミング未設定";
-        const itemsInTiming = inventoryData.filter(d => (d.確認タイミング || '') === tCode);
-        const confirmedItems = itemsInTiming.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed));
-        const isAllDone = itemsInTiming.length > 0 && confirmedItems.length === itemsInTiming.length;
-        const isActive = selectedTiming && (selectedTiming.id || '') === tCode;
-        
-        return `
-            <div class="timing-item ${isActive ? 'active' : ''}" data-code="${tCode}" data-name="${tName}">
-                <i class="fas ${isAllDone ? 'fa-check-circle' : 'fa-clock'}" style="${isAllDone ? 'color:var(--primary)' : ''}"></i>
-                <span style="flex:1">${tName}</span>
-                <span style="font-size:0.7rem;opacity:0.7">${confirmedItems.length}/${itemsInTiming.length}</span>
+    if (timingNav) {
+        timingNav.innerHTML = rawTimings.map(tCode => {
+            const tName = tCode ? (timingMaster[tCode] || tCode) : "未設定";
+            const itemsInTiming = inventoryData.filter(d => (d.確認タイミング || '') === tCode);
+            const confirmedItems = itemsInTiming.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed));
+            const isAllDone = itemsInTiming.length > 0 && confirmedItems.length === itemsInTiming.length;
+            const isActive = selectedTiming && (selectedTiming.id || '') === tCode;
+            
+            return `
+                <div class="timing-pill ${isActive ? 'active' : ''}" data-code="${tCode}" data-name="${tName}">
+                    <i class="fas ${isAllDone ? 'fa-check-circle' : 'fa-clock'}"></i>
+                    <span>${tName}</span>
+                    <span style="font-size:0.7rem; opacity:0.6; margin-left:2px;">${confirmedItems.length}/${itemsInTiming.length}</span>
+                </div>
+            `;
+        }).join('');
+
+        timingNav.querySelectorAll('.timing-pill').forEach(pill => {
+            pill.onclick = () => {
+                selectedTiming = { id: pill.dataset.code, name: pill.dataset.name };
+                inventorySearchQuery = ''; 
+                render();
+            };
+        });
+    }
+
+    // Search input control
+    const searchInput = document.getElementById('inv-item-search');
+    if (searchInput) {
+        searchInput.value = inventorySearchQuery;
+        searchInput.oninput = (e) => {
+            inventorySearchQuery = e.target.value;
+            const mainContent = document.getElementById('inv-main-content');
+            if (mainContent) renderChecklist(mainContent);
+        };
+    }
+
+    // 3. Render Main Content
+    if (!selectedTiming) {
+        main.innerHTML = `
+            <div style="text-align:center; padding: 5rem; color: var(--text-secondary);">
+                <i class="fas fa-clock" style="font-size: 3rem; margin-bottom: 1.5rem; opacity: 0.3;"></i>
+                <p>上部タブからタイミングを選択してください</p>
             </div>
         `;
-    }).join('');
+    } else {
+        renderChecklist(main);
+    }
 
-    sidebarTimings.querySelectorAll('.timing-item').forEach(item => {
-        item.onclick = () => {
-            selectedTiming = { id: item.dataset.code, name: item.dataset.name };
-            inventorySearchQuery = ''; 
-            
-            // 全てのアコーディオンを閉じる
-            const allLocs = [...new Set(inventoryData.filter(d => d.確認タイミング === selectedTiming.id).map(d => d.location_label || d.保管場所 || '未設定'))];
-            collapsedSections = new Set(allLocs);
-            
+    // Header Actions
+    const btnSettings = document.getElementById('btn-inv-settings-mobile');
+    if (btnSettings) {
+        const canManage = currentUser?.Role === 'Admin' || currentUser?.Role === '管理者' || currentUser?.Role === 'Manager' || currentUser?.Role === '店長';
+        btnSettings.style.display = canManage ? 'flex' : 'none';
+        btnSettings.onclick = () => showMasterSettings();
+    }
+    document.getElementById('btn-inv-refresh').onclick = () => {
+        if (selectedStore) loadStoreInventory(selectedStore.code).then(() => render());
+    };
+
+    // Manual Reset Button
+    const btnReset = document.getElementById('btn-manual-reset');
+    const footer = document.getElementById('inv-footer-stats');
+    if (btnReset && footer) {
+        const canReset = currentUser?.Role === 'Admin' || currentUser?.Role === '管理者' || currentUser?.Role === 'Manager' || currentUser?.Role === '店長';
+        footer.style.display = selectedTiming ? 'flex' : 'none';
+        btnReset.style.display = (canReset) ? 'block' : 'none';
+        btnReset.onclick = handleManualReset;
+    }
+}
+
+function showStoreSelectSheet() {
+    const sheet = document.getElementById('store-select-sheet');
+    const list = document.getElementById('store-sheet-list');
+    list.innerHTML = allStores.sort((a,b) => a.name.localeCompare(b.name)).map(s => `
+        <div class="store-item-row ${selectedStore?.id === s.id ? 'active' : ''}" data-id="${s.id}">
+            <span>${s.name}</span>
+            ${selectedStore?.id === s.id ? '<i class="fas fa-check-circle"></i>' : ''}
+        </div>
+    `).join('');
+
+    list.querySelectorAll('.store-item-row').forEach(row => {
+        row.onclick = async () => {
+            const s = allStores.find(x => x.id === row.dataset.id);
+            selectedStore = s;
+            closeStoreSelectSheet();
+            render();
+            await loadStoreInventory(s.code);
             render();
         };
     });
 
-    // Search input control
-    const searchContainer = document.getElementById('inv-search-container');
-    if (searchContainer) {
-        searchContainer.style.display = selectedTiming ? 'block' : 'none';
-        const searchInput = document.getElementById('inv-item-search');
-        if (searchInput) {
-            searchInput.value = inventorySearchQuery;
-            searchInput.oninput = (e) => {
-                inventorySearchQuery = e.target.value;
-                // ヘッダー全体ではなく、リスト部分のみを再描画してフォーカスを維持
-                const mainContent = document.getElementById('inv-main-content');
-                if (mainContent) renderChecklist(mainContent);
-            };
-        }
-    }
-
-    // 3. Render Main Content
-    if (currentTab === 'settings') {
-        renderSettingsView(main);
-    } else {
-        if (!selectedTiming) {
-            main.innerHTML = `
-                <div style="text-align:center; padding: 5rem; color: var(--text-secondary);">
-                    <i class="fas fa-arrow-left" style="font-size: 3rem; margin-bottom: 1.5rem; opacity: 0.3;"></i>
-                    <p>左メニューからタイミングを選択してください</p>
-                </div>
-            `;
-        } else {
-            renderChecklist(main);
-        }
-    }
-
-    // Settings Toggle (Re-purposed to open overlay)
-    const btnSettings = document.getElementById('btn-inv-settings');
-    if (btnSettings) {
-        const canManage = currentUser?.Role === 'Admin' || currentUser?.Role === '管理者' || currentUser?.Role === 'Manager' || currentUser?.Role === '店長';
-        btnSettings.style.display = canManage ? 'block' : 'none';
-        btnSettings.onclick = () => {
-            showMasterSettings();
-        };
-    }
-
-    // Manual Reset Button
-    const btnReset = document.getElementById('btn-manual-reset');
-    if (btnReset) {
-        const canReset = currentUser?.Role === 'Admin' || currentUser?.Role === '管理者' || currentUser?.Role === 'Manager' || currentUser?.Role === '店長';
-        btnReset.style.display = (canReset && selectedTiming) ? 'block' : 'none';
-        btnReset.onclick = handleManualReset;
-    }
+    sheet.style.display = 'flex';
 }
+
+window.closeStoreSelectSheet = () => {
+    document.getElementById('store-select-sheet').style.display = 'none';
+};
 
 async function showMasterSettings() {
     const overlay = document.getElementById('inv-master-settings-overlay');
@@ -671,43 +753,29 @@ function renderChecklist(container) {
     let items = [];
     let isGlobalSearch = false;
 
-    // 検索フィルタの適用
     if (inventorySearchQuery) {
         isGlobalSearch = true;
         const q = inventorySearchQuery.toLowerCase();
-        // 全データから検索
         items = inventoryData.filter(item => {
             const masterName = (productMap[item.ProductID] || '').toLowerCase();
             const displayName = (item.display_name || '').toLowerCase();
             const location = (item.location_label || item.保管場所 || '').toLowerCase();
             return masterName.includes(q) || displayName.includes(q) || location.includes(q);
         });
-
-        // 検索結果があるロケーション（棚）は強制的に展開する
-        items.forEach(item => {
-            const loc = item.location_label || item.保管場所 || '未設定';
-            if (collapsedSections.has(loc)) {
-                collapsedSections.delete(loc);
-            }
-        });
-        
-        document.getElementById('inv-current-title').innerHTML = `
-            <span style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">全タイミングから検索中:</span> 
-            <span style="color: var(--primary);">${inventorySearchQuery}</span>
-        `;
     } else {
-        // 通常時：選択中のタイミングで絞り込み
-        items = inventoryData.filter(d => (d.確認タイミング || '') === (selectedTiming.id || ''));
-        document.getElementById('inv-current-title').textContent = `${selectedStore.name} / ${selectedTiming.name}`;
+        items = inventoryData.filter(d => (d.確認タイミング || '') === (selectedTiming ? selectedTiming.id : ''));
     }
     
     const confirmedCount = items.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed)).length;
-    document.getElementById('inv-stats').textContent = `${isGlobalSearch ? 'ヒット' : '完了'}: ${isGlobalSearch ? items.length : confirmedCount + ' / ' + items.length}`;
+    const statsEl = document.getElementById('inv-stats-mobile');
+    if (statsEl) {
+        statsEl.textContent = `${confirmedCount} / ${items.length} 完了`;
+    }
 
-    renderInventoryTable(container, items, isGlobalSearch);
+    renderInventoryCards(container, items, isGlobalSearch);
 }
 
-function renderInventoryTable(container, items, isGlobalSearch) {
+function renderInventoryCards(container, items, isGlobalSearch) {
     // Sort items by location_label then name
     items.sort((a, b) => {
         const locA = a.location_label || a.保管場所 || '未設定';
@@ -716,7 +784,7 @@ function renderInventoryTable(container, items, isGlobalSearch) {
         return (productMap[a.ProductID] || '').localeCompare(productMap[b.ProductID] || '');
     });
 
-    // グルーピングとプログレス計算
+    // グルーピング
     const groupedItems = {};
     items.forEach(item => {
         const loc = item.location_label || item.保管場所 || '未設定';
@@ -724,326 +792,113 @@ function renderInventoryTable(container, items, isGlobalSearch) {
         groupedItems[loc].push(item);
     });
 
-    // 各ロケーション内のソート
-    Object.keys(groupedItems).forEach(loc => {
-        groupedItems[loc].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-    });
-
-    let html = `
-        <table class="inventory-table ${sortMode ? 'sort-mode-active' : ''}">
-            <thead>
-                <tr>
-                    <th style="width: 40px; padding: 0.8rem 0.5rem;"></th>
-                    <th>品目名</th>
-                    <th style="width: 180px; text-align: center;">現在庫入力</th>
-                    <th style="width: 90px; text-align: center;">単位</th>
-                    <th style="width: 60px; text-align: center;">完了</th>
-                    <th style="width: 80px; text-align: center;">定数</th>
-                    <th style="width: 50px; text-align: center;"><i class="fas fa-cog"></i></th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
+    let html = '';
 
     Object.keys(groupedItems).forEach(loc => {
         const locItems = groupedItems[loc];
-        const confirmedCount = locItems.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed)).length;
-        const totalCount = locItems.length;
-        const isCompleted = confirmedCount === totalCount;
-        const isCollapsed = collapsedSections.has(loc);
+        
+        html += `<div class="location-divider"><i class="fas fa-map-marker-alt"></i> ${loc}</div>`;
 
-        html += `
-            <tr class="location-banner ${isCompleted ? 'completed' : ''}" data-loc="${loc}">
-                <td colspan="6">
-                    <div class="banner-content">
-                        <div class="title">
-                            <i class="fas ${isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'}" style="width: 1rem; font-size: 0.8rem; color: var(--text-secondary);"></i>
-                            <i class="fas fa-map-marker-alt" style="color: var(--primary);"></i>
-                            ${loc}
-                            ${isCompleted ? '<i class="fas fa-check-circle" style="color:var(--primary); font-size: 0.9rem;"></i>' : ''}
-                        </div>
-                        <div class="progress">${confirmedCount} / ${totalCount}</div>
-                        <button class="section-confirm-btn" data-loc="${loc}" style="display: ${isGlobalSearch ? 'none' : 'flex'}">
-                            <i class="fas fa-check-double"></i> この棚を完了
-                        </button>
-                    </div>
-                </td>
-            </tr>
-        `;
-
-        locItems.forEach((item, index) => {
+        locItems.forEach(item => {
             const isConfirmed = isConfirmedToday(item.updated_at, selectedStore.resetTime, item.is_confirmed);
             const currentQty = item.個数 !== undefined ? item.個数 : '';
             const parStock = item.定数 || 0;
             const isShort = (parStock > 0) && (Number(currentQty) < parStock);
             
-            // 表示名の出し分け
             const masterName = productMap[item.ProductID] || '不明';
             const displayName = item.display_name || masterName;
-            const hasCustomName = item.display_name && item.display_name !== masterName;
 
             html += `
-                <tr class="inventory-row ${isConfirmed ? 'confirmed' : ''} ${isShort && !isConfirmed ? 'shortage' : ''} ${isCollapsed ? 'hidden' : ''}" 
-                    data-id="${item.id}" data-loc="${loc}" draggable="${sortMode}">
-                    <td style="text-align: center;">
-                        <div style="display: flex; align-items: center; justify-content: center; gap: 0.6rem;">
-                            <div class="check-mark" style="display: ${sortMode ? 'none' : 'block'}; min-width: 1.2rem;">
-                                ${isConfirmed ? '<i class="fas fa-check-circle" style="color:var(--primary)"></i>' : (index + 1)}
+                <div class="inventory-card ${isConfirmed ? 'confirmed' : ''} ${isShort && !isConfirmed ? 'shortage' : ''}" data-id="${item.id}">
+                    <div class="card-header">
+                        <div style="flex: 1; min-width: 0;">
+                            <div class="card-title">${displayName}</div>
+                            <div class="card-meta">
+                                ${isGlobalSearch ? `<span style="background: #f1f5f9; padding: 2px 6px; border-radius: 6px; margin-right: 6px;">${timingMaster[item.確認タイミング] || '未設定'}</span>` : ''}
+                                <i class="fas fa-layer-group" style="font-size: 0.7rem; margin-right: 2px;"></i> 定数: ${parStock} ${item.display_unit || ''}
                             </div>
-                            <div class="sort-handle" style="display: ${sortMode ? 'block' : 'none'};"><i class="fas fa-bars"></i></div>
                         </div>
-                    </td>
-                    <td>
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <div style="font-weight: 800; font-size: 1rem; color: var(--text-primary);">${displayName}</div>
-                            ${isGlobalSearch ? `<span style="font-size: 0.65rem; background: #f1f5f9; color: #64748b; padding: 0.1rem 0.4rem; border-radius: 4px; font-weight: 700;">${timingMaster[item.確認タイミング] || '未設定'}</span>` : ''}
-                        </div>
-                        ${hasCustomName ? `<div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.1rem;">${masterName}</div>` : ''}
-                    </td>
-                    <td style="text-align: center;">
-                        <div class="qty-stepper-container">
-                            <button class="stepper-btn minus" data-id="${item.id}"><i class="fas fa-minus"></i></button>
-                            <input type="number" step="any" inputmode="decimal" class="qty-input" 
-                                   value="${currentQty}" placeholder="0" 
-                                   data-id="${item.id}" data-index="${index}">
-                            <button class="stepper-btn plus" data-id="${item.id}"><i class="fas fa-plus"></i></button>
-                        </div>
-                    </td>
-                    <td style="text-align: center; font-size: 0.8rem; color: var(--text-secondary); font-weight: 600; white-space: nowrap;">
-                        ${item.display_unit || ''}
-                    </td>
-                    <td style="text-align: center;">
-                        <button class="confirm-btn ${isConfirmed ? 'active' : ''}" data-id="${item.id}" title="確定">
-                            <i class="fas fa-check"></i>
-                        </button>
-                    </td>
-                    <td style="text-align: center; font-family: monospace; font-weight: 700;">${parStock}</td>
-                    <td style="text-align: center;">
-                        <button class="btn-item-settings" data-id="${item.id}" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; padding: 5px;">
+                        <button class="btn-icon-mobile btn-edit-item" data-id="${item.id}" style="background: #f8fafc; color: #94a3b8; border: 1.5px solid #f1f5f9;">
                             <i class="fas fa-cog"></i>
                         </button>
-                    </td>
-                </tr>
+                    </div>
+
+                    <div class="qty-control-row">
+                        <div class="qty-stepper-mobile">
+                            <button class="stepper-btn-mobile btn-minus" data-id="${item.id}"><i class="fas fa-minus"></i></button>
+                            <input type="number" class="qty-input-mobile" value="${currentQty}" placeholder="-" data-id="${item.id}" inputmode="decimal">
+                            <button class="stepper-btn-mobile btn-plus" data-id="${item.id}"><i class="fas fa-plus"></i></button>
+                        </div>
+
+                        <div style="display: flex; align-items: center; gap: 0.8rem;">
+                            <span style="font-weight: 900; color: #64748b; font-size: 1.1rem;">${item.display_unit || ''}</span>
+                            <button class="btn-confirm-mobile ${isConfirmed ? 'active' : ''}" data-id="${item.id}">
+                                <i class="fas fa-check"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
             `;
         });
     });
 
-    html += `</tbody></table>`;
-    container.innerHTML = html;
-
-    // Header listeners
-    const btnSort = document.getElementById('btn-toggle-sort');
-    if (btnSort) {
-        btnSort.onclick = () => {
-            sortMode = !sortMode;
-            // 検索中かどうかを判定して渡す
-            const isGlobalSearch = !!inventorySearchQuery;
-            renderInventoryTable(container, items, isGlobalSearch);
-        };
-    }
-
-    // Banner listeners (Toggle)
-    container.querySelectorAll('.location-banner').forEach(banner => {
-        banner.onclick = (e) => {
-            e.preventDefault();
+    container.innerHTML = html || `<div style="text-align:center; padding: 3rem; color: #94a3b8;">表示する品目はありません</div>`;
+    attachInventoryListeners(container);
+}
+function attachInventoryListeners(container) {
+    // Steppers
+    container.querySelectorAll('.stepper-btn-mobile').forEach(btn => {
+        btn.onclick = async (e) => {
             e.stopPropagation();
-            const loc = banner.dataset.loc;
-            if (collapsedSections.has(loc)) {
-                collapsedSections.delete(loc);
+            const id = btn.dataset.id;
+            const input = container.querySelector(`.qty-input-mobile[data-id="${id}"]`);
+            const item = inventoryData.find(i => i.id === id);
+            if (!item) return;
+
+            let val = Number(input.value) || 0;
+            if (btn.classList.contains('btn-plus')) {
+                val += 1;
             } else {
-                collapsedSections.add(loc);
+                val = Math.max(0, val - 1);
             }
-            render(); // 全体再描画
+            
+            input.value = val;
+            item.個数 = val;
+            await saveItemQty(item);
         };
     });
 
-    // Input listeners (Auto-save on blur)
-    container.querySelectorAll('.qty-input').forEach(input => {
+    // Qty Input
+    container.querySelectorAll('.qty-input-mobile').forEach(input => {
         input.onfocus = () => input.select();
-        input.onblur = () => {
-            const item = items.find(i => i.id === input.dataset.id);
-            if (item) {
-                // 文字列として取得してitemにセット（saveItemQty内で数値化される）
-                item.個数 = input.value;
-                saveItemQty(item);
+        input.onblur = async () => {
+            const item = inventoryData.find(i => i.id === input.dataset.id);
+            if (item && input.value !== "") {
+                item.個数 = Number(input.value);
+                await saveItemQty(item);
             }
         };
-        // Enterキーでも保存
         input.onkeydown = (e) => {
-            if (e.key === 'Enter') {
-                input.blur();
-            }
+            if (e.key === 'Enter') input.blur();
         };
     });
 
-    // Listeners for ⚙️ settings icon
-    container.querySelectorAll('.btn-item-settings').forEach(btn => {
-        btn.onclick = (e) => {
-            e.stopPropagation();
-            showItemSettingsModal(btn.dataset.id);
-        };
-    });
-
-    // 完了トグルボタンのリスナー
-    container.querySelectorAll('.confirm-btn').forEach(btn => {
+    // Confirm Button
+    container.querySelectorAll('.btn-confirm-mobile').forEach(btn => {
         btn.onclick = (e) => {
             e.stopPropagation();
             toggleItemConfirmation(btn.dataset.id);
         };
     });
 
-    // 棚の一括完了ボタンのリスナー
-    container.querySelectorAll('.section-confirm-btn').forEach(btn => {
+    // Edit (Master) Button
+    container.querySelectorAll('.btn-edit-item').forEach(btn => {
         btn.onclick = (e) => {
             e.stopPropagation();
-            handleSectionConfirm(btn.dataset.loc);
-        };
-    });
-
-    // Drag and Drop Logic
-    if (sortMode) {
-        let dragSrcEl = null;
-        container.querySelectorAll('.inventory-row[draggable="true"]').forEach(row => {
-            row.addEventListener('dragstart', (e) => {
-                dragSrcEl = row;
-                e.dataTransfer.effectAllowed = 'move';
-                row.style.opacity = '0.4';
-            });
-            row.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                const locA = dragSrcEl.dataset.loc;
-                const locB = row.dataset.loc;
-                if (locA === locB && dragSrcEl !== row) {
-                    row.classList.add('drag-over');
-                }
-            });
-            row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
-            row.addEventListener('drop', async (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                row.classList.remove('drag-over');
-                const locA = dragSrcEl.dataset.loc;
-                const locB = row.dataset.loc;
-                if (locA === locB && dragSrcEl !== row) {
-                    // Reorder in groupedItems and save
-                    const locItems = groupedItems[locA];
-                    const srcId = dragSrcEl.dataset.id;
-                    const targetId = row.dataset.id;
-                    const srcIndex = locItems.findIndex(i => i.id === srcId);
-                    const targetIndex = locItems.findIndex(i => i.id === targetId);
-                    
-                    const [removed] = locItems.splice(srcIndex, 1);
-                    locItems.splice(targetIndex, 0, removed);
-                    
-                    // Update sort_order for all items in this loc
-                    const batch = writeBatch(db);
-                    locItems.forEach((item, i) => {
-                        item.sort_order = i;
-                        batch.update(doc(db, "m_store_items", item.id), { sort_order: i });
-                    });
-                    await batch.commit();
-                    render(); // 全体再描画
-                }
-            });
-            row.addEventListener('dragend', () => row.style.opacity = '1');
-        });
-    }
-
-    // Listeners for keyboard navigation and docked keypad
-    const inputs = container.querySelectorAll('.qty-input');
-    inputs.forEach(input => {
-        input.onfocus = (e) => {
-            editingItem = items.find(i => i.id === input.dataset.id);
-            
-            // 検索モード中で、かつ選択中のタイミングと異なる場合、タイミングを同期させる
-            if (isGlobalSearch && editingItem && editingItem.確認タイミング !== (selectedTiming ? selectedTiming.id : null)) {
-                const tName = timingMaster[editingItem.確認タイミング] || "⚠️ タイミング未設定";
-                selectedTiming = { id: editingItem.確認タイミング, name: tName };
-                
-                // サイドバーのハイライトを更新するために描画
-                // ※ただし input のフォーカスが外れないように注意
-                const sidebarTimings = document.getElementById('inv-timing-list');
-                if (sidebarTimings) {
-                    sidebarTimings.querySelectorAll('.timing-item').forEach(item => {
-                        item.classList.toggle('active', item.dataset.code === (editingItem.確認タイミング || ''));
-                    });
-                }
-            }
-        };
-        
-        input.onkeydown = (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                saveItemQty(editingItem);
-                const next = container.querySelector(`.qty-input[data-index="${parseInt(input.dataset.index) + 1}"]`);
-                if (next) next.focus();
-            }
-        };
-        
-        input.oninput = (e) => {
-            editingItem.個数 = e.target.value === "" ? 0 : Number(e.target.value);
-        };
-    });
-
-    // Stepper Listeners
-    container.querySelectorAll('.stepper-btn').forEach(btn => {
-        btn.onclick = async (e) => {
-            e.stopPropagation();
-            const id = btn.dataset.id;
-            const input = container.querySelector(`.qty-input[data-id="${id}"]`);
-            const item = items.find(i => i.id === id);
-            let val = Number(input.value) || 0;
-            
-            if (btn.classList.contains('plus')) {
-                val += 0.5;
-            } else {
-                val = Math.max(0, val - 0.5);
-            }
-            
-            input.value = val;
-            item.個数 = val;
-            // 変更を即座に保存
-            await saveItemQty(item);
+            showItemSettingsModal(btn.dataset.id);
         };
     });
 }
-
-function renderItemsInGroups(container, items, hideIndicators) {
-    // Sort items by location_label then name
-    items.sort((a, b) => {
-        const locA = a.location_label || a.保管場所 || '未設定';
-        const locB = b.location_label || b.保管場所 || '未設定';
-        if (locA !== locB) return locA.localeCompare(locB);
-        return (productMap[a.ProductID] || '').localeCompare(productMap[b.ProductID] || '');
-    });
-
-    let currentLoc = null;
-    let html = ``;
-
-    items.forEach(item => {
-        const loc = item.location_label || item.保管場所 || '未設定';
-        if (loc !== currentLoc) {
-            currentLoc = loc;
-            html += `<div class="location-header"><i class="fas fa-map-marker-alt"></i> ${currentLoc}</div>`;
-        }
-
-        const isConfirmed = isConfirmedToday(item.updated_at, selectedStore.resetTime);
-        const displayUnit = item.display_unit || '';
-        const currentQty = item.個数 !== undefined ? item.個数 : '';
-        const parStock = item.定数 || 0;
-        const isShort = (parStock > 0) && (Number(currentQty) < parStock);
-        const shortfall = isShort ? (parStock - Number(currentQty)).toFixed(1) : 0;
-
-        html += `
-            <div class="inventory-item ${isConfirmed ? 'completed' : ''}" data-id="${item.id}" style="padding: 0.6rem 0.8rem; margin-bottom: 0.5rem; gap: 0.5rem; display: flex; align-items: center; border-radius: 10px; ${isShort && !isConfirmed ? 'border-left: 3px solid var(--danger);' : ''}">
-                <div style="flex: 1; min-width: 0;">
-                    <div class="item-name" style="${isConfirmed ? 'color: var(--primary); font-weight:700;' : ''}; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                        ${productMap[item.ProductID] || '不明'}
-                        ${isConfirmed ? '<i class="fas fa-check-circle"></i>' : ''}
-                        <i class="fas fa-cog btn-edit-loc" data-id="${item.id}" style="margin-left: 0.4rem; font-size: 0.75rem; color: #cbd5e1; cursor: pointer;"></i>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.2rem;">
-                        ${displayUnit ? `<span style="font-size: 0.7rem; background: #eff6ff; color: #2563eb; border: 1px solid #dbeafe; border-radius: 4px; padding: 0.1rem 0.4rem; font-weight: 600;">${displayUnit}</span>` : ''}
                         ${isShort && !isConfirmed ? `<span style="font-size: 0.7rem; background: #fef2f2; color: #ef4444; border: 1px solid #fee2e2; border-radius: 4px; padding: 0.1rem 0.4rem; font-weight: 700;">不足 -${shortfall}</span>` : ''}
                     </div>
                 </div>
@@ -1240,31 +1095,7 @@ async function saveItemQty(item) {
     }
 }
 
-// Location Edit System
-function openLocEdit(item) {
-    editingItem = item;
-    const modal = document.getElementById('loc-edit-modal');
-    const input = document.getElementById('loc-edit-input');
-    const parStockInput = document.getElementById('loc-par-stock-input');
-    const datalist = document.getElementById('loc-datalist');
-
-    input.value = item.location_label || item.保管場所 || '';
-    parStockInput.value = item.定数 || 0;
-
-    // Fill datalist with existing labels
-    const labels = [...new Set(inventoryData.map(i => i.location_label || i.保管場所).filter(l => l))].sort();
-    datalist.innerHTML = labels.map(l => `<option value="${l}">`).join('');
-
-    // 二重オーバーレイ防止
-    document.querySelectorAll('.modal-overlay').forEach(m => {
-        if (m.id !== 'loc-edit-modal') m.style.setProperty('display', 'none', 'important');
-    });
-
-    modal.style.setProperty('display', 'flex', 'important');
-
-    document.getElementById('btn-loc-cancel').onclick = () => modal.style.setProperty('display', 'none', 'important');
-    document.getElementById('btn-loc-save').onclick = saveLocationChange;
-}
+// Item settings are now handled via bottom sheet (showItemSettingsModal)
 
 async function saveLocationChange() {
     const newLoc = document.getElementById('loc-edit-input').value.trim();
@@ -1363,7 +1194,6 @@ async function handleSectionConfirm(locationName) {
             });
         });
 
-        // 履歴ログ（一括）
         const historyRef = doc(collection(db, "t_inventory_history"));
         batch.set(historyRef, {
             store_id: selectedStore.code,
@@ -1389,7 +1219,7 @@ async function handleSectionConfirm(locationName) {
 
 export async function initInventoryMobilePage(user) {
     currentUser = user;
-    console.log("Initializing Inventory Page (V3 - Hybrid)...");
+    console.log("Initializing Inventory Page (Mobile-First)...");
     selectedStore = null;
     selectedTiming = null;
     inventoryData = [];
@@ -1400,101 +1230,161 @@ export async function initInventoryMobilePage(user) {
 }
 
 function openInvSettings() {
-    currentTab = 'settings';
-    render();
+    showMasterSettings();
 }
 
 /**
- * フル画面の在庫設定ビューを生成
+ * スマホ向け在庫マスタ設定ビューを生成
  */
 function renderSettingsView(container) {
     if (!selectedStore) return;
 
-    // 初回表示時のみ、すべてのタイミングをデフォルトで閉じる
+    // 初期化状態の管理
     if (!settingsInitialized) {
-        const allTimings = [...new Set(inventoryData.map(d => d.確認タイミング))];
-        settingsCollapsedTimings = new Set(allTimings);
+        settingsCollapsedTimings = new Set(Object.keys(timingMaster));
+        settingsCurrentTab = 'catalog'; // デフォルトタブ
         settingsInitialized = true;
     }
 
-    // Filter manageable items using unified logic
     const manageableItems = cachedItems.filter(isInventoryTarget);
     const categories = [...new Set(manageableItems.map(i => i.category || i.カテゴリー || 'その他'))].sort();
-    
-    // Get all unique vendors for datalist
     const vendors = [...new Set(cachedSuppliers.map(s => s.vendor_name).filter(Boolean))].sort();
 
     container.innerHTML = `
-        <!-- Header: Store Info & Action -->
-        <div style="margin-bottom: 0.8rem; display: flex; justify-content: space-between; align-items: center; background: white; padding: 0.6rem 1.2rem; border-radius: 12px; border: 1px solid var(--border);">
-            <div style="display: flex; align-items: center; gap: 0.8rem;">
-                <span style="background: var(--primary); color: white; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.7rem; font-weight: 800;">SETTING</span>
-                <h2 style="margin: 0; font-size: 1.2rem; font-weight: 900; color: var(--text-primary);">${selectedStore.name}</h2>
+        <div style="display: flex; flex-direction: column; height: 100%; background: #f8fafc;">
+            <!-- Internal Tab Navigation -->
+            <nav style="display: flex; background: white; border-bottom: 1px solid #e2e8f0; padding: 0.5rem; gap: 0.4rem; flex-shrink: 0;">
+                <button class="settings-tab-btn ${settingsCurrentTab === 'catalog' ? 'active' : ''}" onclick="window.switchSettingsTab('catalog')">カタログ</button>
+                <button class="settings-tab-btn ${settingsCurrentTab === 'list' ? 'active' : ''}" onclick="window.switchSettingsTab('list')">管理リスト</button>
+                <button class="settings-tab-btn ${settingsCurrentTab === 'timing' ? 'active' : ''}" onclick="window.switchSettingsTab('timing')">タイミング</button>
+            </nav>
+
+            <div style="flex: 1; overflow-y: auto; padding: 1rem;">
+                ${settingsCurrentTab === 'catalog' ? `
+                    <!-- Catalog View -->
+                    <div class="animate-fade-in">
+                        <div style="background: white; padding: 1.2rem; border-radius: 16px; border: 1px solid #e2e8f0; margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.8rem;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;">
+                                <div class="pro-form-field">
+                                    <label class="pro-form-label">業者</label>
+                                    <select id="settings-supplier-filter" class="mobile-input-v2" style="height: 40px; font-size: 0.85rem;">
+                                        <option value="ALL">すべて</option>
+                                        ${vendors.map(v => `<option value="${v}" ${settingsSelectedSupplier === v ? 'selected' : ''}>${v}</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div class="pro-form-field">
+                                    <label class="pro-form-label">カテゴリ</label>
+                                    <select id="settings-category-filter" class="mobile-input-v2" style="height: 40px; font-size: 0.85rem;">
+                                        <option value="ALL">すべて</option>
+                                        ${categories.map(c => `<option value="${c}" ${settingsSelectedCategory === c ? 'selected' : ''}>${c}</option>`).join('')}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="pro-form-field">
+                                <label class="pro-form-label">キーワード検索</label>
+                                <div style="position: relative;">
+                                    <i class="fas fa-search" style="position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.8rem;"></i>
+                                    <input type="text" id="inv-master-search-new" value="${settingsSearchQuery}" placeholder="品目名で検索..." class="mobile-input-v2" style="height: 40px; padding-left: 2.2rem; font-size: 0.9rem;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="inv-master-catalog-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                            <!-- Items injected here -->
+                        </div>
+                    </div>
+                ` : settingsCurrentTab === 'list' ? `
+                    <!-- Management List View -->
+                    <div class="animate-fade-in">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding: 0 0.5rem;">
+                            <div style="font-size: 0.9rem; font-weight: 900; color: #1e293b;">登録済み: ${inventoryData.length}品目</div>
+                        </div>
+                        <div id="inv-settings-store-list" style="display: flex; flex-direction: column; gap: 0.8rem;">
+                            <!-- Grouped list injected here -->
+                        </div>
+                    </div>
+                ` : `
+                    <!-- Timing Master View -->
+                    <div class="animate-fade-in">
+                        <div style="background: white; padding: 1.2rem; border-radius: 16px; border: 1px solid #e2e8f0; margin-bottom: 1.2rem;">
+                            <h3 style="margin: 0 0 1rem 0; font-size: 1rem; font-weight: 900;">新しいタイミングを追加</h3>
+                            <div style="display: flex; gap: 0.8rem;">
+                                <input type="text" id="new-timing-name-new" placeholder="例: 深夜チェック" class="mobile-input-v2" style="flex: 1;">
+                                <button id="btn-add-timing-new" class="btn-confirm-mobile active" style="width: 50px; height: 50px; border-radius: 12px;"><i class="fas fa-plus"></i></button>
+                            </div>
+                        </div>
+                        <div id="timing-master-list-new" style="display: flex; flex-direction: column; gap: 0.8rem;">
+                            <!-- Timings injected here -->
+                        </div>
+                    </div>
+                `}
             </div>
-            <div style="font-size: 0.8rem; font-weight: 800; color: var(--text-secondary);">
-                登録済み: <span style="color: var(--primary);">${inventoryData.length}</span> 品目
-            </div>
+
+            ${settingsCurrentTab === 'catalog' ? `
+                <div style="padding: 1rem; background: white; border-top: 1px solid #e2e8f0; display: flex; gap: 0.8rem; flex-shrink: 0;">
+                    <button id="btn-bulk-add-catalog" class="btn-action-mobile" style="flex: 1; height: 54px;">選択した品目を一括追加</button>
+                </div>
+            ` : ''}
         </div>
 
-        <div style="display: grid; grid-template-columns: 360px 1fr 280px; gap: 1rem; flex: 1; min-height: 0;">
-            
-            <!-- Column 1: Master Catalog (Add New) -->
-            <div class="glass-panel" style="display: flex; flex-direction: column; padding: 0; overflow: hidden; background: #f8fafc; border: 1px solid var(--border);">
-                <div style="padding: 0.8rem 1.2rem; background: white; border-bottom: 1px solid var(--border);">
-                    <h3 style="margin: 0 0 0.8rem 0; font-size: 0.9rem; font-weight: 800;"><i class="fas fa-search-plus" style="color: var(--primary);"></i> マスタから追加</h3>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.6rem;">
-                        <div class="input-group" style="margin:0;">
-                            <input type="text" id="settings-supplier-filter" list="supplier-datalist" placeholder="業者絞込..." 
-                                   value="${settingsSelectedSupplier === 'ALL' ? '' : settingsSelectedSupplier}"
-                                   style="font-size: 0.75rem; padding: 0.4rem; border-radius: 6px;">
-                            <datalist id="supplier-datalist">
-                                ${vendors.map(v => `<option value="${v}">`).join('')}
-                            </datalist>
-                        </div>
-                        <div class="input-group" style="margin:0;">
-                            <input type="text" id="settings-category-filter-new" list="category-datalist" placeholder="カテゴリ絞込..." 
-                                   value="${settingsSelectedCategory === 'ALL' ? '' : settingsSelectedCategory}"
-                                   style="font-size: 0.75rem; padding: 0.4rem; border-radius: 6px;">
-                            <datalist id="category-datalist">
-                                ${categories.map(c => `<option value="${c}">`).join('')}
-                            </datalist>
-                        </div>
-                    </div>
-                    <div class="input-group" style="margin:0; position: relative;">
-                        <i class="fas fa-search" style="position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%); font-size: 0.8rem; color: #94a3b8;"></i>
-                        <input type="text" id="inv-master-search-new" placeholder="品目名・ふりがなで検索..." 
-                               value="${settingsSearchQuery}" 
-                               style="padding: 0.4rem 0.4rem 0.4rem 2.2rem; font-size: 0.8rem; border-radius: 6px;">
-                    </div>
-                </div>
+        <style>
+            .settings-tab-btn {
+                flex: 1;
+                height: 40px;
+                border: none;
+                background: #f1f5f9;
+                color: #64748b;
+                border-radius: 8px;
+                font-weight: 800;
+                font-size: 0.85rem;
+                transition: all 0.2s;
+            }
+            .settings-tab-btn.active {
+                background: var(--primary);
+                color: white;
+                box-shadow: 0 4px 12px rgba(230, 57, 70, 0.1);
+            }
+        </style>
+    `;
 
-                <div id="inv-master-catalog-list" style="flex: 1; overflow-y: auto; padding: 0.5rem;">
-                    <!-- Master Items injected here -->
-                </div>
+    // Events
+    if (settingsCurrentTab === 'catalog') {
+        const supplierInput = document.getElementById('settings-supplier-filter');
+        supplierInput.onchange = (e) => {
+            settingsSelectedSupplier = e.target.value;
+            renderSettingsItems();
+        };
+        const categoryInput = document.getElementById('settings-category-filter');
+        categoryInput.onchange = (e) => {
+            settingsSelectedCategory = e.target.value;
+            renderSettingsItems();
+        };
+        const searchInput = document.getElementById('inv-master-search-new');
+        searchInput.oninput = (e) => {
+            settingsSearchQuery = e.target.value;
+            renderSettingsItems();
+        };
+        document.getElementById('btn-bulk-add-catalog').onclick = async () => {
+            const checkedPids = Array.from(document.querySelectorAll('.catalog-chk:checked')).map(el => el.value);
+            if (checkedPids.length === 0) return;
+            if (!confirm(`${checkedPids.length}件の品目を一括登録しますか？`)) return;
+            await handleBulkAddPids(checkedPids);
+        };
+        renderSettingsItems();
+    } else if (settingsCurrentTab === 'list') {
+        renderSettingsItems();
+    } else if (settingsCurrentTab === 'timing') {
+        document.getElementById('btn-add-timing-new').onclick = addTimingMaster;
+        renderTimingMasterList();
+    }
+}
 
-                <div style="padding: 0.8rem; background: white; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
-                    <div style="font-size: 0.65rem; color: var(--text-secondary); font-weight: 600;">※登録済は非表示</div>
-                    <button id="btn-bulk-add-catalog" class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.75rem; font-weight: 800; border-radius: 6px;">選択を一括追加</button>
-                </div>
-            </div>
-
-            <!-- Column 2: Management List (Current Inventory) -->
-            <div class="glass-panel" style="display: flex; flex-direction: column; padding: 0; overflow: hidden; background: white; border: 1px solid var(--border);">
-                <div style="padding: 0.8rem 1.2rem; border-bottom: 1px solid var(--border); background: white; display: flex; justify-content: space-between; align-items: center;">
-                    <h3 style="margin: 0; font-size: 0.9rem; font-weight: 800;"><i class="fas fa-list-check" style="color: var(--primary);"></i> 現在の管理リスト</h3>
-                    <div id="settings-store-stats" style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary);"></div>
-                </div>
-                
-                <div id="inv-settings-store-list" style="flex: 1; overflow-y: auto; padding: 0.8rem;">
-                    <!-- Grouped Store Items injected here -->
-                </div>
-            </div>
-
-            <!-- Column 3: Timing & Meta -->
-            <div style="display: flex; flex-direction: column; gap: 1rem;">
-                <!-- Timing Management -->
-                <div class="glass-panel" style="padding: 1rem; background: white; border: 1px solid var(--border); border-radius: 12px;">
-                    <h3 style="margin: 0 0 0.8rem 0; font-size: 0.9rem; font-weight: 800;"><i class="fas fa-clock" style="color: var(--primary);"></i> タイミング管理</h3>
+window.switchSettingsTab = (tab) => {
+    settingsCurrentTab = tab;
+    const container = document.getElementById('inv-master-settings-content');
+    renderSettingsView(container);
+};
+t-weight: 800;"><i class="fas fa-clock" style="color: var(--primary);"></i> タイミング管理</h3>
                     <div id="timing-master-list-new" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 250px; overflow-y: auto; margin-bottom: 0.8rem; padding-right: 0.3rem;"></div>
                     <div style="display: flex; gap: 0.4rem;">
                         <input type="text" id="new-timing-name-new" placeholder="新規名称..." style="flex: 1; padding: 0.4rem; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">
@@ -2047,35 +1937,31 @@ function showItemSettingsModal(itemId) {
     if (!item) return;
     
     editingItem = item;
-    const modal = document.getElementById('inv-item-modal');
-    document.getElementById('modal-item-name').textContent = productMap[item.ProductID] || '品目設定';
+    const sheet = document.getElementById('inv-item-settings-sheet');
+    document.getElementById('sheet-item-name').textContent = productMap[item.ProductID] || '品目設定';
     
-    // Find master unit for better UI (Affordance)
     let masterUnit = '-';
     const rawItem = cachedItems.find(i => i.id === item.ProductID);
-    if (rawItem) {
-        masterUnit = rawItem.unit || rawItem.単位 || '-';
-    }
+    if (rawItem) masterUnit = rawItem.unit || rawItem.単位 || '-';
     if (masterUnit === '-') {
         const ing = cachedIngredients.find(i => i.item_id === item.ProductID);
         if (ing) masterUnit = ing.unit || ing.単位 || '-';
     }
-    document.getElementById('modal-master-unit').textContent = masterUnit;
+    document.getElementById('sheet-master-unit').textContent = masterUnit;
     
-    const timingSelect = document.getElementById('modal-timing');
+    const timingSelect = document.getElementById('sheet-timing');
     timingSelect.innerHTML = Object.keys(timingMaster).map(id => `<option value="${id}">${timingMaster[id]}</option>`).join('');
     
     timingSelect.value = item.確認タイミング || "DAILY_ALL";
-    document.getElementById('modal-display-name').value = item.display_name || "";
-    document.getElementById('modal-location').value = item.location_label || item.保管場所 || "";
-    document.getElementById('modal-par').value = item.定数 || 0;
-    document.getElementById('modal-unit').value = item.display_unit || "";
-    document.getElementById('modal-conv').value = item.unit_conversion_amount || 1;
-    document.getElementById('modal-action').value = item.shortage_action_type || "purchase";
+    document.getElementById('sheet-display-name').value = item.display_name || "";
+    document.getElementById('sheet-location').value = item.location_label || item.保管場所 || "";
+    document.getElementById('sheet-par').value = item.定数 || 0;
+    document.getElementById('sheet-unit').value = item.display_unit || "";
+    document.getElementById('sheet-conv').value = item.unit_conversion_amount || 1;
+    document.getElementById('sheet-action').value = item.shortage_action_type || "purchase";
     
-    // 単位プレビューの更新
-    const unitInput = document.getElementById('modal-unit');
-    const unitPreview = document.getElementById('modal-unit-preview');
+    const unitInput = document.getElementById('sheet-unit');
+    const unitPreview = document.getElementById('sheet-unit-preview');
     const updateUnitPreview = () => {
         const val = unitInput.value || '単位';
         unitPreview.textContent = `1 ${val} ＝`;
@@ -2083,10 +1969,9 @@ function showItemSettingsModal(itemId) {
     unitInput.oninput = updateUnitPreview;
     updateUnitPreview();
     
-    // Source Store Handling
-    const sourceContainer = document.getElementById('modal-source-store-container');
-    const sourceSelect = document.getElementById('modal-source-store');
-    const actionSelect = document.getElementById('modal-action');
+    const sourceContainer = document.getElementById('sheet-source-store-container');
+    const sourceSelect = document.getElementById('sheet-source-store');
+    const actionSelect = document.getElementById('sheet-action');
     
     const updateSourceVisibility = async () => {
         if (actionSelect.value === 'transfer') {
@@ -2097,79 +1982,75 @@ function showItemSettingsModal(itemId) {
             
             sourceSelect.innerHTML = sameGroupStores.map(s => `<option value="${s.code}" ${s.code === item.default_source_store_id ? 'selected' : ''}>${s.name}</option>`).join('') || '<option value="">(グループ内店舗なし)</option>';
             
-            // 同期処理
             if (sourceSelect.value) {
                 const sid = `${sourceSelect.value}_${item.ProductID}`;
                 const sDoc = await getDoc(doc(db, "m_store_items", sid));
                 if (sDoc.exists()) {
                     const sData = sDoc.data();
-                    document.getElementById('modal-unit').value = sData.display_unit || "";
-                    document.getElementById('modal-conv').value = sData.unit_conversion_amount || 1;
-                    document.getElementById('modal-unit').readOnly = true;
-                    document.getElementById('modal-conv').readOnly = true;
-                    document.getElementById('modal-unit').style.background = "#f1f5f9";
-                    document.getElementById('modal-conv').style.background = "#f1f5f9";
+                    document.getElementById('sheet-unit').value = sData.display_unit || "";
+                    document.getElementById('sheet-conv').value = sData.unit_conversion_amount || 1;
+                    document.getElementById('sheet-unit').readOnly = true;
+                    document.getElementById('sheet-conv').readOnly = true;
+                    document.getElementById('sheet-unit').style.background = "#f1f5f9";
+                    document.getElementById('sheet-conv').style.background = "#f1f5f9";
                 }
             }
         } else {
             sourceContainer.style.display = 'none';
-            document.getElementById('modal-unit').readOnly = false;
-            document.getElementById('modal-conv').readOnly = false;
-            document.getElementById('modal-unit').style.background = "";
-            document.getElementById('modal-conv').style.background = "";
+            document.getElementById('sheet-unit').readOnly = false;
+            document.getElementById('sheet-conv').readOnly = false;
+            document.getElementById('sheet-unit').style.background = "";
+            document.getElementById('sheet-conv').style.background = "";
         }
-        updateUnitPreview(); // プレビューを同期
+        updateUnitPreview();
     };
 
     actionSelect.onchange = updateSourceVisibility;
     sourceSelect.onchange = updateSourceVisibility;
     updateSourceVisibility();
 
-    modal.classList.add('active');
-    document.getElementById('btn-save-single-item').onclick = saveSingleItemSettings;
+    sheet.style.display = 'flex';
+    document.getElementById('btn-sheet-save').onclick = saveItemSettings;
 }
 
-window.hideItemModal = () => {
-    document.getElementById('inv-item-modal').classList.remove('active');
+window.closeItemSettings = () => {
+    document.getElementById('inv-item-settings-sheet').style.display = 'none';
 };
 
-async function saveSingleItemSettings() {
+async function saveItemSettings() {
     if (!editingItem) return;
     const overlay = document.getElementById('inv-loading-overlay');
     overlay.style.display = 'flex';
 
     const data = {
-        確認タイミング: document.getElementById('modal-timing').value,
-        display_name: document.getElementById('modal-display-name').value.trim(),
-        location_label: document.getElementById('modal-location').value,
-        保管場所: document.getElementById('modal-location').value,
-        定数: Number(document.getElementById('modal-par').value) || 0,
-        display_unit: document.getElementById('modal-unit').value,
-        unit_conversion_amount: Number(document.getElementById('modal-conv').value) || 1,
-        shortage_action_type: document.getElementById('modal-action').value,
-        default_source_store_id: document.getElementById('modal-action').value === 'transfer' ? document.getElementById('modal-source-store').value : null,
+        確認タイミング: document.getElementById('sheet-timing').value,
+        display_name: document.getElementById('sheet-display-name').value.trim(),
+        location_label: document.getElementById('sheet-location').value,
+        保管場所: document.getElementById('sheet-location').value,
+        定数: Number(document.getElementById('sheet-par').value) || 0,
+        display_unit: document.getElementById('sheet-unit').value,
+        unit_conversion_amount: Number(document.getElementById('sheet-conv').value) || 1,
+        shortage_action_type: document.getElementById('sheet-action').value,
+        default_source_store_id: document.getElementById('sheet-action').value === 'transfer' ? document.getElementById('sheet-source-store').value : null,
         updated_at: new Date().toISOString()
     };
 
-    // Validation for Transfer Source
     if (data.shortage_action_type === 'transfer' && data.default_source_store_id) {
         try {
             const sourceDoc = await getDoc(doc(db, "m_store_items", `${data.default_source_store_id}_${editingItem.ProductID}`));
             if (!sourceDoc.exists()) {
-                if (!confirm('【警告】選択された移動元店舗に、この品目が登録されていません。このまま保存しますか？（移動画面でエラーになる可能性があります）')) {
+                if (!confirm('【警告】選択された移動元店舗に、この品目が登録されていません。このまま保存しますか？')) {
                     overlay.style.display = 'none';
                     return;
                 }
             }
-        } catch (e) {
-            console.error("Source validation error:", e);
-        }
+        } catch (e) { console.error(e); }
     }
 
     try {
         await updateDoc(doc(db, "m_store_items", editingItem.id), data);
         
-        // 【重要】移動元としての他店舗への連動更新
+        // Dependency sync
         const q = query(collection(db, "m_store_items"), 
                         where("ProductID", "==", editingItem.ProductID),
                         where("default_source_store_id", "==", selectedStore.code));
@@ -2187,8 +2068,9 @@ async function saveSingleItemSettings() {
         }
 
         Object.assign(editingItem, data);
-        hideItemModal();
+        closeItemSettings();
         render();
+        if (settingsCurrentTab === 'list') renderSettingsItems();
     } catch (err) {
         alert('保存エラー: ' + err.message);
     } finally { overlay.style.display = 'none'; }
