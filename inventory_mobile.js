@@ -569,10 +569,7 @@ function getBusinessDate(resetTime = "05:00") {
 
 function render() {
     const main = document.getElementById('inv-main-content');
-    const sidebarTimings = document.getElementById('inv-timing-list');
-    const storeSelect = document.getElementById('inv-store-select');
-
-    if (!main || !storeSelect || !sidebarTimings) return;
+    if (!main) return;
 
     // Ensure common datalists exist for modal/settings
     const locs = [...new Set(inventoryData.map(d => d.location_label || d.保管場所).filter(Boolean))].sort();
@@ -1339,58 +1336,7 @@ window.switchSettingsTab = (tab) => {
     const container = document.getElementById('inv-master-settings-content');
     renderSettingsView(container);
 };
-t-weight: 800;"><i class="fas fa-clock" style="color: var(--primary);"></i> タイミング管理</h3>
-                    <div id="timing-master-list-new" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 250px; overflow-y: auto; margin-bottom: 0.8rem; padding-right: 0.3rem;"></div>
-                    <div style="display: flex; gap: 0.4rem;">
-                        <input type="text" id="new-timing-name-new" placeholder="新規名称..." style="flex: 1; padding: 0.4rem; border: 2px solid #e2e8f0; border-radius: 6px; font-size: 0.8rem; font-weight: 600;">
-                        <button id="btn-add-timing-new" class="btn btn-secondary" style="padding: 0.4rem; width: 32px; height: 32px;"><i class="fas fa-plus"></i></button>
-                    </div>
-                </div>
 
-                <!-- Info Box -->
-                <div class="glass-panel" style="padding: 0.8rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px;">
-                    <h4 style="margin: 0 0 0.4rem 0; font-size: 0.75rem; font-weight: 800; color: #1e40af;"><i class="fas fa-info-circle"></i> ヒント</h4>
-                    <ul style="margin: 0; padding-left: 1.1rem; font-size: 0.7rem; color: #1e40af; line-height: 1.4; font-weight: 600;">
-                        <li>右側の [⚙️] で保管場所や定数を個別設定。</li>
-                        <li>タイミング削除で品目は「未設定」に移動。</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    `;
-
-    // Bind Events
-    const supplierInput = document.getElementById('settings-supplier-filter');
-    supplierInput.onchange = (e) => {
-        settingsSelectedSupplier = e.target.value || 'ALL';
-        renderSettingsItems();
-    };
-
-    const categoryInput = document.getElementById('settings-category-filter-new');
-    categoryInput.onchange = (e) => {
-        settingsSelectedCategory = e.target.value || 'ALL';
-        renderSettingsItems();
-    };
-
-    const searchInput = document.getElementById('inv-master-search-new');
-    searchInput.oninput = (e) => {
-        settingsSearchQuery = e.target.value;
-        renderSettingsItems();
-    };
-
-    document.getElementById('btn-bulk-add-catalog').onclick = async () => {
-        const checkedPids = Array.from(document.querySelectorAll('.catalog-chk:checked')).map(el => el.value);
-        if (checkedPids.length === 0) return;
-        if (!confirm(`${checkedPids.length}件の品目を一括登録しますか？`)) return;
-        
-        await handleBulkAddPids(checkedPids);
-    };
-
-    document.getElementById('btn-add-timing-new').onclick = addTimingMaster;
-
-    renderSettingsItems();
-    renderTimingMasterList();
-}
 
 function handleQuickAddSearch(query) {
     // This is now replaced by the persistent catalog column
