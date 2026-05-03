@@ -10,7 +10,9 @@ import { salesPageHtml, initSalesPage } from './sales.js?v=110';
 import { storesPageHtml, initStoresPage } from './stores.js?v=31';
 import { usersPageHtml, initUsersPage } from './users.js?v=31';
 import { inventoryPageHtml, initInventoryPage } from './inventory.js?v=33';
+import { inventoryMobilePageHtml, initInventoryMobilePage } from './inventory_mobile.js';
 import { procurementPageHtml, initProcurementPage } from './procurement.js?v=10';
+import { procurementMobilePageHtml, initProcurementMobilePage } from './procurement_mobile.js';
 import { opsHubMainPageHtml, initOpsHubMainPage } from './ops_hub_main.js';
 import { stocktakePageHtml, initStocktakePage } from './stocktake.js?v=1';
 import { inventoryHistoryPageHtml, initInventoryHistoryPage } from './inventory_history.js?v=1';
@@ -498,13 +500,23 @@ async function showPage(target) {
                 break;
             case 'inventory':
                 updateHeaderTitle('在庫チェック');
-                pageContent.innerHTML = inventoryPageHtml;
-                initInventoryPage(state.currentUser);
+                if (window.innerWidth < 768) {
+                    pageContent.innerHTML = inventoryMobilePageHtml;
+                    initInventoryMobilePage(state.currentUser);
+                } else {
+                    pageContent.innerHTML = inventoryPageHtml;
+                    initInventoryPage(state.currentUser);
+                }
                 break;
             case 'procurement':
                 updateHeaderTitle('仕入れ・仕込み');
-                pageContent.innerHTML = procurementPageHtml;
-                initProcurementPage(state.currentUser);
+                if (window.innerWidth < 768) {
+                    pageContent.innerHTML = procurementMobilePageHtml;
+                    initProcurementMobilePage(state.currentUser);
+                } else {
+                    pageContent.innerHTML = procurementPageHtml;
+                    initProcurementPage(state.currentUser);
+                }
                 break;
             case 'stocktake':
                 updateHeaderTitle('棚卸し履歴');

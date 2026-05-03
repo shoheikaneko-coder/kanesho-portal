@@ -1,5 +1,7 @@
 import { inventoryPageHtml, initInventoryPage } from './inventory.js';
+import { inventoryMobilePageHtml, initInventoryMobilePage } from './inventory_mobile.js';
 import { procurementPageHtml, initProcurementPage } from './procurement.js';
+import { procurementMobilePageHtml, initProcurementMobilePage } from './procurement_mobile.js';
 
 export const opsHubMainPageHtml = `
     <div id="ops-hub-main-container" class="animate-fade-in" style="display: flex; flex-direction: column; height: calc(100vh - 80px); overflow: hidden;">
@@ -94,11 +96,21 @@ async function switchTab(tabId) {
 
     // コンテンツの切り替え
     if (tabId === 'inventory') {
-        content.innerHTML = inventoryPageHtml;
-        await initInventoryPage(currentUser);
+        if (window.innerWidth < 768) {
+            content.innerHTML = inventoryMobilePageHtml;
+            await initInventoryMobilePage(currentUser);
+        } else {
+            content.innerHTML = inventoryPageHtml;
+            await initInventoryPage(currentUser);
+        }
     } else {
         // 仕入れ・仕込み・移動はすべて procurement.js を使用
-        content.innerHTML = procurementPageHtml;
-        await initProcurementPage(currentUser, tabId);
+        if (window.innerWidth < 768) {
+            content.innerHTML = procurementMobilePageHtml;
+            await initProcurementMobilePage(currentUser, tabId);
+        } else {
+            content.innerHTML = procurementPageHtml;
+            await initProcurementPage(currentUser, tabId);
+        }
     }
 }
