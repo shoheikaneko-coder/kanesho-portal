@@ -245,61 +245,76 @@ export const inventoryPageHtml = `
 
     <!-- Item Detail Settings Modal -->
     <div id="inv-item-modal" class="modal-overlay">
-        <div class="glass-panel animate-scale-in" style="width: 420px; padding: 0; overflow: hidden; border: 1px solid var(--border); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
-            <div style="padding: 1.2rem; background: var(--surface-darker); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="margin: 0; font-size: 1rem; font-weight: 800;" id="modal-item-name">品目設定</h3>
-                <button onclick="hideItemModal()" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size: 1.2rem;"><i class="fas fa-times"></i></button>
+        <div class="glass-panel animate-scale-in" style="width: 520px; padding: 0; overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow-lg);">
+            <!-- Modal Header -->
+            <div style="padding: 1.2rem 1.5rem; background: var(--surface-darker); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 0.8rem;">
+                    <i class="fas fa-cog" style="color: var(--primary); font-size: 1.1rem;"></i>
+                    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 900; color: var(--text-primary);" id="modal-item-name">品目設定</h3>
+                </div>
+                <button onclick="hideItemModal()" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size: 1.2rem; transition: color 0.2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='var(--text-secondary)'"><i class="fas fa-times"></i></button>
             </div>
-            <div style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.2rem;">
-                <div class="input-group">
-                    <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">店舗別表示名 (任意)</label>
-                    <input type="text" id="modal-display-name" placeholder="例: 生ビール中" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 1px solid var(--border); font-weight: 700; color: var(--primary);">
-                    <small style="display: block; margin-top: 0.3rem; color: var(--text-secondary); font-size: 0.65rem;">※店舗独自の名前で表示できます。マスタ名は変更されません。</small>
-                </div>
-                <div class="input-group">
-                    <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">確認タイミング</label>
-                    <select id="modal-timing" class="settings-input" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 1px solid var(--border); font-weight: 600;"></select>
-                </div>
-                <div class="input-group">
-                    <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">保管場所</label>
-                    <input type="text" id="modal-location" list="common-locations" placeholder="例: 冷蔵庫A" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 1px solid var(--border);">
-                </div>
+
+            <!-- Modal Body -->
+            <div style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; max-height: 85vh; overflow-y: auto;">
+                
+                <!-- Section 1: 基本設定 -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div class="input-group">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">定数 (Par)</label>
-                        <input type="number" id="modal-par" step="any" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 1px solid var(--border); text-align: center; font-weight: 700;">
+                    <div class="input-group" style="grid-column: span 2; margin: 0;">
+                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">店舗別表示名 <span style="font-weight: 400; color: #94a3b8; font-size: 0.7rem;">(任意・マスタ名は変わりません)</span></label>
+                        <input type="text" id="modal-display-name" placeholder="例: 生ビール中" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 2px solid #f1f5f9; font-weight: 700; font-size: 1rem; color: var(--primary); transition: border-color 0.2s;">
                     </div>
-                    <div class="input-group">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">管理単位</label>
-                        <input type="text" id="modal-unit" list="common-units" placeholder="例: 小タッパ" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 1px solid var(--border); font-weight: 600;">
+                    <div class="input-group" style="margin: 0;">
+                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">確認タイミング</label>
+                        <select id="modal-timing" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 2px solid #f1f5f9; font-weight: 600; background: white; cursor: pointer;"></select>
+                    </div>
+                    <div class="input-group" style="margin: 0;">
+                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">保管場所</label>
+                        <input type="text" id="modal-location" list="common-locations" placeholder="例: 冷蔵庫A" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 2px solid #f1f5f9; font-weight: 600;">
                     </div>
                 </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div class="input-group">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">単位換算量</label>
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <input type="number" id="modal-conv" step="any" style="flex: 1; padding: 0.7rem; border-radius: 8px; border: 1px solid var(--border); text-align: center; font-weight: 700;">
-                            <span id="modal-master-unit" style="font-weight: 800; color: var(--text-secondary); font-size: 0.9rem; min-width: 30px;">-</span>
-                        </div>
-                    </div>
-                    <div class="input-group">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">不足時アクション</label>
-                        <select id="modal-action" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 1px solid var(--border); font-weight: 600;">
+
+                <!-- Section 2: 補充アクション (ロジックの前提となる設定) -->
+                <div style="background: #fdf2f2; padding: 1.2rem; border-radius: 12px; border: 1px solid #fee2e2; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="input-group" style="margin: 0;">
+                        <label style="font-size: 0.75rem; font-weight: 800; color: #b91c1c; display: block; margin-bottom: 0.4rem;">不足時アクション</label>
+                        <select id="modal-action" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 1px solid #fca5a5; font-weight: 700; background: white; color: #b91c1c;">
                             <option value="purchase">仕入れ</option>
                             <option value="prep">店舗仕込み</option>
                             <option value="ck_prep">CK仕込み</option>
                             <option value="transfer">移動</option>
                         </select>
                     </div>
-
-                    <div id="modal-source-store-container" style="display: none; margin-top: 1rem;">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">移動元店舗</label>
-                        <select id="modal-source-store" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 1px solid var(--border); font-weight: 600;"></select>
+                    <div id="modal-source-store-container" class="input-group" style="margin: 0; display: none;">
+                        <label style="font-size: 0.75rem; font-weight: 800; color: #b91c1c; display: block; margin-bottom: 0.4rem;">移動元店舗</label>
+                        <select id="modal-source-store" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 1px solid #fca5a5; font-weight: 700; background: white; color: #b91c1c;"></select>
                         <div id="modal-source-warning" style="font-size: 0.65rem; color: var(--danger); margin-top: 0.3rem; font-weight: 700; display: none;">※この店舗には品目が登録されていません</div>
                     </div>
                 </div>
-                <button id="btn-save-single-item" class="btn btn-primary" style="width: 100%; padding: 1rem; margin-top: 0.5rem; font-weight: 800; font-size: 1rem; border-radius: 12px; box-shadow: var(--shadow-primary);">
-                    設定を保存する
+
+                <!-- Section 3: 在庫管理ロジック -->
+                <div style="background: #f8fafc; padding: 1.2rem; border-radius: 12px; border: 1px solid #e2e8f0; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="input-group" style="margin: 0;">
+                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">定数 (Par Stock)</label>
+                        <input type="number" id="modal-par" step="any" placeholder="0" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 2px solid #e2e8f0; text-align: center; font-weight: 800; font-size: 1.1rem; color: var(--primary);">
+                    </div>
+                    <div class="input-group" style="margin: 0;">
+                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">管理単位</label>
+                        <input type="text" id="modal-unit" list="common-units" placeholder="例: 皿 / パック" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 2px solid #e2e8f0; font-weight: 700; text-align: center; color: var(--primary);">
+                    </div>
+                    <div class="input-group" style="grid-column: span 2; margin: 0; padding-top: 0.5rem; border-top: 1px dashed #e2e8f0;">
+                        <label style="font-size: 0.7rem; font-weight: 800; color: #64748b; display: block; margin-bottom: 0.5rem;">単位換算係数 <span style="font-weight: 400; color: #94a3b8;">(1 [管理単位] あたりの基本数量)</span></label>
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 0.8rem; background: white; padding: 0.5rem; border-radius: 10px; border: 1px solid #f1f5f9;">
+                            <span style="font-weight: 800; color: #94a3b8; font-size: 0.9rem;">1 単位 ＝</span>
+                            <input type="number" id="modal-conv" step="any" placeholder="1" style="width: 80px; padding: 0.4rem; border-radius: 6px; border: 2px solid var(--primary); text-align: center; font-weight: 800; font-size: 1rem; color: var(--primary);">
+                            <span id="modal-master-unit" style="font-weight: 800; color: var(--text-secondary); font-size: 0.95rem; background: #f8fafc; padding: 0.3rem 0.6rem; border-radius: 6px;">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Button -->
+                <button id="btn-save-single-item" class="btn btn-primary" style="width: 100%; padding: 1.1rem; margin-top: 0.5rem; font-weight: 900; font-size: 1.1rem; border-radius: 14px; box-shadow: var(--shadow-primary); display: flex; align-items: center; justify-content: center; gap: 0.8rem;">
+                    <i class="fas fa-save"></i> 設定を保存する
                 </button>
             </div>
         </div>
