@@ -305,7 +305,7 @@ export const inventoryPageHtml = `
                     <div class="input-group" style="grid-column: span 2; margin: 0; padding-top: 0.5rem; border-top: 1px dashed #e2e8f0;">
                         <label style="font-size: 0.7rem; font-weight: 800; color: #64748b; display: block; margin-bottom: 0.5rem;">単位換算係数 <span style="font-weight: 400; color: #94a3b8;">(1 [管理単位] あたりの基本数量)</span></label>
                         <div style="display: flex; align-items: center; justify-content: center; gap: 0.8rem; background: white; padding: 0.5rem; border-radius: 10px; border: 1px solid #f1f5f9;">
-                            <span style="font-weight: 800; color: #94a3b8; font-size: 0.9rem;">1 単位 ＝</span>
+                            <span id="modal-unit-preview" style="font-weight: 800; color: #94a3b8; font-size: 0.9rem;">1 単位 ＝</span>
                             <input type="number" id="modal-conv" step="any" placeholder="1" style="width: 80px; padding: 0.4rem; border-radius: 6px; border: 2px solid var(--primary); text-align: center; font-weight: 800; font-size: 1rem; color: var(--primary);">
                             <span id="modal-master-unit" style="font-weight: 800; color: var(--text-secondary); font-size: 0.95rem; background: #f8fafc; padding: 0.3rem 0.6rem; border-radius: 6px;">-</span>
                         </div>
@@ -2073,6 +2073,16 @@ function showItemSettingsModal(itemId) {
     document.getElementById('modal-conv').value = item.unit_conversion_amount || 1;
     document.getElementById('modal-action').value = item.shortage_action_type || "purchase";
     
+    // 単位プレビューの更新
+    const unitInput = document.getElementById('modal-unit');
+    const unitPreview = document.getElementById('modal-unit-preview');
+    const updateUnitPreview = () => {
+        const val = unitInput.value || '単位';
+        unitPreview.textContent = `1 ${val} ＝`;
+    };
+    unitInput.oninput = updateUnitPreview;
+    updateUnitPreview();
+    
     // Source Store Handling
     const sourceContainer = document.getElementById('modal-source-store-container');
     const sourceSelect = document.getElementById('modal-source-store');
@@ -2108,6 +2118,7 @@ function showItemSettingsModal(itemId) {
             document.getElementById('modal-unit').style.background = "";
             document.getElementById('modal-conv').style.background = "";
         }
+        updateUnitPreview(); // プレビューを同期
     };
 
     actionSelect.onchange = updateSourceVisibility;
