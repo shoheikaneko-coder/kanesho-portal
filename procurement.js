@@ -285,7 +285,7 @@ function renderItemRow(si, master, showStoreName = false) {
     if (selectedCategory === 'transfer') {
         // Find other stores that have this product and their stock
         const otherStores = allGroupStores.filter(s => s.id !== si.StoreID);
-        const sourceOptions = otherStores.map(s => {
+        sourceOptions = otherStores.map(s => {
             const sourceItem = procurementData.find(d => d.StoreID === s.id && d.ProductID === si.ProductID);
             const stock = Number(sourceItem?.個数 || 0);
             const sNameShort = s.store_name || s.Name;
@@ -655,12 +655,22 @@ async function executeTransfer(destStoreItemId, qty) {
     }
 
     const sourceSi = procurementData.find(d => d.StoreID === sourceStoreId && d.ProductID === destSi.ProductID);
-    if (!sourceSi || Number(sourceSi.個数 || 0) < qty) {
-        showAlert("エラー", "移動元店舗に十分な在庫がありません");
+    
+    // 単位換算の計算
+    const destConv = Number(destSi.unit_conversion_amount || 1);
+    const sourceConv = Number(sourceSi.unit_conversion_amount || 1);
+    
+    // 移動先での入力数(qty)を基本単位(physicalQty)に変換し、それを移動元の単位に再変換する
+    const physicalQty = qty * destConv;
+    const sourceDeductionQty = physicalQty / sourceConv;
+
+    if (!sourceSi || Number(sourceSi.個数 || 0) < sourceDeductionQty) {
+        const neededText = sourceSi ? ` (移動元で ${sourceDeductionQty.toFixed(2)}${sourceSi.display_unit || ''} 必要)` : "";
+        showAlert("エラー", `移動元店舗に十分な在庫がありません${neededText}`);
         return;
     }
 
-    const confirmTransfer = confirm(`移動元: ${sourceStoreId}\n移動先: ${destSi.StoreID}\n数量: ${qty}\nを実行しますか？`);
+    const confirmTransfer = confirm(`移動元: ${sourceStoreId} (${sourceDeductionQty.toFixed(2)}${sourceSi.display_unit || ''} 減少)\n移動先: ${destSi.StoreID} (${qty}${destSi.display_unit || ''} 増加)\n\nを実行しますか？`);
     if (!confirmTransfer) return;
 
     await showLoading(true);
@@ -671,7 +681,7 @@ async function executeTransfer(destStoreItemId, qty) {
         const bizDate = getBusinessDate(allGroupStores.find(s => s.id === destSi.StoreID));
 
         const sourceOldQty = Number(sourceSi.個数 || 0);
-        const sourceNewQty = sourceOldQty - qty;
+        const sourceNewQty = sourceOldQty - sourceDeductionQty;
         const destOldQty = Number(destSi.個数 || 0);
         const destNewQty = destOldQty + qty;
 
@@ -703,11 +713,11 @@ async function executeTransfer(destStoreItemId, qty) {
             store_id: sourceSi.StoreID,
             item_id: sourceSi.ProductID,
             store_item_id: sourceSi.id,
-            change_qty: -qty,
+            change_qty: -sourceDeductionQty,
             qty_after: sourceNewQty,
             reason_type: 'transfer_out',
             source_route: 'procurement_page',
-            note: `店舗間移動(出庫): ${destSi.StoreID} へ`,
+            note: `店舗間移動(出庫): ${destSi.StoreID} へ (${qty}${destSi.display_unit || ''} 分)`,
             executed_by: currentUser?.Name || 'unknown',
             executed_at: now,
             business_date: bizDate

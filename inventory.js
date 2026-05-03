@@ -2063,21 +2063,40 @@ function showItemSettingsModal(itemId) {
     const sourceSelect = document.getElementById('modal-source-store');
     const actionSelect = document.getElementById('modal-action');
     
-    const updateSourceVisibility = () => {
+    const updateSourceVisibility = async () => {
         if (actionSelect.value === 'transfer') {
             sourceContainer.style.display = 'block';
-            // Populate stores in same group
             const currentStoreData = allStores.find(s => s.code === selectedStore.code);
             const currentGroup = currentStoreData?.group_name;
             const sameGroupStores = allStores.filter(s => s.code !== selectedStore.code && s.group_name === currentGroup);
             
             sourceSelect.innerHTML = sameGroupStores.map(s => `<option value="${s.code}" ${s.code === item.default_source_store_id ? 'selected' : ''}>${s.name}</option>`).join('') || '<option value="">(グループ内店舗なし)</option>';
+            
+            // 同期処理
+            if (sourceSelect.value) {
+                const sid = `${sourceSelect.value}_${item.ProductID}`;
+                const sDoc = await getDoc(doc(db, "m_store_items", sid));
+                if (sDoc.exists()) {
+                    const sData = sDoc.data();
+                    document.getElementById('modal-unit').value = sData.display_unit || "";
+                    document.getElementById('modal-conv').value = sData.unit_conversion_amount || 1;
+                    document.getElementById('modal-unit').readOnly = true;
+                    document.getElementById('modal-conv').readOnly = true;
+                    document.getElementById('modal-unit').style.background = "#f1f5f9";
+                    document.getElementById('modal-conv').style.background = "#f1f5f9";
+                }
+            }
         } else {
             sourceContainer.style.display = 'none';
+            document.getElementById('modal-unit').readOnly = false;
+            document.getElementById('modal-conv').readOnly = false;
+            document.getElementById('modal-unit').style.background = "";
+            document.getElementById('modal-conv').style.background = "";
         }
     };
 
     actionSelect.onchange = updateSourceVisibility;
+    sourceSelect.onchange = updateSourceVisibility;
     updateSourceVisibility();
 
     modal.classList.add('active');
@@ -2123,6 +2142,24 @@ async function saveSingleItemSettings() {
 
     try {
         await updateDoc(doc(db, "m_store_items", editingItem.id), data);
+        
+        // 【重要】移動元としての他店舗への連動更新
+        const q = query(collection(db, "m_store_items"), 
+                        where("ProductID", "==", editingItem.ProductID),
+                        where("default_source_store_id", "==", selectedStore.code));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+            const batch = writeBatch(db);
+            snap.forEach(d => {
+                batch.update(d.ref, {
+                    display_unit: data.display_unit,
+                    unit_conversion_amount: data.unit_conversion_amount,
+                    updated_at: data.updated_at
+                });
+            });
+            await batch.commit();
+        }
+
         Object.assign(editingItem, data);
         hideItemModal();
         render();

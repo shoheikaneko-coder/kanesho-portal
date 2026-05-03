@@ -599,11 +599,12 @@ const injectStyles = () => {
 /**
  * --- Initialization ---
  */
-async function fetchCalendarData(sid) {
+async function fetchCalendarData(sid, start, end) {
     if (!sid) return;
     calendarData = {};
-    const startDate = currentSlot.startDate;
-    const endDate = currentSlot.endDate;
+    const startDate = start || currentSlot.startDate;
+    const endDate = end || currentSlot.endDate;
+    if (!startDate) return; // 安全策
     
     // 祝前日判定や月間目標の按分計算（1日〜末日）を正確に行うため、
     // 表示期間が含まれる月の「月初1日」から「翌月1日」までを網羅して取得する
@@ -2793,88 +2794,289 @@ export const shiftViewerPageHtml = `
     </div>
 
     <style>
+        #shift-viewer-grid-table {
+            background: white;
+            table-layout: fixed;
+        }
         #shift-viewer-grid-table th, #shift-viewer-grid-table td { 
             border: 1px solid #f1f5f9; 
+            border-right: 1px solid #e2e8f0; /* 縦の罫線を強調 */
             text-align: center; 
             padding: 0;
         }
+        /* 行のゼブラストライプとホバー */
+        #viewer-grid-body tr:nth-child(even) td {
+            background: #fafafa;
+        }
+        #viewer-grid-body tr:hover td {
+            background: #f1f5f9 !important;
+        }
+        #viewer-grid-body tr:hover .viewer-staff-cell {
+            background: #f1f5f9 !important;
+        }
+
         .viewer-staff-cell { 
             position: sticky; 
             left: 0; 
             z-index: 10; 
             background: #fff; 
-            padding: 1rem 1.5rem !important; 
+            padding: 0.8rem 1rem !important; 
             font-weight: 800; 
             text-align: left !important; 
             border-right: 2px solid #e2e8f0 !important;
             box-shadow: 4px 0 8px rgba(0,0,0,0.03);
             white-space: nowrap;
+            width: 120px;
+        }
+        /* 左上角のセルを縦横両方に固定 */
+        thead th.viewer-staff-cell {
+            top: 0;
+            z-index: 30;
+            background: #f8fafc;
         }
         .viewer-date-hdr { 
             position: sticky; 
             top: 0; 
             z-index: 20; 
             background: #f8fafc; 
-            padding: 1rem 0.5rem !important; 
+            padding: 0.5rem !important; 
             font-size: 0.8rem; 
             font-weight: 900; 
-            min-width: 80px;
+            min-width: 90px;
+            height: 90px; 
             border-bottom: 2px solid #e2e8f0 !important;
         }
         .viewer-staff-cell.is-me {
-            background: #fff5f5;
             color: var(--primary);
+            border-left: 4px solid var(--primary);
         }
         .viewer-date-hdr.is-today {
-            background: #fee2e2;
+            background: #fff1f2;
             color: #ef4444;
             border-bottom: 3px solid #ef4444 !important;
         }
         .viewer-grid-cell {
-            height: 80px;
-            background: #fff;
-            transition: background 0.2s;
-        }
-        .viewer-grid-cell:hover {
-            background: #f1f5f9;
+            height: 75px;
+            padding: 4px !important;
         }
         .viewer-grid-cell.is-today {
-            background: rgba(254, 226, 226, 0.2);
+            background: rgba(255, 241, 242, 0.5) !important;
+        }
+        /* 休業日の列ハイライト */
+        .viewer-col-closed {
+            background: #f8fafc !important;
+            opacity: 0.8;
+        }
+        #viewer-grid-header th.viewer-col-closed {
+            background: #f1f5f9;
         }
         .viewer-shift-box {
-            background: var(--primary);
-            color: white;
-            margin: 4px;
-            padding: 8px 4px;
-            border-radius: 8px;
+            background: #fef2f2; /* ごく淡い赤背景 */
+            color: #be123c;
+            border: 1px solid #fee2e2; /* 境界線もソフトに */
+            margin: 4px 2px;
+            padding: 6px 4px;
+            border-radius: 8px; /* 角を丸くして柔らかさを出す */
             font-size: 0.75rem;
-            font-weight: 800;
+            font-weight: 900;
             display: flex;
             flex-direction: column;
             justify-content: center;
             height: calc(100% - 8px);
-            box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);
+            box-shadow: 0 1px 2px rgba(239, 68, 68, 0.05);
+            border-left: none; /* ギョッとする原因の線を廃止 */
         }
         .viewer-shift-box.is-help {
-            background: #7c3aed;
-            box-shadow: 0 2px 4px rgba(124, 58, 237, 0.2);
+            background: #f5f3ff;
+            color: #6d28d9;
+            border: 1px solid #ddd6fe;
         }
         .viewer-shift-time {
-            font-size: 1rem;
-            letter-spacing: -0.5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0;
+            font-variant-numeric: tabular-nums;
+        }
+        .viewer-shift-time span:first-child {
+            font-size: 1.15rem;
+            font-weight: 900;
+            line-height: 1.1;
+            color: #be123c; /* 開始時間はブランドカラーで強調 */
+        }
+        .viewer-shift-time span:last-child {
+            font-size: 0.85rem;
+            font-weight: 700;
+            line-height: 1;
+            color: #475569; /* 終了時間は落ち着いたグレーで可読性重視 */
+            margin-top: -2px;
+        }
+        .viewer-shift-box.is-help .viewer-shift-time span:first-child {
+            color: #6d28d9;
+        }
+        .viewer-shift-divider {
+            width: 10px;
+            height: 1px;
+            background: currentColor;
+            opacity: 0.2;
+            margin: 2px 0;
         }
         .viewer-shift-store {
-            font-size: 0.6rem;
+            font-size: 0.55rem;
+            font-weight: 700;
+            margin-top: 4px;
             opacity: 0.8;
-            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .viewer-holiday-label {
-            font-size: 0.6rem;
+            font-size: 0.55rem;
             color: #ef4444;
             display: block;
             margin-top: 2px;
+            font-weight: 700;
         }
     </style>
+`;
+
+export const shiftViewerMobilePageHtml = `
+    <style>
+        #shift-viewer-mobile-container {
+            width: 100%;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 120px);
+        }
+        .viewer-mobile-nav {
+            padding: 1rem;
+            background: white;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .viewer-mobile-grid-wrapper {
+            flex: 1;
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
+            background: white;
+        }
+        #shift-viewer-mobile-grid {
+            border-collapse: separate;
+            border-spacing: 0;
+            width: max-content;
+        }
+        #shift-viewer-mobile-grid th, #shift-viewer-mobile-grid td {
+            border-right: 1px solid #f1f5f9;
+            border-bottom: 1px solid #f1f5f9;
+            padding: 0;
+            text-align: center;
+        }
+        /* スタッフ名固定 */
+        .mobile-staff-cell {
+            position: sticky;
+            left: 0;
+            z-index: 10;
+            background: white;
+            min-width: 80px;
+            max-width: 80px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            padding: 0.5rem !important;
+            border-right: 2px solid #e2e8f0 !important;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.02);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        thead th.mobile-staff-cell {
+            top: 0;
+            z-index: 30;
+            background: #f8fafc;
+        }
+        /* 日付ヘッダー固定 */
+        .mobile-date-hdr {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: #f8fafc;
+            min-width: 70px;
+            height: 70px;
+            border-bottom: 2px solid #e2e8f0 !important;
+        }
+        .mobile-date-hdr.is-today {
+            background: #fff1f2;
+            color: #ef4444;
+        }
+        .mobile-grid-cell {
+            height: 65px;
+            padding: 3px !important;
+        }
+        .mobile-grid-cell.is-today {
+            background: rgba(255, 241, 242, 0.4);
+        }
+        .mobile-staff-cell.is-me {
+            color: var(--primary);
+            border-left: 3px solid var(--primary);
+        }
+        /* 行のゼブラ */
+        #viewer-mobile-grid-body tr:nth-child(even) td { background: #fafafa; }
+        #viewer-mobile-grid-body tr:nth-child(even) .mobile-staff-cell { background: #fafafa; }
+
+        .mobile-shift-box {
+            background: #ffffff;
+            border: 1px solid #fee2e2;
+            border-radius: 6px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        }
+        .mobile-shift-box.is-help {
+            border-color: #ddd6fe;
+        }
+        .mobile-shift-time {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.1;
+            font-variant-numeric: tabular-nums;
+        }
+        .mobile-shift-time span:first-child {
+            font-size: 0.9rem;
+            font-weight: 900;
+            color: #be123c;
+        }
+        .mobile-shift-time span:last-child {
+            font-size: 0.7rem;
+            font-weight: 700;
+            opacity: 0.7;
+            color: #475569;
+        }
+        .mobile-shift-box.is-help .mobile-shift-time span:first-child {
+            color: #6d28d9;
+        }
+    </style>
+    <div class="animate-fade-in" id="shift-viewer-mobile-container">
+        <div class="viewer-mobile-nav">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
+                <h3 id="viewer-mobile-period-label" style="margin: 0; font-size: 1rem; font-weight: 900;">読み込み中...</h3>
+                <button id="btn-viewer-mobile-ics" class="btn btn-primary btn-sm" style="display: none; font-size: 0.7rem; padding: 0.3rem 0.6rem;"><i class="fas fa-calendar-plus"></i> カレンダー追加</button>
+            </div>
+            <div style="display: flex; gap: 0.4rem;">
+                <button id="btn-viewer-mobile-prev" class="btn btn-secondary btn-sm" style="flex: 1; font-size: 0.75rem;"><i class="fas fa-chevron-left"></i> 前</button>
+                <button id="btn-viewer-mobile-today" class="btn btn-secondary btn-sm" style="flex: 1; font-size: 0.75rem;">今日</button>
+                <button id="btn-viewer-mobile-next" class="btn btn-secondary btn-sm" style="flex: 1; font-size: 0.75rem;">次 <i class="fas fa-chevron-right"></i></button>
+            </div>
+        </div>
+
+        <div class="viewer-mobile-grid-wrapper" id="viewer-mobile-scroll-area">
+            <table id="shift-viewer-mobile-grid">
+                <thead id="viewer-mobile-grid-header"></thead>
+                <tbody id="viewer-mobile-grid-body"></tbody>
+            </table>
+        </div>
+    </div>
 `;
 
 export async function initShiftViewerPage() {
@@ -2894,7 +3096,7 @@ export async function initShiftViewerPage() {
     // 2. データの取得 (カレンダー、店舗、全ユーザー、確定シフト)
     const loader = showLoader();
     try {
-        await fetchCalendarData(sid);
+        await fetchCalendarData(sid, viewerActiveSlot.startDate, viewerActiveSlot.endDate);
         
         // 店舗リスト
         const storeMap = {};
@@ -2904,24 +3106,32 @@ export async function initShiftViewerPage() {
             storeMap[String(d.store_id || d.id)] = d.store_name || d.name || '不明';
         });
 
-        // 店舗ユーザーリスト
-        const userSnap = await getDocs(query(collection(db, "m_users"), where("StoreId", "==", sid)));
+        // 店舗ユーザーリスト（表記揺れと型不一致に対応）
+        let userSnap = await getDocs(query(collection(db, "m_users"), where("StoreId", "==", sid)));
+        if (userSnap.empty) {
+            userSnap = await getDocs(query(collection(db, "m_users"), where("StoreID", "==", sid)));
+        }
+        if (userSnap.empty && typeof sid === 'string' && !isNaN(sid)) {
+            userSnap = await getDocs(query(collection(db, "m_users"), where("StoreId", "==", Number(sid))));
+        }
+
         let allUsers = [];
         userSnap.forEach(d => allUsers.push({ id: d.id, ...d.data() }));
         // 50音順 or 役職順などのソートがあればここで実施
         allUsers.sort((a, b) => (a.Name || "").localeCompare(b.Name || ""));
 
-        // 期間内の確定シフトを一括取得
+        // 期間内のシフトを日付のみで取得（インデックスエラー回避のためメモリ内でフィルタ）
         const startYMD = formatDateJST(viewerActiveSlot.startDate);
         const endYMD = formatDateJST(viewerActiveSlot.endDate);
         const shiftSnap = await getDocs(query(collection(db, "t_shifts"), 
-            where("storeId", "==", sid),
-            where("status", "==", "confirmed"),
             where("date", ">=", startYMD),
             where("date", "<=", endYMD)
         ));
         
-        const periodShifts = shiftSnap.docs.map(d => d.data());
+        // メモリ内で「自店舗」かつ「確定済み」に絞り込み
+        const periodShifts = shiftSnap.docs
+            .map(d => d.data())
+            .filter(s => String(s.storeId || s.StoreID) == String(sid) && s.status == "confirmed");
 
         // ヘルプスタッフの解決（自店舗以外からのシフトがある場合）
         // ※ 余裕があれば実装。現状は storeId で絞っているため、他店舗から自店舗への応援のみ取得される。
@@ -2932,6 +3142,21 @@ export async function initShiftViewerPage() {
 
     } catch (error) {
         console.error("Shift Viewer Error:", error);
+        const container = document.getElementById('viewer-grid-body');
+        if (container) {
+            container.innerHTML = `
+                <tr>
+                    <td colspan="20" style="padding: 3rem; color: #ef4444;">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i><br><br>
+                        データの取得に失敗しました。<br>
+                        <span style="font-size: 0.8rem; opacity: 0.8;">${error.message}</span>
+                        <p style="font-size: 0.7rem; color: #64748b; margin-top: 1rem;">
+                            ※複合インデックスが必要な場合は、コンソールのリンクから作成してください。
+                        </p>
+                    </td>
+                </tr>
+            `;
+        }
     } finally {
         if (loader) loader.remove();
     }
@@ -2978,16 +3203,21 @@ function renderShiftViewerGrid(slot, users, shifts, storeMap, me, isTablet) {
                 const cal = calendarData[ymd] || {};
                 const isHoliday = cal.is_holiday || (d.getDay() === 0);
                 const isSat = (d.getDay() === 6);
+                const isClosed = (cal.type === 'closed');
                 
                 let color = 'inherit';
                 if (isHoliday) color = '#ef4444';
                 else if (isSat) color = '#2563eb';
 
                 return `
-                    <th class="viewer-date-hdr ${isToday ? 'is-today' : ''}" style="color: ${color};">
-                        <div style="font-size: 1rem;">${dayStr}</div>
-                        <div style="font-size: 0.7rem;">(${weekStr})</div>
-                        ${cal.label ? `<span class="viewer-holiday-label">${cal.label}</span>` : ''}
+                    <th class="viewer-date-hdr ${isToday ? 'is-today' : ''} ${isClosed ? 'viewer-col-closed' : ''}" style="color: ${color};">
+                        <div style="height: 55px; display: flex; flex-direction: column; justify-content: center;">
+                            <div style="font-size: 1.1rem; line-height: 1;">${dayStr}</div>
+                            <div style="font-size: 0.7rem; margin-top: 3px;">(${weekStr})</div>
+                        </div>
+                        <div style="height: 20px; overflow: hidden;">
+                            ${cal.label ? `<span class="viewer-holiday-label" style="font-size: 0.55rem; line-height: 1;">${cal.label}</span>` : ''}
+                        </div>
                     </th>
                 `;
             }).join('')}
@@ -2995,8 +3225,30 @@ function renderShiftViewerGrid(slot, users, shifts, storeMap, me, isTablet) {
     `;
 
     // ボディ（従業員行）
-    // 自分の行を先頭に持ってくる（タブレット以外）
-    let sortedUsers = [...users];
+    // 1. タブレットアカウントおよび退職者を除外
+    const slotStartStr = formatDateJST(slot.startDate);
+    let filteredUsers = users.filter(u => {
+        if (u.Role === 'Tablet' || u.Role === '店舗タブレット') return false;
+        
+        // 退職日による判定
+        if (u.ResignationDate && u.ResignationDate < slotStartStr) {
+            if (u.Status === 'retired' || u.Status === '退職済' || u.Status === 'resigning' || u.Status === '退職手続き中') {
+                return false;
+            }
+        }
+        
+        // 退職日がないがステータスが退職済の場合
+        if (!u.ResignationDate && (u.Status === 'retired' || u.Status === '退職済')) {
+            return false;
+        }
+
+        if (u.IsActive === false) return false;
+
+        return true;
+    });
+    
+    // 2. 自分の行を先頭に持ってくる（タブレット以外）
+    let sortedUsers = [...filteredUsers];
     if (!isTablet) {
         const myIndex = sortedUsers.findIndex(u => u.id === me.id);
         if (myIndex > -1) {
@@ -3007,21 +3259,27 @@ function renderShiftViewerGrid(slot, users, shifts, storeMap, me, isTablet) {
 
     body.innerHTML = sortedUsers.map(user => {
         const isMe = (user.id === me.id && !isTablet);
+        const displayName = user.DisplayName || user.Name || '不明';
         return `
             <tr>
-                <td class="viewer-staff-cell ${isMe ? 'is-me' : ''}">${user.Name || '不明'}</td>
+                <td class="viewer-staff-cell ${isMe ? 'is-me' : ''}">${displayName}</td>
                 ${dates.map(d => {
                     const ymd = formatDateJST(d);
                     const isToday = (ymd === todayYMD);
+                    const isClosed = (calendarData[ymd]?.type === 'closed');
                     const dayShifts = shifts.filter(s => s.userId === user.id && s.date === ymd);
                     
                     return `
-                        <td class="viewer-grid-cell ${isToday ? 'is-today' : ''}">
+                        <td class="viewer-grid-cell ${isToday ? 'is-today' : ''} ${isClosed ? 'viewer-col-closed' : ''}">
                             ${dayShifts.map(s => {
                                 const isHelp = String(s.storeId || '') !== String(me.StoreID || me.StoreId);
                                 return `
                                     <div class="viewer-shift-box ${isHelp ? 'is-help' : ''}">
-                                        <div class="viewer-shift-time">${s.start}-${s.end}</div>
+                                        <div class="viewer-shift-time">
+                                            <span>${s.start}</span>
+                                            <div class="viewer-shift-divider"></div>
+                                            <span>${s.end}</span>
+                                        </div>
                                         ${isHelp ? `<div class="viewer-shift-store">${storeMap[s.storeId] || '他店舗'}</div>` : ''}
                                     </div>
                                 `;
@@ -3118,5 +3376,206 @@ function generateAndDownloadIcs(shifts, label) {
  */
 export async function checkIfShiftPublished() {
     return true; // 閲覧画面は常にアクセス可能とする
+}
+
+/**
+ * --- スマホ専用：確定シフト閲覧画面の初期化 ---
+ */
+export async function initShiftViewerMobilePage() {
+    console.log("Initializing Mobile Shift Viewer...");
+    const me = JSON.parse(localStorage.getItem('currentUser'));
+    if (!me) return;
+
+    const sid = me.StoreID || me.StoreId || 'UNKNOWN';
+    const rollingSlots = getRollingSlots();
+    if (!viewerActiveSlot) {
+        viewerActiveSlot = rollingSlots.find(s => s.isCurrent) || rollingSlots[0];
+    }
+
+    const header = document.getElementById('viewer-mobile-grid-header');
+    const body = document.getElementById('viewer-mobile-grid-body');
+    const label = document.getElementById('viewer-mobile-period-label');
+    if (!header || !body || !label) return;
+
+    label.textContent = `${viewerActiveSlot.year}年 ${viewerActiveSlot.label}`;
+
+    try {
+        // データの取得
+        await fetchCalendarData(sid, viewerActiveSlot.startDate, viewerActiveSlot.endDate);
+        const storeSnap = await getDocs(collection(db, "m_stores"));
+        const storeMap = {};
+        storeSnap.forEach(d => {
+            const data = d.data();
+            storeMap[String(data.store_id || d.id)] = data.store_name || data.name || '不明';
+        });
+
+        let userSnap = await getDocs(query(collection(db, "m_users"), where("StoreId", "==", sid)));
+        if (userSnap.empty) userSnap = await getDocs(query(collection(db, "m_users"), where("StoreID", "==", sid)));
+        if (userSnap.empty && typeof sid === 'string' && !isNaN(sid)) userSnap = await getDocs(query(collection(db, "m_users"), where("StoreId", "==", Number(sid))));
+        
+        let users = [];
+        userSnap.forEach(d => users.push({ id: d.id, ...d.data() }));
+
+        const startYMD = formatDateJST(viewerActiveSlot.startDate);
+        const endYMD = formatDateJST(viewerActiveSlot.endDate);
+        const shiftSnap = await getDocs(query(collection(db, "t_shifts"), 
+            where("date", ">=", startYMD),
+            where("date", "<=", endYMD)
+        ));
+        const periodShifts = shiftSnap.docs
+            .map(d => d.data())
+            .filter(s => String(s.storeId || s.StoreID) == String(sid) && s.status == "confirmed");
+
+        // 1. ユーザーフィルタリング
+        const slotStartStr = formatDateJST(viewerActiveSlot.startDate);
+        let filteredUsers = users.filter(u => {
+            if (u.Role === 'Tablet' || u.Role === '店舗タブレット') return false;
+            if (u.ResignationDate && u.ResignationDate < slotStartStr) {
+                if (u.Status === 'retired' || u.Status === '退職済' || u.Status === 'resigning' || u.Status === '退職手続き中') return false;
+            }
+            if (!u.ResignationDate && (u.Status === 'retired' || u.Status === '退職済')) return false;
+            if (u.IsActive === false) return false;
+            return true;
+        });
+
+        // 自分を先頭に
+        let sortedUsers = [...filteredUsers];
+        const myIndex = sortedUsers.findIndex(u => u.id === me.id);
+        if (myIndex > -1) {
+            const meObj = sortedUsers.splice(myIndex, 1)[0];
+            sortedUsers.unshift(meObj);
+        }
+
+        // 2. カレンダーヘッダーの描画
+        const dates = [];
+        let curr = new Date(viewerActiveSlot.startDate);
+        while (curr <= viewerActiveSlot.endDate) {
+            dates.push(new Date(curr));
+            curr.setDate(curr.getDate() + 1);
+        }
+
+        const todayYMD = formatDateJST(new Date());
+        let todayColId = '';
+
+        header.innerHTML = `
+            <tr>
+                <th class="mobile-staff-cell">スタッフ</th>
+                ${dates.map(d => {
+                    const ymd = formatDateJST(d);
+                    const isToday = (ymd === todayYMD);
+                    const cal = calendarData[ymd] || {};
+                    const isHoliday = cal.is_holiday || (d.getDay() === 0);
+                    const isSat = (d.getDay() === 6);
+                    const isClosed = (cal.type === 'closed');
+                    if (isToday) todayColId = `col-${ymd}`;
+                    
+                    let color = 'inherit';
+                    if (isHoliday) color = '#ef4444';
+                    else if (isSat) color = '#2563eb';
+
+                    return `
+                        <th id="col-${ymd}" class="mobile-date-hdr ${isToday ? 'is-today' : ''} ${isClosed ? 'viewer-col-closed' : ''}" style="color: ${color};">
+                            <div style="font-size: 1rem; line-height: 1;">${d.getDate()}</div>
+                            <div style="font-size: 0.6rem; margin-top: 2px;">(${['日','月','火','水','木','金','土'][d.getDay()]})</div>
+                            ${cal.label ? `<div style="font-size: 0.5rem; color: #ef4444; overflow: hidden; white-space: nowrap;">${cal.label}</div>` : ''}
+                        </th>
+                    `;
+                }).join('')}
+            </tr>
+        `;
+
+        // 3. ボディの描画
+        body.innerHTML = sortedUsers.map(user => {
+            const isMe = (user.id === me.id);
+            const displayName = user.DisplayName || user.Name || '不明';
+            return `
+                <tr>
+                    <td class="mobile-staff-cell ${isMe ? 'is-me' : ''}">${displayName}</td>
+                    ${dates.map(d => {
+                        const ymd = formatDateJST(d);
+                        const isToday = (ymd === todayYMD);
+                        const isClosed = (calendarData[ymd]?.type === 'closed');
+                        const dayShifts = periodShifts.filter(s => s.userId === user.id && s.date === ymd);
+                        
+                        return `
+                            <td class="mobile-grid-cell ${isToday ? 'is-today' : ''} ${isClosed ? 'viewer-col-closed' : ''}">
+                                ${dayShifts.map(s => {
+                                    const isHelp = String(s.storeId || '') !== String(sid);
+                                    return `
+                                        <div class="mobile-shift-box ${isHelp ? 'is-help' : ''}">
+                                            <div class="mobile-shift-time">
+                                                <span>${s.start}</span>
+                                                <div class="viewer-shift-divider" style="width: 8px;"></div>
+                                                <span>${s.end}</span>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </td>
+                        `;
+                    }).join('')}
+                </tr>
+            `;
+        }).join('');
+
+        // 4. カレンダー追加ボタン
+        const myShifts = periodShifts.filter(s => s.userId === me.id);
+        const icsBtn = document.getElementById('btn-viewer-mobile-ics');
+        if (icsBtn && myShifts.length > 0) {
+            icsBtn.style.display = 'block';
+            icsBtn.onclick = () => generateAndDownloadIcs(myShifts, viewerActiveSlot.label);
+        }
+
+        // 5. 今日へ自動スクロール
+        if (todayColId) {
+            setTimeout(() => {
+                const target = document.getElementById(todayColId);
+                const wrapper = document.getElementById('viewer-mobile-scroll-area');
+                if (target && wrapper) {
+                    const offset = target.offsetLeft - 100; // スタッフ列分を考慮して少し手前
+                    wrapper.scrollTo({ left: offset, behavior: 'smooth' });
+                }
+            }, 300);
+        }
+
+        setupShiftViewerMobileEvents(rollingSlots);
+
+    } catch (error) {
+        console.error("Mobile Shift Viewer Error:", error);
+        body.innerHTML = `<tr><td colspan="100" style="padding: 2rem; color: #ef4444;">エラー: ${error.message}</td></tr>`;
+    }
+}
+
+function setupShiftViewerMobileEvents(slots) {
+    const prevBtn = document.getElementById('btn-viewer-mobile-prev');
+    const nextBtn = document.getElementById('btn-viewer-mobile-next');
+    const todayBtn = document.getElementById('btn-viewer-mobile-today');
+
+    const currentIndex = slots.findIndex(s => s.id === viewerActiveSlot.id);
+
+    if (prevBtn) {
+        prevBtn.disabled = (currentIndex <= 0);
+        prevBtn.onclick = () => {
+            if (currentIndex > 0) {
+                viewerActiveSlot = slots[currentIndex - 1];
+                initShiftViewerMobilePage();
+            }
+        };
+    }
+    if (nextBtn) {
+        nextBtn.disabled = (currentIndex >= slots.length - 1);
+        nextBtn.onclick = () => {
+            if (currentIndex < slots.length - 1) {
+                viewerActiveSlot = slots[currentIndex + 1];
+                initShiftViewerMobilePage();
+            }
+        };
+    }
+    if (todayBtn) {
+        todayBtn.onclick = () => {
+            viewerActiveSlot = slots.find(s => s.isCurrent) || slots[0];
+            initShiftViewerMobilePage();
+        };
+    }
 }
 

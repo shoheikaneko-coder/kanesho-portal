@@ -30,7 +30,7 @@ import { notificationsPageHtml, initNotificationsPage } from './notifications.js
 import { calendarAdminPageHtml, initCalendarAdminPage, calendarViewerPageHtml, initCalendarViewerPage } from './calendar.js?v=63';
 import { goalsAdminPageHtml, initGoalsAdminPage, goalsStorePageHtml, initGoalsStorePage } from './goals.js?v=7';
 import { homePageHtml, initHomePage } from './home.js?v=120';
-import { shiftSubmissionPageHtml, initShiftSubmissionPage, shiftAdminPageHtml, initShiftAdminPage, shiftViewerPageHtml, initShiftViewerPage, checkIfShiftPublished } from './shift.js?v=72';
+import { shiftSubmissionPageHtml, initShiftSubmissionPage, shiftAdminPageHtml, initShiftAdminPage, shiftViewerPageHtml, initShiftViewerPage, shiftViewerMobilePageHtml, initShiftViewerMobilePage, checkIfShiftPublished } from './shift.js?v=72';
 import { loansPageHtml, initLoansPage } from './loans.js?v=116';
 import { hubPageHtml, initHubPage } from './hubs.js?v=20260428_02';
 import { inviteNaviPageHtml, initInviteNaviPage } from './invite_navi.js';
@@ -609,10 +609,14 @@ async function showPage(target) {
                 initShiftSubmissionPage();
                 break;
             case 'shift_viewer':
-                pageTitle.textContent = '確定シフト閲覧';
-                if (pageTitleMobileCentral) pageTitleMobileCentral.textContent = '確定シフト閲覧';
-                pageContent.innerHTML = shiftViewerPageHtml;
-                initShiftViewerPage();
+                updateHeaderTitle('確定シフト閲覧');
+                if (window.innerWidth < 768) {
+                    pageContent.innerHTML = shiftViewerMobilePageHtml;
+                    initShiftViewerMobilePage();
+                } else {
+                    pageContent.innerHTML = shiftViewerPageHtml;
+                    initShiftViewerPage();
+                }
                 break;
             case 'shift_admin':
                 pageTitle.textContent = 'シフト作成・調整 (コックピット)';
