@@ -6,9 +6,8 @@ import { collection, getDocs, query, where, orderBy, getDoc, doc } from "https:/
  */
 export const hubPageHtml = (title, description) => `
     <div class="hub-page animate-fade-in" style="max-width: 1200px; margin: 0 auto; padding-bottom: 5rem; padding-top: 1.5rem;">
-        
-        <div id="hub-content-grid" class="menu-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.5rem;">
-            <!-- Hubカードがここに動的に生成される -->
+        <div id="hub-content-container">
+            <!-- Content will be injected here (either grid or sections) -->
         </div>
     </div>
 `;
@@ -34,11 +33,42 @@ const HUB_CONFIG = {
     'hr_hub': {
         title: '人事総務業務',
         description: '従業員管理・貸与物・権限の管理',
-        items: [
-            { id: 'attendance_check', name: '勤怠状況確認', icon: 'fa-clipboard-check', color: '#6366f1', desc: '全スタッフの出勤状況' },
-            { id: 'users', name: 'ユーザー・従業員管理', icon: 'fa-users-cog', color: '#14b8a6', desc: 'スタッフ登録とステータス管理' },
-            { id: 'loans', name: '貸与物管理(アセット)', icon: 'fa-key', color: '#8b5cf6', desc: '制服・鍵等の貸与状況' },
-            { id: 'role_permissions', name: '権限振り分け設定', icon: 'fa-user-shield', color: '#ef4444', desc: 'アクセス制限・役職設定' }
+        sections: [
+            {
+                title: '勤怠・労務管理',
+                icon: 'fa-user-clock',
+                items: [
+                    { id: 'attendance_check', name: '勤怠状況確認', icon: 'fa-clipboard-check', color: '#6366f1' },
+                    { id: 'attendance_approval', name: '勤怠修正承認', icon: 'fa-check-double', color: '#10b981', isComingSoon: true },
+                    { id: 'paid_leave_mgmt', name: '有給管理', icon: 'fa-umbrella-beach', color: '#0ea5e9', isComingSoon: true }
+                ]
+            },
+            {
+                title: '従業員・組織管理',
+                icon: 'fa-sitemap',
+                items: [
+                    { id: 'users', name: 'ユーザー・従業員管理', icon: 'fa-users-cog', color: '#14b8a6' },
+                    { id: 'role_permissions', name: '権限振り分け設定', icon: 'fa-user-shield', color: '#ef4444' },
+                    { id: 'org_chart', name: '組織図', icon: 'fa-network-wired', color: '#8b5cf6', isComingSoon: true }
+                ]
+            },
+            {
+                title: '教育・評価',
+                icon: 'fa-graduation-cap',
+                items: [
+                    { id: 'exams_admin', name: 'テスト受験・管理', icon: 'fa-vials', color: '#f59e0b', isComingSoon: true },
+                    { id: 'evaluation', name: 'スタッフ評価システム', icon: 'fa-star', color: '#ec4899', isComingSoon: true },
+                    { id: 'training_progress', name: '研修進捗管理', icon: 'fa-chart-line', color: '#10b981', isComingSoon: true }
+                ]
+            },
+            {
+                title: '書類・資産管理',
+                icon: 'fa-file-signature',
+                items: [
+                    { id: 'loans', name: '貸与物管理(アセット)', icon: 'fa-key', color: '#8b5cf6' },
+                    { id: 'doc_gen', name: '書類作成(雇用契約書等)', icon: 'fa-file-pdf', color: '#ef4444', isComingSoon: true }
+                ]
+            }
         ]
     },
     'master_hub': {
@@ -73,27 +103,61 @@ export function initHubPage(type) {
     const config = HUB_CONFIG[type];
     if (!config) return;
 
-    const grid = document.getElementById('hub-content-grid');
-    if (!grid) return;
+    const container = document.getElementById('hub-content-container');
+    if (!container) return;
 
     const permissions = window.appState ? window.appState.permissions : [];
 
-    grid.innerHTML = config.items.filter(item => {
-        // 権限チェック（全てのHubアイテムが権限制御されているわけではないが、基本は許可または個別チェック）
-        // ※ 開発中のため、店長会議資料は無条件で表示させる
-        return item.id === 'manager_meeting' || permissions.length === 0 || permissions.includes(item.id);
-    }).map(item => `
-        <div class="glass-panel hub-card" onclick="window.navigateTo('${item.id}')" style="padding: 1.5rem; cursor: pointer; transition: all 0.3s ease; position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 0.8rem; border: 1px solid rgba(255,255,255,0.4);">
-            <div style="width: 50px; height: 50px; border-radius: 12px; background: ${item.color}15; color: ${item.color}; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
-                <i class="fas ${item.icon}"></i>
+    // セクション構造がある場合はタイル形式で描画
+    if (config.sections) {
+        container.innerHTML = `
+            <div class="hub-sections-container">
+                ${config.sections.map(section => `
+                    <div class="hub-section">
+                        <div class="hub-section-header">
+                            <i class="fas ${section.icon}" style="color: var(--primary); font-size: 1.1rem;"></i>
+                            <h2>${section.title}</h2>
+                        </div>
+                        <div class="tile-grid">
+                            ${section.items.filter(item => {
+                                return permissions.length === 0 || permissions.includes(item.id) || item.isComingSoon;
+                            }).map(item => `
+                                <div class="business-tile ${item.isComingSoon ? 'tile-coming-soon' : ''}" 
+                                     onclick="${item.isComingSoon ? "alert('この機能は現在開発中です。')" : `window.navigateTo('${item.id}')`}">
+                                    ${item.isComingSoon ? '<span class="tile-badge-soon">開発中</span>' : ''}
+                                    <div class="tile-icon" style="background: ${item.color}10; color: ${item.color};">
+                                        <i class="fas ${item.icon}"></i>
+                                    </div>
+                                    <div class="tile-info">
+                                        <span class="tile-name">${item.name}</span>
+                                    </div>
+                                    <i class="fas fa-chevron-right tile-chevron"></i>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `).join('')}
             </div>
-            <div>
-                <h3 style="margin: 0; font-size: 1.1rem; font-weight: 800; color: var(--text-primary);">${item.name}</h3>
-                <p style="margin: 0.2rem 0 0; font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4;">${item.desc}</p>
+        `;
+    } else {
+        // 従来のカード形式（グリッド）で描画
+        container.innerHTML = `
+            <div id="hub-content-grid" class="menu-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.5rem;">
+                ${config.items.filter(item => {
+                    return item.id === 'manager_meeting' || permissions.length === 0 || permissions.includes(item.id);
+                }).map(item => `
+                    <div class="glass-panel hub-card" onclick="window.navigateTo('${item.id}')" style="padding: 1.5rem; cursor: pointer; transition: all 0.3s ease; position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 0.8rem; border: 1px solid rgba(255,255,255,0.4);">
+                        <div style="width: 50px; height: 50px; border-radius: 12px; background: ${item.color}15; color: ${item.color}; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
+                            <i class="fas ${item.icon}"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 800; color: var(--text-primary);">${item.name}</h3>
+                            <p style="margin: 0.2rem 0 0; font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4;">${item.desc}</p>
+                        </div>
+                        <i class="fas fa-chevron-right" style="position: absolute; right: 1.2rem; top: 1.2rem; font-size: 0.8rem; color: #cbd5e1;"></i>
+                    </div>
+                `).join('')}
             </div>
-            <i class="fas fa-chevron-right" style="position: absolute; right: 1.2rem; top: 1.2rem; font-size: 0.8rem; color: #cbd5e1;"></i>
-        </div>
-    `).join('');
-
-    // カードのホバーアニメーションをインラインスタイルでなくCSSでやりたいので、後ほどstyles.cssに追加する。
+        `;
+    }
 }

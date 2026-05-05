@@ -4,11 +4,10 @@ import { calculateAllTheoreticalStocks } from './stock_logic.js';
 import { showAlert } from './ui_utils.js';
 
 export const inventoryMobilePageHtml = `
-    <div id="inventory-app" class="animate-fade-in" style="display: flex; flex-direction: column; height: calc(100vh - 80px); overflow: hidden; background: #fff;">
+    <div id="inventory-app" class="animate-fade-in" style="display: flex; flex-direction: column; height: 100%; overflow: hidden; background: #fff; position: relative;">
         
-        <!-- Sticky Top Navigation (Filmarks Style Slim Header) -->
+        <!-- Sticky Top Navigation -->
         <header style="background: white; border-bottom: 1px solid #f1f5f9; flex-shrink: 0; z-index: 100;">
-            <!-- Store & Search Integrated Row -->
             <div style="display: flex; align-items: center; gap: 0.8rem; padding: 0.6rem 1rem; border-bottom: 1px solid #f8fafc;">
                 <div onclick="showStoreSelectSheet()" style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer; background: #f8fafc; padding: 0.4rem 0.8rem; border-radius: 8px; flex: 1; min-width: 0;">
                     <i class="fas fa-store" style="font-size: 0.8rem; color: var(--primary);"></i>
@@ -16,19 +15,16 @@ export const inventoryMobilePageHtml = `
                     <i class="fas fa-chevron-down" style="font-size: 0.6rem; color: #94a3b8;"></i>
                 </div>
                 <div style="display: flex; gap: 0.3rem;">
-                    <button id="btn-manual-reset" class="btn-icon-sm" title="リセット"><i class="fas fa-undo"></i></button>
                     <button id="btn-inv-refresh" class="btn-icon-sm"><i class="fas fa-sync-alt"></i></button>
                 </div>
             </div>
 
-            <!-- Timing Chips (Slim Horizontal Scroll) -->
+            <!-- Timing Chips -->
             <div class="scroll-fade-container">
-                <div id="inv-timing-nav" class="horizontal-scroll-chips-slim">
-                    <!-- Timing chips injected here -->
-                </div>
+                <div id="inv-timing-nav" class="horizontal-scroll-chips-slim"></div>
             </div>
 
-            <!-- Integrated Search Bar (Sticky) -->
+            <!-- Search Bar -->
             <div style="padding: 0 1rem 0.6rem 1rem;">
                 <div style="position: relative;">
                     <i class="fas fa-search" style="position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%); color: #cbd5e1; font-size: 0.8rem;"></i>
@@ -38,13 +34,17 @@ export const inventoryMobilePageHtml = `
             </div>
         </header>
 
-        <!-- Main Content: High-Density List Area -->
-        <main id="inv-main-content" style="flex: 1; overflow-y: auto; padding: 0;">
-            <!-- High density rows injected here -->
+        <!-- Main Content Area -->
+        <main id="inv-main-content" style="flex: 1; overflow-y: auto; padding: 0; padding-bottom: 100px; -webkit-overflow-scrolling: touch;">
+            <div style="text-align:center; padding: 5rem 2rem; color: #94a3b8;">
+                <i class="fas fa-store-slash" style="font-size: 3rem; opacity: 0.2; margin-bottom: 1rem;"></i>
+                <p style="font-size: 0.9rem; font-weight: 700;">店舗を選択して開始してください</p>
+                <button onclick="showStoreSelectSheet()" class="btn btn-primary" style="margin-top: 1.5rem; border-radius: 12px; height: 50px; padding: 0 2rem; font-weight: 800;">店舗を選択する</button>
+            </div>
         </main>
 
-        <!-- Filmarks-Style Bottom Tab Bar -->
-        <footer id="inv-mobile-tab-bar" style="background: white; border-top: 1px solid #f1f5f9; display: flex; height: 60px; padding-bottom: env(safe-area-inset-bottom); flex-shrink: 0; z-index: 100;">
+        <!-- Bottom Tab Bar -->
+        <footer id="inv-mobile-tab-bar" style="background: white; border-top: 1px solid #f1f5f9; display: flex; height: 60px; padding-bottom: env(safe-area-inset-bottom); flex-shrink: 0; z-index: 100; position: absolute; bottom: 0; width: 100%;">
             <div class="mobile-tab-item active" data-tab="inventory">
                 <i class="fas fa-clipboard-list"></i>
                 <span>在庫チェック</span>
@@ -63,401 +63,87 @@ export const inventoryMobilePageHtml = `
             </div>
         </footer>
 
-        <!-- Tiny Progress Bar above Tab Bar -->
-        <div id="inv-progress-line-container" style="height: 2px; background: #f1f5f9; flex-shrink: 0;">
+        <div id="inv-progress-line-container" style="height: 2px; background: #f1f5f9; flex-shrink: 0; position: absolute; bottom: calc(60px + env(safe-area-inset-bottom)); width: 100%; z-index: 101;">
             <div id="inv-progress-line" style="height: 100%; width: 0%; background: #10b981; transition: width 0.3s;"></div>
         </div>
 
-        <!-- Loading overlay -->
-        <div id="inv-loading-overlay" style="display:none; position:fixed; inset:0; background:rgba(255,255,255,0.7); z-index:9999; justify-content:center; align-items:center;">
-             <i class="fas fa-spinner fa-spin" style="font-size: 1.5rem; color: var(--primary);"></i>
+        <!-- Overlays -->
+        <div id="inv-loading-overlay" style="display:none; position:fixed; inset:0; background:rgba(255,255,255,0.8); z-index:9999; justify-content:center; align-items:center; flex-direction: column; gap: 1rem;">
+             <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary);"></i>
+             <span style="font-weight: 800; color: #1e293b; font-size: 0.9rem;">処理中...</span>
         </div>
 
-        <!-- Store Selection Sheet -->
+        <!-- Sheets -->
         <div id="store-select-sheet" class="bottom-sheet" style="display: none;">
             <div class="bottom-sheet-backdrop" onclick="closeStoreSelectSheet()"></div>
             <div class="bottom-sheet-content">
                 <div class="bottom-sheet-handle"></div>
                 <div style="padding: 1rem 1.5rem;">
                     <h3 style="margin: 0 0 1.2rem 0; font-size: 1.1rem; font-weight: 900; color: #1e293b;">店舗を選択</h3>
-                    <div id="store-sheet-list" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 50vh; overflow-y: auto;">
-                        <!-- Store options injected here -->
-                    </div>
+                    <div id="store-sheet-list" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 60vh; overflow-y: auto;"></div>
                 </div>
             </div>
         </div>
 
-        <!-- Master Settings Overlay -->
-        <div id="inv-master-settings-overlay" style="display: none; position: fixed; inset: 0; background: white; z-index: 11000; flex-direction: column;">
-            <div style="padding: 1rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+        <div id="inv-master-settings-overlay" style="display: none; position: fixed; inset: 0; background: white; z-index: 10000; flex-direction: column;">
+            <header style="padding: 1rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;">
                 <h2 style="margin: 0; font-size: 1.1rem; font-weight: 900;">在庫マスタ設定</h2>
                 <button onclick="hideMasterSettings()" class="btn-icon-mobile"><i class="fas fa-times"></i></button>
-            </div>
-            <div id="inv-master-settings-content" style="flex: 1; overflow-y: auto;">
-                <!-- Content injected here -->
-            </div>
-        </div>
-
-        <!-- Item Settings Bottom Sheet -->
-        <div id="inv-item-settings-sheet" class="bottom-sheet" style="display: none;">
-            <div class="bottom-sheet-backdrop" onclick="closeItemSettings()"></div>
-            <div class="bottom-sheet-content">
-                <div class="bottom-sheet-handle"></div>
-                <div style="padding: 1rem 1.5rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                        <h3 id="sheet-item-name" style="margin: 0; font-size: 1.2rem; font-weight: 900; color: #1e293b;">品目設定</h3>
-                        <button onclick="closeItemSettings()" style="background: none; border: none; font-size: 1.5rem; color: #94a3b8;"><i class="fas fa-times"></i></button>
-                    </div>
-                    <div id="item-settings-form-content">
-                        <!-- Form elements same as before but slightly tighter -->
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-        <!-- Loading overlay -->
-        <div id="inv-loading-overlay" style="display:none; position:fixed; inset:0; background:rgba(255,255,255,0.75); z-index:9999; justify-content:center; align-items:center;">
-             <div class="glass-panel" style="padding: 2rem; text-align:center;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary);"></i><p style="margin-top:1rem; font-weight:600;">処理中...</p></div>
-        </div>
-
-        <!-- Store Selection Sheet -->
-        <div id="store-select-sheet" class="bottom-sheet" style="display: none;">
-            <div class="bottom-sheet-backdrop" onclick="closeStoreSelectSheet()"></div>
-            <div class="bottom-sheet-content">
-                <div class="bottom-sheet-handle"></div>
-                <div style="padding: 1rem 1.5rem;">
-                    <h3 style="margin: 0 0 1.2rem 0; font-size: 1.1rem; font-weight: 900; color: #1e293b;">店舗を選択</h3>
-                    <div id="store-sheet-list" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 50vh; overflow-y: auto;">
-                        <!-- Store options injected here -->
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Master Settings Overlay (Reused from desktop but styled for mobile) -->
-        <div id="inv-master-settings-overlay" style="display: none; position: fixed; inset: 0; background: white; z-index: 11000; flex-direction: column;">
-            <div style="padding: 1rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
-                <h2 style="margin: 0; font-size: 1.1rem; font-weight: 900;">在庫マスタ設定</h2>
-                <button onclick="hideMasterSettings()" class="btn-icon-mobile"><i class="fas fa-times"></i></button>
-            </div>
-            <div id="inv-master-settings-content" style="flex: 1; overflow-y: auto;">
-                <!-- Content injected here -->
-            </div>
-        </div>
-
-        <!-- Mobile Bottom Sheet for Item Settings -->
-        <div id="inv-item-settings-sheet" class="bottom-sheet" style="display: none;">
-            <div class="bottom-sheet-backdrop" onclick="closeItemSettings()"></div>
-            <div class="bottom-sheet-content">
-                <div class="bottom-sheet-handle"></div>
-                <div style="padding: 1rem 1.5rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                        <h3 id="sheet-item-name" style="margin: 0; font-size: 1.2rem; font-weight: 900; color: #1e293b;">品目設定</h3>
-                        <button onclick="closeItemSettings()" style="background: none; border: none; font-size: 1.5rem; color: #94a3b8;"><i class="fas fa-times"></i></button>
-                    </div>
-
-                    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
-                        <div class="pro-form-field">
-                            <label class="pro-form-label">表示名 (店舗独自)</label>
-                            <input type="text" id="sheet-display-name" placeholder="例: 生ビール中" class="mobile-input-v2">
-                        </div>
-
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                            <div class="pro-form-field">
-                                <label class="pro-form-label">確認タイミング</label>
-                                <select id="sheet-timing" class="mobile-input-v2"></select>
-                            </div>
-                            <div class="pro-form-field">
-                                <label class="pro-form-label">保管場所</label>
-                                <input type="text" id="sheet-location" placeholder="例: 冷蔵庫A" class="mobile-input-v2">
-                            </div>
-                        </div>
-
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                            <div class="pro-form-field">
-                                <label class="pro-form-label">定数 (Par Stock)</label>
-                                <input type="number" id="sheet-par" step="any" placeholder="0" class="mobile-input-v2" style="text-align: center; font-weight: 800;">
-                            </div>
-                            <div class="pro-form-field">
-                                <label class="pro-form-label">管理単位</label>
-                                <input type="text" id="sheet-unit" placeholder="例: 枚" class="mobile-input-v2" style="text-align: center;">
-                            </div>
-                        </div>
-
-                        <div style="background: #f8fafc; padding: 1.2rem; border-radius: 16px; border: 1.5px solid #e2e8f0;">
-                            <label class="pro-form-label" style="margin-bottom: 0.8rem;">単位換算係数</label>
-                            <div style="display: flex; align-items: center; justify-content: center; gap: 0.8rem;">
-                                <span id="sheet-unit-preview" style="font-weight: 900; color: #64748b; font-size: 1rem;">1 単位 ＝</span>
-                                <input type="number" id="sheet-conv" step="any" placeholder="1" class="mobile-input-v2" style="width: 100px; text-align: center; font-weight: 900; border-color: var(--primary);">
-                                <span id="sheet-master-unit" style="font-weight: 800; color: #1e293b; font-size: 1rem; background: #fff; padding: 6px 12px; border-radius: 10px; border: 1.5px solid #e2e8f0;">-</span>
-                            </div>
-                            <p style="font-size: 0.65rem; color: #94a3b8; margin-top: 0.8rem; text-align: center; font-weight: 700;">※1[管理単位]あたりの基本数量(g等)を入力</p>
-                        </div>
-
-                        <div style="background: #fdf2f2; padding: 1.2rem; border-radius: 16px; border: 1.5px solid #fee2e2;">
-                            <label class="pro-form-label" style="color: #b91c1c;">不足時アクション</label>
-                            <select id="sheet-action" class="mobile-input-v2" style="color: #b91c1c; font-weight: 800; border-color: #fca5a5;">
-                                <option value="purchase">仕入れ・購入</option>
-                                <option value="prep">店舗仕込み</option>
-                                <option value="ck_prep">CK仕込み</option>
-                                <option value="transfer">店舗間移動</option>
-                            </select>
-                            
-                            <div id="sheet-source-store-container" style="display: none; margin-top: 1rem;">
-                                <label class="pro-form-label" style="color: #b91c1c;">移動元店舗</label>
-                                <select id="sheet-source-store" class="mobile-input-v2" style="color: #b91c1c; font-weight: 800; border-color: #fca5a5;"></select>
-                            </div>
-                        </div>
-
-                        <button id="btn-sheet-save" class="btn-action-mobile" style="margin-top: 1rem; height: 60px; font-size: 1.1rem;">設定を保存する</button>
-                    </div>
-                </div>
-            </div>
+            </header>
+            <div id="inv-master-settings-content" style="flex: 1; overflow-y: auto;"></div>
         </div>
     </div>
 
     <style>
-        .bottom-sheet {
-            position: fixed;
-            inset: 0;
-            z-index: 10000;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-        }
-        .bottom-sheet-backdrop {
-            position: absolute;
-            inset: 0;
-            background: rgba(0,0,0,0.5);
-            backdrop-filter: blur(4px);
-        }
-        .bottom-sheet-content {
-            position: relative;
-            background: white;
-            border-radius: 30px 30px 0 0;
-            padding-bottom: env(safe-area-inset-bottom);
-            max-height: 90vh;
-            overflow-y: auto;
-            animation: sheet-slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        .bottom-sheet-handle {
-            width: 40px;
-            height: 5px;
-            background: #e2e8f0;
-            border-radius: 10px;
-            margin: 12px auto;
-        }
-        @keyframes sheet-slide-up {
-            from { transform: translateY(100%); }
-            to { transform: translateY(0); }
-        }
-        .mobile-input-v2 {
-            width: 100%;
-            height: 50px;
-            border-radius: 12px;
-            border: 1.5px solid #f1f5f9;
-            background: #f8fafc;
-            padding: 0 1rem;
-            font-size: 1rem;
-            font-weight: 700;
-            color: #1e293b;
-            outline: none;
-            transition: all 0.2s;
-        }
-        .mobile-input-v2:focus {
-            border-color: var(--primary);
-            background: white;
-            box-shadow: 0 0 0 4px rgba(230, 57, 70, 0.1);
-        }
-        .pro-form-field { display: flex; flex-direction: column; gap: 6px; }
-        .pro-form-label { font-size: 0.75rem; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+        /* This page only CSS overrides */
+        .page-content { overflow: hidden !important; padding: 0 !important; }
+        
+        .bottom-sheet { position: fixed; inset: 0; z-index: 10000; display: flex; flex-direction: column; justify-content: flex-end; }
+        .bottom-sheet-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+        .bottom-sheet-content { position: relative; background: white; border-radius: 30px 30px 0 0; padding-bottom: env(safe-area-inset-bottom); max-height: 90vh; overflow-y: auto; animation: sheet-slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        .bottom-sheet-handle { width: 40px; height: 5px; background: #e2e8f0; border-radius: 10px; margin: 12px auto; }
+        @keyframes sheet-slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-        .mobile-tab-item {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-            color: #94a3b8;
-            font-size: 0.65rem;
-            font-weight: 800;
-            transition: all 0.2s;
-        }
+        .mobile-tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #94a3b8; font-size: 0.65rem; font-weight: 800; }
         .mobile-tab-item i { font-size: 1.2rem; }
         .mobile-tab-item.active { color: var(--primary); }
 
-        .horizontal-scroll-chips-slim {
-            display: flex;
-            gap: 0.6rem;
-            overflow-x: auto;
-            scrollbar-width: none;
-            padding: 0.4rem 1rem 0.8rem 1rem;
-        }
+        .horizontal-scroll-chips-slim { display: flex; gap: 0.6rem; overflow-x: auto; scrollbar-width: none; padding: 0.4rem 1rem 0.8rem 1rem; }
         .horizontal-scroll-chips-slim::-webkit-scrollbar { display: none; }
 
-        .timing-chip {
-            padding: 0.4rem 0.9rem;
-            background: #f8fafc;
-            color: #64748b;
-            border-radius: 20px;
-            font-weight: 800;
-            font-size: 0.75rem;
-            white-space: nowrap;
-            border: 1.5px solid #f1f5f9;
-        }
-        .timing-chip.active {
-            background: #fff;
-            color: var(--primary);
-            border-color: var(--primary);
-            box-shadow: 0 2px 6px rgba(230, 57, 70, 0.1);
-        }
+        .timing-chip { padding: 0.4rem 0.9rem; background: #f8fafc; color: #64748b; border-radius: 20px; font-weight: 800; font-size: 0.75rem; white-space: nowrap; border: 1.5px solid #f1f5f9; }
+        .timing-chip.active { background: #fff; color: var(--primary); border-color: var(--primary); box-shadow: 0 2px 6px rgba(230,57,70,0.1); }
 
-        /* High-Density Row Style */
-        .inv-row {
-            display: flex;
-            align-items: center;
-            padding: 0.8rem 1rem;
-            border-bottom: 1px solid #f8fafc;
-            gap: 0.8rem;
-            background: white;
-        }
+        .inv-row { display: flex; align-items: center; padding: 0.8rem 1rem; border-bottom: 1px solid #f8fafc; gap: 0.8rem; background: white; }
         .inv-row.confirmed { background: #f0fdf4; }
         .inv-row.shortage:not(.confirmed) { background: #fff5f5; }
-
         .inv-row-content { flex: 1; min-width: 0; }
         .inv-row-title { font-weight: 900; font-size: 0.95rem; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .inv-row-meta { font-size: 0.65rem; color: #94a3b8; font-weight: 700; margin-top: 1px; }
+        .inv-row-meta { font-size: 0.65rem; color: #94a3b8; font-weight: 700; }
 
-        .inv-row-controls { display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0; }
+        .qty-stepper-sm { display: flex; align-items: center; background: #f8fafc; border-radius: 8px; padding: 2px; border: 1px solid #f1f5f9; }
+        .stepper-btn-sm { width: 32px; height: 32px; border-radius: 6px; background: white; color: #1e293b; border: none; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: center; }
+        .qty-input-sm { width: 44px; border: none; background: transparent; text-align: center; font-size: 1.1rem; font-weight: 900; color: var(--primary); outline: none; }
 
-        .qty-stepper-sm {
-            display: flex;
-            align-items: center;
-            background: #f8fafc;
-            border-radius: 8px;
-            padding: 2px;
-            border: 1px solid #f1f5f9;
-        }
-        .stepper-btn-sm {
-            width: 32px;
-            height: 32px;
-            border-radius: 6px;
-            background: white;
-            color: #1e293b;
-            border: none;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 0.8rem;
-        }
-        .qty-input-sm {
-            width: 44px;
-            border: none;
-            background: transparent;
-            text-align: center;
-            font-size: 1.1rem;
-            font-weight: 900;
-            color: var(--primary);
-            font-family: 'Outfit', sans-serif;
-            outline: none;
-        }
+        .btn-confirm-sm { width: 38px; height: 38px; border-radius: 10px; border: none; background: #f1f5f9; color: #cbd5e1; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; }
+        .btn-confirm-sm.active { background: #10b981; color: white; }
 
-        .btn-confirm-sm {
-            width: 38px;
-            height: 38px;
-            border-radius: 10px;
-            border: none;
-            background: #f1f5f9;
-            color: #cbd5e1;
-            font-size: 1.1rem;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .btn-confirm-sm.active { background: #10b981; color: white; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2); }
+        .inv-row-controls { display: flex; align-items: center; gap: 1.2rem; flex-shrink: 0; }
 
-        .btn-icon-sm {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            border: none;
-            background: #f8fafc;
-            color: #94a3b8;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 0.8rem;
-        }
+        .btn-icon-sm { width: 32px; height: 32px; border-radius: 8px; border: none; background: #f8fafc; color: #94a3b8; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; }
+        .location-header-sm { padding: 0.4rem 1rem; background: #f8fafc; color: #94a3b8; font-size: 0.7rem; font-weight: 900; text-transform: uppercase; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; }
 
-        .location-header-sm {
-            padding: 0.4rem 1rem;
-            background: #f8fafc;
-            color: #94a3b8;
-            font-size: 0.7rem;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            border-top: 1px solid #f1f5f9;
-            border-bottom: 1px solid #f1f5f9;
-        }
+        .btn-icon-mobile { width: 44px; height: 44px; border-radius: 12px; border: none; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+        .store-item-row { padding: 1rem; background: white; border-radius: 12px; border: 1.5px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem; }
+        .store-item-row.active { border-color: var(--primary); background: #fff5f5; color: var(--primary); }
     </style>
-
-    <style>
-        .btn-icon-mobile {
-            width: 44px;
-            height: 44px;
-            border-radius: 12px;
-            border: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.1rem;
-            transition: all 0.2s;
-        }
-        .btn-icon-mobile:active { transform: scale(0.92); background: #e2e8f0; }
-
-        .store-item-row {
-            padding: 1rem;
-            background: white;
-            border-radius: 12px;
-            border: 1.5px solid #f1f5f9;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-weight: 800;
-            color: #1e293b;
-            transition: all 0.2s;
-        }
-        .store-item-row.active {
-            border-color: var(--primary);
-            background: #fff5f5;
-            color: var(--primary);
-        }
-    </style>
-
-    <!-- Settings and modals are now handled via bottom sheets -->
-
-    <!-- Master Settings Large Overlay -->
-    <div id="inv-master-settings-overlay">
-        <div style="max-width: 1300px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 0.8rem; height: 100%;">
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0;">
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <h2 style="margin: 0; font-size: 1.4rem; font-weight: 900; color: var(--text-primary);">在庫マスタ設定</h2>
-                    <p style="margin: 0; color: var(--text-secondary); font-weight: 600; font-size: 0.8rem;">店舗で管理する品目の選択とタイミングの管理</p>
-                </div>
-                <button onclick="hideMasterSettings()" class="btn btn-secondary" style="border-radius: 50%; width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <div id="inv-master-settings-content" style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
-                <!-- Content injected by renderSettingsView -->
-            </div>
-        </div>
-    </div>
 `;
 
 // Global State
 let selectedStore = null;  // {id, name, internalCode, resetTime}
 let inventorySearchQuery = ''; 
 let currentTab = 'tiles';   // 'tiles' or 'list'
+let collapsedLocations = new Set(); 
 let selectedTiming = null; // {id, name}
 let allStores = [];
 let timingMaster = {};     // ID -> Name
@@ -653,8 +339,16 @@ function render() {
 
         timingNav.querySelectorAll('.timing-chip').forEach(chip => {
             chip.onclick = () => {
-                selectedTiming = { id: chip.dataset.code, name: chip.dataset.name };
+                const tid = chip.dataset.code;
+                const tname = chip.dataset.name;
+                selectedTiming = { id: tid, name: tname };
                 inventorySearchQuery = ''; 
+                
+                // 全ての保管場所をデフォルトで閉じる
+                collapsedLocations = new Set();
+                const uniqueLocs = [...new Set(inventoryData.filter(d => (d.確認タイミング || '') === tid).map(d => d.location_label || d.保管場所 || '未配置'))];
+                uniqueLocs.forEach(loc => collapsedLocations.add(loc));
+
                 render();
             };
         });
@@ -674,10 +368,19 @@ function render() {
         const tabId = tab.dataset.tab;
         tab.classList.toggle('active', tabId === 'inventory');
         tab.onclick = () => {
-            if (tabId === 'procurement') window.navigateTo('procurement');
+            if (tabId === 'procurement') {
+                if (window.switchOpsHubTab) window.switchOpsHubTab('transfer');
+                else window.navigateTo('procurement');
+            }
             else if (tabId === 'master') showMasterSettings();
-            else if (tabId === 'history') showAlert('近日公開', '履歴機能は現在開発中です。');
-            else render(); // Re-render inventory
+            else if (tabId === 'history') {
+                if (window.switchOpsHubTab) showAlert('近日公開', '履歴機能は現在開発中です。');
+                else showAlert('近日公開', '履歴機能は現在開発中です。');
+            }
+            else {
+                if (window.switchOpsHubTab) window.switchOpsHubTab('inventory');
+                else render();
+            }
         };
     });
 
@@ -711,7 +414,7 @@ function render() {
     }
 }
 
-function showStoreSelectSheet() {
+window.showStoreSelectSheet = () => {
     const sheet = document.getElementById('store-select-sheet');
     const list = document.getElementById('store-sheet-list');
     list.innerHTML = allStores.sort((a,b) => a.name.localeCompare(b.name)).map(s => `
@@ -723,22 +426,36 @@ function showStoreSelectSheet() {
 
     list.querySelectorAll('.store-item-row').forEach(row => {
         row.onclick = async () => {
-            const s = allStores.find(x => x.id === row.dataset.id);
-            selectedStore = s;
-            closeStoreSelectSheet();
-            render();
-            await loadStoreInventory(s.code);
-            render();
+            const overlay = document.getElementById('inv-loading-overlay');
+            try {
+                if (overlay) overlay.style.display = 'flex';
+                
+                const s = allStores.find(x => x.id === row.dataset.id);
+                if (!s) throw new Error("店舗データが見つかりません: " + row.dataset.id);
+                
+                console.log("Selected store:", s);
+                selectedStore = s;
+                closeStoreSelectSheet();
+                render();
+                
+                await loadStoreInventory(s.code);
+                render();
+            } catch (err) {
+                console.error("Store selection failed:", err);
+                showAlert('エラー', '店舗の読み込みに失敗しました: ' + err.message);
+            } finally {
+                if (overlay) overlay.style.display = 'none';
+            }
         };
     });
     sheet.style.display = 'flex';
-}
+};
 
 window.closeStoreSelectSheet = () => {
     document.getElementById('store-select-sheet').style.display = 'none';
 };
 
-async function showMasterSettings() {
+window.showMasterSettings = async () => {
     const overlay = document.getElementById('inv-master-settings-overlay');
     const content = document.getElementById('inv-master-settings-content');
     const overlayLoad = document.getElementById('inv-loading-overlay');
@@ -756,7 +473,7 @@ async function showMasterSettings() {
             if (overlayLoad) overlayLoad.style.display = 'none';
         }
     }
-}
+};
 
 window.hideMasterSettings = () => {
     const overlay = document.getElementById('inv-master-settings-overlay');
@@ -799,37 +516,58 @@ function renderInventoryRows(container, items, isGlobalSearch) {
 
     let html = '';
     Object.keys(groupedItems).forEach(loc => {
-        html += `<div class="location-header-sm">${loc}</div>`;
-        groupedItems[loc].forEach(item => {
-            const isConfirmed = isConfirmedToday(item.updated_at, selectedStore.resetTime, item.is_confirmed);
-            const currentQty = item.個数 !== undefined ? item.個数 : '';
-            const parStock = item.定数 || 0;
-            const isShort = (parStock > 0) && (Number(currentQty) < parStock);
-            const masterName = productMap[item.ProductID] || '不明';
-            const displayName = item.display_name || masterName;
+        const locItems = groupedItems[loc];
+        const confirmedCount = locItems.filter(i => isConfirmedToday(i.confirmed_at, selectedStore.resetTime, i.is_confirmed)).length;
+        const totalCount = locItems.length;
+        const isCollapsed = collapsedLocations.has(loc);
+        const hasShortage = locItems.some(i => !isConfirmedToday(i.confirmed_at, selectedStore.resetTime, i.is_confirmed) && (i.定数 > 0) && (Number(i.個数 || 0) < i.定数));
 
-            html += `
-                <div class="inv-row ${isConfirmed ? 'confirmed' : ''} ${isShort && !isConfirmed ? 'shortage' : ''}" data-id="${item.id}">
-                    <div class="inv-row-content" onclick="window.showItemSettingsModal('${item.id}')">
-                        <div class="inv-row-title">${displayName}</div>
-                        <div class="inv-row-meta">
-                            ${isGlobalSearch ? `<span style="color:var(--primary); font-weight:800; margin-right:4px;">[${timingMaster[item.確認タイミング] || '未'}]</span>` : ''}
-                            定数: ${parStock}${item.display_unit || ''}
-                        </div>
+        html += `
+            <div class="location-accordion ${isCollapsed ? 'is-collapsed' : ''}">
+                <div class="location-header-sm" onclick="window.toggleLocationAccordion('${loc}')" style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 0.8rem 1rem; background: #f8fafc; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
+                    <div style="display: flex; align-items: center; gap: 0.6rem;">
+                        <i class="fas fa-chevron-down accordion-icon" style="font-size: 0.7rem; color: #94a3b8; transition: transform 0.2s; ${isCollapsed ? 'transform: rotate(-90deg);' : ''}"></i>
+                        <span style="font-size: 0.75rem; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">${loc}</span>
+                        ${hasShortage ? '<i class="fas fa-exclamation-circle" style="color: #ef4444; font-size: 0.7rem;"></i>' : ''}
                     </div>
-                    <div class="inv-row-controls">
-                        <div class="qty-stepper-sm">
-                            <button class="stepper-btn-sm btn-minus" data-id="${item.id}"><i class="fas fa-minus"></i></button>
-                            <input type="number" class="qty-input-sm" value="${currentQty}" placeholder="-" data-id="${item.id}" inputmode="decimal">
-                            <button class="stepper-btn-sm btn-plus" data-id="${item.id}"><i class="fas fa-plus"></i></button>
-                        </div>
-                        <button class="btn-confirm-sm ${isConfirmed ? 'active' : ''}" data-id="${item.id}">
-                            <i class="fas fa-check"></i>
-                        </button>
+                    <div style="font-size: 0.7rem; font-weight: 800; color: #94a3b8; background: white; padding: 0.2rem 0.6rem; border-radius: 10px; border: 1px solid #f1f5f9;">
+                        ${confirmedCount} / ${totalCount}
                     </div>
                 </div>
-            `;
-        });
+                <div class="location-content" style="${isCollapsed ? 'display: none;' : ''}">
+                    ${locItems.map(item => {
+                        const isConfirmed = isConfirmedToday(item.confirmed_at, selectedStore.resetTime, item.is_confirmed);
+                        const currentQty = item.個数 !== undefined ? item.個数 : '';
+                        const parStock = item.定数 || 0;
+                        const isShort = (parStock > 0) && (Number(currentQty) < parStock);
+                        const masterName = productMap[item.ProductID] || '不明';
+                        const displayName = item.display_name || masterName;
+
+                        return `
+                            <div class="inv-row ${isConfirmed ? 'confirmed' : ''} ${isShort && !isConfirmed ? 'shortage' : ''}" data-id="${item.id}">
+                                <div class="inv-row-content" onclick="window.showItemSettingsModal('${item.id}')">
+                                    <div class="inv-row-title">${displayName}</div>
+                                    <div class="inv-row-meta">
+                                        ${isGlobalSearch ? `<span style="color:var(--primary); font-weight:800; margin-right:4px;">[${timingMaster[item.確認タイミング] || '未'}]</span>` : ''}
+                                        定数: ${parStock}${item.display_unit || ''}
+                                    </div>
+                                </div>
+                                <div class="inv-row-controls">
+                                    <button class="btn-confirm-sm ${isConfirmed ? 'active' : ''}" data-id="${item.id}">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                    <div class="qty-stepper-sm">
+                                        <button class="stepper-btn-sm btn-minus" data-id="${item.id}"><i class="fas fa-minus"></i></button>
+                                        <input type="number" class="qty-input-sm" value="${currentQty}" placeholder="-" data-id="${item.id}" inputmode="decimal" step="0.5">
+                                        <button class="stepper-btn-sm btn-plus" data-id="${item.id}"><i class="fas fa-plus"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
     });
 
     container.innerHTML = html || `<div style="text-align:center; padding: 3rem; color: #94a3b8; font-size: 0.85rem;">品目はありません</div>`;
@@ -845,8 +583,9 @@ function attachInventoryListeners(container) {
             const item = inventoryData.find(i => i.id === id);
             if (!item || !input) return;
 
-            let val = Number(input.value) || 0;
-            val = btn.classList.contains('btn-plus') ? val + 1 : Math.max(0, val - 1);
+            let val = parseFloat(input.value) || 0;
+            val = btn.classList.contains('btn-plus') ? val + 0.5 : Math.max(0, val - 0.5);
+            val = Math.round(val * 10) / 10; // 浮動小数点の誤差防止
             
             input.value = val;
             item.個数 = val;
@@ -978,6 +717,14 @@ async function handleManualReset() {
         if (overlay) overlay.style.setProperty('display', 'none', 'important');
     }
 }
+window.toggleLocationAccordion = (loc) => {
+    if (collapsedLocations.has(loc)) {
+        collapsedLocations.delete(loc);
+    } else {
+        collapsedLocations.add(loc);
+    }
+    render();
+};
 
 async function saveItemQty(item) {
     if (item.個数 === undefined || item.個数 === null) return;
@@ -1065,7 +812,7 @@ async function toggleItemConfirmation(id) {
     const item = inventoryData.find(i => i.id === id);
     if (!item) return;
 
-    const isConfirmed = isConfirmedToday(item.updated_at, selectedStore.resetTime, item.is_confirmed);
+    const isConfirmed = isConfirmedToday(item.confirmed_at, selectedStore.resetTime, item.is_confirmed);
     const newConfirmed = !isConfirmed;
     const now = new Date().toISOString();
 
@@ -1168,6 +915,40 @@ export async function initInventoryMobilePage(user) {
     if (globalFab) globalFab.style.display = 'none';
 
     await loadInitialData();
+
+    // パンくずリストの手動更新
+    const mbArea = document.getElementById('mobile-breadcrumb-area');
+    if (mbArea) {
+        mbArea.innerHTML = `
+            <span onclick="window.navigateTo('home')">ホーム</span>
+            <i class="fas fa-chevron-right"></i>
+            <span onclick="window.navigateTo('ops_hub')">店舗業務</span>
+            <i class="fas fa-chevron-right"></i>
+            <span>在庫チェック</span>
+        `;
+    }
+
+    const titleEl = document.getElementById('page-title-mobile-central');
+    if (titleEl) titleEl.textContent = '在庫チェック';
+
+    // ユーザーに紐づく店舗を自動選択
+    if (user) {
+        const userStoreId = user.StoreID || user.Store || user.所属店舗;
+        if (userStoreId) {
+            const autoSelect = allStores.find(s => s.code === userStoreId || s.id === userStoreId || s.name === userStoreId);
+            if (autoSelect) {
+                console.log("Auto-selecting store for user:", autoSelect.name);
+                selectedStore = autoSelect;
+                // 店舗が選択されたので在庫も読み込む
+                try {
+                    await loadStoreInventory(autoSelect.code);
+                } catch (e) {
+                    console.error("Auto-load failed:", e);
+                }
+            }
+        }
+    }
+
     render();
 }
 
@@ -1721,17 +1502,46 @@ async function addTimingMaster() {
 }
 
 async function loadStoreInventory(internalCode) {
+    if (!internalCode) {
+        console.warn("loadStoreInventory called without internalCode");
+        return;
+    }
     const main = document.getElementById('inv-main-content');
-    if (main) main.innerHTML = `<div style="text-align:center; padding: 4rem;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary);"></i><p>読み込み中...</p></div>`;
+    if (main) main.innerHTML = `<div style="text-align:center; padding: 4rem;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary);"></i><p style="margin-top:1rem; font-weight:600;">データを取得中...</p></div>`;
 
     try {
+        console.log("Loading inventory for store:", internalCode);
         const q = query(collection(db, "m_store_items"), where("StoreID", "==", internalCode));
         const snap = await getDocs(q);
+        
         inventoryData = [];
-        snap.forEach(d => inventoryData.push({ id: d.id, ...d.data() }));
-        await loadTheoreticalStocks(internalCode);
+        snap.forEach(d => {
+            const data = d.data();
+            inventoryData.push({ id: d.id, ...data });
+        });
+        
+        console.log(`Fetched ${inventoryData.length} items. Calculating theoretical stocks...`);
+        
+        try {
+            await loadTheoreticalStocks(internalCode);
+        } catch (stockErr) {
+            console.error("Theoretical stock calculation failed, but continuing:", stockErr);
+        }
+        
+        console.log("Inventory load complete.");
     } catch (err) {
         console.error("Error loading store inventory:", err);
+        if (main) {
+            main.innerHTML = `
+                <div style="text-align:center; padding: 3rem; color: #ef4444;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                    <p>データの取得に失敗しました</p>
+                    <p style="font-size: 0.7rem; color: #94a3b8; margin-top: 0.5rem;">${err.message}</p>
+                    <button onclick="location.reload()" class="btn btn-secondary" style="margin-top: 1rem;">再読み込み</button>
+                </div>
+            `;
+        }
+        throw err; 
     }
 }
 

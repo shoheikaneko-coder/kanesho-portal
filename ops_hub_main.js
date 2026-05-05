@@ -50,6 +50,12 @@ export const opsHubMainPageHtml = `
             #ops-hub-content > div { height: 100% !important; padding-top: 1rem !important; }
             /* 統合ハブ内では既存の垂直カテゴリー選択（procurement.js内）を隠す */
             #ops-hub-content #proc-category-config { display: none !important; }
+
+            /* スマホ版では上部タブを隠してボトムナビに統一 */
+            @media (max-width: 768px) {
+                .ops-hub-tabs { display: none !important; }
+                #ops-hub-main-container { height: 100% !important; }
+            }
         </style>
     </div>
 `;
@@ -82,6 +88,9 @@ function setupTabListeners() {
             }
         };
     }
+
+    // グローバルに公開
+    window.switchOpsHubTab = switchTab;
 }
 
 async function switchTab(tabId) {

@@ -2763,3 +2763,124 @@ input:checked + .toggle-slider:before {
     color: white;
     border-color: var(--primary);
 }
+
+/* --- Business Hub (Dense Tile Style) --- */
+.hub-sections-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+    padding: 1rem;
+}
+
+.hub-section {
+    animation: slide-up 0.4s ease-out;
+}
+
+.hub-section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    margin-bottom: 1.2rem;
+    padding-left: 0.5rem;
+    border-left: 4px solid var(--primary);
+}
+
+.hub-section-header h2 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+}
+
+.tile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.business-tile {
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    border-radius: 12px;
+    padding: 1rem 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    position: relative;
+    overflow: hidden;
+}
+
+.business-tile:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px -3px rgba(0, 0, 0, 0.08);
+    border-color: var(--primary);
+    background: linear-gradient(to right, #fff, #fff5f5);
+}
+
+.business-tile .tile-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    transition: transform 0.2s;
+}
+
+.business-tile:hover .tile-icon {
+    transform: scale(1.1);
+}
+
+.business-tile .tile-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.business-tile .tile-name {
+    display: block;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.business-tile .tile-chevron {
+    color: #cbd5e1;
+    font-size: 0.75rem;
+    transition: transform 0.2s, color 0.2s;
+}
+
+.business-tile:hover .tile-chevron {
+    transform: translateX(3px);
+    color: var(--primary);
+}
+
+.tile-coming-soon {
+    opacity: 0.6;
+    background: #f8fafc;
+}
+
+.tile-badge-soon {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: #94a3b8;
+    color: white;
+    font-size: 0.6rem;
+    padding: 2px 8px;
+    border-bottom-left-radius: 8px;
+    font-weight: 700;
+}
+
+@keyframes slide-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
