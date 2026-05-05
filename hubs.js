@@ -40,7 +40,8 @@ const HUB_CONFIG = {
                 items: [
                     { id: 'attendance_check', name: '勤怠状況確認', icon: 'fa-clipboard-check', color: '#6366f1' },
                     { id: 'attendance_approval', name: '勤怠修正承認', icon: 'fa-check-double', color: '#10b981', isComingSoon: true },
-                    { id: 'paid_leave_mgmt', name: '有給管理', icon: 'fa-umbrella-beach', color: '#0ea5e9', isComingSoon: true }
+                    { id: 'paid_leave_mgmt', name: '有給管理', icon: 'fa-umbrella-beach', color: '#0ea5e9', isComingSoon: true },
+                    { id: 'health_checkup', name: '健康診断受診', icon: 'fa-notes-medical', color: '#ef4444', isComingSoon: true }
                 ]
             },
             {
