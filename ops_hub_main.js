@@ -34,6 +34,26 @@ export const opsHubMainPageHtml = `
             <!-- Child pages will be injected here -->
         </div>
 
+        <!-- Common Bottom Navigation (Mobile Only) -->
+        <footer id="ops-mobile-tab-bar" style="display: none; background: white; border-top: 1px solid #f1f5f9; height: 60px; padding-bottom: env(safe-area-inset-bottom); flex-shrink: 0; z-index: 1000; width: 100%;">
+            <div class="mobile-tab-item active" data-tab="inventory">
+                <i class="fas fa-clipboard-list"></i>
+                <span>在庫チェック</span>
+            </div>
+            <div class="mobile-tab-item" data-tab="buy_move">
+                <i class="fas fa-truck-loading"></i>
+                <span>買う・動かす</span>
+            </div>
+            <div class="mobile-tab-item" data-tab="make">
+                <i class="fas fa-utensils"></i>
+                <span>作る</span>
+            </div>
+            <div class="mobile-tab-item" data-tab="settings">
+                <i class="fas fa-cog"></i>
+                <span>設定</span>
+            </div>
+        </footer>
+
         <style>
             .ops-tab-btn.active { 
                 background: var(--primary) !important; 
@@ -47,14 +67,29 @@ export const opsHubMainPageHtml = `
                 color: var(--primary); 
             }
             /* 子画面のスタイル調整 */
-            #ops-hub-content > div { height: 100% !important; padding-top: 1rem !important; }
+            #ops-hub-content > div { height: 100% !important; padding-top: 0 !important; }
             /* 統合ハブ内では既存の垂直カテゴリー選択（procurement.js内）を隠す */
             #ops-hub-content #proc-category-config { display: none !important; }
 
-            /* スマホ版では上部タブを隠してボトムナビに統一 */
+            /* スマホ版スタイル */
             @media (max-width: 768px) {
                 .ops-hub-tabs { display: none !important; }
                 #ops-hub-main-container { height: 100% !important; }
+                #ops-mobile-tab-bar { display: flex !important; }
+                
+                .mobile-tab-item { 
+                    flex: 1; 
+                    display: flex; 
+                    flex-direction: column; 
+                    align-items: center; 
+                    justify-content: center; 
+                    gap: 4px; 
+                    color: #94a3b8; 
+                    font-size: 0.65rem; 
+                    font-weight: 800; 
+                }
+                .mobile-tab-item i { font-size: 1.2rem; }
+                .mobile-tab-item.active { color: var(--primary); }
             }
         </style>
     </div>
@@ -71,11 +106,22 @@ export async function initOpsHubMainPage(user) {
 }
 
 function setupTabListeners() {
+    // PC Tabs
     const tabs = document.querySelectorAll('.ops-tab-btn');
     tabs.forEach(tab => {
         tab.onclick = () => {
             const tabId = tab.dataset.tab;
             if (tabId === currentTab) return;
+            switchTab(tabId);
+        };
+    });
+
+    // Mobile Bottom Tabs
+    const mobileTabs = document.querySelectorAll('.mobile-tab-item');
+    mobileTabs.forEach(tab => {
+        tab.onclick = () => {
+            const tabId = tab.dataset.tab;
+            if (tabId === currentTab && tabId !== 'settings') return;
             switchTab(tabId);
         };
     });
@@ -98,23 +144,50 @@ async function switchTab(tabId) {
     const content = document.getElementById('ops-hub-content');
     if (!content) return;
 
-    // タブの活性状態を更新
+    // タブの活性状態を更新 (PC)
     document.querySelectorAll('.ops-tab-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tab === tabId);
     });
 
+    // タブの活性状態を更新 (Mobile)
+    document.querySelectorAll('.mobile-tab-item').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabId);
+    });
+
+    const isMobile = window.innerWidth < 768;
+
     // コンテンツの切り替え
     if (tabId === 'inventory') {
-        if (window.innerWidth < 768) {
+        if (isMobile) {
             content.innerHTML = inventoryMobilePageHtml;
             await initInventoryMobilePage(currentUser);
         } else {
             content.innerHTML = inventoryPageHtml;
             await initInventoryPage(currentUser);
         }
-    } else {
-        // 仕入れ・仕込み・移動はすべて procurement.js を使用
-        if (window.innerWidth < 768) {
+    } 
+    else if (tabId === 'buy_move' || tabId === 'make') {
+        // モバイル専用の統合カテゴリー
+        const defaultSubTab = tabId === 'buy_move' ? 'purchase' : 'store_prep';
+        content.innerHTML = procurementMobilePageHtml;
+        await initProcurementMobilePage(currentUser, defaultSubTab);
+        
+        // procurement_mobile 内で表示を絞り込むための処理を後で呼び出す
+        if (window.filterProcurementCategories) {
+            window.filterProcurementCategories(tabId);
+        }
+    }
+    else if (tabId === 'settings') {
+        // 設定画面（inventory_mobile 内の master 設定を流用するか、別途用意）
+        if (isMobile) {
+            content.innerHTML = inventoryMobilePageHtml;
+            await initInventoryMobilePage(currentUser);
+            if (window.showMasterSettings) window.showMasterSettings();
+        }
+    }
+    else {
+        // PC版の個別タブ（transfer, purchase, store_prep, ck_prep）
+        if (isMobile) {
             content.innerHTML = procurementMobilePageHtml;
             await initProcurementMobilePage(currentUser, tabId);
         } else {

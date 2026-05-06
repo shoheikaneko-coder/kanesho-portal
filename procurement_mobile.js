@@ -310,6 +310,28 @@ function setupEventListeners() {
     if (btnHistory) btnHistory.onclick = showTransferHistory;
 }
 
+// Group-based category filtering (Exposed for ops_hub_main.js)
+window.filterProcurementCategories = (mode) => {
+    const nav = document.getElementById('proc-category-nav');
+    if (!nav) return;
+
+    const buyMoveCats = ['purchase', 'transfer'];
+    const makeCats = ['store_prep', 'ck_prep'];
+    const targetCats = mode === 'buy_move' ? buyMoveCats : makeCats;
+
+    nav.querySelectorAll('.cat-tab').forEach(tab => {
+        const cat = tab.dataset.cat;
+        const isVisible = targetCats.includes(cat);
+        tab.style.display = isVisible ? 'flex' : 'none';
+    });
+
+    // Automatically select the first visible tab if current category is not in target
+    if (!targetCats.includes(selectedCategory)) {
+        selectedCategory = targetCats[0];
+        render();
+    }
+};
+
 function showLoading(show) {
     const el = document.getElementById('proc-loading');
     if (el) el.style.display = show ? 'flex' : 'none';
@@ -773,6 +795,7 @@ async function executeTransfer(destStoreItemId, qty) {
     }
 }
 
+window.showTransferHistory = showTransferHistory;
 async function showTransferHistory() {
     await showLoading(true);
     try {

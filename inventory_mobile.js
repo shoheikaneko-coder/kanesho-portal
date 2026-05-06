@@ -43,25 +43,7 @@ export const inventoryMobilePageHtml = `
             </div>
         </main>
 
-        <!-- Bottom Tab Bar -->
-        <footer id="inv-mobile-tab-bar" style="background: white; border-top: 1px solid #f1f5f9; display: flex; height: 60px; padding-bottom: env(safe-area-inset-bottom); flex-shrink: 0; z-index: 100; position: absolute; bottom: 0; width: 100%;">
-            <div class="mobile-tab-item active" data-tab="inventory">
-                <i class="fas fa-clipboard-list"></i>
-                <span>在庫チェック</span>
-            </div>
-            <div class="mobile-tab-item" data-tab="procurement">
-                <i class="fas fa-truck-loading"></i>
-                <span>仕入・移動</span>
-            </div>
-            <div class="mobile-tab-item" data-tab="history">
-                <i class="fas fa-history"></i>
-                <span>履歴</span>
-            </div>
-            <div class="mobile-tab-item" data-tab="master">
-                <i class="fas fa-cog"></i>
-                <span>設定</span>
-            </div>
-        </footer>
+
 
         <div id="inv-progress-line-container" style="height: 2px; background: #f1f5f9; flex-shrink: 0; position: absolute; bottom: calc(60px + env(safe-area-inset-bottom)); width: 100%; z-index: 101;">
             <div id="inv-progress-line" style="height: 100%; width: 0%; background: #10b981; transition: width 0.3s;"></div>
@@ -88,7 +70,12 @@ export const inventoryMobilePageHtml = `
         <div id="inv-master-settings-overlay" style="display: none; position: fixed; inset: 0; background: white; z-index: 10000; flex-direction: column;">
             <header style="padding: 1rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;">
                 <h2 style="margin: 0; font-size: 1.1rem; font-weight: 900;">在庫マスタ設定</h2>
-                <button onclick="hideMasterSettings()" class="btn-icon-mobile"><i class="fas fa-times"></i></button>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <button onclick="if(window.showTransferHistory) window.showTransferHistory(); else showAlert('近日公開', '履歴機能は現在開発中です。')" class="btn" style="background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.4rem 0.8rem; font-size: 0.75rem; font-weight: 800;">
+                        <i class="fas fa-history"></i> 履歴
+                    </button>
+                    <button onclick="hideMasterSettings()" class="btn-icon-mobile" style="color: #64748b;"><i class="fas fa-times"></i></button>
+                </div>
             </header>
             <div id="inv-master-settings-content" style="flex: 1; overflow-y: auto;"></div>
         </div>
@@ -363,26 +350,7 @@ function render() {
         if (progressLine) progressLine.style.width = `${percent}%`;
     }
 
-    // 3. Bottom Tab Bar Interaction
-    document.querySelectorAll('.mobile-tab-item').forEach(tab => {
-        const tabId = tab.dataset.tab;
-        tab.classList.toggle('active', tabId === 'inventory');
-        tab.onclick = () => {
-            if (tabId === 'procurement') {
-                if (window.switchOpsHubTab) window.switchOpsHubTab('transfer');
-                else window.navigateTo('procurement');
-            }
-            else if (tabId === 'master') showMasterSettings();
-            else if (tabId === 'history') {
-                if (window.switchOpsHubTab) showAlert('近日公開', '履歴機能は現在開発中です。');
-                else showAlert('近日公開', '履歴機能は現在開発中です。');
-            }
-            else {
-                if (window.switchOpsHubTab) window.switchOpsHubTab('inventory');
-                else render();
-            }
-        };
-    });
+
 
     // 4. Header Button Listeners
     const btnReset = document.getElementById('btn-manual-reset');
