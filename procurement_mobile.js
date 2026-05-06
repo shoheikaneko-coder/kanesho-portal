@@ -513,10 +513,10 @@ function renderTransferContent(items) {
                         <div class="total-req" style="background: #fee2e2; color: #b91c1c; border-color: #fca5a5;">${sourceItems.length} 品目</div>
                     </div>
                 </div>
-                <div class="proc-detail-container ${isCollapsed ? 'hidden' : ''}" style="background: #fffafa;">
+                <div class="proc-detail-container ${isCollapsed ? 'hidden' : ''}" style="background: #fffafa; display: flex; flex-direction: column; gap: 1rem; padding: 1rem;">
                     ${sourceItems.map(si => {
                         const master = cachedItems.find(i => i.id === si.ProductID);
-                        return renderItemRow(si, master, true);
+                        return renderItemCard(si, master, true);
                     }).join('')}
                 </div>
             </div>
