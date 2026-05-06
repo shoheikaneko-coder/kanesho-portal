@@ -1,5 +1,5 @@
 import { db } from './firebase.js';
-import { collection, getDocs, addDoc, updateDoc, doc, getDoc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, getDocs, addDoc, updateDoc, doc, getDoc, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getEffectivePrice } from './cost_engine.js';
 import { showAlert, showConfirm } from './ui_utils.js';
 
@@ -12,82 +12,96 @@ import { showAlert, showConfirm } from './ui_utils.js';
 export const procurementMobilePageHtml = `
     <div id="procurement-app" class="animate-fade-in" style="display: flex; flex-direction: column; height: calc(100vh - 80px); overflow: hidden; background: #f8fafc;">
         
-        <!-- Top Tab Navigation: Business Categories -->
-        <nav id="proc-category-nav" style="background: white; border-bottom: 1px solid #e2e8f0; display: flex; padding: 0.8rem 1rem; gap: 0.5rem; flex-shrink: 0; overflow-x: auto; scrollbar-width: none;">
-            <button class="cat-tab" data-cat="purchase"><i class="fas fa-shopping-cart"></i> 仕入れ</button>
-            <button class="cat-tab" data-cat="transfer"><i class="fas fa-exchange-alt"></i> 移動</button>
-            <button class="cat-tab" data-cat="store_prep"><i class="fas fa-utensils"></i> 仕込み</button>
-            <button class="cat-tab" data-cat="ck_prep"><i class="fas fa-industry"></i> CK仕込</button>
-        </nav>
-
-        <!-- Context Control: Scope & Vendor Pills -->
-        <div id="proc-context-bar" style="background: white; border-bottom: 1px solid #e2e8f0; padding: 0.8rem 1rem; flex-shrink: 0; display: flex; flex-direction: column; gap: 0.8rem;">
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
-                <div id="proc-scope-config" style="display: flex; background: #f1f5f9; padding: 3px; border-radius: 10px; flex: 1;">
+        <!-- Compact Header: Scope & Category Switcher -->
+        <div style="background: white; border-bottom: 1px solid #e2e8f0; padding: 0.6rem 1rem; flex-shrink: 0; display: flex; flex-direction: column; gap: 0.6rem;">
+            <div style="display: flex; align-items: center; gap: 0.8rem;">
+                <div id="proc-scope-config" style="display: flex; background: #f1f5f9; padding: 2px; border-radius: 8px; width: 140px;">
                     <button id="btn-scope-store" class="scope-tab active">自店舗</button>
-                    <button id="btn-scope-group" class="scope-tab">グループ全体</button>
+                    <button id="btn-scope-group" class="scope-tab">グループ</button>
                 </div>
-                <button id="btn-proc-history" class="btn" style="width: 44px; height: 36px; padding: 0; background: #f1f5f9; color: #64748b; border: none; border-radius: 10px; display: none;">
-                    <i class="fas fa-history"></i>
-                </button>
-                <button id="btn-proc-refresh" class="btn" style="width: 44px; height: 36px; padding: 0; background: #f1f5f9; color: #64748b; border: none; border-radius: 10px;">
+                
+                <nav id="proc-category-nav" style="flex: 1; display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none;">
+                    <button class="cat-tab-mini-mini" data-cat="purchase">仕入れ</button>
+                    <button class="cat-tab-mini-mini" data-cat="transfer">移動</button>
+                    <button class="cat-tab-mini-mini" data-cat="store_prep">仕込</button>
+                    <button class="cat-tab-mini-mini" data-cat="ck_prep">CK仕込</button>
+                </nav>
+
+                <button id="btn-proc-refresh" style="width: 32px; height: 32px; border: none; background: #f1f5f9; color: #64748b; border-radius: 8px; font-size: 0.8rem;">
                     <i class="fas fa-sync-alt"></i>
                 </button>
             </div>
 
-            <!-- Horizontal Vendor Pills (Only for Purchase) -->
-            <div id="proc-vendor-nav" style="overflow-x: auto; white-space: nowrap; display: none; gap: 0.5rem; scrollbar-width: none;">
-                <!-- Vendors injected here -->
+            <!-- Vendor Selection Bar (Purchase Only) -->
+            <div id="proc-vendor-bar" style="display: none; align-items: center; gap: 0.6rem;">
+                <div id="btn-vendor-selector" style="flex: 1; display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 0.5rem 0.8rem; cursor: pointer;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-truck" style="color: var(--primary); font-size: 0.8rem;"></i>
+                        <span id="current-vendor-label" style="font-size: 0.85rem; font-weight: 800; color: #1e293b;">すべての業者</span>
+                    </div>
+                    <i class="fas fa-chevron-down" style="font-size: 0.7rem; color: #94a3b8;"></i>
+                </div>
+                <button id="btn-proc-history" style="width: 36px; height: 36px; border: none; background: #f1f5f9; color: #64748b; border-radius: 10px; display: none;">
+                    <i class="fas fa-history"></i>
+                </button>
             </div>
         </div>
         
-        <!-- Main Content Area: Cards -->
-        <main id="proc-main-content" style="flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 1rem;">
-            <!-- Cards injected here -->
+        <!-- Main Content Area: High-Density List -->
+        <main id="proc-main-content" style="flex: 1; overflow-y: auto; background: white;">
+            <!-- Items injected here -->
         </main>
 
-        <!-- Loading overlay -->
-        <div id="proc-loading" style="display:none; position:fixed; inset:0; background:rgba(255,255,255,0.75); z-index:9999; justify-content:center; align-items:center;">
-            <div class="glass-panel" style="padding: 2rem; text-align:center;">
-                <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary);"></i>
-                <p style="margin-top: 1rem; font-weight: 600;">処理中...</p>
+        <!-- Vendor Selection Modal (Bottom Sheet style) -->
+        <div id="vendor-modal" class="modal-overlay" style="display: none; align-items: flex-end;">
+            <div class="glass-panel animate-slide-up" style="width: 100%; max-height: 80vh; border-radius: 24px 24px 0 0; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 900;">業者を選択</h3>
+                    <button id="btn-close-vendor-modal" style="background: none; border: none; font-size: 1.2rem; color: #94a3b8;"><i class="fas fa-times"></i></button>
+                </div>
+                <div style="position: relative;">
+                    <i class="fas fa-search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.8rem;"></i>
+                    <input type="text" id="vendor-search-input" placeholder="業者名で検索..." style="width: 100%; padding: 0.7rem 1rem 0.7rem 2.2rem; border-radius: 12px; border: 2px solid #f1f5f9; font-size: 0.9rem; outline: none;">
+                </div>
+                <div id="vendor-list-container" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; min-height: 200px;">
+                    <!-- Vendors injected here -->
+                </div>
             </div>
         </div>
 
         <style>
-            .cat-tab {
+            .cat-tab-mini-mini {
                 flex: 1;
-                min-width: 90px;
-                height: 44px;
-                border: 2px solid transparent;
+                height: 32px;
+                padding: 0 8px;
+                border: 1.5px solid transparent;
                 background: #f1f5f9;
                 color: #64748b;
-                border-radius: 12px;
+                border-radius: 8px;
                 font-weight: 800;
-                font-size: 0.85rem;
+                font-size: 0.7rem;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                gap: 0.5rem;
                 transition: all 0.2s;
                 white-space: nowrap;
             }
-            .cat-tab.active {
+            .cat-tab-mini-mini.active {
                 background: white;
                 color: var(--primary);
                 border-color: var(--primary);
-                box-shadow: 0 4px 12px rgba(230, 57, 70, 0.1);
+                box-shadow: 0 2px 6px rgba(230, 57, 70, 0.1);
             }
 
             .scope-tab {
                 flex: 1;
-                height: 30px;
+                height: 28px;
                 border: none;
                 background: transparent;
                 color: #64748b;
                 font-weight: 800;
-                font-size: 0.75rem;
-                border-radius: 8px;
+                font-size: 0.7rem;
+                border-radius: 6px;
                 transition: all 0.2s;
             }
             .scope-tab.active {
@@ -96,99 +110,108 @@ export const procurementMobilePageHtml = `
                 box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             }
 
-            .vendor-pill {
-                display: inline-flex;
-                padding: 0.5rem 1rem;
-                background: #f1f5f9;
-                color: #64748b;
-                border-radius: 100px;
-                font-weight: 800;
-                font-size: 0.8rem;
-                border: 1.5px solid transparent;
-                cursor: pointer;
-            }
-            .vendor-pill.active {
-                background: white;
-                color: var(--primary);
-                border-color: var(--primary);
-            }
-
-            .proc-card {
-                background: white;
-                border-radius: 20px;
-                padding: 1.2rem;
-                border: 1px solid #e2e8f0;
-                display: flex;
-                flex-direction: column;
-                gap: 1.2rem;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-            }
-
-            .stepper-mobile {
+            /* High-density item row */
+            .proc-item-row {
                 display: flex;
                 align-items: center;
-                background: #f8fafc;
-                border-radius: 14px;
-                padding: 4px;
-                border: 1.5px solid #f1f5f9;
-            }
-            .stepper-btn-mobile {
-                width: 48px;
-                height: 48px;
-                border-radius: 11px;
+                padding: 0.8rem 1rem;
+                border-bottom: 1px solid #f1f5f9;
+                gap: 0.8rem;
                 background: white;
-                color: #1e293b;
+            }
+            .proc-item-row:active { background: #f8fafc; }
+            
+            .proc-item-info { flex: 1; min-width: 0; }
+            .proc-item-name { font-weight: 800; font-size: 0.95rem; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .proc-item-meta { font-size: 0.7rem; color: #94a3b8; font-weight: 600; display: flex; gap: 0.5rem; }
+
+            .proc-req-badge {
+                padding: 0.2rem 0.6rem;
+                background: #fff5f5;
+                color: var(--primary);
+                border-radius: 6px;
+                font-weight: 900;
+                font-size: 0.85rem;
+                text-align: right;
+                min-width: 60px;
+            }
+
+            .proc-stepper {
+                display: flex;
+                align-items: center;
+                background: #f1f5f9;
+                border-radius: 8px;
+                padding: 2px;
+                gap: 2px;
+            }
+            .proc-stepper-btn {
+                width: 32px;
+                height: 32px;
                 border: none;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-                font-size: 1.2rem;
+                background: white;
+                border-radius: 6px;
+                color: #1e293b;
+                font-size: 0.8rem;
                 display: flex;
                 align-items: center;
                 justify-content: center;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.05);
             }
-            .proc-buy-input {
-                width: 60px;
-                height: 48px;
+            .proc-qty-input {
+                width: 40px;
+                height: 32px;
                 border: none;
                 background: transparent;
                 text-align: center;
-                font-size: 1.4rem;
+                font-size: 1rem;
                 font-weight: 900;
                 color: var(--primary);
                 outline: none;
             }
 
-            .btn-action-mobile {
-                flex: 1;
-                height: 56px;
-                border-radius: 16px;
+            .proc-confirm-btn-small {
+                width: 44px;
+                height: 44px;
+                border-radius: 12px;
                 background: var(--primary);
                 color: white;
-                font-weight: 900;
-                font-size: 1rem;
                 border: none;
-                box-shadow: var(--shadow-primary);
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                gap: 0.6rem;
+                box-shadow: 0 4px 10px rgba(230, 57, 70, 0.2);
+                flex-shrink: 0;
             }
-            .btn-action-mobile:active { transform: scale(0.96); }
-            .btn-action-mobile:disabled { background: #cbd5e1; box-shadow: none; }
-
-            .source-badge {
-                font-size: 0.75rem;
+            .proc-confirm-btn-small:disabled { background: #cbd5e1; box-shadow: none; }
+            
+            .vendor-item {
+                padding: 1rem;
+                background: #f8fafc;
+                border-radius: 14px;
                 font-weight: 800;
-                color: #475569;
-                background: #f1f5f9;
-                padding: 0.4rem 0.8rem;
-                border-radius: 10px;
+                font-size: 0.95rem;
+                color: #1e293b;
                 display: flex;
+                justify-content: space-between;
                 align-items: center;
-                gap: 0.5rem;
+                border: 2px solid transparent;
             }
+            .vendor-item.active {
+                background: #fff5f5;
+                border-color: var(--primary);
+                color: var(--primary);
+            }
+
+            /* Animations */
+            @keyframes slideUp {
+                from { transform: translateY(100%); }
+                to { transform: translateY(0); }
+            }
+            .animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         </style>
     </div>
-`;
+`
+
 
 // State
 let selectedScope = 'store'; // 'store' or 'group'
@@ -202,8 +225,19 @@ let cachedItems = [];
 let cachedIngredients = [];
 let cachedSuppliers = [];
 let currentUser = null;
+let procurementUnsubscribe = null;
 
 export async function initProcurementMobilePage(user, category = null) {
+    currentUser = user;
+    selectedVendor = null;
+    collapsedItems.clear();
+
+    // 既存のリスナーがあれば解除
+    if (procurementUnsubscribe) {
+        procurementUnsubscribe();
+        procurementUnsubscribe = null;
+    }
+
     currentUser = user;
     selectedVendor = null;
     collapsedItems.clear();
@@ -268,11 +302,38 @@ async function loadInitialData() {
 }
 
 async function refreshProcurementData() {
+    if (!allGroupStores || allGroupStores.length === 0) return;
+    
     const storeIds = allGroupStores.map(s => s.id);
-    // Batch fetch store items for all stores in group
-    const q = query(collection(db, "m_store_items"), where("StoreID", "in", storeIds));
-    const snap = await getDocs(q);
-    procurementData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    
+    // 既存のリスナーがあれば解除
+    if (procurementUnsubscribe) {
+        procurementUnsubscribe();
+        procurementUnsubscribe = null;
+    }
+
+    console.log("Setting up real-time listener for procurement (Group):", storeIds);
+    
+    return new Promise((resolve) => {
+        const q = query(collection(db, "m_store_items"), where("StoreID", "in", storeIds));
+        
+        let isFirstLoad = true;
+        procurementUnsubscribe = onSnapshot(q, (snap) => {
+            console.log("Procurement snapshot received. Size:", snap.size);
+            procurementData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            
+            if (isFirstLoad) {
+                isFirstLoad = false;
+                resolve();
+            }
+            render();
+        }, (err) => {
+            console.error("Procurement listener error:", err);
+            resolve(); // エラーでも次へ進む
+        });
+    });
+}
+));
 }
 
 function setupEventListeners() {
@@ -281,12 +342,55 @@ function setupEventListeners() {
     const btnRefresh = document.getElementById('btn-proc-refresh');
 
     // Business Category Tabs
-    document.querySelectorAll('.cat-tab').forEach(tab => {
+    document.querySelectorAll('.cat-tab-mini-mini').forEach(tab => {
         tab.onclick = () => {
             selectedCategory = tab.dataset.cat;
             selectedVendor = null; 
             render();
         };
+    });
+
+    if (btnStore) btnStore.onclick = () => {
+        selectedScope = 'store';
+        render();
+    };
+
+    if (btnGroup) btnGroup.onclick = () => {
+        selectedScope = 'group';
+        render();
+    };
+
+    if (btnRefresh) btnRefresh.onclick = async () => {
+        await showLoading(true);
+        // リスナー経由で同期されるが、明示的なリロードも残す
+        await refreshProcurementData();
+        render();
+        await showLoading(false);
+    };
+
+    const btnHistory = document.getElementById('btn-proc-history');
+    if (btnHistory) btnHistory.onclick = showTransferHistory;
+
+    // Vendor Selector Logic
+    const btnVendorSelector = document.getElementById('btn-vendor-selector');
+    const vendorModal = document.getElementById('vendor-modal');
+    const btnCloseVendorModal = document.getElementById('btn-close-vendor-modal');
+    const vendorSearchInput = document.getElementById('vendor-search-input');
+
+    if (btnVendorSelector) btnVendorSelector.onclick = () => {
+        vendorModal.style.display = 'flex';
+        renderVendorList();
+    };
+
+    if (btnCloseVendorModal) btnCloseVendorModal.onclick = () => {
+        vendorModal.style.display = 'none';
+    };
+
+    if (vendorSearchInput) {
+        vendorSearchInput.oninput = () => renderVendorList(vendorSearchInput.value);
+    }
+}
+;
     });
 
     if (btnStore) btnStore.onclick = () => {
@@ -319,7 +423,7 @@ window.filterProcurementCategories = (mode) => {
     const makeCats = ['store_prep', 'ck_prep'];
     const targetCats = mode === 'buy_move' ? buyMoveCats : makeCats;
 
-    nav.querySelectorAll('.cat-tab').forEach(tab => {
+    nav.querySelectorAll('.cat-tab-mini').forEach(tab => {
         const cat = tab.dataset.cat;
         const isVisible = targetCats.includes(cat);
         tab.style.display = isVisible ? 'flex' : 'none';
@@ -347,14 +451,42 @@ function getBusinessDate(store) {
     return cutoff.toISOString().split('T')[0];
 }
 
-function renderItemCard(si, master, showStoreName = false) {
+function renderItemRow(si, master, showStoreName = false) {
     const store = allGroupStores.find(s => s.id === si.StoreID);
     const sName = store?.store_name || store?.Name || si.StoreID;
     const diff = Number(si.定数 || 0) - Number(si.個数 || 0);
     const req = Math.round(Math.max(0, diff));
     const sUnit = si.display_unit || master?.unit || '';
+    
+    const itemName = si.display_name || master?.name || '品目不明';
 
-    const actionLabels = { purchase: '発注・受取', store_prep: '仕込完了', ck_prep: '仕込完了', transfer: '移動実行' };
+    return `
+        <div class="proc-item-row" data-id="${si.id}">
+            <div class="proc-item-info">
+                <div class="proc-item-name">${itemName}</div>
+                <div class="proc-item-meta">
+                    ${showStoreName ? `<span><i class="fas fa-store"></i> ${sName}</span>` : ''}
+                    <span><i class="fas fa-tag"></i> ${sUnit}</span>
+                </div>
+            </div>
+            
+            <div class="proc-req-badge">
+                ${req}<span style="font-size:0.6rem; margin-left:1px;">${sUnit}</span>
+            </div>
+
+            <div class="proc-stepper">
+                <button class="proc-stepper-btn btn-minus" data-si-id="${si.id}"><i class="fas fa-minus"></i></button>
+                <input type="number" class="proc-qty-input" value="${req}" data-si-id="${si.id}" inputmode="numeric">
+                <button class="proc-stepper-btn btn-plus" data-si-id="${si.id}"><i class="fas fa-plus"></i></button>
+            </div>
+
+            <button class="proc-confirm-btn-small btn-confirm-action" data-si-id="${si.id}">
+                <i class="fas fa-check"></i>
+            </button>
+        </div>
+    `;
+}
+;
     const btnLabel = actionLabels[selectedCategory] || '完了';
 
     let transferUi = '';
@@ -420,7 +552,7 @@ function render() {
     if (!nav || !main) return;
 
     // Update Category Tab UI
-    nav.querySelectorAll('.cat-tab').forEach(tab => {
+    nav.querySelectorAll('.cat-tab-mini').forEach(tab => {
         tab.classList.toggle('active', tab.dataset.cat === (selectedCategory || ''));
     });
 
@@ -450,19 +582,35 @@ function render() {
     if (selectedCategory === 'purchase') {
         renderPurchaseContent(shortItems);
     } else if (selectedCategory === 'transfer') {
-        document.getElementById('proc-vendor-nav').style.display = 'none';
+        const vbar = document.getElementById('proc-vendor-bar'); if(vbar) vbar.style.display = 'none';
         renderTransferContent(shortItems);
     } else {
-        document.getElementById('proc-vendor-nav').style.display = 'none';
+        const vbar = document.getElementById('proc-vendor-bar'); if(vbar) vbar.style.display = 'none';
         renderMainContent(shortItems);
     }
 }
 
 function renderPurchaseContent(shortItems) {
-    const vendorNav = document.getElementById('proc-vendor-nav');
-    if (!vendorNav) return;
+    const vendorBar = document.getElementById('proc-vendor-bar');
+    if (vendorBar) {
+        vendorBar.style.display = 'flex';
+        const label = document.getElementById('current-vendor-label');
+        if (label) label.textContent = selectedVendor || 'すべての業者';
+    }
 
-    const vendorMap = {};
+    const filteredItems = selectedVendor 
+        ? shortItems.filter(si => {
+            const item = cachedItems.find(i => i.id === si.ProductID);
+            const ing = cachedIngredients.find(ing => ing.item_id === si.ProductID);
+            const sup = cachedSuppliers.find(s => (s.vendor_id || s.id) === ing?.vendor_id);
+            const v = sup?.vendor_name || item?.supplier_name || item?.業者名 || '未設定';
+            return v === selectedVendor;
+          })
+        : shortItems;
+
+    renderMainContent(filteredItems);
+}
+;
     shortItems.forEach(si => {
         const item = cachedItems.find(i => i.id === si.ProductID);
         const ing = cachedIngredients.find(ing => ing.item_id === si.ProductID);
@@ -538,7 +686,7 @@ function renderTransferContent(items) {
                 <div class="proc-detail-container ${isCollapsed ? 'hidden' : ''}" style="background: #fffafa; display: flex; flex-direction: column; gap: 1rem; padding: 1rem;">
                     ${sourceItems.map(si => {
                         const master = cachedItems.find(i => i.id === si.ProductID);
-                        return renderItemCard(si, master, true);
+                        return renderItemRow(si, master, true);
                     }).join('')}
                 </div>
             </div>
@@ -581,7 +729,7 @@ function renderMainContent(items) {
         const isSelfScope = selectedScope === 'store';
 
         if (isSelfScope) {
-            html += renderItemCard(productItems[0], master, false);
+            html += renderItemRow(productItems[0], master, false);
         } else {
             html += `
                 <div class="item-block" style="border-bottom: 1px solid var(--border);">
@@ -595,7 +743,7 @@ function renderMainContent(items) {
                         </div>
                     </div>
                     <div class="proc-detail-container ${isCollapsed ? 'hidden' : ''}" style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
-                        ${productItems.map(si => renderItemCard(si, master, true)).join('')}
+                        ${productItems.map(si => renderItemRow(si, master, true)).join('')}
                     </div>
                 </div>
             `;
@@ -618,11 +766,11 @@ function attachMainContentListeners(container) {
     });
 
     // Steppers
-    container.querySelectorAll('.stepper-btn-mobile').forEach(btn => {
+    container.querySelectorAll('.proc-stepper-btn').forEach(btn => {
         btn.onclick = (e) => {
             e.stopPropagation();
             const sid = btn.dataset.siId;
-            const input = container.querySelector(`.proc-buy-input[data-si-id="${sid}"]`);
+            const input = container.querySelector(`.proc-qty-input[data-si-id="${sid}"]`);
             if (!input) return;
             let val = parseInt(input.value) || 0;
             if (btn.classList.contains('btn-plus')) val++;
@@ -636,7 +784,7 @@ function attachMainContentListeners(container) {
         btn.onclick = async (e) => {
             e.stopPropagation();
             const siId = btn.dataset.siId;
-            const input = container.querySelector(`.proc-buy-input[data-si-id="${siId}"]`);
+            const input = container.querySelector(`.proc-qty-input[data-si-id="${siId}"]`);
             const qty = Number(input.value);
             if (qty <= 0) return;
             
@@ -860,3 +1008,53 @@ async function showTransferHistory() {
         await showLoading(false);
     }
 }
+
+function renderVendorList(query = '') {
+    const container = document.getElementById('vendor-list-container');
+    if (!container) return;
+
+    // 現在表示されている品目から業者リストを作成
+    const filteredData = selectedScope === 'store' 
+        ? procurementData.filter(d => d.StoreID === currentStore.id)
+        : procurementData;
+
+    const shortItems = filteredData.filter(si => {
+        const qty = Number(si.個数 || 0);
+        const par = Number(si.定数 || 0);
+        return par > 0 && qty < par && (si.shortage_action_type || 'purchase') === selectedCategory;
+    });
+
+    const vendorMap = {};
+    shortItems.forEach(si => {
+        const item = cachedItems.find(i => i.id === si.ProductID);
+        const ing = cachedIngredients.find(ing => ing.item_id === si.ProductID);
+        const sup = cachedSuppliers.find(s => (s.vendor_id || s.id) === ing?.vendor_id);
+        const v = sup?.vendor_name || item?.supplier_name || item?.業者名 || '未設定';
+        if (!vendorMap[v]) vendorMap[v] = 0;
+        vendorMap[v]++;
+    });
+
+    const vendors = Object.keys(vendorMap).filter(v => v.toLowerCase().includes(query.toLowerCase())).sort();
+    
+    let html = `<div class="vendor-item ${!selectedVendor ? 'active' : ''}" onclick="window.selectVendor(null)">
+        <span>すべての業者</span>
+        <span style="font-size:0.75rem; opacity:0.7">${shortItems.length}</span>
+    </div>`;
+
+    html += vendors.map(v => `
+        <div class="vendor-item ${selectedVendor === v ? 'active' : ''}" onclick="window.selectVendor('${v}')">
+            <span>${v}</span>
+            <span style="font-size:0.75rem; opacity:0.7">${vendorMap[v]}</span>
+        </div>
+    `).join('');
+
+    container.innerHTML = html;
+}
+
+window.selectVendor = (v) => {
+    selectedVendor = v;
+    document.getElementById('vendor-modal').style.display = 'none';
+    const label = document.getElementById('current-vendor-label');
+    if (label) label.textContent = v || 'すべての業者';
+    render();
+};
