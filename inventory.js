@@ -1,5 +1,5 @@
 import { db } from './firebase.js';
-import { collection, getDocs, addDoc, updateDoc, doc, getDoc, query, where, orderBy, setDoc, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, getDocs, onSnapshot, addDoc, updateDoc, doc, getDoc, query, where, orderBy, setDoc, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { calculateAllTheoreticalStocks } from './stock_logic.js';
 import { showAlert } from './ui_utils.js';
 
@@ -354,6 +354,7 @@ let cachedIngredients = [];
 let cachedSuppliers = [];
 let cachedMenus = [];
 let currentUser = null;
+let inventoryUnsubscribe = null;
 
 // Settings State
 let settingsSearchQuery = '';
@@ -1388,6 +1389,11 @@ async function handleSectionConfirm(locationName) {
 }
 
 export async function initInventoryPage(user) {
+    // 既存のリスナーがあれば解除
+    if (inventoryUnsubscribe) {
+        inventoryUnsubscribe();
+        inventoryUnsubscribe = null;
+    }
     currentUser = user;
     console.log("Initializing Inventory Page (V3 - Hybrid)...");
     selectedStore = null;
@@ -1940,19 +1946,54 @@ async function addTimingMaster() {
 }
 
 async function loadStoreInventory(internalCode) {
+    if (!internalCode) {
+        console.warn("loadStoreInventory called without internalCode");
+        return;
+    }
+
+    // 既存のリスナーがあれば解除
+    if (inventoryUnsubscribe) {
+        inventoryUnsubscribe();
+        inventoryUnsubscribe = null;
+    }
+
     const main = document.getElementById('inv-main-content');
     if (main) main.innerHTML = `<div style="text-align:center; padding: 4rem;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary);"></i><p>読み込み中...</p></div>`;
 
-    try {
+    return new Promise((resolve, reject) => {
         const q = query(collection(db, "m_store_items"), where("StoreID", "==", internalCode));
-        const snap = await getDocs(q);
-        inventoryData = [];
-        snap.forEach(d => inventoryData.push({ id: d.id, ...d.data() }));
-        await loadTheoreticalStocks(internalCode);
-    } catch (err) {
-        console.error("Error loading store inventory:", err);
-    }
+        
+        let isFirstLoad = true;
+
+        inventoryUnsubscribe = onSnapshot(q, async (snap) => {
+            console.log("Inventory snapshot received (PC). Items:", snap.size);
+            
+            const newData = [];
+            snap.forEach(d => {
+                newData.push({ id: d.id, ...d.data() });
+            });
+            
+            inventoryData = newData;
+
+            if (isFirstLoad) {
+                try {
+                    await loadTheoreticalStocks(internalCode);
+                } catch (err) {
+                    console.error("Theoretical stock error:", err);
+                }
+                isFirstLoad = false;
+                resolve();
+            }
+
+            render();
+            
+        }, (err) => {
+            console.error("Error in real-time listener (PC):", err);
+            if (isFirstLoad) reject(err);
+        });
+    });
 }
+
 
 
 
