@@ -34,6 +34,11 @@ export const opsHubMainPageHtml = `
             <!-- Child pages will be injected here -->
         </div>
 
+        <!-- Common Progress Bar (Mobile Only) -->
+        <div id="ops-progress-bar-container" style="display: none; height: 3px; background: #f1f5f9; flex-shrink: 0; z-index: 1001; width: 100%;">
+            <div id="ops-progress-line" style="height: 100%; width: 0%; background: #10b981; transition: width 0.3s; box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);"></div>
+        </div>
+
         <!-- Common Bottom Navigation (Mobile Only) -->
         <footer id="ops-mobile-tab-bar" style="display: none; background: white; border-top: 1px solid #f1f5f9; height: 60px; padding-bottom: env(safe-area-inset-bottom); flex-shrink: 0; z-index: 1000; width: 100%;">
             <div class="mobile-tab-item active" data-tab="inventory">
@@ -137,6 +142,16 @@ function setupTabListeners() {
 
     // グローバルに公開
     window.switchOpsHubTab = switchTab;
+    
+    window.updateOpsHubProgress = (percent) => {
+        const line = document.getElementById('ops-progress-line');
+        if (line) {
+            line.style.width = `${percent}%`;
+            // 0% のときはバー自体を薄くする工夫
+            const container = document.getElementById('ops-progress-bar-container');
+            if (container) container.style.opacity = percent === 0 ? '0.3' : '1';
+        }
+    };
 }
 
 async function switchTab(tabId) {
@@ -157,6 +172,11 @@ async function switchTab(tabId) {
     const isMobile = window.innerWidth < 768;
 
     // コンテンツの切り替え
+    const progressContainer = document.getElementById('ops-progress-bar-container');
+    if (progressContainer) {
+        progressContainer.style.display = (isMobile && tabId === 'inventory') ? 'block' : 'none';
+    }
+
     if (tabId === 'inventory') {
         if (isMobile) {
             content.innerHTML = inventoryMobilePageHtml;

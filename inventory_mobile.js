@@ -45,9 +45,7 @@ export const inventoryMobilePageHtml = `
 
 
 
-        <div id="inv-progress-line-container" style="height: 3px; background: #f1f5f9; flex-shrink: 0; position: absolute; bottom: calc(60px + env(safe-area-inset-bottom)); width: 100%; z-index: 101;">
-            <div id="inv-progress-line" style="height: 100%; width: 0%; background: #10b981; transition: width 0.3s; box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);"></div>
-        </div>
+
 
         <!-- Overlays -->
         <div id="inv-loading-overlay" style="display:none; position:fixed; inset:0; background:rgba(255,255,255,0.8); z-index:9999; justify-content:center; align-items:center; flex-direction: column; gap: 1rem;">
@@ -321,22 +319,6 @@ function render() {
             const isCompleted = itemsInTiming.length > 0 && confirmedCount === itemsInTiming.length;
             const isActive = selectedTiming && (selectedTiming.id || '') === tCode;
             
-            // Check for completion transition to trigger confetti
-            if (isCompleted && !timingCompletionState[tCode]) {
-                // Only trigger if it wasn't completed before in this session
-                if (window.confetti) {
-                    setTimeout(() => {
-                        confetti({
-                            particleCount: 150,
-                            spread: 70,
-                            origin: { y: 0.8 },
-                            colors: ['#E63946', '#f1faee', '#a8dadc', '#457b9d', '#1d3557']
-                        });
-                    }, 300);
-                }
-            }
-            timingCompletionState[tCode] = isCompleted;
-
             return `
                 <div class="timing-chip ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}" data-code="${tCode}" data-name="${tName}">
                     ${tName} <span style="opacity: 0.7; font-size: 0.65rem; margin-left: 2px;">${confirmedCount}/${itemsInTiming.length}</span>
@@ -366,8 +348,9 @@ function render() {
     if (itemsInCurrentTiming.length > 0) {
         const confirmedCount = itemsInCurrentTiming.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed)).length;
         const percent = Math.round((confirmedCount / itemsInCurrentTiming.length) * 100);
-        const progressLine = document.getElementById('inv-progress-line');
-        if (progressLine) progressLine.style.width = `${percent}%`;
+        if (window.updateOpsHubProgress) {
+            window.updateOpsHubProgress(percent);
+        }
     }
 
 
@@ -830,6 +813,11 @@ async function toggleItemConfirmation(id) {
 
         await loadStoreInventory(selectedStore.code);
         render();
+        
+        // 完了チェックとアニメーション
+        if (newConfirmed) {
+            checkCompletionAndCelebrate(item.確認タイミング);
+        }
     } catch (err) {
         console.error("Toggle confirmation failed:", err);
         alert("確定状態の変更に失敗しました");
@@ -882,6 +870,7 @@ async function handleSectionConfirm(locationName) {
         await batch.commit();
         await loadStoreInventory(selectedStore.code);
         render();
+        checkCompletionAndCelebrate(selectedTiming.id);
     } catch (err) {
         console.error("Section confirm failed:", err);
         alert("一括完了に失敗しました");
