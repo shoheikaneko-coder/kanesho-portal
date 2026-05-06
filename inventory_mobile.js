@@ -826,6 +826,28 @@ async function toggleItemConfirmation(id) {
     }
 }
 
+/**
+ * 特定のタイミングの全品目が完了しているかチェックし、完了していれば祝う
+ */
+async function checkCompletionAndCelebrate(timingId) {
+    const items = inventoryData.filter(d => (d.確認タイミング || '') === timingId);
+    if (items.length === 0) return;
+
+    const confirmedCount = items.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed)).length;
+    
+    // 全て完了している場合のみ発火
+    if (confirmedCount === items.length) {
+        if (window.confetti) {
+            window.confetti({
+                particleCount: 150,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#e63946', '#f4a261', '#2a9d8f', '#264653', '#e76f51']
+            });
+        }
+    }
+}
+
 async function handleSectionConfirm(locationName) {
     const itemsInSection = inventoryData.filter(d => 
         d.確認タイミング === selectedTiming.id && 

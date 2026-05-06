@@ -35,7 +35,7 @@ export const opsHubMainPageHtml = `
         </div>
 
         <!-- Common Progress Bar (Mobile Only) -->
-        <div id="ops-progress-bar-container" style="display: none; height: 3px; background: #f1f5f9; flex-shrink: 0; z-index: 1001; width: 100%;">
+        <div id="ops-progress-bar-container" style="display: none; height: 5px; background: #e2e8f0; flex-shrink: 0; z-index: 1001; width: 100%;">
             <div id="ops-progress-line" style="height: 100%; width: 0%; background: #10b981; transition: width 0.3s; box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);"></div>
         </div>
 
@@ -147,9 +147,9 @@ function setupTabListeners() {
         const line = document.getElementById('ops-progress-line');
         if (line) {
             line.style.width = `${percent}%`;
-            // 0% のときはバー自体を薄くする工夫
+            // 0% のときはバー自体をさらに薄くする工夫
             const container = document.getElementById('ops-progress-bar-container');
-            if (container) container.style.opacity = percent === 0 ? '0.3' : '1';
+            if (container) container.style.opacity = percent === 0 ? '0.2' : '1';
         }
     };
 }
