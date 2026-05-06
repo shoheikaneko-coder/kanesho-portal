@@ -45,8 +45,8 @@ export const inventoryMobilePageHtml = `
 
 
 
-        <div id="inv-progress-line-container" style="height: 2px; background: #f1f5f9; flex-shrink: 0; position: absolute; bottom: calc(60px + env(safe-area-inset-bottom)); width: 100%; z-index: 101;">
-            <div id="inv-progress-line" style="height: 100%; width: 0%; background: #10b981; transition: width 0.3s;"></div>
+        <div id="inv-progress-line-container" style="height: 3px; background: #f1f5f9; flex-shrink: 0; position: absolute; bottom: calc(60px + env(safe-area-inset-bottom)); width: 100%; z-index: 101;">
+            <div id="inv-progress-line" style="height: 100%; width: 0%; background: #10b981; transition: width 0.3s; box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);"></div>
         </div>
 
         <!-- Overlays -->
@@ -98,8 +98,10 @@ export const inventoryMobilePageHtml = `
         .horizontal-scroll-chips-slim { display: flex; gap: 0.6rem; overflow-x: auto; scrollbar-width: none; padding: 0.4rem 1rem 0.8rem 1rem; }
         .horizontal-scroll-chips-slim::-webkit-scrollbar { display: none; }
 
-        .timing-chip { padding: 0.4rem 0.9rem; background: #f8fafc; color: #64748b; border-radius: 20px; font-weight: 800; font-size: 0.75rem; white-space: nowrap; border: 1.5px solid #f1f5f9; }
+        .timing-chip { padding: 0.4rem 0.9rem; background: #f8fafc; color: #64748b; border-radius: 20px; font-weight: 800; font-size: 0.75rem; white-space: nowrap; border: 1.5px solid #f1f5f9; transition: all 0.2s; }
         .timing-chip.active { background: #fff; color: var(--primary); border-color: var(--primary); box-shadow: 0 2px 6px rgba(230,57,70,0.1); }
+        .timing-chip.completed { background: var(--primary); color: white; border-color: var(--primary); }
+        .timing-chip.completed.active { box-shadow: 0 4px 10px rgba(230,57,70,0.3); }
 
         .inv-row { display: flex; align-items: center; padding: 0.8rem 1rem; border-bottom: 1px solid #f8fafc; gap: 0.8rem; background: white; }
         .inv-row.confirmed { background: #f0fdf4; }
@@ -149,6 +151,7 @@ let settingsSelectedCategory = 'ALL';
 let settingsSelectedSupplier = 'ALL';
 let settingsCollapsedTimings = new Set();
 let settingsInitialized = false;
+let timingCompletionState = {}; // TimingID -> Boolean (Is completed)
 
 /**
  * Helper to determine if an item is a valid inventory target
@@ -315,11 +318,28 @@ function render() {
             const tName = tCode ? (timingMaster[tCode] || tCode) : "未設定";
             const itemsInTiming = inventoryData.filter(d => (d.確認タイミング || '') === tCode);
             const confirmedCount = itemsInTiming.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed)).length;
+            const isCompleted = itemsInTiming.length > 0 && confirmedCount === itemsInTiming.length;
             const isActive = selectedTiming && (selectedTiming.id || '') === tCode;
             
+            // Check for completion transition to trigger confetti
+            if (isCompleted && !timingCompletionState[tCode]) {
+                // Only trigger if it wasn't completed before in this session
+                if (window.confetti) {
+                    setTimeout(() => {
+                        confetti({
+                            particleCount: 150,
+                            spread: 70,
+                            origin: { y: 0.8 },
+                            colors: ['#E63946', '#f1faee', '#a8dadc', '#457b9d', '#1d3557']
+                        });
+                    }, 300);
+                }
+            }
+            timingCompletionState[tCode] = isCompleted;
+
             return `
-                <div class="timing-chip ${isActive ? 'active' : ''}" data-code="${tCode}" data-name="${tName}">
-                    ${tName} <span style="opacity: 0.5; font-size: 0.65rem; margin-left: 2px;">${confirmedCount}/${itemsInTiming.length}</span>
+                <div class="timing-chip ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}" data-code="${tCode}" data-name="${tName}">
+                    ${tName} <span style="opacity: 0.7; font-size: 0.65rem; margin-left: 2px;">${confirmedCount}/${itemsInTiming.length}</span>
                 </div>
             `;
         }).join('');
