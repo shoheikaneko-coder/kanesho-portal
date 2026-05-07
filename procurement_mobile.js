@@ -618,35 +618,21 @@ function render() {
         tab.classList.toggle('active', tab.dataset.cat === (selectedCategory || ''));
     });
 
-    // 2. Update Scope Container UI (Toggle between Tabs and Store Selector)
-    if (selectedCategory === 'transfer') {
-        // 移動モード時は店舗セレクターを表示（自店舗/グループは不要）
-        scopeContainer.innerHTML = `
-            <div class="inventory-store-selector-bar" id="btn-proc-store-selector" style="width: 135px; flex-shrink: 0; margin: 0; background: #f8fafc; border: 1.5px solid #e2e8f0; height: 36px; border-radius: 10px;">
-                <div class="selector-content" style="gap: 0.4rem;">
-                    <i class="fas fa-store" style="font-size: 0.75rem; color: var(--primary);"></i>
-                    <div class="selector-text">
-                        <span class="store-name" style="font-size: 0.75rem; font-weight: 800; color: #1e293b;">${currentStore?.store_name || currentStore?.Name || '店舗選択'}</span>
-                    </div>
+    // 2. Update Scope Container UI (Always use Store Selector)
+    const displayName = currentStore?.id === 'GROUP_TOTAL' ? 'グループ全体' : (currentStore?.store_name || currentStore?.Name || '店舗選択');
+    scopeContainer.innerHTML = `
+        <div class="inventory-store-selector-bar" id="btn-proc-store-selector" style="width: 135px; flex-shrink: 0; margin: 0; background: #f8fafc; border: 1.5px solid #e2e8f0; height: 36px; border-radius: 10px;">
+            <div class="selector-content" style="gap: 0.4rem;">
+                <i class="fas fa-store" style="font-size: 0.75rem; color: var(--primary);"></i>
+                <div class="selector-text">
+                    <span class="store-name" style="font-size: 0.75rem; font-weight: 800; color: #1e293b;">${displayName}</span>
                 </div>
-                <i class="fas fa-chevron-down" style="font-size: 0.65rem; color: #94a3b8;"></i>
             </div>
-        `;
-        const selBtn = document.getElementById('btn-proc-store-selector');
-        if (selBtn) selBtn.onclick = () => showProcStoreSelectorModal();
-    } else {
-        // 通常モードは既存の切り替えボタン
-        scopeContainer.innerHTML = `
-            <div id="proc-scope-config" style="display: flex; background: #f1f5f9; padding: 2px; border-radius: 8px; width: 140px; flex-shrink: 0;">
-                <button id="btn-scope-store" class="scope-tab ${selectedScope === 'store' ? 'active' : ''}">自店舗</button>
-                <button id="btn-scope-group" class="scope-tab ${selectedScope === 'group' ? 'active' : ''}">グループ</button>
-            </div>
-        `;
-        const btnS = document.getElementById('btn-scope-store');
-        const btnG = document.getElementById('btn-scope-group');
-        if (btnS) btnS.onclick = () => { selectedScope = 'store'; render(); };
-        if (btnG) btnG.onclick = () => { selectedScope = 'group'; render(); };
-    }
+            <i class="fas fa-chevron-down" style="font-size: 0.65rem; color: #94a3b8;"></i>
+        </div>
+    `;
+    const selBtn = document.getElementById('btn-proc-store-selector');
+    if (selBtn) selBtn.onclick = () => showProcStoreSelectorModal();
     
     const btnHistory = document.getElementById('btn-proc-history');
     if (btnHistory) btnHistory.style.display = selectedCategory === 'transfer' ? 'block' : 'none';
@@ -657,8 +643,8 @@ function render() {
     }
 
     let filteredData = procurementData;
-    // 移動モード時は常に自店舗（currentStore）を対象とする
-    if (selectedCategory === 'transfer' || selectedScope === 'store') {
+    // 店舗が選択されている場合はフィルタリング (グループ全体以外)
+    if (currentStore?.id !== 'GROUP_TOTAL') {
         filteredData = procurementData.filter(d => d.StoreID === currentStore.id);
     }
 
@@ -684,7 +670,11 @@ function renderPurchaseContent(shortItems) {
     if (vendorBar) {
         vendorBar.style.display = 'flex';
         const storeLabel = document.getElementById('secondary-store-name-label');
-        if (storeLabel) storeLabel.style.display = 'none';
+        if (storeLabel) {
+            storeLabel.style.display = 'block';
+            const sName = currentStore?.id === 'GROUP_TOTAL' ? 'グループ全体' : (currentStore?.store_name || currentStore?.Name || '');
+            storeLabel.textContent = sName + ' の仕入れ';
+        }
         
         const vendorSelector = document.getElementById('btn-vendor-selector');
         if (vendorSelector) vendorSelector.style.display = 'flex';
@@ -784,6 +774,18 @@ function showProcStoreSelectorModal() {
     if (!modal || !container) return;
 
     let html = '';
+    
+    // 仕入れ・仕込みモードのみ「グループ全体」を選択肢に含める
+    if (selectedCategory !== 'transfer') {
+        const isGroupActive = currentStore?.id === 'GROUP_TOTAL';
+        html += `
+            <div class="vendor-item ${isGroupActive ? 'active' : ''}" onclick="window.selectProcStore('GROUP_TOTAL')">
+                <span>グループ全体</span>
+                ${isGroupActive ? '<i class="fas fa-check" style="color: var(--primary);"></i>' : ''}
+            </div>
+        `;
+    }
+
     allGroupStores.forEach(s => {
         const isActive = s.id === currentStore?.id;
         html += `
@@ -802,6 +804,14 @@ function showProcStoreSelectorModal() {
 }
 
 window.selectProcStore = (storeId) => {
+    if (storeId === 'GROUP_TOTAL') {
+        currentStore = { id: 'GROUP_TOTAL', store_name: 'グループ全体' };
+        const modal = document.getElementById('proc-store-modal');
+        if (modal) modal.style.display = 'none';
+        render();
+        return;
+    }
+
     const store = allGroupStores.find(s => s.id === storeId);
     if (store) {
         currentStore = store;
