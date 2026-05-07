@@ -710,21 +710,51 @@ function renderPurchaseContent(shortItems) {
         const vendorSelector = document.getElementById('btn-vendor-selector');
         if (vendorSelector) vendorSelector.style.display = 'flex';
         const batchBtn = document.getElementById('btn-master-batch-confirm');
-        if (batchBtn) batchBtn.style.display = 'flex';
+        if (batchBtn) {
+            batchBtn.style.display = 'flex';
+            batchBtn.disabled = !selectedVendor; // 業者未選択なら無効
+        }
 
         const label = document.getElementById('current-vendor-label');
-        if (label) label.textContent = selectedVendor || 'すべての業者';
+        if (label) label.textContent = selectedVendor || '業者を選択してください';
     }
 
-    const filteredItems = selectedVendor 
-        ? shortItems.filter(si => {
-            const item = cachedItems.find(i => i.id === si.ProductID);
-            const ing = cachedIngredients.find(ing => ing.item_id === si.ProductID);
-            const sup = cachedSuppliers.find(s => (s.vendor_id || s.id) === ing?.vendor_id);
-            const v = sup?.vendor_name || item?.supplier_name || item?.業者名 || '未設定';
-            return v === selectedVendor;
-          })
-        : shortItems;
+    // 業者未選択時の表示
+    if (!selectedVendor) {
+        const main = document.getElementById('proc-main-content');
+        if (main) {
+            main.innerHTML = `
+                <div style="text-align:center; padding: 5rem 2rem; color: #94a3b8;">
+                    <div style="width: 80px; height: 80px; background: #f1f5f9; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; color: #cbd5e1;">
+                        <i class="fas fa-truck-loading" style="font-size: 2.5rem;"></i>
+                    </div>
+                    <h3 style="font-size: 1.1rem; color: #475569; margin-bottom: 0.5rem; font-weight: 800;">業者を選択してください</h3>
+                    <p style="font-size: 0.85rem; line-height: 1.5; color: #94a3b8;">
+                        上の「業者を選択」から、<br>現在仕入れを行う業者を選んでください。
+                    </p>
+                    <button onclick="document.getElementById('btn-vendor-selector').click()" class="btn" style="margin-top: 1.5rem; background: var(--primary); color: white; border-radius: 12px; padding: 0.8rem 1.5rem; font-weight: 800; box-shadow: 0 4px 12px rgba(230, 57, 70, 0.2);">
+                        業者を選択する
+                    </button>
+                </div>
+            `;
+        }
+        return;
+    }
+
+    const filteredItems = shortItems.filter(si => {
+        const item = cachedItems.find(i => i.id === si.ProductID);
+        const ing = cachedIngredients.find(ing => ing.item_id === si.ProductID);
+        const sup = cachedSuppliers.find(s => (s.vendor_id || s.id) === ing?.vendor_id);
+        const v = sup?.vendor_name || item?.supplier_name || item?.業者名 || '未設定';
+        return v === selectedVendor;
+    });
+
+    // 仕入れ完了時の自動リセット
+    if (selectedVendor && filteredItems.length === 0) {
+        selectedVendor = null;
+        render(); // 再描画して「業者を選択してください」に戻す
+        return;
+    }
 
     renderMainContent(filteredItems);
 }
@@ -1281,19 +1311,22 @@ function renderVendorList(search = '') {
     });
 
     const searchLower = search.toLowerCase();
-    const displayVendors = ['すべての業者', ...vendors].filter(v => v.toLowerCase().includes(searchLower));
+    const displayVendors = vendors.filter(v => v.toLowerCase().includes(searchLower)); // 「すべての業者」を削除
 
     container.innerHTML = displayVendors.map(v => {
-        const actualVendor = v === 'すべての業者' ? null : v;
-        const isActive = selectedVendor === actualVendor;
+        const isActive = selectedVendor === v;
         return `
-            <div class="vendor-item ${isActive ? 'active' : ''}" onclick="selectVendor('${v === 'すべての業者' ? '' : v}')">
+            <div class="vendor-item ${isActive ? 'active' : ''}" onclick="selectVendor('${v}')">
                 <span>${v}</span>
-                ${v !== 'すべての業者' ? `<span style="font-size:0.75rem; opacity:0.6;">${vendorMap[v]} 品目</span>` : ''}
+                <span style="font-size:0.75rem; opacity:0.6;">${vendorMap[v]} 品目</span>
                 ${isActive ? '<i class="fas fa-check-circle"></i>' : ''}
             </div>
         `;
     }).join('');
+    
+    if (displayVendors.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:3rem; color:#94a3b8;">該当する業者はありません</div>`;
+    }
 }
 
 window.selectVendor = (v) => {
