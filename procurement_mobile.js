@@ -15,9 +15,8 @@ export const procurementMobilePageHtml = `
         <!-- Compact Header: Scope & Category Switcher -->
         <div style="background: white; border-bottom: 1px solid #e2e8f0; padding: 0.6rem 1rem; flex-shrink: 0; display: flex; flex-direction: column; gap: 0.6rem;">
             <div style="display: flex; align-items: center; gap: 0.8rem;">
-                <div id="proc-scope-config" style="display: flex; background: #f1f5f9; padding: 2px; border-radius: 8px; width: 140px;">
-                    <button id="btn-scope-store" class="scope-tab active">自店舗</button>
-                    <button id="btn-scope-group" class="scope-tab">グループ</button>
+                <div id="proc-scope-container" style="display: flex; flex: 1; align-items: center; gap: 0.8rem; min-width: 0;">
+                    <!-- Tabs or Store Selector will be injected here -->
                 </div>
                 
                 <nav id="proc-category-nav" style="flex: 1; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;">
@@ -63,6 +62,19 @@ export const procurementMobilePageHtml = `
                 </div>
                 <div id="vendor-list-container" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; min-height: 200px;">
                     <!-- Vendors injected here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Store Selection Modal (Transfer Mode Only) -->
+        <div id="proc-store-modal" class="proc-modal-overlay" style="display: none; align-items: flex-end;">
+            <div class="proc-glass-panel animate-slide-up" style="width: 100%; max-height: 80vh; border-radius: 24px 24px 0 0; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 900;">対象店舗を選択</h3>
+                    <button id="btn-close-proc-store-modal" style="background: none; border: none; font-size: 1.2rem; color: #94a3b8;"><i class="fas fa-times"></i></button>
+                </div>
+                <div id="proc-store-list-container" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; min-height: 250px;">
+                    <!-- Stores injected here -->
                 </div>
             </div>
         </div>
@@ -540,38 +552,24 @@ function renderItemRow(si, master, showStoreName = false) {
     const diff = Number(si.定数 || 0) - Number(si.個数 || 0);
     const req = Math.round(Math.max(0, diff));
     const sUnit = si.display_unit || master?.unit || '';
-    
     const itemName = si.display_name || master?.name || '品目不明';
-
-    // 移動元在庫情報の取得 (移動モード時のみ)
-    let sourceMeta = '';
-    if (selectedCategory === 'transfer') {
-        const sourceId = si.default_source_store_id;
-        const sourceSi = procurementData.find(d => d.StoreID === sourceId && d.ProductID === si.ProductID);
-        const sourceStock = sourceSi ? Number(sourceSi.個数 || 0) : 0;
-        const isLow = sourceStock < req;
-        sourceMeta = `
-            <div class="source-stock-label ${isLow ? 'warning' : ''}">
-                在庫: ${sourceStock}${sUnit}
-            </div>
-        `;
-    }
+    const currentStock = Number(si.個数 || 0);
 
     return `
         <div class="proc-item-row" data-id="${si.id}">
             <div class="proc-item-info">
                 <div class="proc-item-name" data-full-name="${itemName}">
-                    <div class="proc-item-name-text">${itemName}</div>
+                    <div class="proc-item-name-text" style="font-weight: 800;">${itemName}</div>
                 </div>
-                <div class="proc-item-meta">
-                    ${showStoreName ? `<span><i class="fas fa-store"></i> ${sName}</span>` : ''}
-                    <span><i class="fas fa-tag"></i> ${sUnit}</span>
+                <div class="proc-item-meta" style="margin-top: 2px;">
+                    ${showStoreName ? `<span style="margin-right: 8px;"><i class="fas fa-store"></i> ${sName}</span>` : ''}
+                    <span style="margin-right: 8px;"><i class="fas fa-tag"></i> ${sUnit}</span>
+                    <span class="stock-badge ${currentStock <= 0 ? 'critical' : ''}" style="background: ${currentStock <= 0 ? '#FFF1F2' : '#F1F5F9'}; color: ${currentStock <= 0 ? 'var(--primary)' : '#64748b'}; padding: 2px 8px; border-radius: 6px; font-weight: 700;">在庫: ${currentStock}${sUnit}</span>
                 </div>
-                ${sourceMeta}
             </div>
             
             <div class="proc-req-badge">
-                ${req}<span style="font-size:0.6rem; margin-left:1px;">${sUnit}</span>
+                ${req}<span style="font-size:0.6rem; margin-left:2px;">${sUnit}</span>
             </div>
 
             <div class="proc-stepper">
@@ -590,16 +588,43 @@ function renderItemRow(si, master, showStoreName = false) {
 function render() {
     const nav = document.getElementById('proc-category-nav');
     const main = document.getElementById('proc-main-content');
-    if (!nav || !main) return;
+    const scopeContainer = document.getElementById('proc-scope-container');
+    if (!nav || !main || !scopeContainer) return;
 
-    // Update Category Tab UI
+    // 1. Update Category Tab UI
     nav.querySelectorAll('.cat-tab-mini').forEach(tab => {
         tab.classList.toggle('active', tab.dataset.cat === (selectedCategory || ''));
     });
 
-    // Update Scope Tab UI
-    document.getElementById('btn-scope-store').classList.toggle('active', selectedScope === 'store');
-    document.getElementById('btn-scope-group').classList.toggle('active', selectedScope === 'group');
+    // 2. Update Scope Container UI (Toggle between Tabs and Store Selector)
+    if (selectedCategory === 'transfer') {
+        // 移動モード時は店舗セレクターを表示（自店舗/グループは不要）
+        scopeContainer.innerHTML = `
+            <div class="inventory-store-selector-bar" id="btn-proc-store-selector" style="flex: 1; margin: 0; background: #f8fafc; border: 1.5px solid #e2e8f0; height: 32px; border-radius: 8px;">
+                <div class="selector-content" style="gap: 0.4rem;">
+                    <i class="fas fa-store" style="font-size: 0.75rem; color: var(--primary);"></i>
+                    <div class="selector-text">
+                        <span class="store-name" style="font-size: 0.75rem; font-weight: 800; color: #1e293b;">${currentStore?.store_name || currentStore?.Name || '店舗選択'}</span>
+                    </div>
+                </div>
+                <i class="fas fa-chevron-down" style="font-size: 0.65rem; color: #94a3b8;"></i>
+            </div>
+        `;
+        const selBtn = document.getElementById('btn-proc-store-selector');
+        if (selBtn) selBtn.onclick = () => showProcStoreSelectorModal();
+    } else {
+        // 通常モードは既存の切り替えボタン
+        scopeContainer.innerHTML = `
+            <div id="proc-scope-config" style="display: flex; background: #f1f5f9; padding: 2px; border-radius: 8px; width: 140px; flex-shrink: 0;">
+                <button id="btn-scope-store" class="scope-tab ${selectedScope === 'store' ? 'active' : ''}">自店舗</button>
+                <button id="btn-scope-group" class="scope-tab ${selectedScope === 'group' ? 'active' : ''}">グループ</button>
+            </div>
+        `;
+        const btnS = document.getElementById('btn-scope-store');
+        const btnG = document.getElementById('btn-scope-group');
+        if (btnS) btnS.onclick = () => { selectedScope = 'store'; render(); };
+        if (btnG) btnG.onclick = () => { selectedScope = 'group'; render(); };
+    }
     
     const btnHistory = document.getElementById('btn-proc-history');
     if (btnHistory) btnHistory.style.display = selectedCategory === 'transfer' ? 'block' : 'none';
@@ -610,7 +635,8 @@ function render() {
     }
 
     let filteredData = procurementData;
-    if (selectedScope === 'store') {
+    // 移動モード時は常に自店舗（currentStore）を対象とする
+    if (selectedCategory === 'transfer' || selectedScope === 'store') {
         filteredData = procurementData.filter(d => d.StoreID === currentStore.id);
     }
 
@@ -671,30 +697,29 @@ function renderTransferContent(items) {
 
     let html = ``;
     Object.keys(itemsBySource).sort().forEach(sourceId => {
-        const sourceStore = allGroupStores.find(s => s.id === sourceId);
+        const sourceStore = allGroupStores.find(s => s.id === sourceId || s.store_id === sourceId);
         const sourceName = sourceStore?.store_name || sourceStore?.Name || (sourceId === 'UNKNOWN' ? '移動元未設定' : sourceId);
         const sourceItems = itemsBySource[sourceId];
         
         const isExpanded = expandedItems.has(sourceId);
 
         html += `
-            <div class="item-block" style="border-bottom: 1px solid var(--border);">
-                <div class="item-banner" data-id="${sourceId}" style="background: #fdf2f2; border-left: 4px solid #ef4444; padding: 1rem; cursor: pointer;">
-                    <div class="banner-content" style="display:flex; justify-content:space-between; align-items:center;">
-                        <div class="title" style="font-weight:bold; display:flex; align-items:center; gap:0.5rem;">
-                            <i class="fas ${isExpanded ? 'fa-chevron-down' : 'fa-chevron-right'}" style="width:1rem; font-size:0.8rem; color:var(--text-secondary);"></i>
-                            <i class="fas fa-truck" style="color:#ef4444; font-size:0.9rem;"></i>
-                            ${sourceName} から移動
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <div class="total-req" style="background: #fee2e2; color: #b91c1c; border-color: #fca5a5; padding: 2px 8px; border-radius: 10px;">${sourceItems.length} 品目</div>
-                        </div>
+            <div class="inventory-section-group ${isExpanded ? 'expanded' : ''}" style="margin-bottom: 0.5rem;">
+                <div class="section-header" onclick="window.toggleProcSection('${sourceId}')" style="background: #FFF5F5; border-left: 4px solid var(--primary); padding: 0.8rem 1rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 0.8rem;">
+                        <i class="fas fa-truck" style="color: var(--primary);"></i>
+                        <span class="section-title" style="font-size: 1rem; font-weight: 800; color: #1e293b;">${sourceName} からの移動</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.6rem;">
+                        <span class="section-count" style="background: #fee2e2; color: #b91c1c; padding: 2px 8px; border-radius: 10px; font-weight: 700;">${sourceItems.length} 品目</span>
+                        <i class="fas ${isExpanded ? 'fa-chevron-down' : 'fa-chevron-right'} chevron" style="font-size: 0.8rem; color: #94a3b8; transition: transform 0.3s;"></i>
                     </div>
                 </div>
-                <div class="proc-detail-container ${isExpanded ? '' : 'hidden'}" style="background: #fffafa; display: flex; flex-direction: column; gap: 0rem; padding: 0;">
+                <div class="section-content" style="${isExpanded ? 'display:block;' : 'display:none;'} background: white;">
                     ${sourceItems.map(si => {
-                        const master = cachedItems.find(i => i.id === si.ProductID);
-                        return renderItemRow(si, master, true);
+                        const master = cachedItems.find(i => i.id === si.ProductID) || cachedIngredients.find(m => m.id === si.ProductID);
+                        // 移動モードでは店舗名表示を強制OFFにするため、第3引数を false に設定
+                        return renderItemRow(si, master, false); 
                     }).join('')}
                 </div>
             </div>
@@ -704,6 +729,52 @@ function renderTransferContent(items) {
     main.innerHTML = html;
     attachMainContentListeners(main);
 }
+
+/**
+ * 店舗選択モーダルの表示
+ */
+function showProcStoreSelectorModal() {
+    const modal = document.getElementById('proc-store-modal');
+    const container = document.getElementById('proc-store-list-container');
+    if (!modal || !container) return;
+
+    let html = '';
+    allGroupStores.forEach(s => {
+        const isActive = s.id === currentStore?.id;
+        html += `
+            <div class="vendor-item ${isActive ? 'active' : ''}" onclick="window.selectProcStore('${s.id}')">
+                <span>${s.store_name || s.Name}</span>
+                ${isActive ? '<i class="fas fa-check" style="color: var(--primary);"></i>' : ''}
+            </div>
+        `;
+    });
+    container.innerHTML = html;
+    modal.style.display = 'flex';
+
+    document.getElementById('btn-close-proc-store-modal').onclick = () => {
+        modal.style.display = 'none';
+    };
+}
+
+window.selectProcStore = (storeId) => {
+    const store = allGroupStores.find(s => s.id === storeId);
+    if (store) {
+        currentStore = store;
+        localStorage.setItem('inventory_last_store_id', store.id);
+        const modal = document.getElementById('proc-store-modal');
+        if (modal) modal.style.display = 'none';
+        render();
+    }
+};
+
+window.toggleProcSection = (sourceId) => {
+    if (expandedItems.has(sourceId)) {
+        expandedItems.delete(sourceId);
+    } else {
+        expandedItems.add(sourceId);
+    }
+    render();
+};
 
 function renderMainContent(items) {
     const main = document.getElementById('proc-main-content');
