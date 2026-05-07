@@ -566,7 +566,7 @@ function showLoading(show) {
     if (el) el.style.display = show ? 'flex' : 'none';
 }
 
-function renderItemRow(si, master, showStoreName = false) {
+function renderItemRow(si, master, showStoreName = false, isInnerRow = false) {
     const store = allGroupStores.find(s => s.id === si.StoreID);
     const sName = store?.store_name || store?.Name || si.StoreID;
     const diff = Number(si.定数 || 0) - Number(si.個数 || 0);
@@ -575,6 +575,38 @@ function renderItemRow(si, master, showStoreName = false) {
     const itemName = si.display_name || master?.name || '品目不明';
     const currentStock = Number(si.個数 || 0);
 
+    if (isInnerRow) {
+        // グループ表示時の「内訳行」: 品目名を隠し、店舗名と在庫を1行に凝縮
+        return `
+            <div class="proc-item-row inner-row" data-id="${si.id}" style="padding: 0.5rem 1rem; background: #fafafa; border-bottom: 1px solid #f1f5f9;">
+                <div class="proc-item-info">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="font-size: 0.85rem; font-weight: 800; color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;">
+                            <i class="fas fa-store" style="font-size: 0.7rem; opacity: 0.6;"></i> ${sName}
+                        </div>
+                        <span class="stock-badge ${currentStock <= 0 ? 'critical' : ''}" style="background: ${currentStock <= 0 ? '#FFF1F2' : '#F1F5F9'}; color: ${currentStock <= 0 ? 'var(--primary)' : '#64748b'}; padding: 1px 8px; border-radius: 6px; font-weight: 700; font-size: 0.7rem; white-space: nowrap;">在庫: ${currentStock}</span>
+                    </div>
+                </div>
+                
+                <div class="proc-req-badge" style="min-width: 45px;">
+                    <span style="font-size: 1rem;">${req}</span>
+                    <span style="font-size: 0.55rem; font-weight: 700; opacity: 0.8;">${sUnit}</span>
+                </div>
+
+                <div class="proc-stepper">
+                    <button class="proc-stepper-btn btn-minus" data-si-id="${si.id}"><i class="fas fa-minus"></i></button>
+                    <input type="number" class="proc-qty-input" value="${req}" data-si-id="${si.id}" inputmode="numeric" style="width: 32px; font-size: 1rem;">
+                    <button class="proc-stepper-btn btn-plus" data-si-id="${si.id}"><i class="fas fa-plus"></i></button>
+                </div>
+
+                <button class="proc-confirm-btn-small btn-confirm-action" data-si-id="${si.id}">
+                    <i class="fas fa-check"></i>
+                </button>
+            </div>
+        `;
+    }
+
+    // 通常行: 店舗名を隠し、品目名をメインに表示
     return `
         <div class="proc-item-row" data-id="${si.id}">
             <div class="proc-item-info">
@@ -861,11 +893,11 @@ function renderMainContent(items) {
         const isSelfScope = selectedScope === 'store';
 
         if (isSelfScope) {
-            html += renderItemRow(productItems[0], master, false);
+            html += renderItemRow(productItems[0], master, false, false);
         } else {
             html += `
                 <div class="item-block" style="border-bottom: 1px solid var(--border);">
-                    <div class="item-banner" data-id="${productId}" style="background: white; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 14px; cursor: pointer;">
+                    <div class="item-banner" data-id="${productId}" style="background: white; padding: 0.8rem 1rem; border: 1px solid #e2e8f0; border-radius: 12px; cursor: pointer;">
                         <div class="banner-content" style="display:flex; justify-content:space-between; align-items:center;">
                             <div class="title" style="display:flex; align-items:center; gap:0.5rem; flex: 1; min-width: 0;">
                                 <i class="fas ${isExpanded ? 'fa-chevron-down' : 'fa-chevron-right'}" style="width:1rem; font-size:0.8rem; color:#94a3b8;"></i>
@@ -876,8 +908,8 @@ function renderMainContent(items) {
                             </div>
                         </div>
                     </div>
-                    <div class="proc-detail-container ${isExpanded ? '' : 'hidden'}" style="display: flex; flex-direction: column; gap: 0rem; margin-top: 0.5rem;">
-                        ${productItems.map(si => renderItemRow(si, master, true)).join('')}
+                    <div class="proc-detail-container ${isExpanded ? '' : 'hidden'}" style="display: flex; flex-direction: column; gap: 0rem;">
+                        ${productItems.map(si => renderItemRow(si, master, true, true)).join('')}
                     </div>
                 </div>
             `;
