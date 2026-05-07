@@ -343,6 +343,7 @@ export const procurementMobilePageHtml = `
                 overflow: hidden;
                 text-overflow: ellipsis;
             }
+            .hidden { display: none !important; }
         </style>
     </div>
 `;
