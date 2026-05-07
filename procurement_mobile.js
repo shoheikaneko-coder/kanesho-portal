@@ -927,16 +927,10 @@ function attachMainContentListeners(container) {
     // Accordion
     container.querySelectorAll('.item-banner').forEach(banner => {
         banner.onclick = (e) => {
-            e.stopPropagation(); // バナー自体のクリックで閉じない問題を防ぐ
+            e.stopPropagation();
             const id = banner.getAttribute('data-id');
             if (!id) return;
-            
-            if (expandedItems.has(id)) {
-                expandedItems.delete(id);
-            } else {
-                expandedItems.add(id);
-            }
-            render();
+            window.toggleProcSection(id);
         };
     });
 
