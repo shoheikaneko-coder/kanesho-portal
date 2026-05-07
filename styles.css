@@ -277,13 +277,15 @@ p { color: var(--text-secondary); line-height: 1.5; }
   cursor: pointer;
 }
 
-.menu-item i {
+.sidebar-menu .menu-item i {
   color: var(--text-secondary);
   font-size: 1.25rem;
   transition: var(--transition);
-  width: 1.5rem; /* 固定幅に設定 */
-  text-align: center; /* 中央に配置 */
-  flex-shrink: 0; /* 幅を維持 */
+  width: 1.6rem; /* 少し広めに確保 */
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .menu-item:hover, .menu-item.active {
