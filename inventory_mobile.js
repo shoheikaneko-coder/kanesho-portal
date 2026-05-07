@@ -344,8 +344,11 @@ function render() {
         const itemsInTiming = inventoryData.filter(d => (d.確認タイミング || '') === (selectedTiming ? selectedTiming.id : ''));
         const unconfirmedCount = itemsInTiming.filter(i => !isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed)).length;
         
-        batchConfirmBtn.disabled = !selectedTiming || unconfirmedCount === 0;
+        // 常に押せる状態にする（アラートでガイドするため）
+        batchConfirmBtn.disabled = false;
         batchConfirmBtn.onclick = () => executeTimingBatchConfirm();
+        
+        // 未完了がない場合は、見た目だけ少し薄くするなどの調整も可能ですが、まずは調達ハブの挙動に合わせます
     }
 
     // Timing Selector Modal Trigger
@@ -542,7 +545,12 @@ document.addEventListener('input', (e) => {
 });
 
 async function executeTimingBatchConfirm() {
-    if (!selectedTiming || !selectedStore) return;
+    if (!selectedStore) return;
+
+    if (!selectedTiming) {
+        showAlert("タイミング未選択", "一括完了を行う前に、確認タイミングを選択してください。");
+        return;
+    }
 
     const itemsToConfirm = inventoryData.filter(d => 
         (d.確認タイミング || '') === selectedTiming.id && 
