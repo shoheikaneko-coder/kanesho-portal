@@ -580,8 +580,8 @@ function renderItemRow(si, master, showStoreName = false, isInnerRow = false) {
         return `
             <div class="proc-item-row inner-row" data-id="${si.id}" style="padding: 0.5rem 1rem; background: #fafafa; border-bottom: 1px solid #f1f5f9; align-items: center;">
                 <div class="proc-item-info" style="display: flex; flex-direction: column; justify-content: center; gap: 2px;">
-                    <div style="font-size: 0.8rem; font-weight: 800; color: #475569; line-height: 1.2;">
-                        <i class="fas fa-store" style="font-size: 0.65rem; opacity: 0.6;"></i> ${sName}
+                    <div style="font-size: 0.82rem; font-weight: 800; color: #475569; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px;">
+                        ${sName}
                     </div>
                     <div style="display: flex; align-items: center;">
                         <span class="stock-badge ${currentStock <= 0 ? 'critical' : ''}" style="background: ${currentStock <= 0 ? '#FFF1F2' : '#F1F5F9'}; color: ${currentStock <= 0 ? 'var(--primary)' : '#64748b'}; padding: 1px 6px; border-radius: 4px; font-weight: 700; font-size: 0.65rem; white-space: nowrap;">在庫: ${currentStock}</span>
@@ -858,6 +858,7 @@ window.toggleProcSection = (sourceId) => {
     if (expandedItems.has(sourceId)) {
         expandedItems.delete(sourceId);
     } else {
+        expandedItems.clear(); // 他のアコーディオンを閉じる
         expandedItems.add(sourceId);
     }
     render();
