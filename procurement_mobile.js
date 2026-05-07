@@ -318,6 +318,28 @@ export const procurementMobilePageHtml = `
                 to { transform: translateY(0); opacity: 1; }
             }
             .animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+
+            /* Store Selector Fix */
+            .inventory-store-selector-bar {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0 0.8rem;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            .selector-content {
+                display: flex;
+                align-items: center;
+                gap: 0.4rem;
+                overflow: hidden;
+                flex: 1;
+            }
+            .store-name {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
         </style>
     </div>
 `;
@@ -600,7 +622,7 @@ function render() {
     if (selectedCategory === 'transfer') {
         // 移動モード時は店舗セレクターを表示（自店舗/グループは不要）
         scopeContainer.innerHTML = `
-            <div class="inventory-store-selector-bar" id="btn-proc-store-selector" style="flex: 1; margin: 0; background: #f8fafc; border: 1.5px solid #e2e8f0; height: 32px; border-radius: 8px;">
+            <div class="inventory-store-selector-bar" id="btn-proc-store-selector" style="flex: 1; margin: 0; background: #f8fafc; border: 1.5px solid #e2e8f0; height: 36px; border-radius: 10px;">
                 <div class="selector-content" style="gap: 0.4rem;">
                     <i class="fas fa-store" style="font-size: 0.75rem; color: var(--primary);"></i>
                     <div class="selector-text">
