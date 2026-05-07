@@ -382,15 +382,9 @@ export async function initProcurementMobilePage(user, category = null) {
             selectedCategory = 'purchase';
         }
 
-        // CK社員の場合はデフォルトでグループ表示にし、設定を隠す
+        // CK社員の場合はデフォルトでグループ全体を選択状態にする
         if (currentStore?.store_type === 'CK') {
-            selectedScope = 'group';
-            const scopeConfig = document.getElementById('proc-scope-config');
-            if (scopeConfig) scopeConfig.style.display = 'none';
-            const badge = document.getElementById('proc-scope-badge');
-            if (badge) badge.textContent = 'グループ全体';
-        } else {
-            selectedScope = 'store';
+            currentStore = { id: 'GROUP_TOTAL', store_name: 'グループ全体' };
         }
 
         setupEventListeners();
@@ -670,11 +664,7 @@ function renderPurchaseContent(shortItems) {
     if (vendorBar) {
         vendorBar.style.display = 'flex';
         const storeLabel = document.getElementById('secondary-store-name-label');
-        if (storeLabel) {
-            storeLabel.style.display = 'block';
-            const sName = currentStore?.id === 'GROUP_TOTAL' ? 'グループ全体' : (currentStore?.store_name || currentStore?.Name || '');
-            storeLabel.textContent = sName + ' の仕入れ';
-        }
+        if (storeLabel) storeLabel.style.display = 'none';
         
         const vendorSelector = document.getElementById('btn-vendor-selector');
         if (vendorSelector) vendorSelector.style.display = 'flex';
