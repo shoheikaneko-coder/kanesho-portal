@@ -622,7 +622,7 @@ function render() {
     if (selectedCategory === 'transfer') {
         // 移動モード時は店舗セレクターを表示（自店舗/グループは不要）
         scopeContainer.innerHTML = `
-            <div class="inventory-store-selector-bar" id="btn-proc-store-selector" style="max-width: 120px; flex-shrink: 0; margin: 0; background: #f8fafc; border: 1.5px solid #e2e8f0; height: 36px; border-radius: 10px;">
+            <div class="inventory-store-selector-bar" id="btn-proc-store-selector" style="width: 135px; flex-shrink: 0; margin: 0; background: #f8fafc; border: 1.5px solid #e2e8f0; height: 36px; border-radius: 10px;">
                 <div class="selector-content" style="gap: 0.4rem;">
                     <i class="fas fa-store" style="font-size: 0.75rem; color: var(--primary);"></i>
                     <div class="selector-text">
@@ -684,7 +684,7 @@ function renderPurchaseContent(shortItems) {
     if (vendorBar) {
         vendorBar.style.display = 'flex';
         const storeLabel = document.getElementById('secondary-store-name-label');
-        if (storeLabel) storeLabel.textContent = currentStore?.store_name || currentStore?.Name || '';
+        if (storeLabel) storeLabel.style.display = 'none';
         
         const vendorSelector = document.getElementById('btn-vendor-selector');
         if (vendorSelector) vendorSelector.style.display = 'flex';
@@ -716,7 +716,10 @@ function renderTransferContent(items) {
     if (vendorBar) {
         vendorBar.style.display = 'flex';
         const storeLabel = document.getElementById('secondary-store-name-label');
-        if (storeLabel) storeLabel.textContent = (currentStore?.store_name || currentStore?.Name || '') + ' への移動';
+        if (storeLabel) {
+            storeLabel.style.display = 'block';
+            storeLabel.textContent = (currentStore?.store_name || currentStore?.Name || '') + ' への移動';
+        }
         
         const vendorSelector = document.getElementById('btn-vendor-selector');
         if (vendorSelector) vendorSelector.style.display = 'none';
