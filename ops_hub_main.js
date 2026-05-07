@@ -106,8 +106,22 @@ let currentUser = null;
 export async function initOpsHubMainPage(user) {
     currentUser = user;
     setupTabListeners();
+    
+    // 所属店舗のタイプを判定してデフォルトタブを切り替える
+    let defaultTab = 'inventory';
+    try {
+        const { db } = await import('./firebase.js');
+        const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        const storeSnap = await getDoc(doc(db, "m_stores", user.StoreID || 'honten'));
+        if (storeSnap.exists() && storeSnap.data().store_type === 'CK') {
+            defaultTab = 'buy_move';
+        }
+    } catch (e) {
+        console.error("Failed to determine store type for default tab:", e);
+    }
+    
     // デフォルトタブを表示
-    switchTab('inventory');
+    switchTab(defaultTab);
 }
 
 function setupTabListeners() {
