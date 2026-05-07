@@ -1182,7 +1182,11 @@ function renderOperationCards(permissions, role) {
     }
 
     grid.innerHTML = cards
-        .filter(c => permissions.includes(c.id))
+        .filter(c => {
+            // 店舗タブレットの場合は、在庫・調達を強制的に表示する
+            if (isTablet && c.id === 'ops_hub_main') return true;
+            return permissions.includes(c.id);
+        })
         .map(c => {
             if (isMobileHub) {
                 // モイル専用：説明文なし、3列タイル
