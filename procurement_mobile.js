@@ -137,14 +137,17 @@ export const procurementMobilePageHtml = `
             .proc-item-meta { font-size: 0.7rem; color: #94a3b8; font-weight: 600; display: flex; gap: 0.5rem; }
 
             .proc-req-badge {
-                padding: 0.2rem 0.6rem;
+                padding: 0.2rem 0.4rem;
                 background: #fff5f5;
                 color: var(--primary);
-                border-radius: 6px;
+                border-radius: 8px;
                 font-weight: 900;
-                font-size: 0.85rem;
-                text-align: right;
-                min-width: 60px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                min-width: 54px;
+                line-height: 1.1;
             }
 
             .proc-stepper {
@@ -385,6 +388,7 @@ export async function initProcurementMobilePage(user, category = null) {
         // CK社員の場合はデフォルトでグループ全体を選択状態にする
         if (currentStore?.store_type === 'CK') {
             currentStore = { id: 'GROUP_TOTAL', store_name: 'グループ全体' };
+            selectedScope = 'group';
         }
 
         setupEventListeners();
@@ -579,12 +583,13 @@ function renderItemRow(si, master, showStoreName = false) {
                 </div>
                 <div class="proc-item-meta" style="margin-top: 4px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
                     ${showStoreName ? `<span style="margin-right: 4px;"><i class="fas fa-store"></i> ${sName}</span>` : ''}
-                    <span class="stock-badge ${currentStock <= 0 ? 'critical' : ''}" style="background: ${currentStock <= 0 ? '#FFF1F2' : '#F1F5F9'}; color: ${currentStock <= 0 ? 'var(--primary)' : '#64748b'}; padding: 2px 10px; border-radius: 8px; font-weight: 700; font-size: 0.75rem; white-space: nowrap;">在庫: ${currentStock}${sUnit}</span>
+                    <span class="stock-badge ${currentStock <= 0 ? 'critical' : ''}" style="background: ${currentStock <= 0 ? '#FFF1F2' : '#F1F5F9'}; color: ${currentStock <= 0 ? 'var(--primary)' : '#64748b'}; padding: 2px 10px; border-radius: 8px; font-weight: 700; font-size: 0.75rem; white-space: nowrap;">在庫: ${currentStock}</span>
                 </div>
             </div>
             
             <div class="proc-req-badge">
-                ${req}<span style="font-size:0.6rem; margin-left:2px;">${sUnit}</span>
+                <span style="font-size: 1.1rem;">${req}</span>
+                <span style="font-size: 0.6rem; font-weight: 700; opacity: 0.8;">${sUnit}</span>
             </div>
 
             <div class="proc-stepper">
@@ -601,6 +606,10 @@ function renderItemRow(si, master, showStoreName = false) {
 }
 
 function render() {
+    // グローバルFABを非表示にする
+    const globalFab = document.getElementById('fab-main-btn');
+    if (globalFab) globalFab.style.display = 'none';
+
     const nav = document.getElementById('proc-category-nav');
     const main = document.getElementById('proc-main-content');
     const scopeContainer = document.getElementById('proc-scope-container');
