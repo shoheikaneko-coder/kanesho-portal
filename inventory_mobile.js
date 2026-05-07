@@ -1113,12 +1113,12 @@ export async function initInventoryMobilePage(user) {
             <i class="fas fa-chevron-right"></i>
             <span onclick="window.navigateTo('ops_hub')">店舗業務</span>
             <i class="fas fa-chevron-right"></i>
-            <span>在庫チェック</span>
+            <span>在庫・調達</span>
         `;
     }
 
     const titleEl = document.getElementById('page-title-mobile-central');
-    if (titleEl) titleEl.textContent = '在庫チェック';
+    if (titleEl) titleEl.textContent = '在庫・調達';
 
     // ユーザーに紐づく店舗を自動選択
     if (user) {

@@ -1,5 +1,5 @@
 import { db } from './firebase.js';
-import { collection, getDocs, addDoc, updateDoc, doc, getDoc, query, where, orderBy, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, getDocs, addDoc, updateDoc, doc, getDoc, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getEffectivePrice } from './cost_engine.js';
 import { showAlert, showConfirm } from './ui_utils.js';
 
@@ -20,9 +20,11 @@ export const procurementMobilePageHtml = `
                     <button id="btn-scope-group" class="scope-tab">グループ</button>
                 </div>
                 
-                <nav id="proc-category-nav" style="flex: 1; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;">
-                    <button class="cat-tab-mini" data-cat="purchase" style="flex: 1;">仕入れ</button>
-                    <button class="cat-tab-mini" data-cat="transfer" style="flex: 1;">移動</button>
+                <nav id="proc-category-nav" style="flex: 1; display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none;">
+                    <button class="cat-tab-mini-mini" data-cat="purchase">仕入れ</button>
+                    <button class="cat-tab-mini-mini" data-cat="transfer">移動</button>
+                    <button class="cat-tab-mini-mini" data-cat="store_prep">仕込</button>
+                    <button class="cat-tab-mini-mini" data-cat="ck_prep">CK仕込</button>
                 </nav>
 
                 <button id="btn-proc-refresh" style="width: 32px; height: 32px; border: none; background: #f1f5f9; color: #64748b; border-radius: 8px; font-size: 0.8rem;">
@@ -32,15 +34,15 @@ export const procurementMobilePageHtml = `
 
             <!-- Vendor Selection Bar (Purchase Only) -->
             <div id="proc-vendor-bar" style="display: none; align-items: center; gap: 0.6rem;">
-                <div id="btn-vendor-selector" style="width: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 0.5rem 0.8rem; cursor: pointer; overflow: hidden;">
-                    <div style="display: flex; align-items: center; gap: 0.4rem; overflow: hidden;">
+                <div id="btn-vendor-selector" style="flex: 1; display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 0.5rem 0.8rem; cursor: pointer;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
                         <i class="fas fa-truck" style="color: var(--primary); font-size: 0.8rem;"></i>
-                        <span id="current-vendor-label" style="font-size: 0.8rem; font-weight: 800; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">すべての業者</span>
+                        <span id="current-vendor-label" style="font-size: 0.85rem; font-weight: 800; color: #1e293b;">すべての業者</span>
                     </div>
                     <i class="fas fa-chevron-down" style="font-size: 0.7rem; color: #94a3b8;"></i>
                 </div>
-                <button id="btn-master-batch-confirm" style="flex: 1; height: 40px; border: none; background: var(--primary); color: white; border-radius: 10px; font-weight: 800; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 4px; box-shadow: 0 4px 10px rgba(230, 57, 70, 0.2); transition: all 0.2s;">
-                    <i class="fas fa-check-double"></i> 一括確定
+                <button id="btn-proc-history" style="width: 36px; height: 36px; border: none; background: #f1f5f9; color: #64748b; border-radius: 10px; display: none;">
+                    <i class="fas fa-history"></i>
                 </button>
             </div>
         </div>
@@ -51,8 +53,8 @@ export const procurementMobilePageHtml = `
         </main>
 
         <!-- Vendor Selection Modal (Bottom Sheet style) -->
-        <div id="vendor-modal" class="proc-modal-overlay" style="display: none; align-items: flex-end;">
-            <div class="proc-glass-panel animate-slide-up" style="width: 100%; max-height: 80vh; border-radius: 24px 24px 0 0; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+        <div id="vendor-modal" class="modal-overlay" style="display: none; align-items: flex-end;">
+            <div class="glass-panel animate-slide-up" style="width: 100%; max-height: 80vh; border-radius: 24px 24px 0 0; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <h3 style="margin: 0; font-size: 1.1rem; font-weight: 900;">業者を選択</h3>
                     <button id="btn-close-vendor-modal" style="background: none; border: none; font-size: 1.2rem; color: #94a3b8;"><i class="fas fa-times"></i></button>
@@ -68,7 +70,7 @@ export const procurementMobilePageHtml = `
         </div>
 
         <style>
-            .cat-tab-mini {
+            .cat-tab-mini-mini {
                 flex: 1;
                 height: 32px;
                 padding: 0 8px;
@@ -84,7 +86,7 @@ export const procurementMobilePageHtml = `
                 transition: all 0.2s;
                 white-space: nowrap;
             }
-            .cat-tab-mini.active {
+            .cat-tab-mini-mini.active {
                 background: white;
                 color: var(--primary);
                 border-color: var(--primary);
@@ -119,9 +121,8 @@ export const procurementMobilePageHtml = `
             }
             .proc-item-row:active { background: #f8fafc; }
             
-            .proc-item-info { flex: 1; min-width: 0; position: relative; }
-            .proc-item-name { font-weight: 800; font-size: 0.95rem; color: #1e293b; position: relative; }
-            .proc-item-name-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
+            .proc-item-info { flex: 1; min-width: 0; }
+            .proc-item-name { font-weight: 800; font-size: 0.95rem; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
             .proc-item-meta { font-size: 0.7rem; color: #94a3b8; font-weight: 600; display: flex; gap: 0.5rem; }
 
             .proc-req-badge {
@@ -201,114 +202,16 @@ export const procurementMobilePageHtml = `
                 color: var(--primary);
             }
 
-            /* Item Name Tooltip (Touch) */
-            .proc-item-name {
-                position: relative;
-                cursor: pointer;
-                user-select: none;
-                -webkit-user-select: none;
-                -webkit-tap-highlight-color: transparent;
-            }
-            .proc-item-name::after {
-                content: attr(data-full-name);
-                position: absolute;
-                top: 0;
-                left: 0;
-                height: 100%;
-                background: #1e293b;
-                color: white;
-                padding: 0 0.5rem;
-                border-radius: 4px;
-                font-size: 0.95rem;
-                font-weight: 800;
-                white-space: nowrap;
-                display: flex;
-                align-items: center;
-                opacity: 0;
-                pointer-events: none;
-                transition: opacity 0.2s;
-                z-index: 1000;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            }
-            .proc-item-name.tooltip-active::after {
-                opacity: 1;
-            }
-
-            .source-stock-label {
-                font-size: 0.7rem;
-                font-weight: 700;
-                background: #f1f5f9;
-                color: #475569;
-                padding: 1px 6px;
-                border-radius: 4px;
-                margin-top: 2px;
-                display: inline-flex;
-                align-items: center;
-                gap: 3px;
-            }
-            .source-stock-label.warning {
-                background: #fff1f2;
-                color: #e11d48;
-            }
-
-            .proc-batch-btn {
-                background: var(--primary);
-                color: white;
-                border: none;
-                padding: 4px 12px;
-                border-radius: 8px;
-                font-size: 0.75rem;
-                font-weight: 800;
-                display: flex;
-                align-items: center;
-                gap: 4px;
-                box-shadow: 0 2px 4px rgba(230, 57, 70, 0.2);
-                transition: all 0.2s;
-            }
-            .proc-batch-btn:active {
-                transform: scale(0.95);
-                opacity: 0.9;
-            }
-            #btn-master-batch-confirm:disabled {
-                background: #e2e8f0 !important;
-                color: #94a3b8 !important;
-                box-shadow: none !important;
-                cursor: not-allowed;
-                opacity: 1 !important;
-            }
-
-            /* Modal & Overlay (Procurement Page Only) */
-            .proc-modal-overlay {
-                position: fixed;
-                inset: 0;
-                background: rgba(15, 23, 42, 0.6);
-                backdrop-filter: blur(4px);
-                z-index: 9999;
-                display: flex;
-                justify-content: center;
-                transition: all 0.3s ease;
-            }
-            .proc-glass-panel {
-                background: rgba(255, 255, 255, 0.95);
-                backdrop-filter: blur(10px);
-                border: 1px solid rgba(255, 255, 255, 0.2);
-                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-            }
-
-            #btn-vendor-selector:active {
-                background: #f1f5f9 !important;
-                transform: scale(0.98);
-            }
-
             /* Animations */
             @keyframes slideUp {
-                from { transform: translateY(100%); opacity: 0; }
-                to { transform: translateY(0); opacity: 1; }
+                from { transform: translateY(100%); }
+                to { transform: translateY(0); }
             }
             .animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         </style>
     </div>
-`;
+`
+
 
 // State
 let selectedScope = 'store'; // 'store' or 'group'
@@ -317,7 +220,7 @@ let selectedVendor = null;
 let allGroupStores = [];    // Stores in the same group
 let currentStore = null;    // Current user's store object
 let procurementData = [];   // Aggregated store items
-let expandedItems = new Set();
+let collapsedItems = new Set();
 let cachedItems = [];
 let cachedIngredients = [];
 let cachedSuppliers = [];
@@ -327,13 +230,17 @@ let procurementUnsubscribe = null;
 export async function initProcurementMobilePage(user, category = null) {
     currentUser = user;
     selectedVendor = null;
-    expandedItems.clear();
+    collapsedItems.clear();
 
     // 既存のリスナーがあれば解除
     if (procurementUnsubscribe) {
         procurementUnsubscribe();
         procurementUnsubscribe = null;
     }
+
+    currentUser = user;
+    selectedVendor = null;
+    collapsedItems.clear();
 
     if (category) {
         selectedCategory = category;
@@ -343,10 +250,8 @@ export async function initProcurementMobilePage(user, category = null) {
     try {
         await loadInitialData();
         
-        // デフォルトで「仕入れ」を選択
-        if (!selectedCategory) {
-            selectedCategory = 'purchase';
-        }
+        // デフォルトですべて畳んだ状態にする
+        procurementData.forEach(si => collapsedItems.add(si.ProductID));
 
         // CK社員の場合はデフォルトでグループ表示にし、設定を隠す
         if (currentStore?.store_type === 'CK') {
@@ -428,6 +333,8 @@ async function refreshProcurementData() {
         });
     });
 }
+));
+}
 
 function setupEventListeners() {
     const btnStore = document.getElementById('btn-scope-store');
@@ -435,7 +342,7 @@ function setupEventListeners() {
     const btnRefresh = document.getElementById('btn-proc-refresh');
 
     // Business Category Tabs
-    document.querySelectorAll('.cat-tab-mini').forEach(tab => {
+    document.querySelectorAll('.cat-tab-mini-mini').forEach(tab => {
         tab.onclick = () => {
             selectedCategory = tab.dataset.cat;
             selectedVendor = null; 
@@ -470,31 +377,41 @@ function setupEventListeners() {
     const btnCloseVendorModal = document.getElementById('btn-close-vendor-modal');
     const vendorSearchInput = document.getElementById('vendor-search-input');
 
-    if (btnVendorSelector) {
-        btnVendorSelector.onclick = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (vendorModal) {
-                vendorModal.style.display = 'flex';
-                renderVendorList();
-            }
-        };
-    }
+    if (btnVendorSelector) btnVendorSelector.onclick = () => {
+        vendorModal.style.display = 'flex';
+        renderVendorList();
+    };
 
-    if (btnCloseVendorModal) {
-        btnCloseVendorModal.onclick = () => {
-            if (vendorModal) vendorModal.style.display = 'none';
-        };
-    }
+    if (btnCloseVendorModal) btnCloseVendorModal.onclick = () => {
+        vendorModal.style.display = 'none';
+    };
 
     if (vendorSearchInput) {
         vendorSearchInput.oninput = () => renderVendorList(vendorSearchInput.value);
     }
+}
+;
+    });
 
-    const masterBatchBtn = document.getElementById('btn-master-batch-confirm');
-    if (masterBatchBtn) {
-        masterBatchBtn.onclick = () => executeVendorBatchAction();
-    }
+    if (btnStore) btnStore.onclick = () => {
+        selectedScope = 'store';
+        render();
+    };
+
+    if (btnGroup) btnGroup.onclick = () => {
+        selectedScope = 'group';
+        render();
+    };
+
+    if (btnRefresh) btnRefresh.onclick = async () => {
+        await showLoading(true);
+        await refreshProcurementData();
+        render();
+        await showLoading(false);
+    };
+
+    const btnHistory = document.getElementById('btn-proc-history');
+    if (btnHistory) btnHistory.onclick = showTransferHistory;
 }
 
 // Group-based category filtering (Exposed for ops_hub_main.js)
@@ -506,7 +423,7 @@ window.filterProcurementCategories = (mode) => {
     const makeCats = ['store_prep', 'ck_prep'];
     const targetCats = mode === 'buy_move' ? buyMoveCats : makeCats;
 
-    nav.querySelectorAll('.cat-tab').forEach(tab => {
+    nav.querySelectorAll('.cat-tab-mini').forEach(tab => {
         const cat = tab.dataset.cat;
         const isVisible = targetCats.includes(cat);
         tab.style.display = isVisible ? 'flex' : 'none';
@@ -519,6 +436,11 @@ window.filterProcurementCategories = (mode) => {
     }
 };
 
+function showLoading(show) {
+    const el = document.getElementById('proc-loading');
+    if (el) el.style.display = show ? 'flex' : 'none';
+}
+
 function getBusinessDate(store) {
     const resetTime = store?.reset_time || "05:00";
     const now = new Date();
@@ -527,11 +449,6 @@ function getBusinessDate(store) {
     cutoff.setHours(h, m, 0, 0);
     if (now < cutoff) cutoff.setDate(cutoff.getDate() - 1);
     return cutoff.toISOString().split('T')[0];
-}
-
-function showLoading(show) {
-    const el = document.getElementById('proc-loading');
-    if (el) el.style.display = show ? 'flex' : 'none';
 }
 
 function renderItemRow(si, master, showStoreName = false) {
@@ -543,31 +460,14 @@ function renderItemRow(si, master, showStoreName = false) {
     
     const itemName = si.display_name || master?.name || '品目不明';
 
-    // 移動元在庫情報の取得 (移動モード時のみ)
-    let sourceMeta = '';
-    if (selectedCategory === 'transfer') {
-        const sourceId = si.default_source_store_id;
-        const sourceSi = procurementData.find(d => d.StoreID === sourceId && d.ProductID === si.ProductID);
-        const sourceStock = sourceSi ? Number(sourceSi.個数 || 0) : 0;
-        const isLow = sourceStock < req;
-        sourceMeta = `
-            <div class="source-stock-label ${isLow ? 'warning' : ''}">
-                在庫: ${sourceStock}${sUnit}
-            </div>
-        `;
-    }
-
     return `
         <div class="proc-item-row" data-id="${si.id}">
             <div class="proc-item-info">
-                <div class="proc-item-name" data-full-name="${itemName}">
-                    <div class="proc-item-name-text">${itemName}</div>
-                </div>
+                <div class="proc-item-name">${itemName}</div>
                 <div class="proc-item-meta">
                     ${showStoreName ? `<span><i class="fas fa-store"></i> ${sName}</span>` : ''}
                     <span><i class="fas fa-tag"></i> ${sUnit}</span>
                 </div>
-                ${sourceMeta}
             </div>
             
             <div class="proc-req-badge">
@@ -586,10 +486,69 @@ function renderItemRow(si, master, showStoreName = false) {
         </div>
     `;
 }
+;
+    const btnLabel = actionLabels[selectedCategory] || '完了';
+
+    let transferUi = '';
+    let sourceOptions = [];
+    if (selectedCategory === 'transfer') {
+        const otherStores = allGroupStores.filter(s => s.id !== si.StoreID);
+        sourceOptions = otherStores.map(s => {
+            const sourceItem = procurementData.find(d => d.StoreID === s.id && d.ProductID === si.ProductID);
+            const stock = Number(sourceItem?.個数 || 0);
+            return { id: s.id, name: s.store_name || s.Name, stock };
+        }).sort((a, b) => b.stock - a.stock);
+
+        const defaultSource = sourceOptions[0];
+        const isOutOfStock = !defaultSource || defaultSource.stock <= 0;
+
+        transferUi = `
+            <div style="margin-bottom: 0.5rem;">
+                <label style="font-size: 0.7rem; font-weight: 800; color: #64748b; display: block; margin-bottom: 4px;">移動元</label>
+                <select class="source-store-select" data-si-id="${si.id}" style="width: 100%; height: 40px; border-radius: 10px; border: 1.5px solid #f1f5f9; background: #f8fafc; font-weight: 800; font-size: 0.9rem; padding: 0 0.8rem;">
+                    ${sourceOptions.map(o => `<option value="${o.id}" ${o.id === si.default_source_store_id ? 'selected' : ''} ${o.stock <= 0 ? 'disabled' : ''}>${o.name} (在庫:${o.stock})</option>`).join('')}
+                </select>
+                ${isOutOfStock ? '<div style="font-size: 0.65rem; color: var(--danger); font-weight: 800; margin-top: 4px;">※移動元の在庫が不足しています</div>' : ''}
+            </div>
+        `;
+    }
+    
+    const itemName = si.display_name || master?.name || '品目不明';
+    
+    return `
+        <div class="proc-card" data-id="${si.id}">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <div style="font-weight: 900; font-size: 1.1rem; color: #1e293b;">${itemName}</div>
+                    ${showStoreName ? `<div style="font-size: 0.75rem; color: #64748b; font-weight: 700; margin-top: 4px;"><i class="fas fa-store"></i> 届け先: ${sName}</div>` : ''}
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 700;">必要数</div>
+                    <div style="color: var(--primary); font-size: 1.2rem; font-weight: 900;">${req} <span style="font-size: 0.8rem;">${sUnit}</span></div>
+                </div>
+            </div>
+
+            ${transferUi}
+
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div class="stepper-mobile" style="flex: 1;">
+                    <button class="stepper-btn-mobile btn-minus" data-si-id="${si.id}"><i class="fas fa-minus"></i></button>
+                    <input type="number" class="proc-buy-input" value="${req}" data-si-id="${si.id}" inputmode="numeric">
+                    <button class="stepper-btn-mobile btn-plus" data-si-id="${si.id}"><i class="fas fa-plus"></i></button>
+                </div>
+                <button class="btn-action-mobile btn-confirm-action" data-si-id="${si.id}" 
+                    ${(selectedCategory === 'transfer' && (!sourceOptions || sourceOptions.every(o => o.stock <= 0))) ? 'disabled' : ''}>
+                    ${btnLabel}
+                </button>
+            </div>
+        </div>
+    `;
+}
 
 function render() {
     const nav = document.getElementById('proc-category-nav');
     const main = document.getElementById('proc-main-content');
+    const contextBar = document.getElementById('proc-context-bar');
     if (!nav || !main) return;
 
     // Update Category Tab UI
@@ -651,6 +610,41 @@ function renderPurchaseContent(shortItems) {
 
     renderMainContent(filteredItems);
 }
+;
+    shortItems.forEach(si => {
+        const item = cachedItems.find(i => i.id === si.ProductID);
+        const ing = cachedIngredients.find(ing => ing.item_id === si.ProductID);
+        const sup = cachedSuppliers.find(s => (s.vendor_id || s.id) === ing?.vendor_id);
+        
+        const vendor = sup?.vendor_name || item?.supplier_name || item?.業者名 || '未設定';
+        if (!vendorMap[vendor]) vendorMap[vendor] = [];
+        vendorMap[vendor].push(si);
+    });
+
+    const vendors = Object.keys(vendorMap).sort((a,b) => {
+        if (a === '未設定') return 1;
+        if (b === '未設定') return -1;
+        return a.localeCompare(b);
+    });
+
+    if (!selectedVendor && vendors.length > 0) selectedVendor = vendors[0];
+    
+    vendorNav.style.display = 'flex';
+    vendorNav.innerHTML = vendors.map(v => `
+        <div class="vendor-pill ${selectedVendor === v ? 'active' : ''}" data-vendor="${v}">
+            ${v} (${vendorMap[v].length})
+        </div>
+    `).join('') || `<div style="font-size:0.75rem; color:var(--text-secondary);">不足品目なし</div>`;
+
+    vendorNav.querySelectorAll('.vendor-pill').forEach(pill => {
+        pill.onclick = () => {
+            selectedVendor = pill.dataset.vendor;
+            render();
+        };
+    });
+
+    renderMainContent(vendorMap[selectedVendor] || []);
+}
 
 function renderTransferContent(items) {
     const main = document.getElementById('proc-main-content');
@@ -675,23 +669,21 @@ function renderTransferContent(items) {
         const sourceName = sourceStore?.store_name || sourceStore?.Name || (sourceId === 'UNKNOWN' ? '移動元未設定' : sourceId);
         const sourceItems = itemsBySource[sourceId];
         
-        const isExpanded = expandedItems.has(sourceId);
+        const isCollapsed = collapsedItems.has(sourceId);
 
         html += `
             <div class="item-block" style="border-bottom: 1px solid var(--border);">
-                <div class="item-banner" data-id="${sourceId}" style="background: #fdf2f2; border-left: 4px solid #ef4444; padding: 1rem; cursor: pointer;">
-                    <div class="banner-content" style="display:flex; justify-content:space-between; align-items:center;">
-                        <div class="title" style="font-weight:bold; display:flex; align-items:center; gap:0.5rem;">
-                            <i class="fas ${isExpanded ? 'fa-chevron-down' : 'fa-chevron-right'}" style="width:1rem; font-size:0.8rem; color:var(--text-secondary);"></i>
+                <div class="item-banner" data-id="${sourceId}" style="background: #fdf2f2; border-left: 4px solid #ef4444;">
+                    <div class="banner-content">
+                        <div class="title">
+                            <i class="fas ${isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'}" style="width:1rem; font-size:0.8rem; color:var(--text-secondary);"></i>
                             <i class="fas fa-truck" style="color:#ef4444; font-size:0.9rem;"></i>
                             ${sourceName} から移動
                         </div>
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <div class="total-req" style="background: #fee2e2; color: #b91c1c; border-color: #fca5a5; padding: 2px 8px; border-radius: 10px;">${sourceItems.length} 品目</div>
-                        </div>
+                        <div class="total-req" style="background: #fee2e2; color: #b91c1c; border-color: #fca5a5;">${sourceItems.length} 品目</div>
                     </div>
                 </div>
-                <div class="proc-detail-container ${isExpanded ? '' : 'hidden'}" style="background: #fffafa; display: flex; flex-direction: column; gap: 0rem; padding: 0;">
+                <div class="proc-detail-container ${isCollapsed ? 'hidden' : ''}" style="background: #fffafa; display: flex; flex-direction: column; gap: 1rem; padding: 1rem;">
                     ${sourceItems.map(si => {
                         const master = cachedItems.find(i => i.id === si.ProductID);
                         return renderItemRow(si, master, true);
@@ -733,7 +725,7 @@ function renderMainContent(items) {
             return sum + Math.round(Math.max(0, diff));
         }, 0);
         
-        const isExpanded = expandedItems.has(productId);
+        const isCollapsed = collapsedItems.has(productId);
         const isSelfScope = selectedScope === 'store';
 
         if (isSelfScope) {
@@ -741,18 +733,16 @@ function renderMainContent(items) {
         } else {
             html += `
                 <div class="item-block" style="border-bottom: 1px solid var(--border);">
-                    <div class="item-banner" data-id="${productId}" style="background: white; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 14px; cursor: pointer;">
-                        <div class="banner-content" style="display:flex; justify-content:space-between; align-items:center;">
-                            <div class="title" style="display:flex; align-items:center; gap:0.5rem; flex: 1; min-width: 0;">
-                                <i class="fas ${isExpanded ? 'fa-chevron-down' : 'fa-chevron-right'}" style="width:1rem; font-size:0.8rem; color:#94a3b8;"></i>
-                                <div class="proc-item-name-text" style="font-weight: 800; color: #1e293b;">${name}</div>
+                    <div class="item-banner" data-id="${productId}" style="background: white; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 14px;">
+                        <div class="banner-content">
+                            <div class="title">
+                                <i class="fas ${isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'}" style="width:1rem; font-size:0.8rem; color:#94a3b8;"></i>
+                                <div style="font-weight: 800; color: #1e293b;">${name}</div>
                             </div>
-                            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                <div style="font-size: 0.7rem; font-weight: 800; color: var(--primary); background: #fff5f5; padding: 2px 8px; border-radius: 10px; white-space: nowrap;">計 ${totalReq} ${representativeUnit}</div>
-                            </div>
+                            <div style="font-size: 0.7rem; font-weight: 800; color: var(--primary); background: #fff5f5; padding: 2px 8px; border-radius: 10px;">計 ${totalReq} ${representativeUnit}</div>
                         </div>
                     </div>
-                    <div class="proc-detail-container ${isExpanded ? '' : 'hidden'}" style="display: flex; flex-direction: column; gap: 0rem; margin-top: 0.5rem;">
+                    <div class="proc-detail-container ${isCollapsed ? 'hidden' : ''}" style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
                         ${productItems.map(si => renderItemRow(si, master, true)).join('')}
                     </div>
                 </div>
@@ -767,45 +757,13 @@ function renderMainContent(items) {
 function attachMainContentListeners(container) {
     // Accordion
     container.querySelectorAll('.item-banner').forEach(banner => {
-        banner.onclick = (e) => {
-            e.stopPropagation(); // バナー自体のクリックで閉じない問題を防ぐ
-            const id = banner.getAttribute('data-id');
-            if (!id) return;
-            
-            if (expandedItems.has(id)) {
-                expandedItems.delete(id);
-            } else {
-                expandedItems.add(id);
-            }
+        banner.onclick = () => {
+            const id = banner.dataset.id;
+            if (collapsedItems.has(id)) collapsedItems.delete(id);
+            else collapsedItems.add(id);
             render();
         };
     });
-
-    // Batch Confirm
-    // (Master button in header now handles this)
-    
-    // Tooltips (Click to toggle)
-    container.querySelectorAll('.proc-item-name').forEach(el => {
-        el.onclick = (e) => {
-            e.stopPropagation();
-            const isActive = el.classList.contains('tooltip-active');
-            // Close all others first
-            document.querySelectorAll('.proc-item-name.tooltip-active').forEach(other => {
-                other.classList.remove('tooltip-active');
-            });
-            if (!isActive) el.classList.add('tooltip-active');
-        };
-    });
-
-    // Close tooltips when clicking anywhere else
-    if (!window._procTooltipListenerAdded) {
-        document.addEventListener('click', () => {
-            document.querySelectorAll('.proc-item-name.tooltip-active').forEach(el => {
-                el.classList.remove('tooltip-active');
-            });
-        });
-        window._procTooltipListenerAdded = true;
-    }
 
     // Steppers
     container.querySelectorAll('.proc-stepper-btn').forEach(btn => {
@@ -887,123 +845,16 @@ async function executeAction(storeItemId, qty) {
     } finally {
         await showLoading(false);
     }
-    const batchBtn = document.getElementById('btn-master-batch-confirm');
-    if (batchBtn) {
-        const isDisabled = !selectedVendor || selectedVendor === '';
-        batchBtn.disabled = isDisabled;
-        // 視覚的にもはっきりと無効化されていることを伝える
-        if (isDisabled) {
-            batchBtn.style.background = '#e2e8f0';
-            batchBtn.style.color = '#94a3b8';
-        } else {
-            batchBtn.style.background = 'var(--primary)';
-            batchBtn.style.color = 'white';
-        }
-    }
-}
-
-async function executeVendorBatchAction() {
-    if (!selectedVendor) {
-        showAlert("警告", "業者を選択してから一括確定してください");
-        return;
-    }
-
-    const filteredData = procurementData.filter(si => {
-        // 仕入れカテゴリで、定数以下の品目を対象にする
-        const par = Number(si.定数 || 0);
-        const qty = Number(si.個数 || 0);
-        const isPurchase = par > 0 && qty < par && (si.shortage_action_type || 'purchase') === 'purchase';
-        if (!isPurchase) return false;
-
-        const item = cachedItems.find(i => i.id === si.ProductID);
-        const ing = cachedIngredients.find(ing => ing.item_id === si.ProductID);
-        const sup = cachedSuppliers.find(s => (s.vendor_id || s.id) === ing?.vendor_id);
-        const v = sup?.vendor_name || item?.supplier_name || item?.業者名 || '未設定';
-        
-        return v === selectedVendor;
-    });
-
-    if (filteredData.length === 0) {
-        showAlert("情報", "対象となる品目がありません");
-        return;
-    }
-
-    const count = filteredData.length;
-    if (!confirm(`${selectedVendor} の全${count}件を一括確定しますか？\n在庫データが更新され、リストから消えます。`)) return;
-
-    await showLoading(true);
-    try {
-        const batch = writeBatch(db);
-        const now = new Date().toISOString();
-        
-        const reasonMap = { purchase: 'procurement', store_prep: 'preparation', ck_prep: 'ck_preparation' };
-        const reasonType = reasonMap[selectedCategory] || 'procurement';
-        const noteMap = { purchase: '業者一括仕入れ確定', store_prep: '業者一括仕込み完了', ck_prep: '業者一括CK仕込み完了' };
-        const baseNote = noteMap[selectedCategory] || '業者一括更新';
-
-        for (const si of filteredData) {
-            // アコーディオンが開いている場合は入力値を取得、閉じていれば必要数を採用
-            const input = document.querySelector(`.proc-qty-input[data-si-id="${si.id}"]`);
-            let qty = 0;
-            if (input) {
-                qty = Number(input.value);
-            } else {
-                const diff = Number(si.定数 || 0) - Number(si.個数 || 0);
-                qty = Math.round(Math.max(0, diff));
-            }
-
-            if (qty <= 0) continue;
-
-            const oldQty = Number(si.個数 || 0);
-            const newQty = oldQty + qty;
-            const store = allGroupStores.find(s => s.id === si.StoreID);
-            const bizDate = getBusinessDate(store);
-
-            // 1. Update Inventory
-            batch.update(doc(db, "m_store_items", si.id), {
-                個数: newQty,
-                updated_at: now
-            });
-
-            // 2. Add History
-            const histRef = doc(collection(db, "t_inventory_history"));
-            batch.set(histRef, {
-                store_id: si.StoreID,
-                item_id: si.ProductID,
-                store_item_id: si.id,
-                change_qty: qty,
-                qty_after: newQty,
-                reason_type: reasonType,
-                source_route: 'procurement_page',
-                note: `${selectedVendor}: ${baseNote}`,
-                executed_by: currentUser?.Name || 'unknown',
-                executed_at: now,
-                business_date: bizDate
-            });
-
-            // Local update
-            si.個数 = newQty;
-        }
-
-        await batch.commit();
-        showAlert("完了", "一括確定を完了しました");
-        render();
-    } catch (err) {
-        console.error("Batch action failed:", err);
-        showAlert("エラー", "一括確定に失敗しました");
-    } finally {
-        await showLoading(false);
-    }
 }
 
 async function executeTransfer(destStoreItemId, qty) {
     const destSi = procurementData.find(d => d.id === destStoreItemId);
     if (!destSi) return;
 
-    // 移動元店舗IDを直接取得
-    const sourceStoreId = destSi.default_source_store_id;
+    const sourceStoreSelect = document.querySelector(`.source-store-select[data-si-id="${destStoreItemId}"]`);
+    const sourceStoreId = sourceStoreSelect?.value;
     if (!sourceStoreId) {
-        showAlert("エラー", "移動元店舗が設定されていません");
+        showAlert("エラー", "移動元店舗が選択されていません");
         return;
     }
 
@@ -1023,19 +874,15 @@ async function executeTransfer(destStoreItemId, qty) {
         return;
     }
 
-    const sourceStore = allGroupStores.find(s => s.id === sourceStoreId);
-    const destStore = allGroupStores.find(s => s.id === destSi.StoreID);
-    const sourceName = sourceStore?.store_name || sourceStore?.Name || sourceStoreId;
-    const destName = destStore?.store_name || destStore?.Name || destSi.StoreID;
-
-    const confirmTransfer = confirm(`移動元: ${sourceName} (${sourceDeductionQty.toFixed(2)}${sourceSi.display_unit || ''} 減少)\n移動先: ${destName} (${qty}${destSi.display_unit || ''} 増加)\n\nを実行しますか？`);
+    const confirmTransfer = confirm(`移動元: ${sourceStoreId} (${sourceDeductionQty.toFixed(2)}${sourceSi.display_unit || ''} 減少)\n移動先: ${destSi.StoreID} (${qty}${destSi.display_unit || ''} 増加)\n\nを実行しますか？`);
     if (!confirmTransfer) return;
 
     await showLoading(true);
     try {
+        const { writeBatch } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
         const batch = writeBatch(db);
         const now = new Date().toISOString();
-        const bizDate = getBusinessDate(destStore);
+        const bizDate = getBusinessDate(allGroupStores.find(s => s.id === destSi.StoreID));
 
         const sourceOldQty = Number(sourceSi.個数 || 0);
         const sourceNewQty = sourceOldQty - sourceDeductionQty;
@@ -1058,7 +905,7 @@ async function executeTransfer(destStoreItemId, qty) {
             qty_after: destNewQty,
             reason_type: 'transfer_in',
             source_route: 'procurement_page',
-            note: `店舗間移動(入庫): ${sourceName} から`,
+            note: `店舗間移動(入庫): ${sourceStoreId} から`,
             executed_by: currentUser?.Name || 'unknown',
             executed_at: now,
             business_date: bizDate
@@ -1074,7 +921,7 @@ async function executeTransfer(destStoreItemId, qty) {
             qty_after: sourceNewQty,
             reason_type: 'transfer_out',
             source_route: 'procurement_page',
-            note: `店舗間移動(出庫): ${destName} へ (${qty}${destSi.display_unit || ''} 分)`,
+            note: `店舗間移動(出庫): ${destSi.StoreID} へ (${qty}${destSi.display_unit || ''} 分)`,
             executed_by: currentUser?.Name || 'unknown',
             executed_at: now,
             business_date: bizDate
@@ -1095,59 +942,6 @@ async function executeTransfer(destStoreItemId, qty) {
         await showLoading(false);
     }
 }
-
-function renderVendorList(search = '') {
-    const container = document.getElementById('vendor-list-container');
-    if (!container) return;
-
-    const filteredData = selectedScope === 'store' 
-        ? procurementData.filter(d => d.StoreID === currentStore.id)
-        : procurementData;
-
-    const purchaseItems = filteredData.filter(si => {
-        const qty = Number(si.個数 || 0);
-        const par = Number(si.定数 || 0);
-        return par > 0 && qty < par && (si.shortage_action_type || 'purchase') === 'purchase';
-    });
-
-    const vendorMap = {};
-    purchaseItems.forEach(si => {
-        const item = cachedItems.find(i => i.id === si.ProductID);
-        const ing = cachedIngredients.find(ing => ing.item_id === si.ProductID);
-        const sup = cachedSuppliers.find(s => (s.vendor_id || s.id) === ing?.vendor_id);
-        const v = sup?.vendor_name || item?.supplier_name || item?.業者名 || '未設定';
-        if (!vendorMap[v]) vendorMap[v] = 0;
-        vendorMap[v]++;
-    });
-
-    const vendors = Object.keys(vendorMap).sort((a,b) => {
-        if (a === '未設定') return 1;
-        if (b === '未設定') return -1;
-        return a.localeCompare(b);
-    });
-
-    const searchLower = search.toLowerCase();
-    const displayVendors = ['すべての業者', ...vendors].filter(v => v.toLowerCase().includes(searchLower));
-
-    container.innerHTML = displayVendors.map(v => {
-        const actualVendor = v === 'すべての業者' ? null : v;
-        const isActive = selectedVendor === actualVendor;
-        return `
-            <div class="vendor-item ${isActive ? 'active' : ''}" onclick="selectVendor('${v === 'すべての業者' ? '' : v}')">
-                <span>${v}</span>
-                ${v !== 'すべての業者' ? `<span style="font-size:0.75rem; opacity:0.6;">${vendorMap[v]} 品目</span>` : ''}
-                ${isActive ? '<i class="fas fa-check-circle"></i>' : ''}
-            </div>
-        `;
-    }).join('');
-}
-
-window.selectVendor = (v) => {
-    selectedVendor = v || null;
-    const modal = document.getElementById('vendor-modal');
-    if (modal) modal.style.display = 'none';
-    render();
-};
 
 window.showTransferHistory = showTransferHistory;
 async function showTransferHistory() {
@@ -1214,3 +1008,53 @@ async function showTransferHistory() {
         await showLoading(false);
     }
 }
+
+function renderVendorList(query = '') {
+    const container = document.getElementById('vendor-list-container');
+    if (!container) return;
+
+    // 現在表示されている品目から業者リストを作成
+    const filteredData = selectedScope === 'store' 
+        ? procurementData.filter(d => d.StoreID === currentStore.id)
+        : procurementData;
+
+    const shortItems = filteredData.filter(si => {
+        const qty = Number(si.個数 || 0);
+        const par = Number(si.定数 || 0);
+        return par > 0 && qty < par && (si.shortage_action_type || 'purchase') === selectedCategory;
+    });
+
+    const vendorMap = {};
+    shortItems.forEach(si => {
+        const item = cachedItems.find(i => i.id === si.ProductID);
+        const ing = cachedIngredients.find(ing => ing.item_id === si.ProductID);
+        const sup = cachedSuppliers.find(s => (s.vendor_id || s.id) === ing?.vendor_id);
+        const v = sup?.vendor_name || item?.supplier_name || item?.業者名 || '未設定';
+        if (!vendorMap[v]) vendorMap[v] = 0;
+        vendorMap[v]++;
+    });
+
+    const vendors = Object.keys(vendorMap).filter(v => v.toLowerCase().includes(query.toLowerCase())).sort();
+    
+    let html = `<div class="vendor-item ${!selectedVendor ? 'active' : ''}" onclick="window.selectVendor(null)">
+        <span>すべての業者</span>
+        <span style="font-size:0.75rem; opacity:0.7">${shortItems.length}</span>
+    </div>`;
+
+    html += vendors.map(v => `
+        <div class="vendor-item ${selectedVendor === v ? 'active' : ''}" onclick="window.selectVendor('${v}')">
+            <span>${v}</span>
+            <span style="font-size:0.75rem; opacity:0.7">${vendorMap[v]}</span>
+        </div>
+    `).join('');
+
+    container.innerHTML = html;
+}
+
+window.selectVendor = (v) => {
+    selectedVendor = v;
+    document.getElementById('vendor-modal').style.display = 'none';
+    const label = document.getElementById('current-vendor-label');
+    if (label) label.textContent = v || 'すべての業者';
+    render();
+};

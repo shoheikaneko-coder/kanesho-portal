@@ -65,7 +65,7 @@ const defaultMenuItems = [
     { id: 'utility_hub', name: '便利機能', icon: 'fa-lightbulb', category: 'ハブ' },
     { id: 'master_hub', name: '設定', icon: 'fa-cog', category: 'ハブ' },
     
-    { id: 'ops_hub_main', name: '在庫・仕入/仕込', icon: 'fa-boxes-stacked', category: 'サブ機能' },
+    { id: 'ops_hub_main', name: '在庫・調達', icon: 'fa-boxes-stacked', category: 'サブ機能' },
     { id: 'dashboard', name: '分析ダッシュボード', icon: 'fa-chart-line', category: 'サブ機能' },
     { id: 'shift_submission', name: 'シフト提出・確認', icon: 'fa-calendar-alt', category: 'サブ機能' },
     { id: 'shift_admin', name: 'シフト作成・調整', icon: 'fa-user-edit', category: 'サブ機能' },
@@ -495,12 +495,12 @@ async function showPage(target) {
                 initSalesPage();
                 break;
             case 'ops_hub_main':
-                updateHeaderTitle('在庫・仕入/仕込');
+                updateHeaderTitle('在庫・調達');
                 pageContent.innerHTML = opsHubMainPageHtml;
                 initOpsHubMainPage(state.currentUser);
                 break;
             case 'inventory':
-                updateHeaderTitle('在庫チェック');
+                updateHeaderTitle('在庫・調達');
                 if (window.innerWidth < 768) {
                     pageContent.innerHTML = inventoryMobilePageHtml;
                     initInventoryMobilePage(state.currentUser);
@@ -510,7 +510,7 @@ async function showPage(target) {
                 }
                 break;
             case 'procurement':
-                updateHeaderTitle('仕入れ・仕込み');
+                updateHeaderTitle('在庫・調達');
                 if (window.innerWidth < 768) {
                     pageContent.innerHTML = procurementMobilePageHtml;
                     initProcurementMobilePage(state.currentUser);

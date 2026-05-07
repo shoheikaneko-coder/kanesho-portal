@@ -22,7 +22,7 @@ const HUB_CONFIG = {
         items: [
             { id: 'attendance', name: '勤怠入力(打刻)', icon: 'fa-clock', color: '#ff5a5f', desc: '出退勤の打刻を行います' },
             { id: 'sales', name: '営業実績報告', icon: 'fa-calculator', color: '#f59e0b', desc: '売上・人数・客単価の報告' },
-            { id: 'ops_hub_main', name: '在庫・仕入/仕込', icon: 'fa-boxes-stacked', color: '#10b981', desc: '在庫チェック、移動、仕入れ、仕込みを一括管理' },
+            { id: 'ops_hub_main', name: '在庫・調達', icon: 'fa-boxes-stacked', color: '#10b981', desc: '在庫チェック、移動、仕入れ、仕込みを一括管理' },
             { id: 'stocktake', name: '棚卸し履歴', icon: 'fa-history', color: '#8b5cf6', desc: '日次棚卸し額の記録・推移確認' },
             { id: 'inventory_history', name: '在庫履歴', icon: 'fa-list-alt', color: '#64748b', desc: '在庫増減の全履歴ログ' },
             { id: 'recipe_viewer', name: 'レシピ閲覧', icon: 'fa-book-open', color: '#ec4899', desc: 'メニュー情報の確認' },
