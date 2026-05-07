@@ -29,9 +29,9 @@ export const procurementMobilePageHtml = `
                 </button>
             </div>
 
-            <!-- Vendor Selection Bar (Purchase Only) -->
-            <div id="proc-vendor-bar" style="display: none; align-items: center; gap: 0.6rem;">
-                <div id="btn-vendor-selector" style="width: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 0.5rem 0.8rem; cursor: pointer; overflow: hidden;">
+            <div id="proc-vendor-bar" style="display: none; align-items: center; gap: 0.6rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 0.5rem 1rem;">
+                <span id="secondary-store-name-label" style="font-size: 0.8rem; font-weight: 800; color: #1e293b; white-space: nowrap; flex-shrink: 0;"></span>
+                <div id="btn-vendor-selector" style="flex: 1; min-width: 0; display: flex; align-items: center; justify-content: space-between; background: white; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 0.4rem 0.8rem; cursor: pointer;">
                     <div style="display: flex; align-items: center; gap: 0.4rem; overflow: hidden;">
                         <i class="fas fa-truck" style="color: var(--primary); font-size: 0.8rem;"></i>
                         <span id="current-vendor-label" style="font-size: 0.8rem; font-weight: 800; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">すべての業者</span>
@@ -622,7 +622,7 @@ function render() {
     if (selectedCategory === 'transfer') {
         // 移動モード時は店舗セレクターを表示（自店舗/グループは不要）
         scopeContainer.innerHTML = `
-            <div class="inventory-store-selector-bar" id="btn-proc-store-selector" style="flex: 1; margin: 0; background: #f8fafc; border: 1.5px solid #e2e8f0; height: 36px; border-radius: 10px;">
+            <div class="inventory-store-selector-bar" id="btn-proc-store-selector" style="max-width: 120px; flex-shrink: 0; margin: 0; background: #f8fafc; border: 1.5px solid #e2e8f0; height: 36px; border-radius: 10px;">
                 <div class="selector-content" style="gap: 0.4rem;">
                     <i class="fas fa-store" style="font-size: 0.75rem; color: var(--primary);"></i>
                     <div class="selector-text">
@@ -671,7 +671,7 @@ function render() {
     if (selectedCategory === 'purchase') {
         renderPurchaseContent(shortItems);
     } else if (selectedCategory === 'transfer') {
-        const vbar = document.getElementById('proc-vendor-bar'); if(vbar) vbar.style.display = 'none';
+        // renderTransferContent 側で制御するため、ここでは非表示にしない
         renderTransferContent(shortItems);
     } else {
         const vbar = document.getElementById('proc-vendor-bar'); if(vbar) vbar.style.display = 'none';
@@ -683,6 +683,14 @@ function renderPurchaseContent(shortItems) {
     const vendorBar = document.getElementById('proc-vendor-bar');
     if (vendorBar) {
         vendorBar.style.display = 'flex';
+        const storeLabel = document.getElementById('secondary-store-name-label');
+        if (storeLabel) storeLabel.textContent = currentStore?.store_name || currentStore?.Name || '';
+        
+        const vendorSelector = document.getElementById('btn-vendor-selector');
+        if (vendorSelector) vendorSelector.style.display = 'flex';
+        const batchBtn = document.getElementById('btn-master-batch-confirm');
+        if (batchBtn) batchBtn.style.display = 'flex';
+
         const label = document.getElementById('current-vendor-label');
         if (label) label.textContent = selectedVendor || 'すべての業者';
     }
@@ -703,6 +711,18 @@ function renderPurchaseContent(shortItems) {
 function renderTransferContent(items) {
     const main = document.getElementById('proc-main-content');
     if (!main) return;
+
+    const vendorBar = document.getElementById('proc-vendor-bar');
+    if (vendorBar) {
+        vendorBar.style.display = 'flex';
+        const storeLabel = document.getElementById('secondary-store-name-label');
+        if (storeLabel) storeLabel.textContent = (currentStore?.store_name || currentStore?.Name || '') + ' への移動';
+        
+        const vendorSelector = document.getElementById('btn-vendor-selector');
+        if (vendorSelector) vendorSelector.style.display = 'none';
+        const batchBtn = document.getElementById('btn-master-batch-confirm');
+        if (batchBtn) batchBtn.style.display = 'none';
+    }
 
     if (items.length === 0) {
         main.innerHTML = `<div style="text-align:center; padding:4rem; color:var(--text-secondary);"><i class="fas fa-check-circle" style="font-size:3rem; color:#10b981; opacity:0.2;"></i><p>現在、移動が必要な品目はありません</p></div>`;
