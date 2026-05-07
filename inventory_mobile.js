@@ -19,9 +19,18 @@ export const inventoryMobilePageHtml = `
                 </div>
             </div>
 
-            <!-- Timing Chips -->
-            <div class="scroll-fade-container">
-                <div id="inv-timing-nav" class="horizontal-scroll-chips-slim"></div>
+            <!-- Timing Selector & Batch Confirm -->
+            <div id="inv-timing-bar" style="display: none; align-items: center; gap: 0.6rem; padding: 0.6rem 1rem 0.8rem 1rem;">
+                <div id="btn-timing-selector" style="flex: 1; min-width: 0; display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 0.5rem 0.8rem; cursor: pointer; overflow: hidden;">
+                    <div style="display: flex; align-items: center; gap: 0.4rem; overflow: hidden;">
+                        <i class="fas fa-clock" style="color: var(--primary); font-size: 0.8rem;"></i>
+                        <span id="current-timing-label" style="font-size: 0.8rem; font-weight: 800; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">タイミングを選択</span>
+                    </div>
+                    <i class="fas fa-chevron-down" style="font-size: 0.7rem; color: #94a3b8;"></i>
+                </div>
+                <button id="btn-timing-batch-confirm" style="width: 100px; height: 40px; border: none; background: var(--primary); color: white; border-radius: 10px; font-weight: 800; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; gap: 4px; box-shadow: 0 4px 10px rgba(230, 57, 70, 0.2); transition: all 0.2s;">
+                    <i class="fas fa-check-double"></i> 一括完了
+                </button>
             </div>
 
             <!-- Search Bar -->
@@ -61,6 +70,25 @@ export const inventoryMobilePageHtml = `
                 <div style="padding: 1rem 1.5rem;">
                     <h3 style="margin: 0 0 1.2rem 0; font-size: 1.1rem; font-weight: 900; color: #1e293b;">店舗を選択</h3>
                     <div id="store-sheet-list" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 60vh; overflow-y: auto;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timing Select Modal -->
+        <div id="timing-modal" class="bottom-sheet" style="display: none;">
+            <div class="bottom-sheet-backdrop" onclick="closeTimingModal()"></div>
+            <div class="bottom-sheet-content" style="border-radius: 24px 24px 0 0; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+                <div class="bottom-sheet-handle"></div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 900;">タイミングを選択</h3>
+                    <button onclick="closeTimingModal()" style="background: none; border: none; font-size: 1.2rem; color: #94a3b8;"><i class="fas fa-times"></i></button>
+                </div>
+                <div style="position: relative;">
+                    <i class="fas fa-search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.8rem;"></i>
+                    <input type="text" id="timing-search-input" placeholder="タイミング名で検索..." style="width: 100%; padding: 0.7rem 1rem 0.7rem 2.2rem; border-radius: 12px; border: 2px solid #f1f5f9; font-size: 0.9rem; outline: none;">
+                </div>
+                <div id="timing-list-container" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; min-height: 250px;">
+                    <!-- Timings injected here -->
                 </div>
             </div>
         </div>
@@ -299,49 +327,31 @@ function render() {
         return;
     }
 
-    // 1. Render Slim Timing Chips
-    const timingNav = document.getElementById('inv-timing-nav');
-    if (timingNav) {
-        const rawTimings = [...new Set(inventoryData.map(d => d.確認タイミング || ''))].sort((a,b) => {
-            if (a === '') return -1;
-            if (b === '') return 1;
-            return a.localeCompare(b);
-        });
+    // 1. Update Timing Bar UI
+    const timingBar = document.getElementById('inv-timing-bar');
+    const timingLabel = document.getElementById('current-timing-label');
+    const batchConfirmBtn = document.getElementById('btn-timing-batch-confirm');
 
-        if (!selectedTiming && rawTimings.length > 0) {
-            const firstId = rawTimings[0];
-            selectedTiming = { id: firstId, name: timingMaster[firstId] || firstId || '未設定' };
+    if (timingBar) {
+        timingBar.style.display = selectedStore ? 'flex' : 'none';
+        if (timingLabel) {
+            timingLabel.textContent = selectedTiming ? selectedTiming.name : 'タイミングを選択';
         }
+    }
 
-        timingNav.innerHTML = rawTimings.map(tCode => {
-            const tName = tCode ? (timingMaster[tCode] || tCode) : "未設定";
-            const itemsInTiming = inventoryData.filter(d => (d.確認タイミング || '') === tCode);
-            const confirmedCount = itemsInTiming.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed)).length;
-            const isCompleted = itemsInTiming.length > 0 && confirmedCount === itemsInTiming.length;
-            const isActive = selectedTiming && (selectedTiming.id || '') === tCode;
-            
-            return `
-                <div class="timing-chip ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}" data-code="${tCode}" data-name="${tName}">
-                    ${tName} <span style="opacity: 0.7; font-size: 0.65rem; margin-left: 2px;">${confirmedCount}/${itemsInTiming.length}</span>
-                </div>
-            `;
-        }).join('');
+    // Set up Batch Confirm state
+    if (batchConfirmBtn) {
+        const itemsInTiming = inventoryData.filter(d => (d.確認タイミング || '') === (selectedTiming ? selectedTiming.id : ''));
+        const unconfirmedCount = itemsInTiming.filter(i => !isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed)).length;
+        
+        batchConfirmBtn.disabled = !selectedTiming || unconfirmedCount === 0;
+        batchConfirmBtn.onclick = () => executeTimingBatchConfirm();
+    }
 
-        timingNav.querySelectorAll('.timing-chip').forEach(chip => {
-            chip.onclick = () => {
-                const tid = chip.dataset.code;
-                const tname = chip.dataset.name;
-                selectedTiming = { id: tid, name: tname };
-                inventorySearchQuery = ''; 
-                
-                // 全ての保管場所をデフォルトで閉じる
-                collapsedLocations = new Set();
-                const uniqueLocs = [...new Set(inventoryData.filter(d => (d.確認タイミング || '') === tid).map(d => d.location_label || d.保管場所 || '未配置'))];
-                uniqueLocs.forEach(loc => collapsedLocations.add(loc));
-
-                render();
-            };
-        });
+    // Timing Selector Modal Trigger
+    const timingSelector = document.getElementById('btn-timing-selector');
+    if (timingSelector) {
+        timingSelector.onclick = () => showTimingModal();
     }
 
     // 2. Update Progress Line
@@ -380,7 +390,22 @@ function render() {
 
     // 5. Render Checklist
     if (!selectedTiming) {
-        main.innerHTML = `<div style="text-align:center; padding: 5rem; color: #94a3b8; font-size: 0.9rem;">タイミングを選択してください</div>`;
+        main.innerHTML = `
+            <div class="animate-fade-in" style="text-align:center; padding: 5rem 2rem; color: #94a3b8;">
+                <div style="background: #f8fafc; width: 80px; height: 80px; border-radius: 40px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem auto;">
+                    <i class="fas fa-clock" style="font-size: 2rem; color: var(--primary); opacity: 0.5;"></i>
+                </div>
+                <h3 style="margin: 0; font-size: 1.1rem; color: #1e293b; font-weight: 900;">タイミングを選択</h3>
+                <p style="font-size: 0.85rem; margin-top: 0.5rem; line-height: 1.5;">上のメニューから<br>実施する時間帯を選んでください</p>
+                <i class="fas fa-arrow-up" style="margin-top: 1.5rem; animation: bounce 1s infinite; color: var(--primary);"></i>
+            </div>
+            <style>
+                @keyframes bounce {
+                    0%, 100% { transform: translateY(0); }
+                    50% { transform: translateY(-10px); }
+                }
+            </style>
+        `;
     } else {
         renderChecklist(main);
     }
@@ -426,6 +451,155 @@ window.showStoreSelectSheet = () => {
 window.closeStoreSelectSheet = () => {
     document.getElementById('store-select-sheet').style.display = 'none';
 };
+
+// --- Timing Selector Modal & Batch Action ---
+
+window.showTimingModal = () => {
+    const modal = document.getElementById('timing-modal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    document.getElementById('timing-search-input').value = '';
+    renderTimingList();
+};
+
+window.closeTimingModal = () => {
+    const modal = document.getElementById('timing-modal');
+    if (modal) modal.style.display = 'none';
+};
+
+function renderTimingList(filterText = '') {
+    const container = document.getElementById('timing-list-container');
+    if (!container) return;
+
+    const q = filterText.toLowerCase();
+    const rawTimings = [...new Set(inventoryData.map(d => d.確認タイミング || ''))].sort((a,b) => {
+        if (a === '') return -1;
+        if (b === '') return 1;
+        return a.localeCompare(b);
+    });
+
+    // Pre-calculate counts
+    const timingCounts = {};
+    const timingConfirmed = {};
+    inventoryData.forEach(d => {
+        const tCode = d.確認タイミング || '';
+        if (!timingCounts[tCode]) {
+            timingCounts[tCode] = 0;
+            timingConfirmed[tCode] = 0;
+        }
+        timingCounts[tCode]++;
+        if (isConfirmedToday(d.updated_at, selectedStore.resetTime, d.is_confirmed)) {
+            timingConfirmed[tCode]++;
+        }
+    });
+
+    const filtered = rawTimings.filter(tCode => {
+        const tName = tCode ? (timingMaster[tCode] || tCode) : "未設定";
+        return tName.toLowerCase().includes(q);
+    });
+
+    container.innerHTML = filtered.map(tCode => {
+        const tName = tCode ? (timingMaster[tCode] || tCode) : "未設定";
+        const total = timingCounts[tCode] || 0;
+        const confirmed = timingConfirmed[tCode] || 0;
+        const isSelected = selectedTiming && (selectedTiming.id || '') === tCode;
+        const isDone = total > 0 && confirmed === total;
+
+        return `
+            <div class="store-item-row ${isSelected ? 'active' : ''}" data-code="${tCode}" data-name="${tName}">
+                <div style="display: flex; flex-direction: column;">
+                    <span style="font-weight: 800;">${tName}</span>
+                    <span style="font-size: 0.7rem; opacity: 0.6;">${confirmed} / ${total} 品目完了</span>
+                </div>
+                ${isDone ? '<i class="fas fa-check-circle" style="color: #10b981;"></i>' : (isSelected ? '<i class="fas fa-dot-circle"></i>' : '')}
+            </div>
+        `;
+    }).join('');
+
+    container.querySelectorAll('.store-item-row').forEach(row => {
+        row.onclick = () => {
+            const tid = row.dataset.code;
+            const tname = row.dataset.name;
+            selectedTiming = { id: tid, name: tname };
+            inventorySearchQuery = ''; 
+            
+            // 全ての保管場所をデフォルトで閉じる
+            collapsedLocations = new Set();
+            const uniqueLocs = [...new Set(inventoryData.filter(d => (d.確認タイミング || '') === tid).map(d => d.location_label || d.保管場所 || '未配置'))];
+            uniqueLocs.forEach(loc => collapsedLocations.add(loc));
+
+            closeTimingModal();
+            render();
+        };
+    });
+}
+
+// Set up modal search
+document.addEventListener('input', (e) => {
+    if (e.target.id === 'timing-search-input') {
+        renderTimingList(e.target.value);
+    }
+});
+
+async function executeTimingBatchConfirm() {
+    if (!selectedTiming || !selectedStore) return;
+
+    const itemsToConfirm = inventoryData.filter(d => 
+        (d.確認タイミング || '') === selectedTiming.id && 
+        !isConfirmedToday(d.updated_at, selectedStore.resetTime, d.is_confirmed)
+    );
+
+    if (itemsToConfirm.length === 0) return;
+
+    const confirmed = confirm(`「${selectedTiming.name}」の未完了 ${itemsToConfirm.length} 品目をすべて完了にしますか？\n（現在の入力値がそのまま確定されます）`);
+    if (!confirmed) return;
+
+    const overlay = document.getElementById('inv-loading-overlay');
+    if (overlay) overlay.style.display = 'flex';
+
+    try {
+        const batch = writeBatch(db);
+        const now = new Date().toISOString();
+        const bizDate = getBusinessDate(selectedStore.resetTime);
+
+        itemsToConfirm.forEach(item => {
+            const docRef = doc(db, "m_store_items", item.id);
+            batch.update(docRef, {
+                is_confirmed: true,
+                updated_at: now,
+                confirmed_at: now,
+                confirmed_by: currentUser?.Name || 'unknown'
+            });
+            // Update local object
+            item.is_confirmed = true;
+            item.updated_at = now;
+            item.confirmed_at = now;
+        });
+
+        const historyRef = doc(collection(db, "t_inventory_history"));
+        batch.set(historyRef, {
+            store_id: selectedStore.code,
+            item_id: 'TIMING_BATCH_CONFIRM',
+            store_item_id: selectedTiming.id,
+            reason_type: 'batch_confirm',
+            note: `[${selectedTiming.name}] を一括完了`,
+            executed_by: currentUser?.Name || 'unknown',
+            executed_at: now,
+            business_date: bizDate
+        });
+
+        await batch.commit();
+        // UI更新のために再ロードは不要（ローカルオブジェクトを更新済みのため）
+        render();
+        checkCompletionAndCelebrate(selectedTiming.id);
+        
+    } catch (err) {
+        console.error("Batch confirm failed:", err);
+        alert("一括完了に失敗しました: " + err.message);
+    } finally {
+        if (overlay) overlay.style.display = 'none';
+    }
+}
 
 window.showMasterSettings = async () => {
     const overlay = document.getElementById('inv-master-settings-overlay');
