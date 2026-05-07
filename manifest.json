@@ -1,6 +1,6 @@
 {
-  "name": "かね将ポータル",
-  "short_name": "かね将",
+  "name": "かね将ポータル(更新版)",
+  "short_name": "かね将(新)",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#FFFFFF",
