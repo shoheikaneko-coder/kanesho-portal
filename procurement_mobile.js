@@ -577,10 +577,9 @@ function renderItemRow(si, master, showStoreName = false) {
                 <div class="proc-item-name" data-full-name="${itemName}">
                     <div class="proc-item-name-text" style="font-weight: 800;">${itemName}</div>
                 </div>
-                <div class="proc-item-meta" style="margin-top: 2px;">
-                    ${showStoreName ? `<span style="margin-right: 8px;"><i class="fas fa-store"></i> ${sName}</span>` : ''}
-                    <span style="margin-right: 8px;"><i class="fas fa-tag"></i> ${sUnit}</span>
-                    <span class="stock-badge ${currentStock <= 0 ? 'critical' : ''}" style="background: ${currentStock <= 0 ? '#FFF1F2' : '#F1F5F9'}; color: ${currentStock <= 0 ? 'var(--primary)' : '#64748b'}; padding: 2px 8px; border-radius: 6px; font-weight: 700;">在庫: ${currentStock}${sUnit}</span>
+                <div class="proc-item-meta" style="margin-top: 4px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
+                    ${showStoreName ? `<span style="margin-right: 4px;"><i class="fas fa-store"></i> ${sName}</span>` : ''}
+                    <span class="stock-badge ${currentStock <= 0 ? 'critical' : ''}" style="background: ${currentStock <= 0 ? '#FFF1F2' : '#F1F5F9'}; color: ${currentStock <= 0 ? 'var(--primary)' : '#64748b'}; padding: 2px 10px; border-radius: 8px; font-weight: 700; font-size: 0.75rem; white-space: nowrap;">在庫: ${currentStock}${sUnit}</span>
                 </div>
             </div>
             

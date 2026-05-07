@@ -499,9 +499,9 @@ function setupMobileShortcuts(user, permissions) {
     const navBar = document.getElementById('mobile-quick-nav');
     if (!navBar) return;
 
-    const allShortcuts = [
         { id: 'shifts', name: '今日のスタッフ', icon: 'fa-users-rectangle', role: ['Admin', 'Manager', 'Staff'] },
         { id: 'ops', name: '業務ハブ', icon: 'fa-rocket', role: ['Admin', 'Manager', 'Staff'] },
+        { id: 'ops_hub_main', name: '在庫・調達', icon: 'fa-boxes-stacked', role: ['Admin', 'Manager', 'Staff', 'Tablet'] },
         { id: 'assets', name: 'マイ・アセット', icon: 'fa-hand-holding-heart', role: ['Admin', 'Manager', 'Staff', 'PartTimer'] },
         { id: 'attendance', name: '勤怠', icon: 'fa-clock', role: ['PartTimer'] }
     ];
