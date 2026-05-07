@@ -509,12 +509,15 @@ function setupMobileShortcuts(user, permissions) {
 
     navBar.innerHTML = allShortcuts
         .filter(s => s.role.includes(user.Role))
-        .map(s => `
-            <div class="quick-nav-item" onclick="window.toggleMobileAccordion('${s.id}')" id="nav-${s.id}">
-                <div class="quick-nav-icon"><i class="fas ${s.icon}"></i></div>
-                <div class="quick-nav-label">${s.name}</div>
-            </div>
-        `).join('');
+        .map(s => {
+            const clickHandler = s.id === 'ops_hub_main' ? `window.navigateTo('${s.id}')` : `window.toggleMobileAccordion('${s.id}')`;
+            return `
+                <div class="quick-nav-item" onclick="${clickHandler}" id="nav-${s.id}">
+                    <div class="quick-nav-icon"><i class="fas ${s.icon}"></i></div>
+                    <div class="quick-nav-label">${s.name}</div>
+                </div>
+            `;
+        }).join('');
 }
 
 /**
