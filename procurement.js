@@ -787,19 +787,42 @@ function attachPrepListeners(container) {
                 return;
             }
 
-            const matches = cachedItems.filter(i => 
-                (i.name || '').toLowerCase().includes(val) || 
-                (i.kana || '').includes(val)
-            ).slice(0, 10);
+            // Filter procurementData for current store and current category (store_prep/ck_prep)
+            const prepCapableItems = procurementData.filter(d => 
+                (d.StoreID === currentStore.id || d.StoreID === currentStore.code || d.StoreID === currentStore.store_id) &&
+                d.shortage_action_type === selectedCategory
+            );
+
+            const matches = prepCapableItems.map(si => {
+                const master = cachedItems.find(i => i.id === si.ProductID);
+                return { si, master };
+            }).filter(m => {
+                const name = m.si.display_name || m.master?.name || '';
+                const kana = m.master?.kana || '';
+                return name.toLowerCase().includes(val) || kana.includes(val);
+            }).slice(0, 10);
 
             if (matches.length === 0) {
-                resultsArea.innerHTML = `<div style="padding:0.5rem; font-size:0.75rem; color:#94a3b8;">該当する品目はありません</div>`;
+                resultsArea.innerHTML = `<div style="padding:0.8rem; font-size:0.75rem; color:#94a3b8; text-align:center;">
+                    <i class="fas fa-exclamation-circle"></i> "${selectedCategory === 'store_prep' ? '店舗仕込み' : 'CK仕込み'}" に設定された品目が見つかりません
+                </div>`;
             } else {
-                resultsArea.innerHTML = matches.map(m => `
-                    <div class="search-result-item" data-id="${m.id}" style="padding:0.6rem; border-bottom:1px solid #f1f5f9; cursor:pointer; font-size:0.8rem; font-weight:700;">
-                        ${m.name} <span style="font-size:0.7rem; color:#94a3b8; font-weight:400;">(${m.unit || ''})</span>
-                    </div>
-                `).join('');
+                resultsArea.innerHTML = matches.map(m => {
+                    const qty = Number(m.si.個数 || 0);
+                    const par = Number(m.si.定数 || 0);
+                    const name = m.si.display_name || m.master?.name || '不明';
+                    return `
+                        <div class="search-result-item" data-id="${m.si.ProductID}" style="padding:0.8rem; border-bottom:1px solid #f1f5f9; cursor:pointer; display:flex; justify-content:space-between; align-items:center; transition:background 0.2s;">
+                            <div style="flex:1;">
+                                <div style="font-weight:800; font-size:0.85rem; color:#334155;">${name}</div>
+                                <div style="font-size:0.7rem; color:#94a3b8;">${m.si.display_unit || m.master?.unit || ''}</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:0.75rem; font-weight:700; color:${qty < par ? '#ef4444' : '#64748b'};">残: ${qty} / ${par}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
                 
                 resultsArea.querySelectorAll('.search-result-item').forEach(item => {
                     item.onclick = () => {
