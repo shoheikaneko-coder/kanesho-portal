@@ -701,11 +701,44 @@ function renderPrepContent(shortItems) {
     const main = document.getElementById('proc-main-content');
     if (!main) return;
 
-    // 比率の設定: CK仕込み時は 3:1、それ以外は 1.2:1 (少し自動側を広く)
-    const splitRatio = selectedCategory === 'ck_prep' ? '3fr 1fr' : '1.2fr 1fr';
-    // グリッド列数: CK仕込み時は3列、それ以外は2列
-    const gridCols = selectedCategory === 'ck_prep' ? '1fr 1fr 1fr' : '1fr 1fr';
-    const gridSpan = selectedCategory === 'ck_prep' ? 3 : 2;
+    const isCK = selectedCategory === 'ck_prep';
+    const splitRatio = isCK ? '3fr 1fr' : '1.2fr 1fr';
+    const gridCols = isCK ? '1fr 1fr 1fr' : '1fr 1fr';
+    const gridSpan = isCK ? 3 : 2;
+
+    // --- Aggregation Logic (for CK) ---
+    let displayAutoItems = [];
+    if (isCK) {
+        const groups = {};
+        shortItems.forEach(si => {
+            if (!groups[si.ProductID]) groups[si.ProductID] = [];
+            groups[si.ProductID].push(si);
+        });
+        displayAutoItems = Object.keys(groups).map(pid => {
+            const items = groups[pid];
+            const total = items.reduce((sum, si) => sum + Math.round(Math.max(0, (si.定数 || 0) - (si.個数 || 0))), 0);
+            return { productId: pid, totalReq: total, storeItems: items, isAggregated: true };
+        });
+    } else {
+        displayAutoItems = shortItems;
+    }
+
+    let displayManualItems = [];
+    if (isCK) {
+        const groups = {};
+        prepRequests.forEach(req => {
+            if (!groups[req.item_id]) groups[req.item_id] = [];
+            groups[req.item_id].push(req);
+        });
+        displayManualItems = Object.keys(groups).map(pid => {
+            const reqs = groups[pid];
+            const total = reqs.reduce((sum, r) => sum + Number(r.requested_qty || 0), 0);
+            return { productId: pid, totalReq: total, requests: reqs, isAggregated: true, item_name: reqs[0].item_name, unit: reqs[0].unit };
+        });
+    } else {
+        displayManualItems = prepRequests;
+    }
+    // ----------------------------------
 
     main.innerHTML = `
         <div style="display: grid; grid-template-columns: ${splitRatio}; height: 100%; overflow: hidden;">
@@ -713,12 +746,13 @@ function renderPrepContent(shortItems) {
             <div id="prep-auto-list" style="border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden;">
                 <div style="padding: 0.8rem 1.2rem; background: #fef2f2; border-bottom: 1px solid #fee2e2; display: flex; justify-content: space-between; align-items: center;">
                     <span style="font-size: 0.8rem; font-weight: 800; color: #b91c1c;"><i class="fas fa-robot"></i> 不足品目 (自動判定)</span>
-                    <span class="badge" style="background: #ef4444; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem;">${shortItems.length}</span>
+                    <span class="badge" style="background: #ef4444; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem;">${displayAutoItems.length}</span>
                 </div>
                 <div class="prep-scroll-area" style="flex: 1; overflow-y: auto; padding: 0.6rem; display: grid; grid-template-columns: ${gridCols}; gap: 0.6rem; align-content: start;">
-                    ${shortItems.map(si => {
-                        const master = cachedItems.find(i => i.id === si.ProductID);
-                        return renderPrepRow(si, master, 'auto');
+                    ${displayAutoItems.map(item => {
+                        const pid = item.isAggregated ? item.productId : item.ProductID;
+                        const master = cachedItems.find(i => i.id === pid);
+                        return renderPrepRow(item, master, 'auto');
                     }).join('') || `<div style="grid-column: span ${gridSpan}; text-align:center; padding:3rem; color:#94a3b8; font-size:0.8rem;">現在、不足している品目はありません</div>`}
                 </div>
             </div>
@@ -728,7 +762,7 @@ function renderPrepContent(shortItems) {
                 <div style="padding: 0.8rem 1.2rem; background: #f0fdf4; border-bottom: 1px solid #dcfce7; display: flex; flex-direction: column; gap: 0.8rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span style="font-size: 0.8rem; font-weight: 800; color: #166534;"><i class="fas fa-hand-paper"></i> 追加仕込み (手動/依頼)</span>
-                        <span class="badge" style="background: #22c55e; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem;">${prepRequests.length}</span>
+                        <span class="badge" style="background: #22c55e; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem;">${displayManualItems.length}</span>
                     </div>
                     
                     <div style="position: relative;">
@@ -739,9 +773,10 @@ function renderPrepContent(shortItems) {
                     </div>
                 </div>
                 <div class="prep-scroll-area" style="flex: 1; overflow-y: auto; padding: 0.6rem;">
-                    ${prepRequests.map(req => {
-                        const master = cachedItems.find(i => i.id === req.item_id);
-                        return renderPrepRow(req, master, 'manual');
+                    ${displayManualItems.map(item => {
+                        const pid = item.isAggregated ? item.productId : item.item_id;
+                        const master = cachedItems.find(i => i.id === pid);
+                        return renderPrepRow(item, master, 'manual');
                     }).join('') || '<div style="text-align:center; padding:3rem; color:#94a3b8; font-size:0.8rem;">追加の仕込み指示はありません</div>'}
                 </div>
             </div>
@@ -752,50 +787,62 @@ function renderPrepContent(shortItems) {
 
 function renderPrepRow(data, master, type = 'auto') {
     const isManual = type === 'manual';
-    const name = isManual ? data.item_name : (data.display_name || master?.name || '品目不明');
-    const unit = isManual ? data.unit : (data.display_unit || master?.unit || '');
+    const isAggregated = data.isAggregated;
     
-    let reqQty = 0;
-    if (isManual) {
-        reqQty = data.requested_qty;
-    } else {
-        const diff = Number(data.定数 || 0) - Number(data.個数 || 0);
-        reqQty = Math.round(Math.max(0, diff));
-    }
+    const name = isAggregated ? (master?.name || data.productId) : (isManual ? data.item_name : (data.display_name || master?.name || '品目不明'));
+    const unit = isAggregated ? (master?.unit || '') : (isManual ? data.unit : (data.display_unit || master?.unit || ''));
+    
+    const reqQty = isAggregated ? data.totalReq : (isManual ? data.requested_qty : Math.round(Math.max(0, (data.定数 || 0) - (data.個数 || 0))));
 
-    const tagHtml = isManual ? `<span style="font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; background: ${data.request_type === 'CK_CHOICE' ? '#dcfce7' : '#fef9c3'}; color: ${data.request_type === 'CK_CHOICE' ? '#166534' : '#854d0e'}; font-weight: 800; margin-left: 0.5rem;">${data.request_type === 'CK_CHOICE' ? 'CK判断' : '夜勤依頼'}</span>` : '';
+    const tagHtml = isManual && !isAggregated ? `<span style="font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; background: ${data.request_type === 'CK_CHOICE' ? '#dcfce7' : '#fef9c3'}; color: ${data.request_type === 'CK_CHOICE' ? '#166534' : '#854d0e'}; font-weight: 800; margin-left: 0.5rem;">${data.request_type === 'CK_CHOICE' ? 'CK判断' : '夜勤依頼'}</span>` : '';
+    const aggregateBadge = isAggregated ? `<span style="font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; background: #eff6ff; color: #1e40af; font-weight: 800; margin-left: 0.5rem;"><i class="fas fa-layer-group"></i> ${isManual ? data.requests.length : data.storeItems.length}店舗分</span>` : '';
 
     return `
         <div class="prep-row" style="display: flex; flex-direction: column; gap: 0.5rem; padding: 0.6rem 0.8rem; border-radius: 10px; border: 1px solid var(--border); background: white; box-shadow: var(--shadow-sm); transition: all 0.2s; position: relative;">
-            ${isManual ? `
+            ${isManual && !isAggregated ? `
                 <button class="btn-delete-prep" data-id="${data.id}" style="position: absolute; top: 4px; right: 4px; background: none; border: none; padding: 2px; cursor: pointer; color: #cbd5e1; font-size: 0.75rem; transition: color 0.2s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#cbd5e1'">
                     <i class="fas fa-times"></i>
                 </button>
             ` : ''}
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.4rem; padding-right: ${isManual ? '14px' : '0'};">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.4rem; padding-right: ${isManual && !isAggregated ? '14px' : '0'};">
                 <div style="font-weight: 800; font-size: 0.8rem; color: #1e293b; line-height: 1.2; word-break: break-all; flex: 1;">
-                    ${name}${tagHtml}
+                    ${name}${tagHtml}${aggregateBadge}
                 </div>
                 <div style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 800; white-space: nowrap; text-align: right; padding-top: 2px;">
-                    必要: <span style="color: ${isManual ? '#10b981' : '#ef4444'}; font-size: 0.85rem;">${reqQty}</span> ${unit}
+                    計: <span style="color: ${isManual ? '#10b981' : '#ef4444'}; font-size: 0.85rem;">${reqQty}</span> ${unit}
                 </div>
             </div>
             
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; border-top: 1px solid #f1f5f9; padding-top: 0.4rem;">
-                <div class="stepper-container" style="padding: 1px; transform: scale(0.95); transform-origin: left;">
-                    <button class="stepper-btn btn-minus" style="width:24px; height:24px; font-size:0.7rem;" data-id="${data.id}" data-type="${type}"><i class="fas fa-minus"></i></button>
-                    <input type="number" class="prep-qty-input" data-id="${data.id}" data-type="${type}" value="${reqQty}" 
-                        style="width: 34px; border: none; background: transparent; text-align: center; font-weight: 800; font-size: 0.85rem; color: var(--primary); outline: none;">
-                    <button class="stepper-btn btn-plus" style="width:24px; height:24px; font-size:0.7rem;" data-id="${data.id}" data-type="${type}"><i class="fas fa-plus"></i></button>
-                </div>
-                <button class="btn btn-primary btn-confirm-prep" data-id="${data.id}" data-type="${type}"
-                    style="padding: 0.35rem 0.6rem; font-size: 0.72rem; border-radius: 6px; font-weight: 800; white-space: nowrap;">仕込み完了</button>
+            <div style="display: flex; align-items: center; justify-content: ${isAggregated ? 'center' : 'space-between'}; gap: 0.4rem; border-top: 1px solid #f1f5f9; padding-top: 0.4rem;">
+                ${isAggregated ? `
+                    <button class="btn btn-outline btn-show-breakdown" data-pid="${master?.id || data.productId}" data-type="${type}"
+                        style="width: 100%; padding: 0.4rem; font-size: 0.72rem; border-radius: 6px; font-weight: 800; color: #2563eb; border-color: #dbeafe; background: #f8fafc;">
+                        <i class="fas fa-list-ul"></i> 内訳・個別反映
+                    </button>
+                ` : `
+                    <div class="stepper-container" style="padding: 1px; transform: scale(0.95); transform-origin: left;">
+                        <button class="stepper-btn btn-minus" style="width:24px; height:24px; font-size:0.7rem;" data-id="${data.id}" data-type="${type}"><i class="fas fa-minus"></i></button>
+                        <input type="number" class="prep-qty-input" data-id="${data.id}" data-type="${type}" value="${reqQty}" 
+                            style="width: 34px; border: none; background: transparent; text-align: center; font-weight: 800; font-size: 0.85rem; color: var(--primary); outline: none;">
+                        <button class="stepper-btn btn-plus" style="width:24px; height:24px; font-size:0.7rem;" data-id="${data.id}" data-type="${type}"><i class="fas fa-plus"></i></button>
+                    </div>
+                    <button class="btn btn-primary btn-confirm-prep" data-id="${data.id}" data-type="${type}"
+                        style="padding: 0.35rem 0.6rem; font-size: 0.72rem; border-radius: 6px; font-weight: 800; white-space: nowrap;">仕込み完了</button>
+                `}
             </div>
         </div>
     `;
 }
 
 function attachPrepListeners(container) {
+    // Breakdown Buttons (Aggregated only)
+    container.querySelectorAll('.btn-show-breakdown').forEach(btn => {
+        btn.onclick = () => {
+            const pid = btn.dataset.pid;
+            const type = btn.dataset.type;
+            showPrepBreakdownModal(pid, type);
+        };
+    });
     // Steppers
     container.querySelectorAll('.stepper-btn').forEach(btn => {
         btn.onclick = () => {
@@ -902,6 +949,162 @@ function attachPrepListeners(container) {
     // Radar Button
     const btnRadar = document.getElementById('btn-prep-radar');
     if (btnRadar) btnRadar.onclick = showPrepRadar;
+}
+
+async function showPrepBreakdownModal(productId, type) {
+    const master = cachedItems.find(i => i.id === productId);
+    const unit = master?.unit || '';
+    
+    // 集計対象の店舗データを抽出
+    let targets = [];
+    if (type === 'auto') {
+        targets = procurementData.filter(d => d.ProductID === productId && (d.定数 || 0) > (d.個数 || 0));
+    } else {
+        targets = prepRequests.filter(r => r.item_id === productId);
+    }
+
+    const modalHtml = `
+        <div id="prep-breakdown-modal" class="modal-overlay active" style="z-index: 10000; position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
+            <div class="glass-panel" style="width: 90%; max-width: 500px; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; padding: 0; background: white; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.2);">
+                <div style="padding: 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+                    <div>
+                        <h3 style="margin:0; font-weight: 800; font-size: 1.1rem; color: #1e293b;">${master?.name || productId}</h3>
+                        <div style="font-size: 0.75rem; color: #64748b; font-weight: 700; margin-top: 2px;">店舗別 内訳・個別反映</div>
+                    </div>
+                    <button onclick="document.getElementById('prep-breakdown-modal').remove()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color: #94a3b8;">&times;</button>
+                </div>
+                
+                <div style="flex:1; overflow-y:auto; padding: 1.2rem;">
+                    <div style="display: flex; flex-direction: column; gap: 0.8rem;">
+                        ${targets.map((t, idx) => {
+                            const store = allGroupStores.find(s => s.id === t.StoreID || s.id === t.store_id || s.code === t.StoreID || s.store_id === t.StoreID);
+                            const storeName = store?.store_name || store?.Name || t.StoreID || t.store_id || '店舗不明';
+                            
+                            let currentQty = 0;
+                            let parQty = 0;
+                            let defaultInput = 0;
+                            let targetId = '';
+
+                            if (type === 'auto') {
+                                currentQty = Number(t.個数 || 0);
+                                parQty = Number(t.定数 || 0);
+                                defaultInput = Math.round(Math.max(0, parQty - currentQty));
+                                targetId = t.id; // m_store_items.id
+                            } else {
+                                // Manual requests: look up inventory for stock info
+                                const si = procurementData.find(d => d.ProductID === productId && (d.StoreID === t.store_id || d.StoreID === store?.id));
+                                currentQty = Number(si?.個数 || 0);
+                                parQty = Number(si?.定数 || 0);
+                                defaultInput = Number(t.requested_qty || 0);
+                                targetId = t.id; // t_prep_requests.id
+                            }
+
+                            return `
+                                <div style="padding: 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; display: flex; align-items: center; justify-content: space-between;">
+                                    <div style="flex: 1; min-width: 0;">
+                                        <div style="font-weight: 800; font-size: 0.85rem; color: #1e293b;">${storeName}</div>
+                                        <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; margin-top: 4px;">
+                                            現在庫: ${currentQty} / 定数: ${parQty}
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                        <input type="number" class="breakdown-input" 
+                                            data-target-id="${targetId}" 
+                                            data-store-id="${store?.id || t.StoreID || t.store_id}" 
+                                            value="${defaultInput}" 
+                                            style="width: 60px; height: 36px; text-align: center; border-radius: 8px; border: 2px solid #cbd5e1; font-weight: 800; font-size: 1rem; color: var(--primary); outline: none;">
+                                        <span style="font-size: 0.75rem; font-weight: 800; color: #64748b;">${unit}</span>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+
+                <div style="padding: 1.2rem; border-top: 1px solid var(--border); background: #f8fafc; display: flex; gap: 0.8rem;">
+                    <button onclick="document.getElementById('prep-breakdown-modal').remove()" class="btn btn-outline" style="flex: 1; border-radius: 12px; font-weight: 800;">キャンセル</button>
+                    <button id="btn-confirm-batch-prep" class="btn btn-primary" style="flex: 2; border-radius: 12px; font-weight: 800; box-shadow: 0 10px 20px rgba(230, 57, 70, 0.2);">
+                        <i class="fas fa-check-double"></i> 一括確定・反映
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    document.getElementById('btn-confirm-batch-prep').onclick = async () => {
+        const inputs = document.querySelectorAll('.breakdown-input');
+        const updates = Array.from(inputs).map(inp => ({
+            id: inp.dataset.targetId,
+            storeId: inp.dataset.storeId,
+            qty: Number(inp.value)
+        })).filter(u => u.qty > 0);
+
+        if (updates.length === 0) return;
+        
+        document.getElementById('prep-breakdown-modal').remove();
+        await executeBatchPrepAction(productId, type, updates);
+    };
+}
+
+async function executeBatchPrepAction(productId, type, updates) {
+    await showLoading(true);
+    try {
+        const { writeBatch } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
+        const batch = writeBatch(db);
+        const now = new Date().toISOString();
+        
+        for (const u of updates) {
+            let si = null;
+            let requestId = null;
+
+            if (type === 'manual') {
+                requestId = u.id;
+                si = procurementData.find(d => d.ProductID === productId && d.StoreID === u.storeId);
+            } else {
+                si = procurementData.find(d => d.id === u.id);
+            }
+
+            if (!si) continue;
+
+            const bizDate = getBusinessDate(allGroupStores.find(s => s.id === si.StoreID));
+            const oldQty = Number(si.個数 || 0);
+            const newQty = oldQty + u.qty;
+
+            // 1. Update Inventory
+            batch.update(doc(db, "m_store_items", si.id), { 個数: newQty, updated_at: now });
+
+            // 2. Add History
+            const histRef = doc(collection(db, "t_inventory_history"));
+            batch.set(histRef, {
+                store_id: si.StoreID,
+                item_id: si.ProductID,
+                store_item_id: si.id,
+                change_qty: u.qty,
+                qty_after: newQty,
+                reason_type: 'preparation',
+                source_route: 'procurement_page',
+                note: type === 'manual' ? 'CK一括(手動依頼分)' : 'CK一括(自動判定分)',
+                executed_by: currentUser?.Name || 'unknown',
+                executed_at: now,
+                business_date: bizDate
+            });
+
+            // 3. Mark request as COMPLETED (if manual)
+            if (requestId) {
+                batch.update(doc(db, "t_prep_requests", requestId), { status: 'COMPLETED', completed_at: now });
+            }
+        }
+
+        await batch.commit();
+        showAlert("完了", "一括反映が完了しました");
+    } catch (err) {
+        console.error("Batch prep failed:", err);
+        showAlert("エラー", "更新に失敗しました: " + err.message);
+    } finally {
+        await showLoading(false);
+    }
 }
 
 async function deletePrepRequest(requestId) {
