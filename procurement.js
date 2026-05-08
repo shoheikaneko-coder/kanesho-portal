@@ -718,7 +718,7 @@ function renderPrepContent(shortItems) {
             const items = groups[pid];
             if (items.length <= 1) return items[0];
             const total = items.reduce((sum, si) => sum + Math.round(Math.max(0, (si.定数 || 0) - (si.個数 || 0))), 0);
-            return { productId: pid, totalReq: total, storeItems: items, isAggregated: true };
+            return { productId: pid, totalReq: total, storeItems: items, isAggregated: true, display_unit: items[0].display_unit };
         });
     } else {
         displayAutoItems = shortItems;
@@ -792,7 +792,7 @@ function renderPrepRow(data, master, type = 'auto') {
     const isAggregated = data.isAggregated;
     
     const name = isAggregated ? (master?.name || data.productId) : (isManual ? data.item_name : (data.display_name || master?.name || '品目不明'));
-    const unit = isAggregated ? (master?.unit || '') : (isManual ? data.unit : (data.display_unit || master?.unit || ''));
+    const unit = isAggregated ? (data.display_unit || data.unit || master?.unit || '') : (isManual ? data.unit : (data.display_unit || master?.unit || ''));
     
     const reqQty = isAggregated ? data.totalReq : (isManual ? data.requested_qty : Math.round(Math.max(0, (data.定数 || 0) - (data.個数 || 0))));
 
@@ -955,7 +955,6 @@ function attachPrepListeners(container) {
 
 async function showPrepBreakdownModal(productId, type) {
     const master = cachedItems.find(i => i.id === productId);
-    const unit = master?.unit || '';
     
     // 集計対象の店舗データを抽出
     let targets = [];
@@ -964,6 +963,9 @@ async function showPrepBreakdownModal(productId, type) {
     } else {
         targets = prepRequests.filter(r => r.item_id === productId);
     }
+    
+    // 単位を取得（店舗設定があればそれを優先）
+    const unit = targets[0]?.display_unit || targets[0]?.unit || master?.unit || '';
 
     const modalHtml = `
         <div id="prep-breakdown-modal" class="modal-overlay active" style="z-index: 10000; position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
