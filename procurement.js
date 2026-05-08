@@ -489,14 +489,18 @@ function render() {
     const catNames = { purchase: '仕入れ・調達', store_prep: '店舗仕込み', ck_prep: 'CK仕込み', transfer: '店舗間移動' };
     headerTitle.textContent = catNames[selectedCategory];
     
-    // カテゴリーに応じて仕入先セクション（業者リスト）の表示/非表示を切り替える
+    // カテゴリーに応じてサイドバー全体の表示/非表示を切り替える（CK仕込み時は非表示にしてメインエリアを広げる）
+    const aside = document.getElementById('proc-sidebar');
+    if (aside) {
+        aside.style.display = (selectedCategory === 'ck_prep') ? 'none' : 'flex';
+    }
+
     const vendorSection = document.getElementById('proc-vendor-section');
     if (vendorSection) vendorSection.style.display = selectedCategory === 'purchase' ? 'block' : 'none';
 
-    // カテゴリーに応じて表示店舗セクションの表示/非表示を切り替える
     const scopeConfig = document.getElementById('proc-scope-config');
     if (scopeConfig) {
-        scopeConfig.style.display = selectedCategory === 'ck_prep' ? 'none' : 'block';
+        scopeConfig.style.display = (selectedCategory === 'ck_prep') ? 'none' : 'block';
     }
 
     const btnHistory = document.getElementById('btn-proc-history');
@@ -706,11 +710,11 @@ function renderPrepContent(shortItems) {
                     <span style="font-size: 0.8rem; font-weight: 800; color: #b91c1c;"><i class="fas fa-robot"></i> 不足品目 (自動判定)</span>
                     <span class="badge" style="background: #ef4444; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem;">${shortItems.length}</span>
                 </div>
-                <div class="prep-scroll-area" style="flex: 1; overflow-y: auto; padding: 0;">
+                <div class="prep-scroll-area" style="flex: 1; overflow-y: auto; padding: 0.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; align-content: start;">
                     ${shortItems.map(si => {
                         const master = cachedItems.find(i => i.id === si.ProductID);
                         return renderPrepRow(si, master, 'auto');
-                    }).join('') || '<div style="text-align:center; padding:3rem; color:#94a3b8; font-size:0.8rem;">現在、不足している品目はありません</div>'}
+                    }).join('') || '<div style="grid-column: span 2; text-align:center; padding:3rem; color:#94a3b8; font-size:0.8rem;">現在、不足している品目はありません</div>'}
                 </div>
             </div>
             
@@ -758,9 +762,9 @@ function renderPrepRow(data, master, type = 'auto') {
     const tagHtml = isManual ? `<span style="font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; background: ${data.request_type === 'CK_CHOICE' ? '#dcfce7' : '#fef9c3'}; color: ${data.request_type === 'CK_CHOICE' ? '#166534' : '#854d0e'}; font-weight: 800; margin-left: 0.5rem;">${data.request_type === 'CK_CHOICE' ? 'CK判断' : '夜勤依頼'}</span>` : '';
 
     return `
-        <div class="prep-row" style="display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 1rem; border-bottom: 1px solid var(--border); background: white;">
-            <div style="display: flex; flex-direction: column; flex: 1; min-width: 0;">
-                <div style="font-weight: 800; font-size: 0.85rem; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+        <div class="prep-row" style="display: flex; flex-direction: column; gap: 0.8rem; padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border); background: white; box-shadow: var(--shadow-sm); transition: all 0.2s;">
+            <div style="display: flex; flex-direction: column; min-width: 0;">
+                <div style="font-weight: 800; font-size: 0.85rem; color: #334155; line-height: 1.2; margin-bottom: 0.2rem;">
                     ${name}${tagHtml}
                 </div>
                 <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700;">
@@ -768,15 +772,15 @@ function renderPrepRow(data, master, type = 'auto') {
                 </div>
             </div>
             
-            <div style="display: flex; align-items: center; gap: 0.6rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; border-top: 1px solid #f1f5f9; pt: 0.6rem; margin-top: 0.2rem; padding-top: 0.6rem;">
                 <div class="stepper-container" style="padding: 1px;">
                     <button class="stepper-btn btn-minus" style="width:24px; height:24px; font-size:0.7rem;" data-id="${data.id}" data-type="${type}"><i class="fas fa-minus"></i></button>
                     <input type="number" class="prep-qty-input" data-id="${data.id}" data-type="${type}" value="${reqQty}" 
-                        style="width: 40px; border: none; background: transparent; text-align: center; font-weight: 800; font-size: 0.9rem; color: var(--primary); outline: none;">
+                        style="width: 38px; border: none; background: transparent; text-align: center; font-weight: 800; font-size: 0.9rem; color: var(--primary); outline: none;">
                     <button class="stepper-btn btn-plus" style="width:24px; height:24px; font-size:0.7rem;" data-id="${data.id}" data-type="${type}"><i class="fas fa-plus"></i></button>
                 </div>
                 <button class="btn btn-primary btn-confirm-prep" data-id="${data.id}" data-type="${type}"
-                    style="padding: 0.4rem 0.8rem; font-size: 0.75rem; border-radius: 6px; font-weight: 800;">仕込み完了</button>
+                    style="padding: 0.4rem 0.6rem; font-size: 0.75rem; border-radius: 6px; font-weight: 800; white-space: nowrap;">仕込み完了</button>
             </div>
         </div>
     `;
