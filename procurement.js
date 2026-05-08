@@ -208,8 +208,15 @@ async function loadInitialData() {
 }
 
 async function refreshProcurementData() {
-    const storeIds = allGroupStores.map(s => s.id);
-    if (!storeIds || storeIds.length === 0) return;
+    // 監視対象の店舗IDリストを作成（id, store_id, code のすべてを含める）
+    const storeIds = [];
+    allGroupStores.forEach(s => {
+        if (s.id) storeIds.push(s.id);
+        if (s.store_id && !storeIds.includes(s.store_id)) storeIds.push(s.store_id);
+        if (s.code && !storeIds.includes(s.code)) storeIds.push(s.code);
+    });
+
+    if (storeIds.length === 0) return;
 
     // 既存のリスナーがあれば解除
     if (procurementUnsubscribe) {
@@ -218,7 +225,8 @@ async function refreshProcurementData() {
     }
 
     return new Promise((resolve) => {
-        const q = query(collection(db, "m_store_items"), where("StoreID", "in", storeIds));
+        // Firestoreの 'in' クエリは最大30件まで
+        const q = query(collection(db, "m_store_items"), where("StoreID", "in", storeIds.slice(0, 30)));
         
         let isFirstLoad = true;
         procurementUnsubscribe = onSnapshot(q, (snap) => {
@@ -319,7 +327,10 @@ function renderItemRow(si, master, showStoreName = false) {
         // Find other stores that have this product and their stock
         const otherStores = allGroupStores.filter(s => s.id !== si.StoreID);
         sourceOptions = otherStores.map(s => {
-            const sourceItem = procurementData.find(d => d.StoreID === s.id && d.ProductID === si.ProductID);
+            const sourceItem = procurementData.find(d => 
+                (d.StoreID === s.id || d.StoreID === s.store_id || d.StoreID === s.code) && 
+                d.ProductID === si.ProductID
+            );
             const stock = Number(sourceItem?.個数 || 0);
             const sNameShort = s.store_name || s.Name;
             return { id: s.id, name: sNameShort, stock };
@@ -340,7 +351,11 @@ function renderItemRow(si, master, showStoreName = false) {
         `;
         
         // Add Source Location Text
-        const sourceStoreItem = procurementData.find(d => d.StoreID === (si.default_source_store_id || defaultSource?.id) && d.ProductID === si.ProductID);
+        const sourceStoreId = si.default_source_store_id || defaultSource?.id;
+        const sourceStoreItem = procurementData.find(d => 
+            (d.StoreID === sourceStoreId || d.StoreID === defaultSource?.store_id || d.StoreID === defaultSource?.code) && 
+            d.ProductID === si.ProductID
+        );
         const sourceLoc = sourceStoreItem?.location_label || sourceStoreItem?.保管場所 || '未設定';
         locHtml = `<div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.1rem;"><i class="fas fa-map-marker-alt" style="font-size:0.6rem;"></i> 移動元の棚: <span style="font-weight:700; color:#475569;">${sourceLoc}</span></div>`;
     }
@@ -413,7 +428,10 @@ function render() {
     // 1. Filter data based on scope (Current store or all stores in group)
     let filteredData = procurementData;
     if (selectedScope === 'store') {
-        filteredData = procurementData.filter(d => d.StoreID === currentStore.id);
+        const cId = currentStore.id;
+        const cSid = currentStore.store_id;
+        const cCode = currentStore.code;
+        filteredData = procurementData.filter(d => d.StoreID === cId || d.StoreID === cSid || d.StoreID === cCode);
     }
 
     // 2. Filter by Category (Shortage Action Type) and Short items
@@ -493,7 +511,7 @@ function renderTransferContent(items) {
 
     let html = ``;
     Object.keys(itemsBySource).sort().forEach(sourceId => {
-        const sourceStore = allGroupStores.find(s => s.id === sourceId);
+        const sourceStore = allGroupStores.find(s => s.id === sourceId || s.store_id === sourceId || s.code === sourceId);
         const sourceName = sourceStore?.store_name || sourceStore?.Name || (sourceId === 'UNKNOWN' ? '移動元未設定' : sourceId);
         const sourceItems = itemsBySource[sourceId];
         
