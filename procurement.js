@@ -34,12 +34,12 @@ export const procurementPageHtml = `
             </div>
 
             <div id="proc-scope-config">
-                <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">表示設定</label>
-                <div class="scope-toggle" style="display: flex; background: var(--surface-darker); padding: 3px; border-radius: 8px; border: 1px solid var(--border);">
-                    <button id="btn-scope-store" class="toggle-btn active" style="flex: 1; padding: 0.4rem; font-size: 0.7rem; font-weight: 800; border-radius: 6px; border: none; cursor: pointer;">自店舗のみ</button>
-                    <button id="btn-scope-group" class="toggle-btn" style="flex: 1; padding: 0.4rem; font-size: 0.7rem; font-weight: 800; border-radius: 6px; border: none; cursor: pointer;">グループ全体</button>
-                </div>
+                <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em;">表示店舗</label>
+                <select id="select-proc-store" style="width: 100%; padding: 0.6rem; border-radius: 10px; border: 1px solid var(--border); font-size: 0.85rem; font-weight: 800; background: white; outline: none; cursor: pointer; color: #1e293b;">
+                    <!-- Options generated dynamically -->
+                </select>
             </div>
+
 
             <div id="proc-vendor-section" style="flex: 1; overflow-y: auto; display: none;">
                 <label style="display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.5rem; margin-top: 1rem; text-transform: uppercase; letter-spacing: 0.05em;">仕入先（業者）</label>
@@ -122,9 +122,11 @@ export const procurementPageHtml = `
 `;
 
 // State
-let selectedScope = 'store'; // 'store' or 'group'
-let selectedCategory = null; // 'purchase', 'store_prep', 'ck_prep', 'transfer'
 let selectedVendor = null;
+let selectedScope = 'store'; // 'store' or 'group'
+let selectedTargetStoreId = null; // Specific store ID if scope is 'store'
+let selectedCategory = null; // 'purchase', 'store_prep', 'ck_prep', 'transfer'
+
 let allGroupStores = [];    // Stores in the same group
 let currentStore = null;    // Current user's store object
 let procurementData = [];   // Aggregated store items
@@ -168,18 +170,18 @@ export async function initProcurementPage(user, category = null) {
         procurementData.forEach(si => collapsedItems.add(si.ProductID));
 
         // CK社員の場合はデフォルトでグループ表示にし、設定を隠す
-        if (currentStore?.store_type === 'CK') {
+        if (selectedCategory === 'ck_prep') {
             selectedScope = 'group';
-            const scopeConfig = document.getElementById('proc-scope-config');
-            if (scopeConfig) scopeConfig.style.display = 'none';
-            const badge = document.getElementById('proc-scope-badge');
-            if (badge) badge.textContent = 'グループ全体';
+            selectedTargetStoreId = 'GROUP_TOTAL';
         } else {
             selectedScope = 'store';
+            selectedTargetStoreId = currentStore.id;
         }
 
         setupEventListeners();
+        populateStoreSelector();
         render();
+
     } catch (err) {
         console.error("Procurement init failed:", err);
         showAlert("エラー", "データの読み込みに失敗しました");
@@ -296,8 +298,6 @@ async function refreshPrepRequests() {
 
 
 function setupEventListeners() {
-    const btnStore = document.getElementById('btn-scope-store');
-    const btnGroup = document.getElementById('btn-scope-group');
     const btnRefresh = document.getElementById('btn-proc-refresh');
 
     // Business Category Buttons
@@ -311,37 +311,60 @@ function setupEventListeners() {
             const vendorSection = document.getElementById('proc-vendor-section');
             if (vendorSection) vendorSection.style.display = selectedCategory === 'purchase' ? 'block' : 'none';
             
+            // カテゴリー切り替え時に表示設定の初期化（CK仕込みの場合は強制グループ表示）
+            if (selectedCategory === 'ck_prep') {
+                selectedScope = 'group';
+                selectedTargetStoreId = 'GROUP_TOTAL';
+            } else if (selectedTargetStoreId === 'GROUP_TOTAL' || !selectedTargetStoreId) {
+                // CK仕込み以外でグループ全体になっていたら自店舗に戻す（運用上の好みによりますが一旦自店舗へ）
+                selectedScope = 'store';
+                selectedTargetStoreId = currentStore.id;
+            }
+
             refreshPrepRequests();
+            populateStoreSelector();
             render();
         };
-
     });
-
-    if (btnStore) btnStore.onclick = () => {
-        selectedScope = 'store';
-        btnStore.classList.add('active');
-        btnGroup.classList.remove('active');
-        document.getElementById('proc-scope-badge').textContent = '自店舗';
-        render();
-    };
-
-    if (btnGroup) btnGroup.onclick = () => {
-        selectedScope = 'group';
-        btnGroup.classList.add('active');
-        btnStore.classList.remove('active');
-        document.getElementById('proc-scope-badge').textContent = 'グループ全体';
-        render();
-    };
 
     if (btnRefresh) btnRefresh.onclick = async () => {
         await showLoading(true);
         await refreshProcurementData();
+        await refreshPrepRequests();
         render();
         await showLoading(false);
     };
 
     const btnHistory = document.getElementById('btn-proc-history');
     if (btnHistory) btnHistory.onclick = showTransferHistory;
+}
+
+function populateStoreSelector() {
+    const selector = document.getElementById('select-proc-store');
+    if (!selector) return;
+
+    let html = '';
+    allGroupStores.forEach(s => {
+        const isCurrent = s.id === selectedTargetStoreId;
+        html += `<option value="${s.id}" ${isCurrent ? 'selected' : ''}>${s.store_name || s.Name}</option>`;
+    });
+    
+    const isGroup = selectedScope === 'group' || selectedTargetStoreId === 'GROUP_TOTAL';
+    html += `<option value="GROUP_TOTAL" ${isGroup ? 'selected' : ''}>グループ全体</option>`;
+    
+    selector.innerHTML = html;
+    
+    selector.onchange = () => {
+        const val = selector.value;
+        if (val === 'GROUP_TOTAL') {
+            selectedScope = 'group';
+            selectedTargetStoreId = 'GROUP_TOTAL';
+        } else {
+            selectedScope = 'store';
+            selectedTargetStoreId = val;
+        }
+        render();
+    };
 }
 
 function showLoading(show) {
@@ -469,18 +492,29 @@ function render() {
     // カテゴリーに応じて仕入先セクション（業者リスト）の表示/非表示を切り替える
     const vendorSection = document.getElementById('proc-vendor-section');
     if (vendorSection) vendorSection.style.display = selectedCategory === 'purchase' ? 'block' : 'none';
-    
+
+    // カテゴリーに応じて表示店舗セクションの表示/非表示を切り替える
+    const scopeConfig = document.getElementById('proc-scope-config');
+    if (scopeConfig) {
+        scopeConfig.style.display = selectedCategory === 'ck_prep' ? 'none' : 'block';
+    }
+
     const btnHistory = document.getElementById('btn-proc-history');
     if (btnHistory) btnHistory.style.display = selectedCategory === 'transfer' ? 'block' : 'none';
 
-    // 1. Filter data based on scope (Current store or all stores in group)
+    // 1. Filter data based on scope (Selected store or all stores in group)
     let filteredData = procurementData;
-    if (selectedScope === 'store') {
-        const cId = currentStore.id;
-        const cSid = currentStore.store_id;
-        const cCode = currentStore.code;
+    if (selectedCategory === 'ck_prep') {
+        // Force group scope for CK Prep
+        filteredData = procurementData;
+    } else if (selectedScope === 'store' && selectedTargetStoreId) {
+        const targetStore = allGroupStores.find(s => s.id === selectedTargetStoreId);
+        const cId = targetStore?.id;
+        const cSid = targetStore?.store_id;
+        const cCode = targetStore?.code;
         filteredData = procurementData.filter(d => d.StoreID === cId || d.StoreID === cSid || d.StoreID === cCode);
     }
+
 
     // 2. Filter by Category (Shortage Action Type) and Short items
     const shortItems = filteredData.filter(si => {
@@ -787,11 +821,14 @@ function attachPrepListeners(container) {
                 return;
             }
 
-            // Filter procurementData for current store and current category (store_prep/ck_prep)
-            const prepCapableItems = procurementData.filter(d => 
-                (d.StoreID === currentStore.id || d.StoreID === currentStore.code || d.StoreID === currentStore.store_id) &&
-                d.shortage_action_type === selectedCategory
-            );
+    // Filter procurementData for target store and current category (store_prep/ck_prep)
+    const targetId = (selectedCategory === 'ck_prep') ? 'GROUP_TOTAL' : selectedTargetStoreId;
+    
+    const prepCapableItems = procurementData.filter(d => {
+        const matchesStore = (targetId === 'GROUP_TOTAL') || (d.StoreID === targetId || d.StoreID === allGroupStores.find(s=>s.id===targetId)?.code || d.StoreID === allGroupStores.find(s=>s.id===targetId)?.store_id);
+        return matchesStore && d.shortage_action_type === selectedCategory;
+    });
+
 
             const matches = prepCapableItems.map(si => {
                 const master = cachedItems.find(i => i.id === si.ProductID);
