@@ -716,6 +716,7 @@ function renderPrepContent(shortItems) {
         });
         displayAutoItems = Object.keys(groups).map(pid => {
             const items = groups[pid];
+            if (items.length <= 1) return items[0];
             const total = items.reduce((sum, si) => sum + Math.round(Math.max(0, (si.定数 || 0) - (si.個数 || 0))), 0);
             return { productId: pid, totalReq: total, storeItems: items, isAggregated: true };
         });
@@ -732,6 +733,7 @@ function renderPrepContent(shortItems) {
         });
         displayManualItems = Object.keys(groups).map(pid => {
             const reqs = groups[pid];
+            if (reqs.length <= 1) return reqs[0];
             const total = reqs.reduce((sum, r) => sum + Number(r.requested_qty || 0), 0);
             return { productId: pid, totalReq: total, requests: reqs, isAggregated: true, item_name: reqs[0].item_name, unit: reqs[0].unit };
         });
@@ -1008,11 +1010,15 @@ async function showPrepBreakdownModal(productId, type) {
                                         </div>
                                     </div>
                                     <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                        <input type="number" class="breakdown-input" 
-                                            data-target-id="${targetId}" 
-                                            data-store-id="${store?.id || t.StoreID || t.store_id}" 
-                                            value="${defaultInput}" 
-                                            style="width: 60px; height: 36px; text-align: center; border-radius: 8px; border: 2px solid #cbd5e1; font-weight: 800; font-size: 1rem; color: var(--primary); outline: none;">
+                                        <div class="stepper-container" style="display: flex; align-items: center; background: white; border: 2px solid #cbd5e1; border-radius: 8px; padding: 2px;">
+                                            <button class="modal-stepper-btn minus" style="width: 28px; height: 28px; border: none; background: #f1f5f9; border-radius: 4px; cursor: pointer; color: #64748b; font-size: 0.8rem;"><i class="fas fa-minus"></i></button>
+                                            <input type="number" class="breakdown-input" 
+                                                data-target-id="${targetId}" 
+                                                data-store-id="${store?.id || t.StoreID || t.store_id}" 
+                                                value="${defaultInput}" 
+                                                style="width: 50px; height: 28px; text-align: center; border: none; background: transparent; font-weight: 800; font-size: 1rem; color: var(--primary); outline: none;">
+                                            <button class="modal-stepper-btn plus" style="width: 28px; height: 28px; border: none; background: #f1f5f9; border-radius: 4px; cursor: pointer; color: #64748b; font-size: 0.8rem;"><i class="fas fa-plus"></i></button>
+                                        </div>
                                         <span style="font-size: 0.75rem; font-weight: 800; color: #64748b;">${unit}</span>
                                     </div>
                                 </div>
@@ -1032,6 +1038,18 @@ async function showPrepBreakdownModal(productId, type) {
     `;
 
     document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    // Add Stepper Listeners
+    const modal = document.getElementById('prep-breakdown-modal');
+    modal.querySelectorAll('.modal-stepper-btn').forEach(btn => {
+        btn.onclick = () => {
+            const inp = btn.parentElement.querySelector('input');
+            let v = Number(inp.value);
+            if (btn.classList.contains('minus')) v = Math.max(0, v - 1);
+            else v = v + 1;
+            inp.value = v;
+        };
+    });
 
     document.getElementById('btn-confirm-batch-prep').onclick = async () => {
         const inputs = document.querySelectorAll('.breakdown-input');
