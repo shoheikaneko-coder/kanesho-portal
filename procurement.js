@@ -697,24 +697,29 @@ function renderMainContent(items) {
     attachMainContentListeners(main);
 }
 
-
 function renderPrepContent(shortItems) {
     const main = document.getElementById('proc-main-content');
     if (!main) return;
 
+    // 比率の設定: CK仕込み時は 3:1、それ以外は 1.2:1 (少し自動側を広く)
+    const splitRatio = selectedCategory === 'ck_prep' ? '3fr 1fr' : '1.2fr 1fr';
+    // グリッド列数: CK仕込み時は3列、それ以外は2列
+    const gridCols = selectedCategory === 'ck_prep' ? '1fr 1fr 1fr' : '1fr 1fr';
+    const gridSpan = selectedCategory === 'ck_prep' ? 3 : 2;
+
     main.innerHTML = `
-        <div style="display: grid; grid-template-columns: 1fr 1fr; height: 100%; overflow: hidden;">
+        <div style="display: grid; grid-template-columns: ${splitRatio}; height: 100%; overflow: hidden;">
             <!-- Left: Auto Alerts -->
             <div id="prep-auto-list" style="border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden;">
                 <div style="padding: 0.8rem 1.2rem; background: #fef2f2; border-bottom: 1px solid #fee2e2; display: flex; justify-content: space-between; align-items: center;">
                     <span style="font-size: 0.8rem; font-weight: 800; color: #b91c1c;"><i class="fas fa-robot"></i> 不足品目 (自動判定)</span>
                     <span class="badge" style="background: #ef4444; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem;">${shortItems.length}</span>
                 </div>
-                <div class="prep-scroll-area" style="flex: 1; overflow-y: auto; padding: 0.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; align-content: start;">
+                <div class="prep-scroll-area" style="flex: 1; overflow-y: auto; padding: 0.6rem; display: grid; grid-template-columns: ${gridCols}; gap: 0.6rem; align-content: start;">
                     ${shortItems.map(si => {
                         const master = cachedItems.find(i => i.id === si.ProductID);
                         return renderPrepRow(si, master, 'auto');
-                    }).join('') || '<div style="grid-column: span 2; text-align:center; padding:3rem; color:#94a3b8; font-size:0.8rem;">現在、不足している品目はありません</div>'}
+                    }).join('') || `<div style="grid-column: span ${gridSpan}; text-align:center; padding:3rem; color:#94a3b8; font-size:0.8rem;">現在、不足している品目はありません</div>`}
                 </div>
             </div>
             
@@ -733,7 +738,7 @@ function renderPrepContent(shortItems) {
                         <div id="prep-search-results" class="glass-panel" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 100; max-height: 300px; overflow-y: auto; margin-top: 5px; padding: 0.5rem; background: white; border: 1px solid var(--border); box-shadow: var(--shadow-md);"></div>
                     </div>
                 </div>
-                <div class="prep-scroll-area" style="flex: 1; overflow-y: auto; padding: 0;">
+                <div class="prep-scroll-area" style="flex: 1; overflow-y: auto; padding: 0.6rem;">
                     ${prepRequests.map(req => {
                         const master = cachedItems.find(i => i.id === req.item_id);
                         return renderPrepRow(req, master, 'manual');
@@ -742,7 +747,6 @@ function renderPrepContent(shortItems) {
             </div>
         </div>
     `;
-
     attachPrepListeners(main);
 }
 
@@ -762,25 +766,25 @@ function renderPrepRow(data, master, type = 'auto') {
     const tagHtml = isManual ? `<span style="font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; background: ${data.request_type === 'CK_CHOICE' ? '#dcfce7' : '#fef9c3'}; color: ${data.request_type === 'CK_CHOICE' ? '#166534' : '#854d0e'}; font-weight: 800; margin-left: 0.5rem;">${data.request_type === 'CK_CHOICE' ? 'CK判断' : '夜勤依頼'}</span>` : '';
 
     return `
-        <div class="prep-row" style="display: flex; flex-direction: column; gap: 0.8rem; padding: 0.8rem; border-radius: 12px; border: 1px solid var(--border); background: white; box-shadow: var(--shadow-sm); transition: all 0.2s;">
-            <div style="display: flex; flex-direction: column; min-width: 0;">
-                <div style="font-weight: 800; font-size: 0.85rem; color: #334155; line-height: 1.2; margin-bottom: 0.2rem;">
+        <div class="prep-row" style="display: flex; flex-direction: column; gap: 0.5rem; padding: 0.6rem 0.8rem; border-radius: 10px; border: 1px solid var(--border); background: white; box-shadow: var(--shadow-sm); transition: all 0.2s; position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.4rem;">
+                <div style="font-weight: 800; font-size: 0.8rem; color: #1e293b; line-height: 1.2; word-break: break-all; flex: 1;">
                     ${name}${tagHtml}
                 </div>
-                <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700;">
-                    必要: <span style="color: ${isManual ? '#10b981' : '#ef4444'}; font-family: monospace; font-size: 0.9rem;">${reqQty}</span> ${unit}
+                <div style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 800; white-space: nowrap; text-align: right; padding-top: 2px;">
+                    必要: <span style="color: ${isManual ? '#10b981' : '#ef4444'}; font-size: 0.85rem;">${reqQty}</span> ${unit}
                 </div>
             </div>
             
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; border-top: 1px solid #f1f5f9; pt: 0.6rem; margin-top: 0.2rem; padding-top: 0.6rem;">
-                <div class="stepper-container" style="padding: 1px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; border-top: 1px solid #f1f5f9; padding-top: 0.4rem;">
+                <div class="stepper-container" style="padding: 1px; transform: scale(0.95); transform-origin: left;">
                     <button class="stepper-btn btn-minus" style="width:24px; height:24px; font-size:0.7rem;" data-id="${data.id}" data-type="${type}"><i class="fas fa-minus"></i></button>
                     <input type="number" class="prep-qty-input" data-id="${data.id}" data-type="${type}" value="${reqQty}" 
-                        style="width: 38px; border: none; background: transparent; text-align: center; font-weight: 800; font-size: 0.9rem; color: var(--primary); outline: none;">
+                        style="width: 34px; border: none; background: transparent; text-align: center; font-weight: 800; font-size: 0.85rem; color: var(--primary); outline: none;">
                     <button class="stepper-btn btn-plus" style="width:24px; height:24px; font-size:0.7rem;" data-id="${data.id}" data-type="${type}"><i class="fas fa-plus"></i></button>
                 </div>
                 <button class="btn btn-primary btn-confirm-prep" data-id="${data.id}" data-type="${type}"
-                    style="padding: 0.4rem 0.6rem; font-size: 0.75rem; border-radius: 6px; font-weight: 800; white-space: nowrap;">仕込み完了</button>
+                    style="padding: 0.35rem 0.6rem; font-size: 0.72rem; border-radius: 6px; font-weight: 800; white-space: nowrap;">仕込み完了</button>
             </div>
         </div>
     `;
