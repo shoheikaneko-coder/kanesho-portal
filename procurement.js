@@ -55,7 +55,9 @@ export const procurementPageHtml = `
                 <div style="display: flex; align-items: center; gap: 0.8rem;">
                     <i class="fas fa-truck-loading" style="color: var(--primary);"></i>
                     <h3 id="proc-current-title" style="margin: 0; font-size: 1rem; font-weight: 800;">仕入れ・調達</h3>
-                    <span id="proc-scope-badge" class="badge" style="background: #eff6ff; color: #2563eb; font-size: 0.7rem;">自店舗</span>
+                    <div id="proc-header-scope-container">
+                        <span id="proc-scope-badge" class="badge" style="background: #eff6ff; color: #2563eb; font-size: 0.7rem;">自店舗</span>
+                    </div>
                 </div>
                 
                 <div style="display: flex; align-items: center; gap: 0.8rem;">
@@ -340,8 +342,24 @@ function setupEventListeners() {
 }
 
 function populateStoreSelector() {
-    const selector = document.getElementById('select-proc-store');
-    if (!selector) return;
+    const sidebarSelector = document.getElementById('select-proc-store');
+    const headerContainer = document.getElementById('proc-header-scope-container');
+    
+    // 現在アクティブなセレクターを特定（サイドバーかヘッダーか）
+    const isHeaderMode = selectedCategory !== 'purchase';
+    
+    // ヘッダーモードの場合はヘッダー内にセレクトボックスを作成
+    if (isHeaderMode && headerContainer) {
+        headerContainer.innerHTML = `
+            <select id="select-proc-store-header" style="padding: 0.3rem 0.6rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.75rem; font-weight: 800; background: white; outline: none; cursor: pointer; color: #2563eb; border-color: #dbeafe;">
+            </select>
+        `;
+    } else if (headerContainer) {
+        headerContainer.innerHTML = `<span id="proc-scope-badge" class="badge" style="background: #eff6ff; color: #2563eb; font-size: 0.7rem;">自店舗</span>`;
+    }
+
+    const activeSelector = isHeaderMode ? document.getElementById('select-proc-store-header') : sidebarSelector;
+    if (!activeSelector) return;
 
     let html = '';
     allGroupStores.forEach(s => {
@@ -352,10 +370,10 @@ function populateStoreSelector() {
     const isGroup = selectedScope === 'group' || selectedTargetStoreId === 'GROUP_TOTAL';
     html += `<option value="GROUP_TOTAL" ${isGroup ? 'selected' : ''}>グループ全体</option>`;
     
-    selector.innerHTML = html;
+    activeSelector.innerHTML = html;
     
-    selector.onchange = () => {
-        const val = selector.value;
+    activeSelector.onchange = () => {
+        const val = activeSelector.value;
         if (val === 'GROUP_TOTAL') {
             selectedScope = 'group';
             selectedTargetStoreId = 'GROUP_TOTAL';
@@ -489,10 +507,10 @@ function render() {
     const catNames = { purchase: '仕入れ・調達', store_prep: '店舗仕込み', ck_prep: 'CK仕込み', transfer: '店舗間移動' };
     headerTitle.textContent = catNames[selectedCategory];
     
-    // カテゴリーに応じてサイドバー全体の表示/非表示を切り替える（CK仕込み時は非表示にしてメインエリアを広げる）
+    // カテゴリーに応じてサイドバー全体の表示/非表示を切り替える（仕入れ以外は非表示にしてメインエリアを広げる）
     const aside = document.getElementById('proc-sidebar');
     if (aside) {
-        aside.style.display = (selectedCategory === 'ck_prep') ? 'none' : 'flex';
+        aside.style.display = (selectedCategory === 'purchase') ? 'flex' : 'none';
     }
 
     const vendorSection = document.getElementById('proc-vendor-section');
@@ -500,11 +518,14 @@ function render() {
 
     const scopeConfig = document.getElementById('proc-scope-config');
     if (scopeConfig) {
-        scopeConfig.style.display = (selectedCategory === 'ck_prep') ? 'none' : 'block';
+        scopeConfig.style.display = (selectedCategory === 'purchase') ? 'block' : 'none';
     }
 
     const btnHistory = document.getElementById('btn-proc-history');
     if (btnHistory) btnHistory.style.display = selectedCategory === 'transfer' ? 'block' : 'none';
+
+    // 店舗選択セレクターの状態を同期（サイドバー隠す場合はヘッダー側に表示）
+    populateStoreSelector();
 
     // 1. Filter data based on scope (Selected store or all stores in group)
     let filteredData = procurementData;
@@ -701,10 +722,10 @@ function renderPrepContent(shortItems) {
     const main = document.getElementById('proc-main-content');
     if (!main) return;
 
-    const isCK = selectedCategory === 'ck_prep';
-    const splitRatio = isCK ? '3fr 1fr' : '1.2fr 1fr';
-    const gridCols = isCK ? '1fr 1fr 1fr' : '1fr 1fr';
-    const gridSpan = isCK ? 3 : 2;
+    const isFullWidth = selectedCategory === 'ck_prep' || selectedCategory === 'store_prep';
+    const splitRatio = isFullWidth ? '3fr 1fr' : '1.2fr 1fr';
+    const gridCols = isFullWidth ? '1fr 1fr 1fr' : '1fr 1fr';
+    const gridSpan = isFullWidth ? 3 : 2;
 
     // --- Aggregation Logic (for CK) ---
     let displayAutoItems = [];
