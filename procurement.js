@@ -1,5 +1,5 @@
 import { db } from './firebase.js';
-import { collection, getDocs, addDoc, updateDoc, doc, getDoc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, getDocs, addDoc, updateDoc, doc, getDoc, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getEffectivePrice } from './cost_engine.js';
 import { showAlert, showConfirm } from './ui_utils.js';
 
@@ -133,6 +133,8 @@ let cachedItems = [];
 let cachedIngredients = [];
 let cachedSuppliers = [];
 let currentUser = null;
+let procurementUnsubscribe = null;
+
 
 export async function initProcurementPage(user, category = null) {
     currentUser = user;
@@ -142,6 +144,13 @@ export async function initProcurementPage(user, category = null) {
     if (category) {
         selectedCategory = category;
     }
+
+    // 既存のリスナーがあれば解除
+    if (procurementUnsubscribe) {
+        procurementUnsubscribe();
+        procurementUnsubscribe = null;
+    }
+
 
     await showLoading(true);
     try {
@@ -200,11 +209,35 @@ async function loadInitialData() {
 
 async function refreshProcurementData() {
     const storeIds = allGroupStores.map(s => s.id);
-    // Batch fetch store items for all stores in group
-    const q = query(collection(db, "m_store_items"), where("StoreID", "in", storeIds));
-    const snap = await getDocs(q);
-    procurementData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (!storeIds || storeIds.length === 0) return;
+
+    // 既存のリスナーがあれば解除
+    if (procurementUnsubscribe) {
+        procurementUnsubscribe();
+        procurementUnsubscribe = null;
+    }
+
+    return new Promise((resolve) => {
+        const q = query(collection(db, "m_store_items"), where("StoreID", "in", storeIds));
+        
+        let isFirstLoad = true;
+        procurementUnsubscribe = onSnapshot(q, (snap) => {
+            console.log("Procurement snapshot received (PC). Size:", snap.size);
+            procurementData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            
+            if (isFirstLoad) {
+                isFirstLoad = false;
+                resolve();
+            } else {
+                render();
+            }
+        }, (err) => {
+            console.error("Procurement listener error (PC):", err);
+            resolve();
+        });
+    });
 }
+
 
 function setupEventListeners() {
     const btnStore = document.getElementById('btn-scope-store');
