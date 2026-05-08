@@ -1,5 +1,5 @@
 import { db } from './firebase.js';
-import { collection, getDocs, addDoc, updateDoc, doc, getDoc, query, where, orderBy, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, getDocs, addDoc, updateDoc, doc, getDoc, query, where, orderBy, onSnapshot, writeBatch, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getEffectivePrice } from './cost_engine.js';
 import { showAlert, showConfirm } from './ui_utils.js';
 
@@ -767,7 +767,12 @@ function renderPrepRow(data, master, type = 'auto') {
 
     return `
         <div class="prep-row" style="display: flex; flex-direction: column; gap: 0.5rem; padding: 0.6rem 0.8rem; border-radius: 10px; border: 1px solid var(--border); background: white; box-shadow: var(--shadow-sm); transition: all 0.2s; position: relative;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.4rem;">
+            ${isManual ? `
+                <button class="btn-delete-prep" data-id="${data.id}" style="position: absolute; top: 4px; right: 4px; background: none; border: none; padding: 2px; cursor: pointer; color: #cbd5e1; font-size: 0.75rem; transition: color 0.2s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#cbd5e1'">
+                    <i class="fas fa-times"></i>
+                </button>
+            ` : ''}
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.4rem; padding-right: ${isManual ? '14px' : '0'};">
                 <div style="font-weight: 800; font-size: 0.8rem; color: #1e293b; line-height: 1.2; word-break: break-all; flex: 1;">
                     ${name}${tagHtml}
                 </div>
@@ -815,6 +820,18 @@ function attachPrepListeners(container) {
             if (qty <= 0) return;
             
             await executePrepAction(id, type, qty);
+        };
+    });
+
+    // Delete Buttons (Manual Requests)
+    container.querySelectorAll('.btn-delete-prep').forEach(btn => {
+        btn.onclick = async (e) => {
+            e.stopPropagation();
+            const id = btn.dataset.id;
+            const confirmed = confirm("この仕込み依頼を削除しますか？");
+            if (confirmed) {
+                await deletePrepRequest(id);
+            }
         };
     });
 
@@ -885,6 +902,19 @@ function attachPrepListeners(container) {
     // Radar Button
     const btnRadar = document.getElementById('btn-prep-radar');
     if (btnRadar) btnRadar.onclick = showPrepRadar;
+}
+
+async function deletePrepRequest(requestId) {
+    await showLoading(true);
+    try {
+        await deleteDoc(doc(db, "t_prep_requests", requestId));
+        showAlert("完了", "依頼を削除しました");
+    } catch (err) {
+        console.error("Failed to delete prep request:", err);
+        showAlert("エラー", "削除に失敗しました");
+    } finally {
+        await showLoading(false);
+    }
 }
 
 async function addPrepRequest(productId) {
