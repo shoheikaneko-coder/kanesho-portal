@@ -432,7 +432,14 @@ async function loadInitialData() {
 async function refreshProcurementData() {
     if (!allGroupStores || allGroupStores.length === 0) return;
     
-    const storeIds = allGroupStores.map(s => s.id);
+    // 監視対象の店舗IDリストを作成（id, store_id, code のすべてを含める）
+    const storeIds = [];
+    allGroupStores.forEach(s => {
+        if (s.id) storeIds.push(s.id);
+        if (s.store_id && !storeIds.includes(s.store_id)) storeIds.push(s.store_id);
+        if (s.code && !storeIds.includes(s.code)) storeIds.push(s.code);
+    });
+
     
     // 既存のリスナーがあれば解除
     if (procurementUnsubscribe) {
@@ -443,7 +450,9 @@ async function refreshProcurementData() {
     console.log("Setting up real-time listener for procurement (Group):", storeIds);
     
     return new Promise((resolve) => {
-        const q = query(collection(db, "m_store_items"), where("StoreID", "in", storeIds));
+        // Firestoreの 'in' クエリは最大30件まで
+        const q = query(collection(db, "m_store_items"), where("StoreID", "in", storeIds.slice(0, 30)));
+
         
         let isFirstLoad = true;
         procurementUnsubscribe = onSnapshot(q, (snap) => {
@@ -592,6 +601,17 @@ function renderItemRow(si, master, showStoreName = false, isInnerRow = false) {
                 <div class="proc-req-badge" style="min-width: 45px; margin-left: 4px;">
                     <span style="font-size: 1rem;">${req}</span>
                     <span style="font-size: 0.55rem; font-weight: 700; opacity: 0.8;">${sUnit}</span>
+                    ${(() => {
+                        const conv = Number(si.unit_conversion_amount || 1);
+                        if (conv === 1) return '';
+                        let mUnit = master?.unit || master?.単位 || '';
+                        if (!mUnit) {
+                            const ing = cachedIngredients.find(i => i.item_id === si.ProductID);
+                            mUnit = ing?.unit || ing?.単位 || '';
+                        }
+                        if (!mUnit) return '';
+                        return `<span style="font-size: 0.5rem; color: #64748b; font-weight: 600; margin-top: 1px;">(= ${(req * conv).toLocaleString()}${mUnit})</span>`;
+                    })()}
                 </div>
 
                 <div class="proc-stepper">
@@ -623,6 +643,17 @@ function renderItemRow(si, master, showStoreName = false, isInnerRow = false) {
             <div class="proc-req-badge">
                 <span style="font-size: 1.1rem;">${req}</span>
                 <span style="font-size: 0.6rem; font-weight: 700; opacity: 0.8;">${sUnit}</span>
+                ${(() => {
+                    const conv = Number(si.unit_conversion_amount || 1);
+                    if (conv === 1) return '';
+                    let mUnit = master?.unit || master?.単位 || '';
+                    if (!mUnit) {
+                        const ing = cachedIngredients.find(i => i.item_id === si.ProductID);
+                        mUnit = ing?.unit || ing?.単位 || '';
+                    }
+                    if (!mUnit) return '';
+                    return `<span style="font-size: 0.55rem; color: #64748b; font-weight: 600; margin-top: 1px;">(= ${(req * conv).toLocaleString()}${mUnit})</span>`;
+                })()}
             </div>
 
             <div class="proc-stepper">
@@ -938,7 +969,20 @@ function renderMainContent(items) {
                                 <div class="proc-item-name-text" style="font-weight: 800; color: #1e293b;">${name}</div>
                             </div>
                             <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                <div style="font-size: 0.7rem; font-weight: 800; color: var(--primary); background: #fff5f5; padding: 2px 8px; border-radius: 10px; white-space: nowrap;">計 ${totalReq} ${representativeUnit}</div>
+                                <div style="font-size: 0.7rem; font-weight: 800; color: var(--primary); background: #fff5f5; padding: 2px 8px; border-radius: 10px; white-space: nowrap;">
+                                    計 ${totalReq} ${representativeUnit}
+                                    ${(() => {
+                                        const conv = Number(productItems[0]?.unit_conversion_amount || 1);
+                                        if (conv === 1) return '';
+                                        let mUnit = master?.unit || master?.単位 || '';
+                                        if (!mUnit) {
+                                            const ing = cachedIngredients.find(i => i.item_id === productId);
+                                            mUnit = ing?.unit || ing?.単位 || '';
+                                        }
+                                        if (!mUnit) return '';
+                                        return `<span style="font-size: 0.6rem; color: #64748b; font-weight: 600; margin-left: 2px;">(= ${(totalReq * conv).toLocaleString()}${mUnit})</span>`;
+                                    })()}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1191,7 +1235,11 @@ async function executeTransfer(destStoreItemId, qty) {
         return;
     }
 
-    const sourceSi = procurementData.find(d => d.StoreID === sourceStoreId && d.ProductID === destSi.ProductID);
+    const sourceSi = procurementData.find(d => 
+        (d.StoreID === sourceStoreId || d.StoreID === sourceStoreId) && 
+        d.ProductID === destSi.ProductID
+    );
+
     
     // 単位換算の計算
     const destConv = Number(destSi.unit_conversion_amount || 1);
@@ -1285,8 +1333,9 @@ function renderVendorList(search = '') {
     if (!container) return;
 
     const filteredData = selectedScope === 'store' 
-        ? procurementData.filter(d => d.StoreID === currentStore.id)
+        ? procurementData.filter(d => d.StoreID === currentStore.id || d.StoreID === currentStore.store_id || d.StoreID === currentStore.code)
         : procurementData;
+
 
     const purchaseItems = filteredData.filter(si => {
         const qty = Number(si.個数 || 0);

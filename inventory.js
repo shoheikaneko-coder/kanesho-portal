@@ -356,6 +356,12 @@ let cachedMenus = [];
 let currentUser = null;
 let inventoryUnsubscribe = null;
 
+// --- パフォーマンス最適化フラグ ---
+// マスターデータはセッション中1回だけ取得する
+let masterDataLoaded = false;
+// 現在リッスン中の店舗コード（同一店舗の重複リスナー防止）
+let currentListenedStore = null;
+
 // Settings State
 let settingsSearchQuery = '';
 let settingsBulkMode = false;
@@ -396,6 +402,12 @@ let collapsedSections = new Set(); // Store location names
 
 
 async function loadInitialData() {
+    // [最適化] マスターデータはセッション中に1度だけ取得する。
+    if (masterDataLoaded) {
+        console.log("[Inventory PC] Master data already cached, skipping fetch.");
+        return;
+    }
+
     try {
         // 1. Load Stores from m_stores (The master source)
         const storeSnap = await getDocs(query(collection(db, "m_stores"), orderBy("store_id")));
@@ -438,6 +450,10 @@ async function loadInitialData() {
         });
 
         cachedMenusForInv = cachedMenus;
+
+        // キャッシュ完了フラグをセット
+        masterDataLoaded = true;
+        console.log("[Inventory PC] Master data loaded and cached.");
 
     } catch (err) {
         console.error("Error loading initial inventory data:", err);
@@ -643,23 +659,12 @@ function render() {
 async function showMasterSettings() {
     const overlay = document.getElementById('inv-master-settings-overlay');
     const content = document.getElementById('inv-master-settings-content');
-    const overlayLoad = document.getElementById('inv-loading-overlay');
     
     if (overlay && content) {
-        if (overlayLoad) overlayLoad.style.display = 'flex';
-        
-        try {
-            // Re-load to ensure we have latest data
-            await loadStoreInventory(selectedStore.code);
-            overlay.classList.add('active');
-            renderSettingsView(content);
-        } catch (err) {
-            console.error("Master settings open failed:", err);
-            showAlert('エラー', 'データの取得に失敗しました');
-        } finally {
-            // Safety: Ensure loading is hidden even if render fails
-            if (overlayLoad) overlayLoad.style.display = 'none';
-        }
+        // [最適化] データは onSnapshot により常に最新状態のため、
+        // 設定画面を開くたびに再フェッチする必要はない。
+        overlay.classList.add('active');
+        renderSettingsView(content);
     }
 }
 
@@ -1174,7 +1179,7 @@ async function handleManualReset() {
         });
 
         await batch.commit();
-        await loadStoreInventory(selectedStore.code);
+        // [最適化] ローカル状態はforEachループ内で更新済み。再フェッチ不要。
         render(); 
         if (overlay) overlay.style.setProperty('display', 'none', 'important');
         alert(`「${selectedTiming.name}」の在庫チェックをリセットしました。`);
@@ -1325,7 +1330,11 @@ async function toggleItemConfirmation(id) {
             business_date: getBusinessDate(selectedStore.resetTime)
         });
 
-        await loadStoreInventory(selectedStore.code);
+        // [最適化] 楽観的ローカル更新。再フェッチ不要。
+        // 他ユーザーの変更は onSnapshot のデルタ配信で自動反映される。
+        item.is_confirmed = newConfirmed;
+        item.updated_at = now;
+        item.confirmed_at = newConfirmed ? now : null;
         render();
     } catch (err) {
         console.error("Toggle confirmation failed:", err);
@@ -1378,7 +1387,15 @@ async function handleSectionConfirm(locationName) {
         });
 
         await batch.commit();
-        await loadStoreInventory(selectedStore.code);
+
+        // [最適化] 楽観的ローカル更新。バッチ後に再フェッチ不要。
+        itemsInSection.forEach(item => {
+            item.is_confirmed = true;
+            item.updated_at = now;
+            item.confirmed_at = now;
+            item.confirmed_by = currentUser?.Name || 'unknown';
+        });
+
         render();
     } catch (err) {
         console.error("Section confirm failed:", err);
@@ -1951,11 +1968,19 @@ async function loadStoreInventory(internalCode) {
         return;
     }
 
-    // 既存のリスナーがあれば解除
+    // [最適化] 同一店舗のリスナーが既に稼働中なら再生成しない。
+    if (inventoryUnsubscribe && currentListenedStore === internalCode) {
+        console.log("[Inventory PC] Already listening to store:", internalCode, "- reusing existing listener.");
+        return;
+    }
+
+    // 別店舗への切替時のみ既存リスナーを解除する
     if (inventoryUnsubscribe) {
         inventoryUnsubscribe();
         inventoryUnsubscribe = null;
     }
+
+    currentListenedStore = internalCode;
 
     const main = document.getElementById('inv-main-content');
     if (main) main.innerHTML = `<div style="text-align:center; padding: 4rem;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary);"></i><p>読み込み中...</p></div>`;
@@ -1966,7 +1991,7 @@ async function loadStoreInventory(internalCode) {
         let isFirstLoad = true;
 
         inventoryUnsubscribe = onSnapshot(q, async (snap) => {
-            console.log("Inventory snapshot received (PC). Items:", snap.size);
+            console.log("[Inventory PC] Snapshot received. Changed docs:", snap.docChanges().length, "/ Total:", snap.size);
             
             const newData = [];
             snap.forEach(d => {
@@ -1975,20 +2000,21 @@ async function loadStoreInventory(internalCode) {
             
             inventoryData = newData;
 
+            // [最適化] resolve()を先に呼んでUIをブロックしない。
+            // 理論在庫はバックグラウンドで計算する。
             if (isFirstLoad) {
-                try {
-                    await loadTheoreticalStocks(internalCode);
-                } catch (err) {
-                    console.error("Theoretical stock error:", err);
-                }
                 isFirstLoad = false;
                 resolve();
+                loadTheoreticalStocks(internalCode).catch(err => {
+                    console.error("Theoretical stock error:", err);
+                });
             }
 
             render();
             
         }, (err) => {
-            console.error("Error in real-time listener (PC):", err);
+            console.error("[Inventory PC] Error in real-time listener:", err);
+            currentListenedStore = null; // エラー時はリセット
             if (isFirstLoad) reject(err);
         });
     });
@@ -2123,22 +2149,23 @@ function showItemSettingsModal(itemId) {
     };
     unitInput.oninput = updateUnitPreview;
     updateUnitPreview();
-    
     // Source Store Handling
     const sourceContainer = document.getElementById('modal-source-store-container');
     const sourceSelect = document.getElementById('modal-source-store');
     const actionSelect = document.getElementById('modal-action');
+    const sourceWarning = document.getElementById('modal-source-warning');
+
+    // 選択肢の初期化 (1回のみ)
+    const currentStoreData = allStores.find(s => s.code === selectedStore.code);
+    const currentGroup = currentStoreData?.group_name;
+    const sameGroupStores = allStores.filter(s => s.code !== selectedStore.code && s.group_name === currentGroup);
+    sourceSelect.innerHTML = sameGroupStores.map(s => `<option value="${s.code}" ${s.code === item.default_source_store_id ? 'selected' : ''}>${s.name}</option>`).join('') || '<option value="">(グループ内店舗なし)</option>';
     
     const updateSourceVisibility = async () => {
         if (actionSelect.value === 'transfer') {
             sourceContainer.style.display = 'block';
-            const currentStoreData = allStores.find(s => s.code === selectedStore.code);
-            const currentGroup = currentStoreData?.group_name;
-            const sameGroupStores = allStores.filter(s => s.code !== selectedStore.code && s.group_name === currentGroup);
             
-            sourceSelect.innerHTML = sameGroupStores.map(s => `<option value="${s.code}" ${s.code === item.default_source_store_id ? 'selected' : ''}>${s.name}</option>`).join('') || '<option value="">(グループ内店舗なし)</option>';
-            
-            // 同期処理
+            // 同期処理 & 登録確認
             if (sourceSelect.value) {
                 const sid = `${sourceSelect.value}_${item.ProductID}`;
                 const sDoc = await getDoc(doc(db, "m_store_items", sid));
@@ -2150,6 +2177,14 @@ function showItemSettingsModal(itemId) {
                     document.getElementById('modal-conv').readOnly = true;
                     document.getElementById('modal-unit').style.background = "#f1f5f9";
                     document.getElementById('modal-conv').style.background = "#f1f5f9";
+                    if (sourceWarning) sourceWarning.style.display = 'none';
+                } else {
+                    // 登録されていない場合
+                    document.getElementById('modal-unit').readOnly = false;
+                    document.getElementById('modal-conv').readOnly = false;
+                    document.getElementById('modal-unit').style.background = "";
+                    document.getElementById('modal-conv').style.background = "";
+                    if (sourceWarning) sourceWarning.style.display = 'block';
                 }
             }
         } else {
@@ -2158,6 +2193,7 @@ function showItemSettingsModal(itemId) {
             document.getElementById('modal-conv').readOnly = false;
             document.getElementById('modal-unit').style.background = "";
             document.getElementById('modal-conv').style.background = "";
+            if (sourceWarning) sourceWarning.style.display = 'none';
         }
         updateUnitPreview(); // プレビューを同期
     };

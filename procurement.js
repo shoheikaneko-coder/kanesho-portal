@@ -128,14 +128,14 @@ let selectedVendor = null;
 let selectedScope = 'store'; // 'store' or 'group'
 let selectedTargetStoreId = null; // Specific store ID if scope is 'store'
 let selectedCategory = null; // 'purchase', 'store_prep', 'ck_prep', 'transfer'
-
+let cachedItems = [];
+let cachedIngredients = [];
+let cachedSuppliers = [];
+let cachedMenus = [];
 let allGroupStores = [];    // Stores in the same group
 let currentStore = null;    // Current user's store object
 let procurementData = [];   // Aggregated store items
 let collapsedItems = new Set();
-let cachedItems = [];
-let cachedIngredients = [];
-let cachedSuppliers = [];
 let currentUser = null;
 let procurementUnsubscribe = null;
 let prepRequests = [];
@@ -169,7 +169,11 @@ export async function initProcurementPage(user, category = null) {
         await loadInitialData();
         
         // デフォルトですべて畳んだ状態にする
-        procurementData.forEach(si => collapsedItems.add(si.ProductID));
+        if (procurementData) {
+            procurementData.forEach(si => {
+                if (si.ProductID) collapsedItems.add(si.ProductID);
+            });
+        }
 
         // CK社員の場合はデフォルトでグループ表示にし、設定を隠す
         if (selectedCategory === 'ck_prep') {
@@ -177,7 +181,7 @@ export async function initProcurementPage(user, category = null) {
             selectedTargetStoreId = 'GROUP_TOTAL';
         } else {
             selectedScope = 'store';
-            selectedTargetStoreId = currentStore.id;
+            selectedTargetStoreId = currentStore?.id || 'ALL';
         }
 
         setupEventListeners();
@@ -186,39 +190,47 @@ export async function initProcurementPage(user, category = null) {
 
     } catch (err) {
         console.error("Procurement init failed:", err);
-        showAlert("エラー", "データの読み込みに失敗しました");
+        showAlert("エラー", `データの読み込みに失敗しました: ${err.message || '不明なエラー'}`);
     } finally {
         await showLoading(false);
     }
 }
 
 async function loadInitialData() {
-    const [storeSnap, itemSnap, ingSnap, supSnap] = await Promise.all([
+    console.log("[Debug] loadInitialData starting...");
+    const [storeSnap, itemSnap, ingSnap, supSnap, menuSnap] = await Promise.all([
         getDocs(collection(db, "m_stores")),
         getDocs(collection(db, "m_items")),
         getDocs(collection(db, "m_ingredients")),
-        getDocs(collection(db, "m_suppliers"))
+        getDocs(collection(db, "m_suppliers")),
+        getDocs(collection(db, "m_menus"))
     ]);
 
     const stores = storeSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     cachedItems = itemSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     cachedIngredients = ingSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     cachedSuppliers = supSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    
-    // User's store
-    const storeId = currentUser?.StoreID || stores[0]?.id;
-    currentStore = stores.find(s => s.id === storeId || s.store_id === storeId);
-    
-    if (!currentStore) throw new Error("所属店舗が見つかりません");
+    cachedMenus = menuSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-    // 2. Get all stores in the same group
-    const groupName = currentStore.group_name || currentStore.所属グループ || '未設定';
-    allGroupStores = stores.filter(s => (s.group_name || s.所属グループ || '未設定') === groupName);
+    console.log(`[Debug] Data loaded. Stores:${stores.length}, Menus:${cachedMenus.length}`);
+
+    // User's store identification
+    const userStoreId = currentUser?.StoreID;
+    currentStore = stores.find(s => s.id === userStoreId || s.store_id === userStoreId || s.code === userStoreId) || stores[0];
+    
+    // Group identification
+    const gName = currentStore?.group_name || currentStore?.所属グループ || '未設定';
+    allGroupStores = stores.filter(s => (s.group_name || s.所属グループ || '未設定') === gName);
+
+    if (allGroupStores.length === 0 && currentStore) {
+        allGroupStores = [currentStore];
+    }
+    
+    console.log(`[Aggregation Debug] UserStoreID: ${userStoreId}, Group: ${gName}, StoresInGroup: ${allGroupStores.length}`);
 
     // 3. Load all store items for the group
     await Promise.all([refreshProcurementData(), refreshPrepRequests()]);
 }
-
 
 async function refreshProcurementData() {
     // 監視対象の店舗IDリストを作成（id, store_id, code のすべてを含める）
@@ -229,7 +241,12 @@ async function refreshProcurementData() {
         if (s.code && !storeIds.includes(s.code)) storeIds.push(s.code);
     });
 
-    if (storeIds.length === 0) return;
+    // De-duplicate
+    const uniqueIds = [...new Set(storeIds.filter(Boolean))];
+    if (uniqueIds.length === 0) {
+        procurementData = [];
+        return;
+    }
 
     // 既存のリスナーがあれば解除
     if (procurementUnsubscribe) {
@@ -238,24 +255,30 @@ async function refreshProcurementData() {
     }
 
     return new Promise((resolve) => {
-        // Firestoreの 'in' クエリは最大30件まで
-        const q = query(collection(db, "m_store_items"), where("StoreID", "in", storeIds.slice(0, 30)));
-        
-        let isFirstLoad = true;
-        procurementUnsubscribe = onSnapshot(q, (snap) => {
-            console.log("Procurement snapshot received (PC). Size:", snap.size);
-            procurementData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        try {
+            const q = query(
+                collection(db, "m_store_items"), 
+                where("StoreID", "in", uniqueIds.slice(0, 30))
+            );
             
-            if (isFirstLoad) {
-                isFirstLoad = false;
+            let isFirstLoad = true;
+            procurementUnsubscribe = onSnapshot(q, (snap) => {
+                procurementData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                console.log(`[Debug] Procurement Data loaded: ${procurementData.length} items for uniqueIds:`, uniqueIds);
+                if (isFirstLoad) {
+                    isFirstLoad = false;
+                    resolve();
+                } else {
+                    render();
+                }
+            }, (err) => {
+                console.error("Procurement listener error:", err);
                 resolve();
-            } else {
-                render();
-            }
-        }, (err) => {
-            console.error("Procurement listener error (PC):", err);
+            });
+        } catch (err) {
+            console.error("refreshProcurementData query failed:", err);
             resolve();
-        });
+        }
     });
 }
 
@@ -267,33 +290,60 @@ async function refreshPrepRequests() {
 
     if (selectedCategory !== 'store_prep' && selectedCategory !== 'ck_prep') return;
 
-    const storeIds = [];
-    allGroupStores.forEach(s => {
-        if (s.id) storeIds.push(s.id);
-        if (s.store_id && !storeIds.includes(s.store_id)) storeIds.push(s.store_id);
-        if (s.code && !storeIds.includes(s.code)) storeIds.push(s.code);
-    });
+    let storeIds = [];
+    if (selectedCategory === 'store_prep') {
+        const target = allGroupStores.find(s => s.id === selectedTargetStoreId);
+        if (target) {
+            if (target.id) storeIds.push(target.id);
+            if (target.store_id) storeIds.push(target.store_id);
+            if (target.code) storeIds.push(target.code);
+        } else {
+            // Fallback to current store
+            if (currentStore.id) storeIds.push(currentStore.id);
+            if (currentStore.store_id) storeIds.push(currentStore.store_id);
+            if (currentStore.code) storeIds.push(currentStore.code);
+        }
+    } else {
+        // CK Prep: Entire Group
+        allGroupStores.forEach(s => {
+            if (s.id) storeIds.push(s.id);
+            if (s.store_id && !storeIds.includes(s.store_id)) storeIds.push(s.store_id);
+            if (s.code && !storeIds.includes(s.code)) storeIds.push(s.code);
+        });
+    }
+
+    // De-duplicate
+    const uniqueIds = [...new Set(storeIds.filter(Boolean))];
+    if (uniqueIds.length === 0) {
+        prepRequests = [];
+        return;
+    }
 
     return new Promise((resolve) => {
-        const q = query(
-            collection(db, "t_prep_requests"), 
-            where("store_id", "in", storeIds.slice(0, 30)),
-            where("status", "==", "PENDING")
-        );
-        
-        let isFirstLoad = true;
-        prepUnsubscribe = onSnapshot(q, (snap) => {
-            prepRequests = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            if (isFirstLoad) {
-                isFirstLoad = false;
+        try {
+            const q = query(
+                collection(db, "t_prep_requests"), 
+                where("store_id", "in", uniqueIds.slice(0, 30)),
+                where("status", "==", "PENDING")
+            );
+            
+            let isFirstLoad = true;
+            prepUnsubscribe = onSnapshot(q, (snap) => {
+                prepRequests = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                if (isFirstLoad) {
+                    isFirstLoad = false;
+                    resolve();
+                } else {
+                    render();
+                }
+            }, (err) => {
+                console.error("Prep requests listener error:", err);
                 resolve();
-            } else {
-                render();
-            }
-        }, (err) => {
-            console.error("Prep requests listener error:", err);
+            });
+        } catch (err) {
+            console.error("refreshPrepRequests failed to query:", err);
             resolve();
-        });
+        }
     });
 }
 
@@ -463,6 +513,20 @@ function renderItemRow(si, master, showStoreName = false) {
                     ${selectedCategory === 'transfer' ? locHtml : ''}
                     <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700;">
                         必要: <span style="color:var(--danger); font-size: 1rem; font-family: monospace;">${req}</span> ${sUnit}
+                        ${(() => {
+                            const conv = Number(si.unit_conversion_amount || 1);
+                            if (conv === 1) return '';
+                            
+                            let mUnit = master?.unit || master?.単位 || '';
+                            if (!mUnit) {
+                                const ing = cachedIngredients.find(i => i.item_id === si.ProductID);
+                                mUnit = ing?.unit || ing?.単位 || '';
+                            }
+                            if (!mUnit) return '';
+                            
+                            const baseQty = (req * conv).toLocaleString();
+                            return `<span style="color: #64748b; font-weight: 600; margin-left: 0.3rem;">(= ${baseQty} ${mUnit})</span>`;
+                        })()}
                     </div>
                 </div>
             </div>
@@ -545,11 +609,16 @@ function render() {
     const shortItems = filteredData.filter(si => {
         const qty = Number(si.個数 || 0);
         const par = Number(si.定数 || 0);
-        if (par <= 0 || qty >= par) return false;
-
         const action = si.shortage_action_type || 'purchase';
-        return action === selectedCategory;
+        
+        // Match condition: action type must match (note: database uses 'prep' for store_prep)
+        const matchesCategory = (action === selectedCategory) || (selectedCategory === 'store_prep' && action === 'prep');
+        const isShort = (par > 0 && qty < par);
+        
+        return matchesCategory && isShort;
     });
+
+    console.log(`[Debug] render() - category:${selectedCategory}, totalData:${filteredData.length}, shortItems:${shortItems.length}`);
 
     if (selectedCategory === 'purchase') {
         // ... (existing vendor logic)
@@ -722,6 +791,10 @@ function renderPrepContent(shortItems) {
     const main = document.getElementById('proc-main-content');
     if (!main) return;
 
+    // Explicitly define local isCK to override global fallback
+    const isCK = selectedCategory === 'ck_prep';
+    window.isCK = isCK; 
+    
     const isFullWidth = selectedCategory === 'ck_prep' || selectedCategory === 'store_prep';
     const splitRatio = isFullWidth ? '3fr 1fr' : '1.2fr 1fr';
     const gridCols = isFullWidth ? '1fr 1fr 1fr' : '1fr 1fr';
@@ -729,37 +802,58 @@ function renderPrepContent(shortItems) {
 
     // --- Aggregation Logic (for CK) ---
     let displayAutoItems = [];
-    if (isCK) {
+    if (selectedCategory === 'ck_prep') {
         const groups = {};
         shortItems.forEach(si => {
-            if (!groups[si.ProductID]) groups[si.ProductID] = [];
-            groups[si.ProductID].push(si);
+            const pid = si.ProductID || si.productId;
+            if (!groups[pid]) groups[pid] = [];
+            groups[pid].push(si);
         });
         displayAutoItems = Object.keys(groups).map(pid => {
             const items = groups[pid];
-            if (items.length <= 1) return items[0];
+            if (items.length <= 1) return { ...items[0], ProductID: pid, isAggregated: false };
             const total = items.reduce((sum, si) => sum + Math.round(Math.max(0, (si.定数 || 0) - (si.個数 || 0))), 0);
-            return { productId: pid, totalReq: total, storeItems: items, isAggregated: true, display_unit: items[0].display_unit };
+            return { 
+                ProductID: pid, 
+                totalReq: total, 
+                storeItems: items, 
+                isAggregated: true, 
+                display_unit: items[0].display_unit,
+                unit_conversion_amount: items[0].unit_conversion_amount // 代表値として最初の店舗の設定を使用
+            };
         });
     } else {
-        displayAutoItems = shortItems;
+        displayAutoItems = shortItems.map(si => ({ ...si, isAggregated: false }));
     }
 
     let displayManualItems = [];
-    if (isCK) {
+    if (selectedCategory === 'ck_prep') {
         const groups = {};
         prepRequests.forEach(req => {
-            if (!groups[req.item_id]) groups[req.item_id] = [];
-            groups[req.item_id].push(req);
+            const pid = req.item_id || req.productId;
+            if (!groups[pid]) groups[pid] = [];
+            groups[pid].push(req);
         });
         displayManualItems = Object.keys(groups).map(pid => {
             const reqs = groups[pid];
-            if (reqs.length <= 1) return reqs[0];
+            if (reqs.length <= 1) return { ...reqs[0], ProductID: pid, isAggregated: false };
             const total = reqs.reduce((sum, r) => sum + Number(r.requested_qty || 0), 0);
-            return { productId: pid, totalReq: total, requests: reqs, isAggregated: true, item_name: reqs[0].item_name, unit: reqs[0].unit };
+            
+            // 手動依頼の場合、その品目のマスター設定から換算係数を探す
+            const masterSi = procurementData.find(d => d.ProductID === pid);
+
+            return { 
+                ProductID: pid, 
+                totalReq: total, 
+                requests: reqs, 
+                isAggregated: true, 
+                item_name: reqs[0].item_name, 
+                unit: reqs[0].unit,
+                unit_conversion_amount: masterSi?.unit_conversion_amount || 1
+            };
         });
     } else {
-        displayManualItems = prepRequests;
+        displayManualItems = prepRequests.map(req => ({ ...req, isAggregated: false }));
     }
     // ----------------------------------
 
@@ -768,19 +862,21 @@ function renderPrepContent(shortItems) {
             <!-- Left: Auto Alerts -->
             <div id="prep-auto-list" style="border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden;">
                 <div style="padding: 0.8rem 1.2rem; background: #fef2f2; border-bottom: 1px solid #fee2e2; display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 0.8rem; font-weight: 800; color: #b91c1c;"><i class="fas fa-robot"></i> 不足品目 (自動判定)</span>
+                    <div style="display: flex; flex-direction: column;">
+                        <span style="font-size: 0.8rem; font-weight: 800; color: #b91c1c;"><i class="fas fa-robot"></i> 不足品目 (自動判定)</span>
+                        ${isCK ? `<span style="font-size: 0.6rem; color: #ef4444; font-weight: 700;">集計対象: ${allGroupStores.length} 店舗</span>` : ''}
+                    </div>
                     <span class="badge" style="background: #ef4444; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem;">${displayAutoItems.length}</span>
                 </div>
                 <div class="prep-scroll-area" style="flex: 1; overflow-y: auto; padding: 0.6rem; display: grid; grid-template-columns: ${gridCols}; gap: 0.6rem; align-content: start;">
                     ${displayAutoItems.map(item => {
-                        const pid = item.isAggregated ? item.productId : item.ProductID;
+                        const pid = item.ProductID || item.item_id;
                         const master = cachedItems.find(i => i.id === pid);
                         return renderPrepRow(item, master, 'auto');
                     }).join('') || `<div style="grid-column: span ${gridSpan}; text-align:center; padding:3rem; color:#94a3b8; font-size:0.8rem;">現在、不足している品目はありません</div>`}
                 </div>
             </div>
             
-            <!-- Right: Manual / Requested -->
             <div id="prep-manual-list" style="display: flex; flex-direction: column; overflow: hidden; background: #fafafa;">
                 <div style="padding: 0.8rem 1.2rem; background: #f0fdf4; border-bottom: 1px solid #dcfce7; display: flex; flex-direction: column; gap: 0.8rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -833,15 +929,36 @@ function renderPrepRow(data, master, type = 'auto') {
                 </div>
                 <div style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 800; white-space: nowrap; text-align: right; padding-top: 2px;">
                     計: <span style="color: ${isManual ? '#10b981' : '#ef4444'}; font-size: 0.85rem;">${reqQty}</span> ${unit}
+                    ${(() => {
+                        const conv = Number(data.unit_conversion_amount || 1);
+                        if (conv === 1) return '';
+                        
+                        let mUnit = master?.unit || master?.単位 || '';
+                        if (!mUnit) {
+                            const ing = cachedIngredients.find(i => i.item_id === (master?.id || data.ProductID || data.productId));
+                            mUnit = ing?.unit || ing?.単位 || '';
+                        }
+                        if (!mUnit) return '';
+                        
+                        return `<div style="font-size: 0.6rem; color: #94a3b8; font-weight: 600; margin-top: 1px;">(= ${(reqQty * conv).toLocaleString()} ${mUnit})</div>`;
+                    })()}
                 </div>
             </div>
             
-            <div style="display: flex; align-items: center; justify-content: ${isAggregated ? 'center' : 'space-between'}; gap: 0.4rem; border-top: 1px solid #f1f5f9; padding-top: 0.4rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; border-top: 1px solid #f1f5f9; padding-top: 0.4rem;">
                 ${isAggregated ? `
-                    <button class="btn btn-outline btn-show-breakdown" data-pid="${master?.id || data.productId}" data-type="${type}"
-                        style="width: 100%; padding: 0.4rem; font-size: 0.72rem; border-radius: 6px; font-weight: 800; color: #2563eb; border-color: #dbeafe; background: #f8fafc;">
-                        <i class="fas fa-list-ul"></i> 内訳・個別反映
-                    </button>
+                    <div style="display: flex; gap: 0.4rem; width: 100%;">
+                        <button class="btn btn-outline btn-show-breakdown" data-pid="${master?.id || data.productId}" data-type="${type}"
+                            style="flex: 1; padding: 0.4rem; font-size: 0.72rem; border-radius: 6px; font-weight: 800; color: #2563eb; border-color: #dbeafe; background: #f8fafc;">
+                            <i class="fas fa-list-ul"></i> 内訳・個別反映
+                        </button>
+                        ${cachedMenus.some(m => m.item_id === (master?.id || data.productId)) ? `
+                            <button class="btn btn-outline btn-quick-recipe" data-pid="${master?.id || data.productId}" 
+                                style="padding: 0.4rem 0.6rem; font-size: 0.72rem; border-radius: 6px; border-color: #dbeafe; color: #2563eb; background: #eff6ff;">
+                                <i class="fas fa-mortar-pestle"></i>
+                            </button>
+                        ` : ''}
+                    </div>
                 ` : `
                     <div class="stepper-container" style="padding: 1px; transform: scale(0.95); transform-origin: left;">
                         <button class="stepper-btn btn-minus" style="width:24px; height:24px; font-size:0.7rem;" data-id="${data.id}" data-type="${type}"><i class="fas fa-minus"></i></button>
@@ -849,8 +966,16 @@ function renderPrepRow(data, master, type = 'auto') {
                             style="width: 34px; border: none; background: transparent; text-align: center; font-weight: 800; font-size: 0.85rem; color: var(--primary); outline: none;">
                         <button class="stepper-btn btn-plus" style="width:24px; height:24px; font-size:0.7rem;" data-id="${data.id}" data-type="${type}"><i class="fas fa-plus"></i></button>
                     </div>
-                    <button class="btn btn-primary btn-confirm-prep" data-id="${data.id}" data-type="${type}"
-                        style="padding: 0.35rem 0.6rem; font-size: 0.72rem; border-radius: 6px; font-weight: 800; white-space: nowrap;">仕込み完了</button>
+                    <div style="display: flex; gap: 0.4rem; align-items: center;">
+                        ${cachedMenus.some(m => m.item_id === (master?.id || data.productId)) ? `
+                            <button class="btn btn-outline btn-quick-recipe" data-pid="${master?.id || data.productId}" 
+                                style="padding: 0.35rem 0.5rem; font-size: 0.72rem; border-radius: 6px; border-color: #dbeafe; color: #2563eb; background: #eff6ff;">
+                                <i class="fas fa-mortar-pestle"></i>
+                            </button>
+                        ` : ''}
+                        <button class="btn btn-primary btn-confirm-prep" data-id="${data.id}" data-type="${type}"
+                            style="padding: 0.35rem 0.6rem; font-size: 0.72rem; border-radius: 6px; font-weight: 800; white-space: nowrap;">仕込み完了</button>
+                    </div>
                 `}
             </div>
         </div>
@@ -864,6 +989,14 @@ function attachPrepListeners(container) {
             const pid = btn.dataset.pid;
             const type = btn.dataset.type;
             showPrepBreakdownModal(pid, type);
+        };
+    });
+
+    // Quick Recipe Buttons
+    container.querySelectorAll('.btn-quick-recipe').forEach(btn => {
+        btn.onclick = () => {
+            const pid = btn.dataset.pid;
+            showQuickRecipeModal(pid);
         };
     });
     // Steppers
@@ -888,8 +1021,14 @@ function attachPrepListeners(container) {
             const input = container.querySelector(`.prep-qty-input[data-id="${id}"][data-type="${type}"]`);
             const qty = Number(input.value);
             if (qty <= 0) return;
-            
-            await executePrepAction(id, type, qty);
+
+            // Get name for message
+            const row = btn.closest('.prep-row');
+            const name = row?.querySelector('div[style*="font-weight: 800"]')?.textContent.split('\n')[0].trim() || 'この品目';
+
+            showConfirm('仕込み完了', `${name} を ${qty} 個（または単位）で仕込み完了として反映しますか？`, async () => {
+                await executePrepAction(id, type, qty);
+            });
         };
     });
 
@@ -921,7 +1060,9 @@ function attachPrepListeners(container) {
     
     const prepCapableItems = procurementData.filter(d => {
         const matchesStore = (targetId === 'GROUP_TOTAL') || (d.StoreID === targetId || d.StoreID === allGroupStores.find(s=>s.id===targetId)?.code || d.StoreID === allGroupStores.find(s=>s.id===targetId)?.store_id);
-        return matchesStore && d.shortage_action_type === selectedCategory;
+        const action = d.shortage_action_type || 'purchase';
+        const matchesCategory = (action === selectedCategory) || (selectedCategory === 'store_prep' && action === 'prep');
+        return matchesStore && matchesCategory;
     });
 
 
@@ -1083,9 +1224,11 @@ async function showPrepBreakdownModal(productId, type) {
         })).filter(u => u.qty > 0);
 
         if (updates.length === 0) return;
-        
-        document.getElementById('prep-breakdown-modal').remove();
-        await executeBatchPrepAction(productId, type, updates);
+
+        showConfirm('一括確定', `${updates.length} 店舗分をまとめて確定・反映しますか？`, async () => {
+            document.getElementById('prep-breakdown-modal').remove();
+            await executeBatchPrepAction(productId, type, updates);
+        });
     };
 }
 
@@ -1256,10 +1399,12 @@ async function executePrepAction(id, type, qty) {
 async function showPrepRadar() {
     // Filter all items that have shortage_action_type === 'store_prep' or 'ck_prep'
     const targetType = selectedCategory; // 'store_prep' or 'ck_prep'
-    const allPrepItems = procurementData.filter(si => 
-        (si.shortage_action_type || 'purchase') === targetType &&
-        (si.StoreID === currentStore.id || si.StoreID === currentStore.code)
-    ).sort((a, b) => {
+    const allPrepItems = procurementData.filter(si => {
+        const action = si.shortage_action_type || 'purchase';
+        const isTarget = (action === targetType) || (targetType === 'store_prep' && action === 'prep');
+        return isTarget && 
+               (si.StoreID === currentStore.id || si.StoreID === currentStore.code);
+    }).sort((a, b) => {
         const ratioA = Number(a.個数 || 0) / Number(a.定数 || 1);
         const ratioB = Number(b.個数 || 0) / Number(b.定数 || 1);
         return ratioA - ratioB; // Lowest ratio first
@@ -1563,4 +1708,92 @@ async function showTransferHistory() {
     } finally {
         await showLoading(false);
     }
+}
+
+/**
+ * Quick Recipe Viewer Modal for Prep Screen
+ */
+async function showQuickRecipeModal(productId) {
+    const menu = cachedMenus.find(m => m.item_id === productId);
+    const master = cachedItems.find(i => i.id === productId);
+    if (!menu || !master) return;
+
+    const modal = document.createElement('div');
+    modal.className = 'quick-recipe-modal';
+    modal.style = `
+        position: fixed; inset: 0; background: rgba(15, 23, 42, 0.75); z-index: 2000;
+        display: flex; align-items: center; justify-content: center; padding: 1rem;
+        opacity: 0; transform: scale(0.98); transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+        will-change: opacity, transform;
+    `;
+
+    const steps = Array.isArray(menu.instructions || menu.steps) ? (menu.instructions || menu.steps) : (menu.instructions || menu.steps ? [menu.instructions || menu.steps] : []);
+
+    modal.innerHTML = `
+        <div class="glass-panel" style="width: 100%; max-width: 600px; max-height: 90vh; background: #f8fafc; border-radius: 24px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+            <div style="padding: 1.5rem; background: white; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="font-size: 0.7rem; font-weight: 800; color: #10b981; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">Recipe Quick View</div>
+                    <h3 style="margin: 0; font-size: 1.25rem; font-weight: 900; color: #1e293b;">${master.name}</h3>
+                </div>
+                <button class="btn-close-modal" style="width: 40px; height: 40px; border-radius: 50%; border: none; background: #f1f5f9; color: #64748b; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div style="flex: 1; overflow-y: auto; padding: 2rem;">
+                <div style="margin-bottom: 2.5rem;">
+                    <h4 style="font-size: 1rem; font-weight: 800; color: #10b981; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-shopping-basket"></i> 材料・分量
+                    </h4>
+                    <div style="background: white; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden;">
+                        ${menu.recipe && menu.recipe.length > 0 ? menu.recipe.map(ri => {
+                            const ing = cachedItems.find(i => i.id === ri.ingredient_id);
+                            return `
+                                <div style="display: flex; justify-content: space-between; padding: 0.8rem 1.2rem; border-bottom: 1px dashed #f1f5f9;">
+                                    <span style="font-weight: 700; color: #334155;">${ing?.name || '不明な食材'}</span>
+                                    <span style="font-weight: 900; color: #e63946;">${ri.quantity} <span style="font-size: 0.7rem; color: #94a3b8; font-weight: 700;">${ing?.unit || ''}</span></span>
+                                </div>
+                            `;
+                        }).join('') : '<div style="padding: 2rem; text-align: center; color: #94a3b8; font-size: 0.85rem;">レシピが未登録です</div>'}
+                    </div>
+                </div>
+
+                <div>
+                    <h4 style="font-size: 1rem; font-weight: 800; color: #e63946; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-list-ol"></i> 工程・ポイント
+                    </h4>
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        ${steps.length > 0 ? steps.map((s, i) => `
+                            <div style="display: flex; gap: 1rem;">
+                                <div style="width: 1.8rem; height: 1.8rem; background: #f1f5f9; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 800; color: #64748b; flex-shrink: 0;">${i+1}</div>
+                                <div style="font-size: 0.95rem; line-height: 1.6; color: #334155; padding-top: 2px;">${s.replace(/\n/g, '<br>')}</div>
+                            </div>
+                        `).join('') : '<div style="padding: 1rem; text-align: center; color: #94a3b8; font-size: 0.85rem;">工程は登録されていません</div>'}
+                    </div>
+                </div>
+            </div>
+            
+            <div style="padding: 1.2rem; background: white; border-top: 1px solid #e2e8f0; text-align: center;">
+                <button class="btn btn-primary btn-close-modal" style="width: 100%; padding: 1rem; border-radius: 12px; font-weight: 800;">確認しました</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Trigger animation
+    requestAnimationFrame(() => {
+        modal.style.opacity = '1';
+        modal.style.transform = 'scale(1)';
+    });
+
+    const close = () => {
+        modal.style.opacity = '0';
+        modal.style.transform = 'scale(0.98)';
+        setTimeout(() => modal.remove(), 150);
+    };
+
+    modal.querySelectorAll('.btn-close-modal').forEach(btn => btn.onclick = close);
+    modal.onclick = (e) => { if (e.target === modal) close(); };
 }

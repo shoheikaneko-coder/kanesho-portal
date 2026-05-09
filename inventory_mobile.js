@@ -171,6 +171,12 @@ let cachedMenus = [];
 let currentUser = null;
 let inventoryUnsubscribe = null; // リスナー解除用の関数
 
+// --- パフォーマンス最適化フラグ ---
+// マスターデータ（m_items, m_menus等）はセッション中1回だけ取得する
+let masterDataLoaded = false;
+// 現在リッスン中の店舗コード（同一店舗の重複リスナー防止）
+let currentListenedStore = null;
+
 // Settings State
 let settingsSearchQuery = '';
 let settingsBulkMode = false;
@@ -212,6 +218,13 @@ let collapsedSections = new Set(); // Store location names
 
 
 async function loadInitialData() {
+    // [最適化] マスターデータはセッション中に1度だけ取得する。
+    // タブ切替等で再初期化されても、キャッシュが有効なら再フェッチしない。
+    if (masterDataLoaded) {
+        console.log("[Inventory Mobile] Master data already cached, skipping fetch.");
+        return;
+    }
+
     try {
         // 1. Load Stores from m_stores (The master source)
         const storeSnap = await getDocs(query(collection(db, "m_stores"), orderBy("store_id")));
@@ -254,6 +267,10 @@ async function loadInitialData() {
         });
 
         cachedMenusForInv = cachedMenus;
+
+        // キャッシュ完了フラグをセット
+        masterDataLoaded = true;
+        console.log("[Inventory Mobile] Master data loaded and cached.");
 
     } catch (err) {
         console.error("Error loading initial inventory data:", err);
@@ -615,17 +632,10 @@ window.showMasterSettings = async () => {
     const overlayLoad = document.getElementById('inv-loading-overlay');
     
     if (overlay && content) {
-        if (overlayLoad) overlayLoad.style.display = 'flex';
-        try {
-            await loadStoreInventory(selectedStore.code);
-            overlay.style.display = 'flex';
-            renderSettingsView(content);
-        } catch (err) {
-            console.error("Master settings open failed:", err);
-            showAlert('エラー', 'データの取得に失敗しました');
-        } finally {
-            if (overlayLoad) overlayLoad.style.display = 'none';
-        }
+        // [最適化] データは onSnapshot により常に最新状態のため、
+        // 設定画面を開くたびに再フェッチする必要はない。
+        overlay.style.display = 'flex';
+        renderSettingsView(content);
     }
 };
 
@@ -859,7 +869,8 @@ async function handleManualReset() {
         });
 
         await batch.commit();
-        await loadStoreInventory(selectedStore.code);
+        // [最適化] ローカル状態はforEachループ内で更新済み。
+        // 再フェッチは不要 - onSnapshotが他ユーザーの変更を自動配信する。
         render(); 
         if (overlay) overlay.style.setProperty('display', 'none', 'important');
         alert(`「${selectedTiming.name}」の在庫チェックをリセットしました。`);
@@ -994,7 +1005,12 @@ async function toggleItemConfirmation(id) {
             business_date: getBusinessDate(selectedStore.resetTime)
         });
 
-        await loadStoreInventory(selectedStore.code);
+        // [最適化] 楽観的ローカル更新 - Firestoreへの書き込み後に再フェッチは不要。
+        // 自分の操作はローカル状態を即時更新し、他ユーザーの変更は
+        // onSnapshot のデルタ配信で自動的に反映される。
+        item.is_confirmed = newConfirmed;
+        item.updated_at = now;
+        item.confirmed_at = newConfirmed ? now : null;
         render();
         
         // 完了チェックとアニメーション
@@ -1073,7 +1089,16 @@ async function handleSectionConfirm(locationName) {
         });
 
         await batch.commit();
-        await loadStoreInventory(selectedStore.code);
+
+        // [最適化] 楽観的ローカル更新。バッチ書き込み後、
+        // ローカル状態を即時更新して再フェッチを回避する。
+        itemsInSection.forEach(item => {
+            item.is_confirmed = true;
+            item.updated_at = now;
+            item.confirmed_at = now;
+            item.confirmed_by = currentUser?.Name || 'unknown';
+        });
+
         render();
         checkCompletionAndCelebrate(selectedTiming.id);
     } catch (err) {
@@ -1696,16 +1721,25 @@ async function loadStoreInventory(internalCode) {
         return;
     }
 
-    // 既存のリスナーがあれば解除（二重登録防止）
+    // [最適化] 同一店舗のリスナーが既に稼働中なら再生成しない。
+    // リスナーを壊して再生成すると全件再読み取りが発生してしまう。
+    if (inventoryUnsubscribe && currentListenedStore === internalCode) {
+        console.log("[Inventory Mobile] Already listening to store:", internalCode, "- reusing existing listener.");
+        return;
+    }
+
+    // 別店舗への切替時のみ既存リスナーを解除する
     if (inventoryUnsubscribe) {
         inventoryUnsubscribe();
         inventoryUnsubscribe = null;
     }
 
+    currentListenedStore = internalCode;
+
     const main = document.getElementById('inv-main-content');
     if (main) main.innerHTML = `<div style="text-align:center; padding: 4rem;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary);"></i><p style="margin-top:1rem; font-weight:600;">データを取得中...</p></div>`;
 
-    console.log("Setting up real-time listener for store:", internalCode);
+    console.log("[Inventory Mobile] Setting up real-time listener for store:", internalCode);
     
     return new Promise((resolve, reject) => {
         const q = query(collection(db, "m_store_items"), where("StoreID", "==", internalCode));
@@ -1713,7 +1747,7 @@ async function loadStoreInventory(internalCode) {
         let isFirstLoad = true;
 
         inventoryUnsubscribe = onSnapshot(q, async (snap) => {
-            console.log("Inventory snapshot received. Items:", snap.size);
+            console.log("[Inventory Mobile] Snapshot received. Changed docs:", snap.docChanges().length, "/ Total:", snap.size);
             
             const newData = [];
             snap.forEach(d => {
@@ -1724,21 +1758,23 @@ async function loadStoreInventory(internalCode) {
             inventoryData = newData;
 
             // 初回のみ理論在庫を計算（重い処理のため）
+            // [最適化] resolve()を先に呼んでUIをブロックしない。
+            // 理論在庫はバックグラウンドで計算する。
             if (isFirstLoad) {
-                try {
-                    await loadTheoreticalStocks(internalCode);
-                } catch (stockErr) {
-                    console.error("Theoretical stock calculation failed:", stockErr);
-                }
                 isFirstLoad = false;
                 resolve();
+                // 理論在庫計算はUIを返した後にバックグラウンドで実行
+                loadTheoreticalStocks(internalCode).catch(stockErr => {
+                    console.error("Theoretical stock calculation failed:", stockErr);
+                });
             }
 
-            // 描画（リロードなしで最新状態にする）
+            // 描画（リアルタイムで最新状態にする）
             render();
             
         }, (err) => {
-            console.error("Error in real-time listener:", err);
+            console.error("[Inventory Mobile] Error in real-time listener:", err);
+            currentListenedStore = null; // エラー時はリセット
             if (main && isFirstLoad) {
                 main.innerHTML = `
                     <div style="text-align:center; padding: 3rem; color: #ef4444;">

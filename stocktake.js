@@ -10,36 +10,51 @@ import { showAlert, showConfirm } from './ui_utils.js';
  */
 
 export const stocktakePageHtml = `
-    <div id="stocktake-app" class="animate-fade-in" style="max-width: 1100px; margin: 0 auto; padding-bottom: 3rem;">
+    <div id="stocktake-app" class="animate-fade-in" style="height: calc(100vh - 120px); display: flex; flex-direction: column; gap: 1rem; overflow: hidden; padding: 0 1rem;">
 
-        <!-- Header -->
-        <div class="glass-panel" style="padding: 1.2rem 1.5rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <!-- Main Header -->
+        <div id="st-header" style="padding: 1rem 1.5rem; border-bottom: 2px solid var(--border); background: var(--surface-darker); display: flex; justify-content: space-between; align-items: center; border-radius: 12px 12px 0 0; margin-bottom: 0;">
             <div style="display: flex; align-items: center; gap: 1rem;">
-                <select id="st-store-select" class="btn" style="background: white; border: 1px solid var(--border); min-width: 180px; font-size: 0.95rem;">
-                    <option value="">拠点を選択...</option>
-                </select>
+                <i class="fas fa-history" style="color: var(--primary);"></i>
+                <h3 style="margin: 0; font-size: 1rem; font-weight: 800;">棚卸し履歴・管理</h3>
+                <div id="st-header-scope-container">
+                    <!-- Selector injected here -->
+                </div>
             </div>
-            <button id="btn-st-record" class="btn btn-primary" disabled style="padding: 0.7rem 1.5rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
-                <i class="fas fa-camera"></i> 本日の棚卸しを記録する
-            </button>
-        </div>
-
-        <!-- Summary Card -->
-        <div id="st-summary-card" style="display:none; margin-bottom:1.5rem;">
-            <div class="glass-panel" style="padding:1.5rem; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color:white; border:none;">
-                <div style="font-size:0.85rem; opacity:0.85; margin-bottom:0.3rem;">本日の棚卸し総額（直近スナップショット）</div>
-                <div id="st-today-amount" style="font-size: 2.2rem; font-weight: 800; font-family: monospace;">—</div>
-                <div id="st-today-meta" style="font-size:0.75rem; opacity:0.75; margin-top:0.3rem;"></div>
+            
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <button id="btn-st-record" class="btn btn-primary" disabled style="padding: 0.5rem 1.2rem; font-size: 0.85rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-camera"></i> 今日の在庫を記録
+                </button>
             </div>
         </div>
 
-        <!-- History Table -->
-        <div class="glass-panel" style="padding:0; overflow:hidden;">
-            <div style="padding:1.2rem 1.5rem; border-bottom:1px solid var(--border); font-weight:700; color:var(--text-secondary); font-size:0.85rem; display:flex; align-items:center; gap:0.5rem;">
-                <i class="fas fa-history" style="color:var(--primary);"></i> 棚卸し履歴
+        <div style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; padding-bottom: 2rem;">
+            <!-- Summary Card -->
+            <div id="st-summary-card" style="display:none;">
+                <div class="glass-panel" style="padding:1.5rem; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color:white; border:none; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-size:0.8rem; opacity:0.85; margin-bottom:0.2rem;">直近のスナップショット総額</div>
+                        <div id="st-today-amount" style="font-size: 2.2rem; font-weight: 800; font-family: monospace;">—</div>
+                        <div id="st-today-meta" style="font-size:0.75rem; opacity:0.75; margin-top:0.3rem;"></div>
+                    </div>
+                    <div style="text-align: right; opacity: 0.2; font-size: 4rem;">
+                        <i class="fas fa-calculator"></i>
+                    </div>
+                </div>
             </div>
-            <div id="st-history-content">
-                <div style="padding:3rem; text-align:center; color:var(--text-secondary);">拠点を選択してください</div>
+
+            <!-- History Table Area -->
+            <div class="glass-panel" style="padding:0; overflow:hidden; display: flex; flex-direction: column; flex: 1; min-height: 400px;">
+                <div style="padding:1rem 1.5rem; border-bottom:1px solid var(--border); font-weight:800; color:var(--text-secondary); font-size:0.8rem; display:flex; align-items:center; gap:0.5rem; background: #f8fafc;">
+                    <i class="fas fa-table" style="color:var(--primary);"></i> 過去の棚卸し記録（直近30件）
+                </div>
+                <div id="st-history-content" style="flex: 1; overflow-y: auto;">
+                    <div style="padding:5rem; text-align:center; color:var(--text-secondary);">
+                        <i class="fas fa-store" style="font-size: 3rem; opacity: 0.1; margin-bottom: 1.5rem; display: block;"></i>
+                        拠点を選択して履歴を表示してください
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -78,28 +93,39 @@ async function loadMasterData() {
     masterCache.ingredients = ingSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     masterCache.menus = menuSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
+    populateStoreSelector();
+}
+
+function populateStoreSelector() {
+    const container = document.getElementById('st-header-scope-container');
+    if (!container) return;
+
+    container.innerHTML = `
+        <select id="st-store-select" style="padding: 0.35rem 0.8rem; border-radius: 8px; border: 1px solid #dbeafe; font-size: 0.85rem; font-weight: 800; background: white; outline: none; cursor: pointer; color: #2563eb;">
+            <option value="">拠点を選択...</option>
+            ${allStores.map(s => {
+                const sid = s.store_id || s.id;
+                const name = s.store_name || s.Name || s.id;
+                return `<option value="${sid}" ${sid === selectedStoreId ? 'selected' : ''}>${name}</option>`;
+            }).join('')}
+        </select>
+    `;
+
     const sel = document.getElementById('st-store-select');
     if (sel) {
-        allStores.forEach(s => {
-            const opt = document.createElement('option');
-            opt.value = s.store_id || s.id;
-            opt.textContent = s.store_name || s.Name || s.id;
-            sel.appendChild(opt);
-        });
+        sel.onchange = async (e) => {
+            selectedStoreId = e.target.value;
+            const recordBtn = document.getElementById('btn-st-record');
+            if (recordBtn) recordBtn.disabled = !selectedStoreId;
+            if (selectedStoreId) await loadHistory();
+        };
     }
 }
 
 function setupStoreSelect() {
-    const sel = document.getElementById('st-store-select');
+    // Note: Most logic moved to populateStoreSelector for dynamic header rendering
     const recordBtn = document.getElementById('btn-st-record');
-    if (!sel) return;
-
-    sel.onchange = async (e) => {
-        selectedStoreId = e.target.value;
-        if (recordBtn) recordBtn.disabled = !selectedStoreId;
-        if (selectedStoreId) await loadHistory();
-    };
-
+    
     if (recordBtn) {
         const canRecord = currentUser?.Role === 'Admin' || currentUser?.Role === '管理者' || currentUser?.Role === 'Manager';
         recordBtn.style.display = canRecord ? 'flex' : 'none';
@@ -227,30 +253,32 @@ async function loadHistory() {
                 : '<span style="color:var(--text-secondary); font-size:0.8rem;">—</span>';
 
             return `
-            <tr style="border-bottom:1px solid var(--border);" class="st-row" data-idx="${idx}">
-                <td style="padding:1rem; font-weight:700; font-family:monospace;">${r.business_date}</td>
-                <td style="padding:1rem; font-size:0.85rem; color:var(--text-secondary);">${new Date(r.recorded_at).toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'})}</td>
-                <td style="padding:1rem; font-weight:800; font-family:monospace; font-size:1.05rem;">¥${(r.total_amount||0).toLocaleString()}</td>
+            <tr style="border-bottom:1px solid var(--border); transition: background 0.2s;" class="st-row" data-idx="${idx}">
+                <td style="padding:1rem 1.5rem; font-weight:700; font-family:monospace; color: var(--text-primary);">${r.business_date}</td>
+                <td style="padding:1rem; font-size:0.8rem; color:var(--text-secondary);">${new Date(r.recorded_at).toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'})}</td>
+                <td style="padding:1rem; font-weight:800; font-family:monospace; font-size:1.1rem; color: var(--primary);">¥${(r.total_amount||0).toLocaleString()}</td>
                 <td style="padding:1rem;">${diffStr}</td>
-                <td style="padding:1rem; color:var(--text-secondary); font-size:0.85rem;">${r.recorded_by || ''}</td>
-                <td style="padding:1rem;">
-                    <button class="btn btn-detail-expand" data-idx="${idx}" style="background:var(--surface-darker); border:1px solid var(--border); font-size:0.8rem; padding:0.3rem 0.8rem;">
+                <td style="padding:1rem; color:var(--text-secondary); font-size:0.8rem; font-weight: 600;">${r.recorded_by || ''}</td>
+                <td style="padding:1rem; text-align: right; padding-right: 1.5rem;">
+                    <button class="btn btn-detail-expand" data-idx="${idx}" style="background:white; border:1px solid var(--border); font-size:0.75rem; padding:0.4rem 0.8rem; border-radius: 8px; font-weight: 800; color: var(--text-secondary); transition: all 0.2s;">
                         <i class="fas fa-chevron-down"></i> 内訳
                     </button>
                 </td>
             </tr>
             <tr class="st-detail-row" data-detail="${idx}" style="display:none; background:#f8fafc;">
-                <td colspan="6" style="padding:0 1rem 1rem;">
-                    ${renderDetailTable(r.items || [])}
+                <td colspan="6" style="padding:0 1.5rem 1.5rem;">
+                    <div style="border: 1px solid var(--border); border-radius: 12px; background: white; overflow: hidden; margin-top: 0.5rem; box-shadow: var(--shadow-sm);">
+                        ${renderDetailTable(r.items || [])}
+                    </div>
                 </td>
             </tr>`;
         }).join('');
 
         content.innerHTML = `
-            <table style="width:100%; border-collapse:collapse; text-align:left;">
-                <thead>
-                    <tr style="background:var(--surface-darker); border-bottom:2px solid var(--border); color:var(--text-secondary);">
-                        <th style="padding:1rem;">営業日</th>
+            <table style="width:100%; border-collapse:collapse; text-align:left; border-spacing: 0;">
+                <thead style="position: sticky; top: 0; z-index: 10; background: #f1f5f9; box-shadow: 0 1px 0 var(--border);">
+                    <tr style="color:var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                        <th style="padding:1rem 1.5rem;">営業日</th>
                         <th style="padding:1rem;">記録時刻</th>
                         <th style="padding:1rem;">棚卸し総額</th>
                         <th style="padding:1rem;">前回比</th>
@@ -276,20 +304,20 @@ async function loadHistory() {
 }
 
 function renderDetailTable(items) {
-    if (!items.length) return '<p style="padding:1rem; color:var(--text-secondary); font-size:0.85rem;">内訳データなし</p>';
+    if (!items.length) return '<p style="padding:1.5rem; color:var(--text-secondary); font-size:0.85rem; text-align:center;">内訳データなし</p>';
     const rows = items.map(i => `
-        <tr style="border-bottom:1px solid #e2e8f0;">
-            <td style="padding:0.5rem 0.8rem; font-size:0.85rem;">${i.item_name}</td>
-            <td style="padding:0.5rem 0.8rem; font-size:0.85rem; color:var(--text-secondary); text-align:right;">${i.qty} ${i.display_unit}</td>
-            <td style="padding:0.5rem 0.8rem; font-size:0.85rem; color:var(--text-secondary); text-align:right;">¥${(i.unit_price||0).toLocaleString()} / ${i.display_unit}</td>
-            <td style="padding:0.5rem 0.8rem; font-size:0.85rem; font-weight:700; text-align:right;">¥${(i.subtotal||0).toLocaleString()}</td>
+        <tr style="border-bottom:1px solid #f1f5f9;">
+            <td style="padding:0.6rem 1rem; font-size:0.8rem; font-weight: 700; color: #334155;">${i.item_name}</td>
+            <td style="padding:0.6rem 1rem; font-size:0.8rem; color:var(--text-secondary); text-align:right; font-family: monospace;">${i.qty} ${i.display_unit}</td>
+            <td style="padding:0.6rem 1rem; font-size:0.8rem; color:var(--text-secondary); text-align:right; font-family: monospace;">¥${(i.unit_price||0).toLocaleString()} / ${i.display_unit}</td>
+            <td style="padding:0.6rem 1rem; font-size:0.85rem; font-weight:800; text-align:right; color: var(--primary); font-family: monospace;">¥${(i.subtotal||0).toLocaleString()}</td>
         </tr>`).join('');
-    return `<table style="width:100%; border-collapse:collapse; margin-top:0.5rem; font-size:0.85rem;">
-        <thead><tr style="background:#f1f5f9;">
-            <th style="padding:0.5rem 0.8rem; text-align:left; color:var(--text-secondary);">品目</th>
-            <th style="padding:0.5rem 0.8rem; text-align:right; color:var(--text-secondary);">数量</th>
-            <th style="padding:0.5rem 0.8rem; text-align:right; color:var(--text-secondary);">単価</th>
-            <th style="padding:0.5rem 0.8rem; text-align:right; color:var(--text-secondary);">小計</th>
+    return `<table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+        <thead><tr style="background:#f8fafc; border-bottom: 2px solid #e2e8f0;">
+            <th style="padding:0.8rem 1rem; text-align:left; color:var(--text-secondary); font-size: 0.7rem; text-transform: uppercase;">品目</th>
+            <th style="padding:0.8rem 1rem; text-align:right; color:var(--text-secondary); font-size: 0.7rem; text-transform: uppercase;">数量</th>
+            <th style="padding:0.8rem 1rem; text-align:right; color:var(--text-secondary); font-size: 0.7rem; text-transform: uppercase;">単価</th>
+            <th style="padding:0.8rem 1rem; text-align:right; color:var(--text-secondary); font-size: 0.7rem; text-transform: uppercase;">小計</th>
         </tr></thead>
         <tbody>${rows}</tbody>
     </table>`;
