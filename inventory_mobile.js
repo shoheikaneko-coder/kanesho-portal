@@ -2014,17 +2014,26 @@ function showItemSettingsModal(itemId) {
 
     const updateSourceVisibility = async () => {
         const type = actionSelect.value;
-        sourceContainer.style.display = (type === 'transfer') ? 'block' : 'none';
+        const isTransfer = type === 'transfer';
+        const isConsume = type === 'consume';
+
+        sourceContainer.style.display = (isTransfer || isConsume) ? 'block' : 'none';
         linkedContainer.style.display = (type === 'linked_purchase') ? 'block' : 'none';
 
-        if (type === 'transfer') {
+        if (isTransfer || isConsume) {
             const currentStoreData = allStores.find(s => s.code === selectedStore.code);
             const currentGroup = currentStoreData?.group_name;
-            const sameGroupStores = allStores.filter(s => s.code !== selectedStore.code && s.group_name === currentGroup);
+            const groupStores = allStores.filter(s => s.group_name === currentGroup);
             
-            sourceSelect.innerHTML = sameGroupStores.map(s => `<option value="${s.code}" ${s.code === item.default_source_store_id ? 'selected' : ''}>${s.name}</option>`).join('') || '<option value="">(グループ内店舗なし)</option>';
+            const filteredStores = isTransfer ? groupStores.filter(s => s.code !== selectedStore.code) : groupStores;
             
-            if (sourceSelect.value) {
+            sourceSelect.innerHTML = filteredStores.map(s => `
+                <option value="${s.code}" ${s.code === item.default_source_store_id ? 'selected' : ''}>
+                    ${s.name}${s.code === selectedStore.code ? ' (自店舗)' : ''}
+                </option>
+            `).join('') || '<option value="">(選択可能な店舗なし)</option>';
+            
+            if (sourceSelect.value && isTransfer) {
                 const sid = `${sourceSelect.value}_${item.ProductID}`;
                 const sDoc = await getDoc(doc(db, "m_store_items", sid));
                 if (sDoc.exists()) {
@@ -2036,6 +2045,11 @@ function showItemSettingsModal(itemId) {
                     document.getElementById('sheet-unit').style.background = "#f1f5f9";
                     document.getElementById('sheet-conv').style.background = "#f1f5f9";
                 }
+            } else {
+                document.getElementById('sheet-unit').readOnly = false;
+                document.getElementById('sheet-conv').readOnly = false;
+                document.getElementById('sheet-unit').style.background = "";
+                document.getElementById('sheet-conv').style.background = "";
             }
         } else {
             document.getElementById('sheet-unit').readOnly = false;

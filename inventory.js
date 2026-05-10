@@ -2169,7 +2169,7 @@ function getItemActions(item) {
 // addActionCard から参照するためにモジュールスコープで保持
 let _updateUnitPreview = null;
 
-function addActionCard(container, actionData, sameGroupStores, itemProductId) {
+function addActionCard(container, actionData, groupStores, itemProductId, currentStoreCode) {
     const idx = container.children.length;
     const card = document.createElement('div');
     card.className = 'action-card';
@@ -2182,9 +2182,15 @@ function addActionCard(container, actionData, sameGroupStores, itemProductId) {
     const consumeQtyVal = actionData?.consume_qty_per_unit || 1;
     const consumeUnitVal = actionData?.consume_unit || '';
 
-    const storeOptions = sameGroupStores.map(s =>
+    // 移動(transfer)用：自店舗を除外
+    const transferStoreOptions = groupStores.filter(s => s.code !== currentStoreCode).map(s =>
         `<option value="${s.code}" ${s.code === sourceVal ? 'selected' : ''}>${s.name}</option>`
-    ).join('') || '<option value="">(グループ内店舗なし)</option>';
+    ).join('') || '<option value="">(他店舗なし)</option>';
+
+    // 消費(consume)用：自店舗を含める
+    const consumeStoreOptions = groupStores.map(s =>
+        `<option value="${s.code}" ${s.code === sourceVal ? 'selected' : ''}>${s.name}${s.code === currentStoreCode ? ' (自店舗)' : ''}</option>`
+    ).join('') || '<option value="">(選択可能な店舗なし)</option>';
 
     // 消費品目の選択肢（cachedItemsから）
     const itemOptions = cachedItems.map(i =>
@@ -2209,7 +2215,7 @@ function addActionCard(container, actionData, sameGroupStores, itemProductId) {
         <div class="action-transfer-config" style="display:${typeVal === 'transfer' ? 'block' : 'none'}; margin-top: 0.4rem;">
             <label style="font-size:0.7rem; font-weight:700; color:#b91c1c;">移動元店舗</label>
             <select class="action-source-store" style="width:100%; padding:0.5rem; border-radius:6px; border:1px solid #fca5a5; font-weight:600; background:white; color:#b91c1c; margin-top:0.2rem;">
-                ${storeOptions}
+                ${transferStoreOptions}
             </select>
             <div class="transfer-source-warning" style="font-size:0.65rem; color:#dc2626; margin-top:0.3rem; font-weight:700; display:none;">
                 <i class="fas fa-exclamation-triangle"></i> この店舗にはこの品目が登録されていません（移動元として設定できません）
@@ -2223,7 +2229,7 @@ function addActionCard(container, actionData, sameGroupStores, itemProductId) {
             <div>
                 <label style="font-size:0.7rem; font-weight:700; color:#b91c1c;">消費元店舗（倉庫）</label>
                 <select class="action-consume-source" style="width:100%; padding:0.5rem; border-radius:6px; border:1px solid #fca5a5; font-weight:600; background:white; color:#b91c1c; margin-top:0.2rem;">
-                    ${storeOptions}
+                    ${consumeStoreOptions}
                 </select>
             </div>
             <div style="position:relative;">
@@ -2541,17 +2547,17 @@ function showItemSettingsModal(itemId) {
 
     const currentStoreData = allStores.find(s => s.code === selectedStore.code);
     const currentGroup = currentStoreData?.group_name;
-    const sameGroupStores = allStores.filter(s => s.code !== selectedStore.code && s.group_name === currentGroup);
+    const groupStores = allStores.filter(s => s.group_name === currentGroup);
 
     const existingActions = getItemActions(item);
     existingActions.forEach(actionData => {
-        addActionCard(actionsContainer, actionData, sameGroupStores, item.ProductID);
+        addActionCard(actionsContainer, actionData, groupStores, item.ProductID, selectedStore.code);
     });
 
     // 「アクションを追加する」ボタン
     const btnAdd = document.getElementById('btn-add-action');
     btnAdd.onclick = () => {
-        addActionCard(actionsContainer, { type: 'purchase' }, sameGroupStores, item.ProductID);
+        addActionCard(actionsContainer, { type: 'purchase' }, groupStores, item.ProductID, selectedStore.code);
     };
 
     modal.classList.add('active');

@@ -821,12 +821,33 @@ function renderPurchaseContent(shortItems, linkedPurchaseItems = []) {
         const batchBtn = document.getElementById('btn-master-batch-confirm');
         if (batchBtn) {
             batchBtn.style.display = 'flex';
-            batchBtn.disabled = !selectedVendor; // 業者未選択なら無効
+            batchBtn.disabled = !selectedVendor;
         }
 
         const label = document.getElementById('current-vendor-label');
         if (label) label.textContent = selectedVendor || '業者を選択してください';
     }
+
+    // 業者ごとに集計（通常 + 連動）
+    const vendorDataMap = {};
+
+    shortItems.forEach(si => {
+        const item = cachedItems.find(i => i.id === si.ProductID);
+        const ing = cachedIngredients.find(ing => ing.item_id === si.ProductID);
+        const sup = cachedSuppliers.find(s => (s.vendor_id || s.id) === ing?.vendor_id);
+        const v = sup?.vendor_name || item?.supplier_name || item?.業者名 || '未設定';
+        if (!vendorDataMap[v]) vendorDataMap[v] = { regulars: [], linked: [] };
+        vendorDataMap[v].regulars.push(si);
+    });
+
+    linkedPurchaseItems.forEach(lpi => {
+        const item = lpi.master;
+        const ing = cachedIngredients.find(ing => ing.item_id === item?.id);
+        const sup = cachedSuppliers.find(s => (s.vendor_id || s.id) === ing?.vendor_id);
+        const v = sup?.vendor_name || item?.supplier_name || item?.業者名 || '未設定';
+        if (!vendorDataMap[v]) vendorDataMap[v] = { regulars: [], linked: [] };
+        vendorDataMap[v].linked.push(lpi);
+    });
 
     // 業者未選択時の表示
     if (!selectedVendor) {
@@ -849,22 +870,16 @@ function renderPurchaseContent(shortItems, linkedPurchaseItems = []) {
         return;
     }
 
-    const filteredItems = shortItems.filter(si => {
-        const item = cachedItems.find(i => i.id === si.ProductID);
-        const ing = cachedIngredients.find(ing => ing.item_id === si.ProductID);
-        const sup = cachedSuppliers.find(s => (s.vendor_id || s.id) === ing?.vendor_id);
-        const v = sup?.vendor_name || item?.supplier_name || item?.業者名 || '未設定';
-        return v === selectedVendor;
-    });
+    const currentVendor = vendorDataMap[selectedVendor] || { regulars: [], linked: [] };
 
     // 仕入れ完了時の自動リセット
-    if (selectedVendor && filteredItems.length === 0) {
+    if (selectedVendor && currentVendor.regulars.length === 0 && currentVendor.linked.length === 0) {
         selectedVendor = null;
-        render(); // 再描画して「業者を選択してください」に戻す
+        render(); 
         return;
     }
 
-    renderMainContent(filteredItems);
+    renderMainContent(currentVendor);
 }
 
 function renderTransferContent(items, consumeItems = []) {
@@ -1102,18 +1117,27 @@ window.toggleProcSection = (sourceId) => {
     render();
 };
 
-function renderMainContent(items) {
+function renderMainContent(data) {
     const main = document.getElementById('proc-main-content');
     if (!main) return;
 
-    if (items.length === 0) {
+    let regulars = [];
+    let linked = [];
+    if (Array.isArray(data)) {
+        regulars = data;
+    } else {
+        regulars = data.regulars || [];
+        linked = data.linked || [];
+    }
+
+    if (regulars.length === 0 && linked.length === 0) {
         main.innerHTML = `<div style="text-align:center; padding:4rem; color:var(--text-secondary);"><i class="fas fa-check-circle" style="font-size:3rem; color:#10b981; opacity:0.2;"></i><p>現在、対象となる品目はありません</p></div>`;
         return;
     }
 
-    // Group items by ProductID for aggregation
+    // ProductIDごとにグループ化
     const itemsByProduct = {};
-    items.forEach(si => {
+    regulars.forEach(si => {
         if (!itemsByProduct[si.ProductID]) itemsByProduct[si.ProductID] = [];
         itemsByProduct[si.ProductID].push(si);
     });
@@ -1147,17 +1171,6 @@ function renderMainContent(items) {
                             <div style="display: flex; align-items: center; gap: 0.5rem;">
                                 <div style="font-size: 0.7rem; font-weight: 800; color: var(--primary); background: #fff5f5; padding: 2px 8px; border-radius: 10px; white-space: nowrap;">
                                     計 ${totalReq} ${representativeUnit}
-                                    ${(() => {
-                                        const conv = Number(productItems[0]?.unit_conversion_amount || 1);
-                                        if (conv === 1) return '';
-                                        let mUnit = master?.unit || master?.単位 || '';
-                                        if (!mUnit) {
-                                            const ing = cachedIngredients.find(i => i.item_id === productId);
-                                            mUnit = ing?.unit || ing?.単位 || '';
-                                        }
-                                        if (!mUnit) return '';
-                                        return `<span style="font-size: 0.6rem; color: #64748b; font-weight: 600; margin-left: 2px;">(= ${(totalReq * conv).toLocaleString()}${mUnit})</span>`;
-                                    })()}
                                 </div>
                             </div>
                         </div>
@@ -1170,8 +1183,102 @@ function renderMainContent(items) {
         }
     });
 
+    // 連動仕入れの表示
+    if (linked.length > 0) {
+        html += `<div style="padding: 1rem; font-size: 0.75rem; font-weight: 800; color: #f97316; background: #fffaf0;"><i class="fas fa-link"></i> 仕込み連動・直接消費型</div>`;
+        html += linked.map(lpi => renderMobileLinkedPurchaseRow(lpi)).join('');
+    }
+
     main.innerHTML = html;
     attachMainContentListeners(main);
+
+    // 連動仕入れボタンリスナー
+    main.querySelectorAll('.btn-mobile-linked-purchase').forEach(btn => {
+        btn.onclick = async (e) => {
+            e.stopPropagation();
+            const uniqueKey = btn.dataset.uniqueKey;
+            const lpi = linked.find(l => `${l.parentSi.id}_${l.action.purchase_item_id}` === uniqueKey);
+            if (!lpi) return;
+            const inputEl = main.querySelector(`.mobile-linked-qty[data-unique-key="${uniqueKey}"]`);
+            const qty = Number(inputEl?.value || lpi.neededQty);
+            await executeMobileLinkedPurchaseAction(lpi, qty);
+        };
+    });
+}
+
+function renderMobileLinkedPurchaseRow(lpi) {
+    const { parentSi, action, master, neededQty } = lpi;
+    const parentName = parentSi.display_name || cachedItems.find(i => i.id === parentSi.ProductID)?.name || '不明';
+    const purchaseName = master?.name || action.purchase_item_id || '不明';
+    const purchaseUnit = action.purchase_unit || master?.unit || '';
+    const uniqueKey = `${parentSi.id}_${action.purchase_item_id}`;
+
+    return `
+        <div class="proc-item-row" style="border-left:4px solid #f97316; background:#fffaf0;">
+            <div class="proc-item-info">
+                <div class="proc-item-name" style="font-weight: 800;">
+                    ${purchaseName}
+                    <span style="font-size:0.6rem; background:#ffedd5; color:#c2410c; padding:1px 6px; border-radius:10px; font-weight:800; margin-left:4px;">🔥 仕込連動</span>
+                </div>
+                <div class="proc-item-meta" style="margin-top: 4px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
+                    <span style="font-size:0.65rem; color:#f97316; font-weight:700;"><i class="fas fa-link"></i> ${parentName.slice(0, 10)}...連動</span>
+                </div>
+            </div>
+            
+            <div class="proc-req-badge">
+                <span style="font-size: 1.1rem; color:#c2410c;">${neededQty}</span>
+                <span style="font-size: 0.6rem; font-weight: 700; opacity: 0.8;">${purchaseUnit}</span>
+            </div>
+            <div class="proc-stepper">
+                <button class="proc-stepper-btn" onclick="const inp=this.nextElementSibling; inp.value=Math.max(0,Number(inp.value)-1);"><i class="fas fa-minus"></i></button>
+                <input type="number" class="proc-qty-input mobile-linked-qty" value="${neededQty}" data-unique-key="${uniqueKey}" inputmode="numeric">
+                <button class="proc-stepper-btn" onclick="const inp=this.previousElementSibling; inp.value=Number(inp.value)+1;"><i class="fas fa-plus"></i></button>
+            </div>
+            <button class="proc-confirm-btn-small btn-mobile-linked-purchase" data-unique-key="${uniqueKey}" style="background:#f97316;">
+                <i class="fas fa-check"></i>
+            </button>
+        </div>
+    `;
+}
+
+async function executeMobileLinkedPurchaseAction(lpi, qty) {
+    if (!lpi || qty <= 0) return;
+    const { action, master, parentSi } = lpi;
+    const purchaseName = master?.name || action.purchase_item_id || '仕入品目';
+    const purchaseUnit = action.purchase_unit || master?.unit || '';
+    const parentName = parentSi.display_name || cachedItems.find(i => i.id === parentSi.ProductID)?.name || '不明';
+
+    if (!confirm(`「${purchaseName}」 ${qty}${purchaseUnit} 購入完了\n（${parentName}連動）\n※在庫は増えません`)) return;
+
+    await showLoading(true);
+    try {
+        const now = new Date().toISOString();
+        // 親アクションのステータス更新
+        const parentDoc = await getDoc(doc(db, "m_store_items", parentSi.id));
+        const parentData = parentDoc.data();
+        if (parentData.shortage_actions) {
+            const updatedActions = parentData.shortage_actions.map(a => {
+                if (a.type === 'linked_purchase' && a.purchase_item_id === action.purchase_item_id) {
+                    return { ...a, completed_at: now };
+                }
+                return a;
+            });
+            await updateDoc(doc(db, "m_store_items", parentSi.id), { shortage_actions: updatedActions });
+        }
+        // 履歴の追加
+        await addDoc(collection(db, "t_inventory_history"), {
+            store_id: parentSi.StoreID, item_id: action.purchase_item_id, change_qty: qty, qty_after: -1,
+            reason_type: 'procurement', source_route: 'procurement_mobile',
+            note: `仕込連動仕入れ: ${parentName} 連動（在庫加算なし）`,
+            executed_by: currentUser?.Name || 'unknown', executed_at: now
+        });
+        showAlert("完了", `「${purchaseName}」購入を記録しました`);
+        render();
+    } catch (err) {
+        showAlert("エラー", "処理に失敗: " + err.message);
+    } finally {
+        await showLoading(false);
+    }
 }
 
 function attachMainContentListeners(container) {

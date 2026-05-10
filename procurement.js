@@ -705,7 +705,6 @@ function renderPurchaseContent(shortItems, sidebar, linkedPurchaseItems = []) {
     
     // 通常の仕入れ品
     shortItems.forEach(si => {
-        // 仕込連動仕入れアクションのみの品目は、ここではスキップ（linkedPurchaseItemsで処理）
         const actions = getProcItemActions(si);
         const hasRegularPurchase = actions.some(a => a.type === 'purchase');
         if (!hasRegularPurchase) return;
@@ -737,12 +736,16 @@ function renderPurchaseContent(shortItems, sidebar, linkedPurchaseItems = []) {
     });
 
     if (!selectedVendor && vendors.length > 0) selectedVendor = vendors[0];
-    sidebar.innerHTML = vendors.map(v => `
-        <div class="vendor-item ${selectedVendor === v ? 'active' : ''}" data-vendor="${v}">
-            <span>${v}</span>
-            <span class="count">${vendorMap[v].length}</span>
-        </div>
-    `).join('') || `<div style="padding:1rem; font-size:0.75rem; color:var(--text-secondary);">不足品目はありません</div>`;
+    
+    sidebar.innerHTML = vendors.map(v => {
+        const count = vendorMap[v].regulars.length + vendorMap[v].linked.length;
+        return `
+            <div class="vendor-item ${selectedVendor === v ? 'active' : ''}" data-vendor="${v}">
+                <span>${v}</span>
+                <span class="count">${count}</span>
+            </div>
+        `;
+    }).join('') || `<div style="padding:1rem; font-size:0.75rem; color:var(--text-secondary);">不足品目はありません</div>`;
 
     sidebar.querySelectorAll('.vendor-item').forEach(item => {
         item.onclick = () => {
@@ -751,7 +754,9 @@ function renderPurchaseContent(shortItems, sidebar, linkedPurchaseItems = []) {
         };
     });
 
-    renderMainContent(vendorMap[selectedVendor] || []);
+    // 配列に平滑化して渡す
+    const currentVendorData = vendorMap[selectedVendor] || { regulars: [], linked: [] };
+    renderMainContent(currentVendorData);
 }
 
 function renderTransferContent(items, consumeItems = []) {
@@ -888,23 +893,35 @@ function renderConsumeRow(ci) {
     `;
 }
 
-function renderMainContent(items) {
+function renderMainContent(data) {
     const main = document.getElementById('proc-main-content');
     if (!main) return;
 
-    if (items.length === 0) {
+    // data が配列（通常）か、オブジェクト（仕入れ時の regulars/linked）かを判定
+    let regulars = [];
+    let linked = [];
+    if (Array.isArray(data)) {
+        regulars = data;
+    } else {
+        regulars = data.regulars || [];
+        linked = data.linked || [];
+    }
+
+    if (regulars.length === 0 && linked.length === 0) {
         main.innerHTML = `<div style="text-align:center; padding:4rem; color:var(--text-secondary);"><i class="fas fa-check-circle" style="font-size:3rem; color:#10b981; opacity:0.2;"></i><p>現在、対象となる品目はありません</p></div>`;
         return;
     }
 
-    // Group items by ProductID for aggregation
+    // ProductIDごとにグループ化（集計表示用）
     const itemsByProduct = {};
-    items.forEach(si => {
+    regulars.forEach(si => {
         if (!itemsByProduct[si.ProductID]) itemsByProduct[si.ProductID] = [];
         itemsByProduct[si.ProductID].push(si);
     });
 
     let html = ``;
+
+    // 1. 通常の仕入れ品を表示
     Object.keys(itemsByProduct).forEach(productId => {
         const productItems = itemsByProduct[productId];
         const master = cachedItems.find(i => i.id === productId);
@@ -941,8 +958,115 @@ function renderMainContent(items) {
         }
     });
 
+    // 2. 仕込連動仕入れ品を表示（仕入れ画面のみ）
+    if (linked.length > 0) {
+        if (html) html += `<div style="padding: 1.5rem 1rem 0.5rem; font-size: 0.75rem; font-weight: 800; color: #f97316; border-top: 2px solid #fff7ed; background: #fffaf0; display:flex; align-items:center; gap:0.5rem;"><i class="fas fa-link"></i> 仕込み連動・直接消費型</div>`;
+        html += linked.map(lpi => renderLinkedPurchaseRow(lpi)).join('');
+    }
+
     main.innerHTML = html;
     attachMainContentListeners(main);
+
+    // 連動仕入れ完了ボタンのリスナー
+    main.querySelectorAll('.btn-confirm-linked-purchase').forEach(btn => {
+        btn.onclick = async (e) => {
+            e.stopPropagation();
+            const uniqueKey = btn.dataset.uniqueKey;
+            const lpi = linked.find(l => `${l.parentSi.id}_${l.action.purchase_item_id}` === uniqueKey);
+            if (!lpi) return;
+            const inputEl = main.querySelector(`.proc-linked-qty-input[data-unique-key="${uniqueKey}"]`);
+            const qty = Number(inputEl?.value || lpi.neededQty);
+            await executeLinkedPurchaseAction(lpi, qty);
+        };
+    });
+}
+
+function renderLinkedPurchaseRow(lpi) {
+    const { parentSi, action, master, neededQty } = lpi;
+    const parentName = parentSi.display_name || cachedItems.find(i => i.id === parentSi.ProductID)?.name || '不明';
+    const purchaseName = master?.name || action.purchase_item_id || '不明';
+    const purchaseUnit = action.purchase_unit || master?.unit || '';
+    const uniqueKey = `${parentSi.id}_${action.purchase_item_id}`;
+
+    return `
+        <div class="proc-row-card" style="background:#fffaf0; border-left:4px solid #f97316;">
+            <div style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 150px;">
+                <div>
+                    <div style="font-weight: 800; font-size: 0.95rem; color: #1e293b;">
+                        ${purchaseName}
+                        <span style="font-size:0.65rem; background:#ffedd5; color:#c2410c; padding:2px 8px; border-radius:20px; font-weight:800; margin-left:0.5rem; vertical-align:middle;">🔥 仕込連動</span>
+                    </div>
+                    <div style="font-size: 0.7rem; color: #f97316; font-weight: 700; margin-top: 2px;">
+                        <i class="fas fa-link"></i> ${parentName} の不足に連動（在庫には加算されません）
+                    </div>
+                    <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700; margin-top: 2px;">
+                        必要量: <span style="color:#c2410c; font-size: 1rem; font-family: monospace;">${neededQty}</span> ${purchaseUnit}
+                    </div>
+                </div>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 0.8rem;">
+                <div class="stepper-container">
+                    <button class="stepper-btn" onclick="const inp=this.nextElementSibling; inp.value=Math.max(0,Number(inp.value)-1);"><i class="fas fa-minus"></i></button>
+                    <input type="number" class="proc-buy-input proc-linked-qty-input" data-unique-key="${uniqueKey}" value="${neededQty}" style="width:50px;">
+                    <button class="stepper-btn" onclick="const inp=this.previousElementSibling; inp.value=Number(inp.value)+1;"><i class="fas fa-plus"></i></button>
+                </div>
+                <button class="btn btn-primary btn-confirm-linked-purchase" data-unique-key="${uniqueKey}"
+                    style="padding: 0.6rem 1.2rem; font-size: 0.85rem; border-radius: 8px; font-weight: 800; background:#f97316; border:none; min-width: 90px;">購入完了</button>
+            </div>
+        </div>
+    `;
+}
+
+async function executeLinkedPurchaseAction(lpi, qty) {
+    if (!lpi || qty <= 0) return;
+    const { action, master, parentSi } = lpi;
+    const purchaseName = master?.name || action.purchase_item_id || '仕入品目';
+    const purchaseUnit = action.purchase_unit || master?.unit || '';
+    const parentName = parentSi.display_name || cachedItems.find(i => i.id === parentSi.ProductID)?.name || '不明';
+
+    if (!confirm(`「${purchaseName}」を ${qty}${purchaseUnit} 購入完了にしますか？\n（${parentName} の仕込連動）\n\n※この品目は直接消費されるため、在庫数は増えません。`)) return;
+
+    await showLoading(true);
+    try {
+        const now = new Date().toISOString();
+        const bizDate = getBusinessDate(allGroupStores.find(s => s.id === parentSi.StoreID));
+
+        // 1. Update status in parent action
+        const parentDoc = await getDoc(doc(db, "m_store_items", parentSi.id));
+        const parentData = parentDoc.data();
+        if (parentData.shortage_actions) {
+            const updatedActions = parentData.shortage_actions.map(a => {
+                if (a.type === 'linked_purchase' && a.purchase_item_id === action.purchase_item_id) {
+                    return { ...a, completed_at: now };
+                }
+                return a;
+            });
+            await updateDoc(doc(db, "m_store_items", parentSi.id), { shortage_actions: updatedActions });
+        }
+
+        // 2. Add History (Increments are NOT done, but we record the purchase)
+        await addDoc(collection(db, "t_inventory_history"), {
+            store_id: parentSi.StoreID,
+            item_id: action.purchase_item_id,
+            change_qty: qty,
+            qty_after: -1, // Special flag or current stock (but not updated)
+            reason_type: 'procurement',
+            source_route: 'procurement_page',
+            note: `仕込連動仕入れ: ${parentName} の不足分（直接消費のため在庫加算なし）`,
+            executed_by: currentUser?.Name || currentUser?.Email || 'unknown',
+            executed_at: now,
+            business_date: bizDate
+        });
+
+        showAlert("完了", `「${purchaseName}」の購入を記録しました。`);
+        render();
+    } catch (err) {
+        console.error("Linked purchase action failed:", err);
+        showAlert("エラー", "処理に失敗しました: " + err.message);
+    } finally {
+        await showLoading(false);
+    }
 }
 
 function renderPrepContent(shortItems) {
