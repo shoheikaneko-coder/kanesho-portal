@@ -247,7 +247,7 @@ export const inventoryPageHtml = `
     <div id="inv-item-modal" class="modal-overlay">
         <div class="glass-panel animate-scale-in" style="width: 520px; padding: 0; overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow-lg);">
             <!-- Modal Header -->
-            <div style="padding: 1.2rem 1.5rem; background: var(--surface-darker); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+            <div style="padding: 1rem 1.5rem; background: var(--surface-darker); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
                 <div style="display: flex; align-items: center; gap: 0.8rem;">
                     <i class="fas fa-cog" style="color: var(--primary); font-size: 1.1rem;"></i>
                     <h3 style="margin: 0; font-size: 1.1rem; font-weight: 900; color: var(--text-primary);" id="modal-item-name">品目設定</h3>
@@ -256,64 +256,59 @@ export const inventoryPageHtml = `
             </div>
 
             <!-- Modal Body -->
-            <div style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; max-height: 85vh; overflow-y: auto;">
+            <div style="padding: 1.2rem; display: flex; flex-direction: column; gap: 1rem; max-height: 85vh; overflow-y: auto;">
                 
                 <!-- Section 1: 基本設定 -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;">
                     <div class="input-group" style="grid-column: span 2; margin: 0;">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">店舗別表示名 <span style="font-weight: 400; color: #94a3b8; font-size: 0.7rem;">(任意・マスタ名は変わりません)</span></label>
-                        <input type="text" id="modal-display-name" placeholder="例: 生ビール中" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 2px solid #f1f5f9; font-weight: 700; font-size: 1rem; color: var(--primary); transition: border-color 0.2s;">
+                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.2rem;">店舗別表示名 <span style="font-weight: 400; color: #94a3b8; font-size: 0.7rem;">(任意・マスタ名は変わりません)</span></label>
+                        <input type="text" id="modal-display-name" placeholder="例: 生ビール中" style="width: 100%; padding: 0.6rem; border-radius: 8px; border: 2px solid #f1f5f9; font-weight: 700; font-size: 1rem; color: var(--primary); transition: border-color 0.2s;">
                     </div>
                     <div class="input-group" style="margin: 0;">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">確認タイミング</label>
-                        <select id="modal-timing" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 2px solid #f1f5f9; font-weight: 600; background: white; cursor: pointer;"></select>
+                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.2rem;">確認タイミング</label>
+                        <select id="modal-timing" style="width: 100%; padding: 0.6rem; border-radius: 8px; border: 2px solid #f1f5f9; font-weight: 600; background: white; cursor: pointer;"></select>
                     </div>
                     <div class="input-group" style="margin: 0;">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">保管場所</label>
-                        <input type="text" id="modal-location" list="common-locations" placeholder="例: 冷蔵庫A" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 2px solid #f1f5f9; font-weight: 600;">
+                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.2rem;">保管場所</label>
+                        <input type="text" id="modal-location" list="common-locations" placeholder="例: 冷蔵庫A" style="width: 100%; padding: 0.6rem; border-radius: 8px; border: 2px solid #f1f5f9; font-weight: 600;">
                     </div>
                 </div>
 
-                <!-- Section 2: 補充アクション (ロジックの前提となる設定) -->
-                <div style="background: #fdf2f2; padding: 1.2rem; border-radius: 12px; border: 1px solid #fee2e2; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <!-- Section 2: 在庫管理ロジック -->
+                <div style="background: #f8fafc; padding: 1rem; border-radius: 12px; border: 1px solid #e2e8f0; display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;">
                     <div class="input-group" style="margin: 0;">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: #b91c1c; display: block; margin-bottom: 0.4rem;">不足時アクション</label>
-                        <select id="modal-action" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 1px solid #fca5a5; font-weight: 700; background: white; color: #b91c1c;">
-                            <option value="purchase">仕入れ</option>
-                            <option value="prep">店舗仕込み</option>
-                            <option value="ck_prep">CK仕込み</option>
-                            <option value="transfer">移動</option>
-                        </select>
-                    </div>
-                    <div id="modal-source-store-container" class="input-group" style="margin: 0; display: none;">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: #b91c1c; display: block; margin-bottom: 0.4rem;">移動元店舗</label>
-                        <select id="modal-source-store" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 1px solid #fca5a5; font-weight: 700; background: white; color: #b91c1c;"></select>
-                        <div id="modal-source-warning" style="font-size: 0.65rem; color: var(--danger); margin-top: 0.3rem; font-weight: 700; display: none;">※この店舗には品目が登録されていません</div>
-                    </div>
-                </div>
-
-                <!-- Section 3: 在庫管理ロジック -->
-                <div style="background: #f8fafc; padding: 1.2rem; border-radius: 12px; border: 1px solid #e2e8f0; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div class="input-group" style="margin: 0;">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">定数 (Par Stock)</label>
-                        <input type="number" id="modal-par" step="any" placeholder="0" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 2px solid #e2e8f0; text-align: center; font-weight: 800; font-size: 1.1rem; color: var(--primary);">
+                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.2rem;">定数 (Par Stock)</label>
+                        <input type="number" id="modal-par" step="any" placeholder="0" style="width: 100%; padding: 0.6rem; border-radius: 8px; border: 2px solid #e2e8f0; text-align: center; font-weight: 800; font-size: 1.1rem; color: var(--primary);">
                     </div>
                     <div class="input-group" style="margin: 0;">
-                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">管理単位</label>
-                        <input type="text" id="modal-unit" list="common-units" placeholder="例: 皿 / パック" style="width: 100%; padding: 0.7rem; border-radius: 8px; border: 2px solid #e2e8f0; font-weight: 700; text-align: center; color: var(--primary);">
+                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); display: block; margin-bottom: 0.2rem;">管理単位</label>
+                        <input type="text" id="modal-unit" list="common-units" placeholder="例: 皿 / パック" style="width: 100%; padding: 0.6rem; border-radius: 8px; border: 2px solid #e2e8f0; font-weight: 700; text-align: center; color: var(--primary);">
                     </div>
-                    <div class="input-group" style="grid-column: span 2; margin: 0; padding-top: 0.5rem; border-top: 1px dashed #e2e8f0;">
-                        <label style="font-size: 0.7rem; font-weight: 800; color: #64748b; display: block; margin-bottom: 0.5rem;">単位換算係数 <span style="font-weight: 400; color: #94a3b8;">(1 [管理単位] あたりの基本数量)</span></label>
-                        <div style="display: flex; align-items: center; justify-content: center; gap: 0.8rem; background: white; padding: 0.5rem; border-radius: 10px; border: 1px solid #f1f5f9;">
+                    <div class="input-group" style="grid-column: span 2; margin: 0; padding-top: 0.4rem; border-top: 1px dashed #e2e8f0;">
+                        <label style="font-size: 0.7rem; font-weight: 800; color: #64748b; display: block; margin-bottom: 0.3rem;">単位換算係数 <span style="font-weight: 400; color: #94a3b8;">(1 [管理単位] あたりの基本数量)</span></label>
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 0.8rem; background: white; padding: 0.4rem; border-radius: 10px; border: 1px solid #f1f5f9;">
                             <span id="modal-unit-preview" style="font-weight: 800; color: #94a3b8; font-size: 0.9rem;">1 単位 ＝</span>
-                            <input type="number" id="modal-conv" step="any" placeholder="1" style="width: 80px; padding: 0.4rem; border-radius: 6px; border: 2px solid var(--primary); text-align: center; font-weight: 800; font-size: 1rem; color: var(--primary);">
-                            <span id="modal-master-unit" style="font-weight: 800; color: var(--text-secondary); font-size: 0.95rem; background: #f8fafc; padding: 0.3rem 0.6rem; border-radius: 6px;">-</span>
+                            <input type="number" id="modal-conv" step="any" placeholder="1" style="width: 80px; padding: 0.3rem; border-radius: 6px; border: 2px solid var(--primary); text-align: center; font-weight: 800; font-size: 1rem; color: var(--primary);">
+                            <span id="modal-master-unit" style="font-weight: 800; color: var(--text-secondary); font-size: 0.95rem; background: #f8fafc; padding: 0.2rem 0.6rem; border-radius: 6px;">-</span>
                         </div>
                     </div>
                 </div>
 
+                <!-- Section 3: 補充アクション (複数設定対応) -->
+                <div style="background: #fdf2f2; padding: 1rem; border-radius: 12px; border: 1px solid #fee2e2;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <label style="font-size: 0.75rem; font-weight: 800; color: #b91c1c;">不足時アクション</label>
+                    </div>
+                    <div id="modal-actions-container" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <!-- アクションカードが動的に追加される -->
+                    </div>
+                    <button id="btn-add-action" type="button" style="margin-top: 0.5rem; width: 100%; padding: 0.4rem; border-radius: 8px; border: 1.5px dashed #fca5a5; background: transparent; color: #b91c1c; font-weight: 700; font-size: 0.8rem; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background='transparent'">
+                        <i class="fas fa-plus"></i> アクションを追加する
+                    </button>
+                </div>
+
                 <!-- Action Button -->
-                <button id="btn-save-single-item" class="btn btn-primary" style="width: 100%; padding: 1.1rem; margin-top: 0.5rem; font-weight: 900; font-size: 1.1rem; border-radius: 14px; box-shadow: var(--shadow-primary); display: flex; align-items: center; justify-content: center; gap: 0.8rem;">
+                <button id="btn-save-single-item" class="btn btn-primary" style="width: 100%; padding: 0.9rem; margin-top: 0.2rem; font-weight: 900; font-size: 1.1rem; border-radius: 14px; box-shadow: var(--shadow-primary); display: flex; align-items: center; justify-content: center; gap: 0.8rem;">
                     <i class="fas fa-save"></i> 設定を保存する
                 </button>
             </div>
@@ -353,6 +348,7 @@ let cachedItems = [];
 let cachedIngredients = [];
 let cachedSuppliers = [];
 let cachedMenus = [];
+let settingsManagementSearchQuery = ''; // 管理リスト専用の検索クエリ
 let currentUser = null;
 let inventoryUnsubscribe = null;
 
@@ -1507,6 +1503,18 @@ function renderSettingsView(container) {
                     <h3 style="margin: 0; font-size: 0.9rem; font-weight: 800;"><i class="fas fa-list-check" style="color: var(--primary);"></i> 現在の管理リスト</h3>
                     <div id="settings-store-stats" style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary);"></div>
                 </div>
+
+                <!-- 管理リスト用検索窓 -->
+                <div style="padding: 0.6rem 0.8rem; background: #f8fafc; border-bottom: 1px solid #f1f5f9;">
+                    <div style="position: relative;">
+                        <i class="fas fa-search" style="position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.8rem;"></i>
+                        <input type="text" id="settings-management-search" placeholder="管理中の品目を検索..." 
+                            value="${settingsManagementSearchQuery}"
+                            style="width: 100%; padding: 0.5rem 0.8rem 0.5rem 2rem; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.8rem; font-weight: 600; outline: none; transition: all 0.2s;"
+                            onfocus="this.style.borderColor='var(--primary)'; this.style.boxShadow='0 0 0 3px rgba(37,99,235,0.1)'"
+                            onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+                    </div>
+                </div>
                 
                 <div id="inv-settings-store-list" style="flex: 1; overflow-y: auto; padding: 0.8rem;">
                     <!-- Grouped Store Items injected here -->
@@ -1553,6 +1561,12 @@ function renderSettingsView(container) {
     const searchInput = document.getElementById('inv-master-search-new');
     searchInput.oninput = (e) => {
         settingsSearchQuery = e.target.value;
+        renderSettingsItems();
+    };
+
+    const mgmtSearchInput = document.getElementById('settings-management-search');
+    mgmtSearchInput.oninput = (e) => {
+        settingsManagementSearchQuery = e.target.value;
         renderSettingsItems();
     };
 
@@ -1819,12 +1833,26 @@ function renderSettingsItems() {
     });
 
     let html = '';
+    const mq = settingsManagementSearchQuery.trim().toLowerCase();
+
     sortedTimingIds.forEach(tId => {
-        const items = inventoryData.filter(d => (d.確認タイミング || '') === tId);
+        let items = inventoryData.filter(d => (d.確認タイミング || '') === tId);
         if (items.length === 0) return;
 
+        // 検索フィルタリング
+        if (mq) {
+            items = items.filter(item => {
+                const name = (productMap[item.ProductID] || '').toLowerCase();
+                const dName = (item.display_name || '').toLowerCase();
+                return name.includes(mq) || dName.includes(mq);
+            });
+        }
+
+        if (items.length === 0 && mq) return; // 検索中で、このグループにヒットがない場合は非表示
+
         const tName = tId ? (timingMaster[tId] || tId) : "⚠️ タイミング未設定";
-        const isCollapsed = settingsCollapsedTimings.has(tId);
+        // 検索中は強制的に展開、それ以外は設定値を参照
+        const isCollapsed = mq ? false : settingsCollapsedTimings.has(tId);
         
         html += `
             <div class="timing-accordion-v2" style="margin-bottom: 0.8rem; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
@@ -1834,24 +1862,30 @@ function renderSettingsItems() {
                     <span style="font-size: 0.65rem; color: var(--text-secondary); background: #f1f5f9; padding: 0.1rem 0.6rem; border-radius: 10px; font-weight: 700;">${items.length}品目</span>
                 </div>
                 <div style="display: ${isCollapsed ? 'none' : 'block'}; border-top: 1px solid #f1f5f9;">
-                    ${items.length === 0 ? 
-                        `<div style="padding: 1.5rem; text-align: center; color: #94a3b8; font-size: 0.75rem;">このタイミングに登録された品目はありません</div>` :
-                        items.map(item => {
-                            const name = productMap[item.ProductID] || '不明';
-                            return `
-                                <div style="display: flex; align-items: center; gap: 0.8rem; padding: 0.8rem 1rem; border-bottom: 1px solid #f1f5f9;">
-                                    <div style="flex: 1; min-width: 0;">
-                                        <div style="font-size: 0.85rem; font-weight: 800; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.display_name || name}</div>
-                                        <div style="font-size: 0.65rem; color: var(--text-secondary); margin-top: 0.1rem;">${item.location_label || '場所未設定'} / ${item.定数 || 0} ${item.display_unit || ''}</div>
-                                    </div>
-                                    <div style="display: flex; gap: 0.4rem;">
-                                        <button class="btn-edit-item-master" data-id="${item.id}" style="width: 34px; height: 34px; border-radius: 10px; border: 1px solid #e2e8f0; background: white; color: #64748b; cursor: pointer; transition: all 0.2s;"><i class="fas fa-cog"></i></button>
-                                        <button class="btn-remove-item" data-id="${item.id}" style="width: 34px; height: 34px; border-radius: 10px; border: 1px solid #fee2e2; background: white; color: #ef4444; cursor: pointer; transition: all 0.2s;"><i class="fas fa-trash-alt"></i></button>
-                                    </div>
+                    ${items.map(item => {
+                        const name = productMap[item.ProductID] || '不明';
+                        const displayName = item.display_name || name;
+                        
+                        // 検索語のハイライト処理（簡易版）
+                        let finalName = displayName;
+                        if (mq) {
+                            const regex = new RegExp(`(${mq})`, 'gi');
+                            finalName = displayName.replace(regex, '<mark style="background:#fef08a; padding:0 2px; border-radius:2px; color:#854d0e;">$1</mark>');
+                        }
+
+                        return `
+                            <div style="display: flex; align-items: center; gap: 0.8rem; padding: 0.8rem 1rem; border-bottom: 1px solid #f1f5f9;">
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="font-size: 0.85rem; font-weight: 800; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${finalName}</div>
+                                    <div style="font-size: 0.65rem; color: var(--text-secondary); margin-top: 0.1rem;">${item.location_label || '場所未設定'} / ${item.定数 || 0} ${item.display_unit || ''}</div>
                                 </div>
-                            `;
-                        }).join('')
-                    }
+                                <div style="display: flex; gap: 0.4rem;">
+                                    <button class="btn-edit-item-master" data-id="${item.id}" style="width: 34px; height: 34px; border-radius: 10px; border: 1px solid #e2e8f0; background: white; color: #64748b; cursor: pointer; transition: all 0.2s;"><i class="fas fa-cog"></i></button>
+                                    <button class="btn-remove-item" data-id="${item.id}" style="width: 34px; height: 34px; border-radius: 10px; border: 1px solid #fee2e2; background: white; color: #ef4444; cursor: pointer; transition: all 0.2s;"><i class="fas fa-trash-alt"></i></button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
                 </div>
             </div>
         `;
@@ -2109,6 +2143,360 @@ async function saveInvSettings() {
     }
 }
 
+// ============================================================
+// 複数アクションUI ヘルパー関数
+// ============================================================
+
+/**
+ * shortage_actions配列を既存フィールドから生成する後方互換ヘルパー
+ */
+function getItemActions(item) {
+    if (item.shortage_actions && item.shortage_actions.length > 0) {
+        return item.shortage_actions;
+    }
+    // 旧フィールドからの変換
+    const oldType = item.shortage_action_type || 'purchase';
+    const action = { type: oldType };
+    if (oldType === 'transfer' && item.default_source_store_id) {
+        action.source_store_id = item.default_source_store_id;
+    }
+    return [action];
+}
+
+/**
+ * アクションカードのHTMLを生成してコンテナに追加
+ */
+// addActionCard から参照するためにモジュールスコープで保持
+let _updateUnitPreview = null;
+
+function addActionCard(container, actionData, sameGroupStores, itemProductId) {
+    const idx = container.children.length;
+    const card = document.createElement('div');
+    card.className = 'action-card';
+    card.dataset.idx = idx;
+    card.style.cssText = 'background: white; border: 1px solid #fca5a5; border-radius: 10px; padding: 0.8rem; position: relative;';
+
+    const typeVal = actionData?.type || 'purchase';
+    const sourceVal = actionData?.source_store_id || '';
+    const consumeItemVal = actionData?.consume_item_id || '';
+    const consumeQtyVal = actionData?.consume_qty_per_unit || 1;
+    const consumeUnitVal = actionData?.consume_unit || '';
+
+    const storeOptions = sameGroupStores.map(s =>
+        `<option value="${s.code}" ${s.code === sourceVal ? 'selected' : ''}>${s.name}</option>`
+    ).join('') || '<option value="">(グループ内店舗なし)</option>';
+
+    // 消費品目の選択肢（cachedItemsから）
+    const itemOptions = cachedItems.map(i =>
+        `<option value="${i.id}" ${i.id === consumeItemVal ? 'selected' : ''}>${i.name || i.id}</option>`
+    ).join('');
+
+    card.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem;">
+            <select class="action-type-select" style="flex: 1; padding: 0.5rem; border-radius: 6px; border: 1px solid #fca5a5; font-weight: 700; background: white; color: #b91c1c; font-size: 0.85rem;">
+                <option value="purchase" ${typeVal === 'purchase' ? 'selected' : ''}>仕入れ</option>
+                <option value="linked_purchase" ${typeVal === 'linked_purchase' ? 'selected' : ''}>仕込連動仕入れ</option>
+                <option value="prep" ${typeVal === 'prep' ? 'selected' : ''}>店舗仕込み</option>
+                <option value="ck_prep" ${typeVal === 'ck_prep' ? 'selected' : ''}>CK仕込み</option>
+                <option value="transfer" ${typeVal === 'transfer' ? 'selected' : ''}>移動</option>
+                <option value="consume" ${typeVal === 'consume' ? 'selected' : ''}>消費（仕込み連動）</option>
+            </select>
+            <button type="button" class="btn-remove-action" style="width:28px; height:28px; border-radius:50%; background:#fee2e2; border:none; color:#b91c1c; cursor:pointer; font-size:0.8rem; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <!-- transfer: 移動元店舗 -->
+        <div class="action-transfer-config" style="display:${typeVal === 'transfer' ? 'block' : 'none'}; margin-top: 0.4rem;">
+            <label style="font-size:0.7rem; font-weight:700; color:#b91c1c;">移動元店舗</label>
+            <select class="action-source-store" style="width:100%; padding:0.5rem; border-radius:6px; border:1px solid #fca5a5; font-weight:600; background:white; color:#b91c1c; margin-top:0.2rem;">
+                ${storeOptions}
+            </select>
+            <div class="transfer-source-warning" style="font-size:0.65rem; color:#dc2626; margin-top:0.3rem; font-weight:700; display:none;">
+                <i class="fas fa-exclamation-triangle"></i> この店舗にはこの品目が登録されていません（移動元として設定できません）
+            </div>
+            <div class="transfer-source-synced" style="font-size:0.65rem; color:#059669; margin-top:0.3rem; font-weight:700; display:none;">
+                <i class="fas fa-link"></i> 移動元の単位設定を引き継ぎます
+            </div>
+        </div>
+        <!-- consume: 消費元・消費品目・数量 -->
+        <div class="action-consume-config" style="display:${typeVal === 'consume' ? 'flex' : 'none'}; flex-direction:column; gap:0.4rem; margin-top:0.4rem;">
+            <div>
+                <label style="font-size:0.7rem; font-weight:700; color:#b91c1c;">消費元店舗（倉庫）</label>
+                <select class="action-consume-source" style="width:100%; padding:0.5rem; border-radius:6px; border:1px solid #fca5a5; font-weight:600; background:white; color:#b91c1c; margin-top:0.2rem;">
+                    ${storeOptions}
+                </select>
+            </div>
+            <div style="position:relative;">
+                <label style="font-size:0.7rem; font-weight:700; color:#b91c1c;">消費品目（倉庫から取り出す原材料）</label>
+                <input type="hidden" class="action-consume-item" value="${consumeItemVal}">
+                <div style="position:relative; margin-top:0.2rem;">
+                    <i class="fas fa-search" style="position:absolute; left:0.5rem; top:50%; transform:translateY(-50%); color:#fca5a5; font-size:0.75rem; pointer-events:none;"></i>
+                    <input type="text" class="action-consume-search" placeholder="品目名で検索..."
+                        value=""
+                        style="width:100%; padding:0.5rem 0.5rem 0.5rem 1.8rem; border-radius:6px; border:1px solid #fca5a5; font-weight:600; color:#b91c1c; box-sizing:border-box;">
+                    <div class="action-consume-suggestions" style="display:none; position:absolute; top:100%; left:0; right:0; background:white; border:1px solid #fca5a5; border-radius:6px; box-shadow:0 8px 20px rgba(0,0,0,0.12); z-index:9999; max-height:180px; overflow-y:auto; margin-top:2px;"></div>
+                </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.5rem; background:#fff5f5; padding:0.5rem; border-radius:6px;">
+                <label style="font-size:0.7rem; font-weight:700; color:#b91c1c; white-space:nowrap;">
+                    <span class="action-target-unit-label">${document.getElementById('modal-unit')?.value || '1単位'}</span>あたり消費量
+                </label>
+                <input type="number" class="action-consume-qty" step="any" min="0" value="${consumeQtyVal}" style="width:60px; padding:0.4rem; border-radius:6px; border:1px solid #fca5a5; text-align:center; font-weight:800; font-size:0.95rem; color:#b91c1c;">
+                <span class="action-consume-unit-label" style="font-size:0.8rem; font-weight:700; color:#64748b;">${consumeUnitVal || '単位'}</span>
+            </div>
+        </div>
+
+        <!-- linked_purchase: 仕込連動仕入れ（品目・数量） -->
+        <div class="action-linked-purchase-config" style="display:${typeVal === 'linked_purchase' ? 'flex' : 'none'}; flex-direction:column; gap:0.4rem; margin-top:0.4rem;">
+            <div style="position:relative;">
+                <label style="font-size:0.7rem; font-weight:700; color:#b91c1c;">仕入れ品目（発注する原材料）</label>
+                <input type="hidden" class="action-linked-purchase-item" value="${actionData?.purchase_item_id || ''}">
+                <div style="position:relative; margin-top:0.2rem;">
+                    <i class="fas fa-shopping-cart" style="position:absolute; left:0.5rem; top:50%; transform:translateY(-50%); color:#fca5a5; font-size:0.75rem; pointer-events:none;"></i>
+                    <input type="text" class="action-linked-purchase-search" placeholder="品目名で検索..."
+                        value="${cachedItems.find(i => i.id === actionData?.purchase_item_id)?.name || ''}"
+                        style="width:100%; padding:0.5rem 0.5rem 0.5rem 1.8rem; border-radius:6px; border:1px solid #fca5a5; font-weight:600; color:#b91c1c; box-sizing:border-box;">
+                    <div class="action-linked-purchase-suggestions" style="display:none; position:absolute; top:100%; left:0; right:0; background:white; border:1px solid #fca5a5; border-radius:6px; box-shadow:0 8px 20px rgba(0,0,0,0.12); z-index:9999; max-height:180px; overflow-y:auto; margin-top:2px;"></div>
+                </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.5rem; background:#fff5f5; padding:0.5rem; border-radius:6px;">
+                <label style="font-size:0.7rem; font-weight:700; color:#b91c1c; white-space:nowrap;">
+                    <span class="action-target-unit-label">${document.getElementById('modal-unit')?.value || '1単位'}</span>あたり仕入量
+                </label>
+                <input type="number" class="action-linked-purchase-qty" step="any" min="0" value="${actionData?.purchase_qty_per_unit || 1}" style="width:60px; padding:0.4rem; border-radius:6px; border:1px solid #fca5a5; text-align:center; font-weight:800; font-size:0.95rem; color:#b91c1c;">
+                <span class="action-linked-purchase-unit-label" style="font-size:0.8rem; font-weight:700; color:#64748b;">${actionData?.unit || '単位'}</span>
+            </div>
+        </div>
+    `;
+
+    // 種類変更時の表示切替
+    const typeSelect = card.querySelector('.action-type-select');
+    const transferConfig = card.querySelector('.action-transfer-config');
+    const consumeConfig = card.querySelector('.action-consume-config');
+    const linkedPurchaseConfig = card.querySelector('.action-linked-purchase-config');
+    typeSelect.onchange = () => {
+        const isTransfer = typeSelect.value === 'transfer';
+        transferConfig.style.display = isTransfer ? 'block' : 'none';
+        consumeConfig.style.display = typeSelect.value === 'consume' ? 'flex' : 'none';
+        linkedPurchaseConfig.style.display = typeSelect.value === 'linked_purchase' ? 'flex' : 'none';
+
+        // 移動以外に切り替わった場合は、単位のロックを強制解除する
+        if (!isTransfer) {
+            const modalUnit = document.getElementById('modal-unit');
+            const modalConv = document.getElementById('modal-conv');
+            if (modalUnit) {
+                modalUnit.readOnly = false;
+                modalUnit.style.background = '';
+            }
+            if (modalConv) {
+                modalConv.readOnly = false;
+                modalConv.style.background = '';
+            }
+            if (_updateUnitPreview) _updateUnitPreview();
+            
+            // 警告類もリセット
+            const transferWarning = card.querySelector('.transfer-source-warning');
+            const transferSynced = card.querySelector('.transfer-source-synced');
+            if (transferWarning) transferWarning.style.display = 'none';
+            if (transferSynced) transferSynced.style.display = 'none';
+            card.dataset.invalidSource = 'false';
+        } else {
+            // 移動に切り替わった場合は現在の店舗設定でチェックを実行
+            if (sourceStoreSelect) checkTransferSource();
+        }
+    };
+
+    // 移動元店舗の値検証（単位引き継ぎ & 登録確認）
+    const sourceStoreSelect = card.querySelector('.action-source-store');
+    const transferWarning = card.querySelector('.transfer-source-warning');
+    const transferSynced = card.querySelector('.transfer-source-synced');
+
+    const checkTransferSource = async () => {
+        const storeId = sourceStoreSelect?.value;
+        if (!storeId || !itemProductId) return;
+
+        // m_store_itemsのドキュメントID: 店舗code_productId
+        const sid = `${storeId}_${itemProductId}`;
+        try {
+            const sDoc = await getDoc(doc(db, 'm_store_items', sid));
+            if (sDoc.exists()) {
+                const sData = sDoc.data();
+                // 移動元の単位を移動先に即座に引き継ぎ（単位ロック）
+                const modalUnit = document.getElementById('modal-unit');
+                const modalConv = document.getElementById('modal-conv');
+                if (modalUnit) {
+                    modalUnit.value = sData.display_unit || '';
+                    modalUnit.readOnly = true;
+                    modalUnit.style.background = '#f1f5f9';
+                }
+                if (modalConv) {
+                    modalConv.value = sData.unit_conversion_amount || 1;
+                    modalConv.readOnly = true;
+                    modalConv.style.background = '#f1f5f9';
+                }
+                if (_updateUnitPreview) _updateUnitPreview();
+                if (transferWarning) transferWarning.style.display = 'none';
+                if (transferSynced) transferSynced.style.display = 'block';
+                card.dataset.invalidSource = 'false';
+            } else {
+                // 登録なし → 単位ロック解除・警告
+                const modalUnit = document.getElementById('modal-unit');
+                const modalConv = document.getElementById('modal-conv');
+                if (modalUnit) {
+                    modalUnit.readOnly = false;
+                    modalUnit.style.background = '';
+                }
+                if (modalConv) {
+                    modalConv.readOnly = false;
+                    modalConv.style.background = '';
+                }
+                if (transferWarning) transferWarning.style.display = 'block';
+                if (transferSynced) transferSynced.style.display = 'none';
+                card.dataset.invalidSource = 'true';
+            }
+        } catch (e) {
+            console.error('Source store check error:', e);
+        }
+    };
+
+    if (sourceStoreSelect) {
+        sourceStoreSelect.onchange = checkTransferSource;
+        // 初期ロード時に transferで小が済みなら即座にチェック
+        if (typeVal === 'transfer' && sourceVal) {
+            checkTransferSource();
+        }
+    }
+
+    // 消費品目検索入力のリアルタイムサジェスト
+    const consumeItemHidden = card.querySelector('.action-consume-item');
+    const consumeSearchInput = card.querySelector('.action-consume-search');
+    const suggestionsDiv = card.querySelector('.action-consume-suggestions');
+    const consumeUnitLabel = card.querySelector('.action-consume-unit-label');
+    const consumeSourceSelect = card.querySelector('.action-consume-source');
+    const targetUnitLabel = card.querySelector('.action-target-unit-label');
+
+    // 消費元での単位を取得して更新する関数
+    const updateConsumeSourceUnit = async () => {
+        const storeId = consumeSourceSelect?.value;
+        const itemId = consumeItemHidden?.value;
+        if (!storeId || !itemId) return;
+
+        try {
+            const sid = `${storeId}_${itemId}`;
+            const sDoc = await getDoc(doc(db, 'm_store_items', sid));
+            if (sDoc.exists()) {
+                const sData = sDoc.data();
+                const unit = sData.display_unit || sData.unit || '単位';
+                consumeUnitLabel.textContent = unit;
+            } else {
+                // 店舗未登録の場合はマスタから取得
+                const master = cachedItems.find(i => i.id === itemId);
+                const ing = cachedIngredients.find(i => i.item_id === itemId);
+                consumeUnitLabel.textContent = master?.unit || master?.単位 || ing?.unit || ing?.単位 || '単位';
+            }
+        } catch (e) {
+            console.error('Consume source unit check error:', e);
+        }
+    };
+
+    // 初期値の設定（既存設定の読み込み時）
+    if (consumeItemVal) {
+        const initItem = cachedItems.find(i => i.id === consumeItemVal);
+        if (initItem) {
+            consumeSearchInput.value = initItem.name || initItem.id;
+        }
+        updateConsumeSourceUnit();
+    }
+
+    // ターゲット品目（今設定している品目）の単位ラベルを更新
+    const syncTargetUnitLabel = () => {
+        const val = document.getElementById('modal-unit')?.value || '1単位';
+        if (targetUnitLabel) targetUnitLabel.textContent = val === '単位' ? '1単位' : val;
+    };
+    syncTargetUnitLabel();
+    // modal-unit の変更を監視
+    document.getElementById('modal-unit')?.addEventListener('input', syncTargetUnitLabel);
+
+    consumeSearchInput.oninput = () => {
+        const q = consumeSearchInput.value.trim().toLowerCase();
+        if (!q) { suggestionsDiv.style.display = 'none'; return; }
+        const matches = cachedItems.filter(i => (i.name || '').toLowerCase().includes(q)).slice(0, 25);
+        if (matches.length === 0) { suggestionsDiv.style.display = 'none'; return; }
+        suggestionsDiv.innerHTML = matches.map(i =>
+            `<div style="padding:0.5rem 0.8rem; cursor:pointer; font-size:0.85rem; font-weight:600; color:#1e293b; border-bottom:1px solid #f1f5f9; transition:background 0.15s;"
+                onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background='white'"
+                data-id="${i.id}" data-name="${i.name || i.id}">${i.name || i.id}</div>`
+        ).join('');
+        suggestionsDiv.style.display = 'block';
+    };
+
+    suggestionsDiv.addEventListener('mousedown', (e) => {
+        const item = e.target.closest('[data-id]');
+        if (!item) return;
+        e.preventDefault(); 
+        consumeItemHidden.value = item.dataset.id;
+        consumeSearchInput.value = item.dataset.name;
+        updateConsumeSourceUnit();
+        suggestionsDiv.style.display = 'none';
+    });
+
+    consumeSourceSelect.onchange = updateConsumeSourceUnit;
+
+    consumeSearchInput.onblur = () => {
+        setTimeout(() => { suggestionsDiv.style.display = 'none'; }, 150);
+    };
+    consumeSearchInput.onfocus = () => {
+        if (consumeSearchInput.value.trim()) consumeSearchInput.dispatchEvent(new Event('input'));
+    };
+
+    // 消費品目変更時に管理単位ラベルを更新 (互換性維持)
+    const consumeItemSelect = null; // 後方互揓性のため変数维持
+
+    // 削除ボタン
+    card.querySelector('.btn-remove-action').onclick = () => {
+        card.remove();
+    };
+
+    // --- Linked Purchase Logic ---
+    const linkedItemHidden = card.querySelector('.action-linked-purchase-item');
+    const linkedSearchInput = card.querySelector('.action-linked-purchase-search');
+    const linkedSuggestionsDiv = card.querySelector('.action-linked-purchase-suggestions');
+    const linkedUnitLabel = card.querySelector('.action-linked-purchase-unit-label');
+
+    if (linkedSearchInput) {
+        linkedSearchInput.oninput = () => {
+            const q = linkedSearchInput.value.trim().toLowerCase();
+            if (!q) { linkedSuggestionsDiv.style.display = 'none'; return; }
+            const matches = cachedItems.filter(i => (i.name || '').toLowerCase().includes(q)).slice(0, 25);
+            if (matches.length === 0) { linkedSuggestionsDiv.style.display = 'none'; return; }
+            linkedSuggestionsDiv.innerHTML = matches.map(i =>
+                `<div style="padding:0.5rem 0.8rem; cursor:pointer; font-size:0.85rem; font-weight:600; color:#1e293b; border-bottom:1px solid #f1f5f9; transition:background 0.15s;"
+                    onmouseover="this.style.background='#fff5f5'" onmouseout="this.style.background='white'"
+                    data-id="${i.id}" data-name="${i.name || i.id}">${i.name || i.id}</div>`
+            ).join('');
+            linkedSuggestionsDiv.style.display = 'block';
+        };
+
+        linkedSuggestionsDiv.addEventListener('mousedown', (e) => {
+            const item = e.target.closest('[data-id]');
+            if (!item) return;
+            e.preventDefault(); 
+            linkedItemHidden.value = item.dataset.id;
+            linkedSearchInput.value = item.dataset.name;
+            // 単位ラベルの更新
+            const master = cachedItems.find(i => i.id === item.dataset.id);
+            linkedUnitLabel.textContent = master?.unit || master?.単位 || '単位';
+            linkedSuggestionsDiv.style.display = 'none';
+        });
+
+        linkedSearchInput.onblur = () => {
+            setTimeout(() => { linkedSuggestionsDiv.style.display = 'none'; }, 150);
+        };
+    }
+
+    container.appendChild(card);
+}
+
 function showItemSettingsModal(itemId) {
     const item = inventoryData.find(i => i.id === itemId);
     if (!item) return;
@@ -2117,12 +2505,10 @@ function showItemSettingsModal(itemId) {
     const modal = document.getElementById('inv-item-modal');
     document.getElementById('modal-item-name').textContent = productMap[item.ProductID] || '品目設定';
     
-    // Find master unit for better UI (Affordance)
+    // Find master unit for better UI
     let masterUnit = '-';
     const rawItem = cachedItems.find(i => i.id === item.ProductID);
-    if (rawItem) {
-        masterUnit = rawItem.unit || rawItem.単位 || '-';
-    }
+    if (rawItem) masterUnit = rawItem.unit || rawItem.単位 || '-';
     if (masterUnit === '-') {
         const ing = cachedIngredients.find(i => i.item_id === item.ProductID);
         if (ing) masterUnit = ing.unit || ing.単位 || '-';
@@ -2131,14 +2517,12 @@ function showItemSettingsModal(itemId) {
     
     const timingSelect = document.getElementById('modal-timing');
     timingSelect.innerHTML = Object.keys(timingMaster).map(id => `<option value="${id}">${timingMaster[id]}</option>`).join('');
-    
     timingSelect.value = item.確認タイミング || "DAILY_ALL";
     document.getElementById('modal-display-name').value = item.display_name || "";
     document.getElementById('modal-location').value = item.location_label || item.保管場所 || "";
     document.getElementById('modal-par').value = item.定数 || 0;
     document.getElementById('modal-unit').value = item.display_unit || "";
     document.getElementById('modal-conv').value = item.unit_conversion_amount || 1;
-    document.getElementById('modal-action').value = item.shortage_action_type || "purchase";
     
     // 単位プレビューの更新
     const unitInput = document.getElementById('modal-unit');
@@ -2147,60 +2531,28 @@ function showItemSettingsModal(itemId) {
         const val = unitInput.value || '単位';
         unitPreview.textContent = `1 ${val} ＝`;
     };
+    _updateUnitPreview = updateUnitPreview; // addActionCard内から参照できるように登録
     unitInput.oninput = updateUnitPreview;
     updateUnitPreview();
-    // Source Store Handling
-    const sourceContainer = document.getElementById('modal-source-store-container');
-    const sourceSelect = document.getElementById('modal-source-store');
-    const actionSelect = document.getElementById('modal-action');
-    const sourceWarning = document.getElementById('modal-source-warning');
 
-    // 選択肢の初期化 (1回のみ)
+    // --- 複数アクションUI の初期化 ---
+    const actionsContainer = document.getElementById('modal-actions-container');
+    actionsContainer.innerHTML = '';
+
     const currentStoreData = allStores.find(s => s.code === selectedStore.code);
     const currentGroup = currentStoreData?.group_name;
     const sameGroupStores = allStores.filter(s => s.code !== selectedStore.code && s.group_name === currentGroup);
-    sourceSelect.innerHTML = sameGroupStores.map(s => `<option value="${s.code}" ${s.code === item.default_source_store_id ? 'selected' : ''}>${s.name}</option>`).join('') || '<option value="">(グループ内店舗なし)</option>';
-    
-    const updateSourceVisibility = async () => {
-        if (actionSelect.value === 'transfer') {
-            sourceContainer.style.display = 'block';
-            
-            // 同期処理 & 登録確認
-            if (sourceSelect.value) {
-                const sid = `${sourceSelect.value}_${item.ProductID}`;
-                const sDoc = await getDoc(doc(db, "m_store_items", sid));
-                if (sDoc.exists()) {
-                    const sData = sDoc.data();
-                    document.getElementById('modal-unit').value = sData.display_unit || "";
-                    document.getElementById('modal-conv').value = sData.unit_conversion_amount || 1;
-                    document.getElementById('modal-unit').readOnly = true;
-                    document.getElementById('modal-conv').readOnly = true;
-                    document.getElementById('modal-unit').style.background = "#f1f5f9";
-                    document.getElementById('modal-conv').style.background = "#f1f5f9";
-                    if (sourceWarning) sourceWarning.style.display = 'none';
-                } else {
-                    // 登録されていない場合
-                    document.getElementById('modal-unit').readOnly = false;
-                    document.getElementById('modal-conv').readOnly = false;
-                    document.getElementById('modal-unit').style.background = "";
-                    document.getElementById('modal-conv').style.background = "";
-                    if (sourceWarning) sourceWarning.style.display = 'block';
-                }
-            }
-        } else {
-            sourceContainer.style.display = 'none';
-            document.getElementById('modal-unit').readOnly = false;
-            document.getElementById('modal-conv').readOnly = false;
-            document.getElementById('modal-unit').style.background = "";
-            document.getElementById('modal-conv').style.background = "";
-            if (sourceWarning) sourceWarning.style.display = 'none';
-        }
-        updateUnitPreview(); // プレビューを同期
-    };
 
-    actionSelect.onchange = updateSourceVisibility;
-    sourceSelect.onchange = updateSourceVisibility;
-    updateSourceVisibility();
+    const existingActions = getItemActions(item);
+    existingActions.forEach(actionData => {
+        addActionCard(actionsContainer, actionData, sameGroupStores, item.ProductID);
+    });
+
+    // 「アクションを追加する」ボタン
+    const btnAdd = document.getElementById('btn-add-action');
+    btnAdd.onclick = () => {
+        addActionCard(actionsContainer, { type: 'purchase' }, sameGroupStores, item.ProductID);
+    };
 
     modal.classList.add('active');
     document.getElementById('btn-save-single-item').onclick = saveSingleItemSettings;
@@ -2215,6 +2567,40 @@ async function saveSingleItemSettings() {
     const overlay = document.getElementById('inv-loading-overlay');
     overlay.style.display = 'flex';
 
+    // --- 複数アクションを配列として収集 ---
+    const actionsContainer = document.getElementById('modal-actions-container');
+    const actionCards = actionsContainer.querySelectorAll('.action-card');
+    const shortage_actions = [];
+    actionCards.forEach(card => {
+        const type = card.querySelector('.action-type-select').value;
+        const actionEntry = { type };
+        if (type === 'transfer') {
+            const sourceId = card.querySelector('.action-source-store')?.value || '';
+            actionEntry.source_store_id = sourceId;
+            
+            // バリデーション: 移動元の在庫登録チェック
+            if (card.dataset.invalidSource === 'true') {
+                const sourceName = card.querySelector('.action-source-store option:checked')?.textContent || sourceId;
+                throw new Error(`「${sourceName}」にはこの品目が登録されていません。移動元として設定できません。`);
+            }
+        } else if (type === 'consume') {
+            actionEntry.source_store_id = card.querySelector('.action-consume-source')?.value || '';
+            actionEntry.consume_item_id = card.querySelector('.action-consume-item')?.value || '';
+            actionEntry.consume_qty_per_unit = Number(card.querySelector('.action-consume-qty')?.value) || 1;
+            actionEntry.consume_unit = card.querySelector('.action-consume-unit-label')?.textContent || '';
+        } else if (type === 'linked_purchase') {
+            actionEntry.purchase_item_id = card.querySelector('.action-linked-purchase-item')?.value || '';
+            actionEntry.purchase_qty_per_unit = Number(card.querySelector('.action-linked-purchase-qty')?.value) || 1;
+            actionEntry.unit = card.querySelector('.action-linked-purchase-unit-label')?.textContent || '';
+        }
+        shortage_actions.push(actionEntry);
+    });
+
+    // 後方互換: 旧フィールドは先頭アクションで設定
+    const primaryAction = shortage_actions[0] || { type: 'purchase' };
+    const primaryType = primaryAction.type;
+    const legacySourceId = primaryType === 'transfer' ? (primaryAction.source_store_id || null) : null;
+
     const data = {
         確認タイミング: document.getElementById('modal-timing').value,
         display_name: document.getElementById('modal-display-name').value.trim(),
@@ -2223,50 +2609,41 @@ async function saveSingleItemSettings() {
         定数: Number(document.getElementById('modal-par').value) || 0,
         display_unit: document.getElementById('modal-unit').value,
         unit_conversion_amount: Number(document.getElementById('modal-conv').value) || 1,
-        shortage_action_type: document.getElementById('modal-action').value,
-        default_source_store_id: document.getElementById('modal-action').value === 'transfer' ? document.getElementById('modal-source-store').value : null,
+        shortage_actions: shortage_actions,
+        shortage_action_type: primaryType,          // 後方互換
+        default_source_store_id: legacySourceId,    // 後方互換
         updated_at: new Date().toISOString()
     };
 
-    // Validation for Transfer Source
-    if (data.shortage_action_type === 'transfer' && data.default_source_store_id) {
-        try {
-            const sourceDoc = await getDoc(doc(db, "m_store_items", `${data.default_source_store_id}_${editingItem.ProductID}`));
-            if (!sourceDoc.exists()) {
-                if (!confirm('【警告】選択された移動元店舗に、この品目が登録されていません。このまま保存しますか？（移動画面でエラーになる可能性があります）')) {
-                    overlay.style.display = 'none';
-                    return;
-                }
-            }
-        } catch (e) {
-            console.error("Source validation error:", e);
-        }
-    }
-
     try {
         await updateDoc(doc(db, "m_store_items", editingItem.id), data);
-        
-        // 【重要】移動元としての他店舗への連動更新
-        const q = query(collection(db, "m_store_items"), 
-                        where("ProductID", "==", editingItem.ProductID),
-                        where("default_source_store_id", "==", selectedStore.code));
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-            const batch = writeBatch(db);
-            snap.forEach(d => {
-                batch.update(d.ref, {
-                    display_unit: data.display_unit,
-                    unit_conversion_amount: data.unit_conversion_amount,
-                    updated_at: data.updated_at
+
+        // 【重要】移動元としての他店舗への連動更新（旧仕様との互換）
+        if (legacySourceId) {
+            const q = query(collection(db, "m_store_items"),
+                where("ProductID", "==", editingItem.ProductID),
+                where("default_source_store_id", "==", selectedStore.code));
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+                const batch = writeBatch(db);
+                snap.forEach(d => {
+                    batch.update(d.ref, {
+                        display_unit: data.display_unit,
+                        unit_conversion_amount: data.unit_conversion_amount,
+                        updated_at: data.updated_at
+                    });
                 });
-            });
-            await batch.commit();
+                await batch.commit();
+            }
         }
 
         Object.assign(editingItem, data);
         hideItemModal();
         render();
     } catch (err) {
-        alert('保存エラー: ' + err.message);
-    } finally { overlay.style.display = 'none'; }
+        if (overlay) overlay.style.display = 'none';
+        showAlert('保存できません', err.message);
+    } finally { 
+        if (overlay) overlay.style.display = 'none'; 
+    }
 }

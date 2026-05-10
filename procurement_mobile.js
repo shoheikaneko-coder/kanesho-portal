@@ -585,8 +585,18 @@ function renderItemRow(si, master, showStoreName = false, isInnerRow = false) {
     const itemName = si.display_name || master?.name || '品目不明';
     const currentStock = Number(si.個数 || 0);
 
+    // 移動元店舗情報の取得（移動時のみ）
+    let sourceText = '';
+    if (selectedCategory === 'transfer') {
+        const sourceId = si.default_source_store_id;
+        const sourceStore = allGroupStores.find(s => s.id === sourceId || s.store_id === sourceId || s.code === sourceId);
+        const sourceStoreItem = procurementData.find(d => (d.StoreID === sourceId) && d.ProductID === si.ProductID);
+        const stock = Number(sourceStoreItem?.個数 || 0);
+        const sourceName = sourceStore?.store_name || sourceStore?.Name || '未設定';
+        sourceText = `<span style="color:#ef4444; font-weight:800; font-size:0.7rem; background:#fff1f2; padding:1px 6px; border-radius:6px; margin-left:4px;">${sourceName} 残:${stock}</span>`;
+    }
+
     if (isInnerRow) {
-        // グループ表示時の「内訳行」: 店舗名と在庫を上下2段に配置して見切れを防止
         return `
             <div class="proc-item-row inner-row" data-id="${si.id}" style="padding: 0.5rem 1rem; background: #fafafa; border-bottom: 1px solid #f1f5f9; align-items: center;">
                 <div class="proc-item-info" style="display: flex; flex-direction: column; justify-content: center; gap: 2px;">
@@ -601,23 +611,12 @@ function renderItemRow(si, master, showStoreName = false, isInnerRow = false) {
                 <div class="proc-req-badge" style="min-width: 45px; margin-left: 4px;">
                     <span style="font-size: 1rem;">${req}</span>
                     <span style="font-size: 0.55rem; font-weight: 700; opacity: 0.8;">${sUnit}</span>
-                    ${(() => {
-                        const conv = Number(si.unit_conversion_amount || 1);
-                        if (conv === 1) return '';
-                        let mUnit = master?.unit || master?.単位 || '';
-                        if (!mUnit) {
-                            const ing = cachedIngredients.find(i => i.item_id === si.ProductID);
-                            mUnit = ing?.unit || ing?.単位 || '';
-                        }
-                        if (!mUnit) return '';
-                        return `<span style="font-size: 0.5rem; color: #64748b; font-weight: 600; margin-top: 1px;">(= ${(req * conv).toLocaleString()}${mUnit})</span>`;
-                    })()}
                 </div>
 
-                <div class="proc-stepper">
-                    <button class="proc-stepper-btn btn-minus" data-si-id="${si.id}"><i class="fas fa-minus"></i></button>
+                <div class="proc-stepper" style="margin-left: auto; gap: 2px;">
+                    <button class="proc-stepper-btn btn-minus" data-si-id="${si.id}" style="width: 28px; height: 28px; font-size: 0.7rem;"><i class="fas fa-minus"></i></button>
                     <input type="number" class="proc-qty-input" value="${req}" data-si-id="${si.id}" inputmode="numeric" style="width: 32px; font-size: 1rem;">
-                    <button class="proc-stepper-btn btn-plus" data-si-id="${si.id}"><i class="fas fa-plus"></i></button>
+                    <button class="proc-stepper-btn btn-plus" data-si-id="${si.id}" style="width: 28px; height: 28px; font-size: 0.7rem;"><i class="fas fa-plus"></i></button>
                 </div>
 
                 <button class="proc-confirm-btn-small btn-confirm-action" data-si-id="${si.id}">
@@ -627,7 +626,6 @@ function renderItemRow(si, master, showStoreName = false, isInnerRow = false) {
         `;
     }
 
-    // 通常行: 店舗名を隠し、品目名をメインに表示
     return `
         <div class="proc-item-row" data-id="${si.id}">
             <div class="proc-item-info">
@@ -635,8 +633,8 @@ function renderItemRow(si, master, showStoreName = false, isInnerRow = false) {
                     <div class="proc-item-name-text" style="font-weight: 800;">${itemName}</div>
                 </div>
                 <div class="proc-item-meta" style="margin-top: 4px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
-                    ${showStoreName ? `<span style="margin-right: 4px;"><i class="fas fa-store"></i> ${sName}</span>` : ''}
                     <span class="stock-badge ${currentStock <= 0 ? 'critical' : ''}" style="background: ${currentStock <= 0 ? '#FFF1F2' : '#F1F5F9'}; color: ${currentStock <= 0 ? 'var(--primary)' : '#64748b'}; padding: 2px 10px; border-radius: 8px; font-weight: 700; font-size: 0.75rem; white-space: nowrap;">在庫: ${currentStock}</span>
+                    ${sourceText}
                 </div>
             </div>
             
@@ -717,22 +715,102 @@ function render() {
     const shortItems = filteredData.filter(si => {
         const qty = Number(si.個数 || 0);
         const par = Number(si.定数 || 0);
-        return par > 0 && qty < par && (si.shortage_action_type || 'purchase') === selectedCategory;
+        if (par <= 0 || qty >= par) return false;
+        
+        const activeActions = getMobileProcItemActions(si).filter(a => !isMobileActionCompletedToday(a));
+        return activeActions.some(a => mobileProcMatchesCategory(a.type, selectedCategory));
     });
 
+    // 消費アイテム（移動画面用）
+    let consumeItems = [];
+    let linkedPurchaseItems = [];
+    
+    if (selectedCategory === 'transfer' || selectedCategory === 'purchase') {
+        filteredData.forEach(si => {
+            const qty = Number(si.個数 || 0);
+            const par = Number(si.定数 || 0);
+            if (par <= 0 || qty >= par) return;
+            const shortage = par - qty;
+            
+            getMobileProcItemActions(si).forEach(action => {
+                if (isMobileActionCompletedToday(action)) return;
+
+                if (selectedCategory === 'transfer' && action.type === 'consume') {
+                    const consumeMaster = cachedItems.find(i => i.id === action.consume_item_id);
+                    const sourceItem = procurementData.find(d =>
+                        d.StoreID === action.source_store_id && d.ProductID === action.consume_item_id
+                    );
+                    consumeItems.push({
+                        parentSi: si,
+                        action: action,
+                        master: consumeMaster,
+                        neededQty: Math.ceil(shortage * (action.consume_qty_per_unit || 1)),
+                        sourceItem: sourceItem
+                    });
+                }
+                
+                if (selectedCategory === 'purchase' && action.type === 'linked_purchase') {
+                    const purchaseMaster = cachedItems.find(i => i.id === action.purchase_item_id);
+                    linkedPurchaseItems.push({
+                        parentSi: si,
+                        action: action,
+                        master: purchaseMaster,
+                        neededQty: Math.ceil(shortage * (action.purchase_qty_per_unit || 1))
+                    });
+                }
+            });
+        });
+    }
+
     if (selectedCategory === 'purchase') {
-        renderPurchaseContent(shortItems);
+        renderPurchaseContent(shortItems, linkedPurchaseItems);
     } else if (selectedCategory === 'transfer') {
-        // renderTransferContent 側で制御するため、ここでは非表示にしない
-        renderTransferContent(shortItems);
+        renderTransferContent(shortItems, consumeItems);
     } else {
         const vbar = document.getElementById('proc-vendor-bar'); if(vbar) vbar.style.display = 'none';
         renderMainContent(shortItems);
     }
 }
 
-function renderPurchaseContent(shortItems) {
+function getMobileProcItemActions(si) {
+    if (si.shortage_actions && si.shortage_actions.length > 0) return si.shortage_actions;
+    const oldType = si.shortage_action_type || 'purchase';
+    const a = { type: oldType };
+    if (oldType === 'transfer' && si.default_source_store_id) a.source_store_id = si.default_source_store_id;
+    return [a];
+}
+function mobileProcMatchesCategory(actionType, category) {
+    if (actionType === category) return true;
+    if (category === 'store_prep' && actionType === 'prep') return true;
+    if (category === 'purchase' && actionType === 'linked_purchase') return true;
+    return false;
+}
+
+/**
+ * アクションが今日の営業日内ですでに完了しているかチェック
+ */
+function isMobileActionCompletedToday(action) {
+    if (!action.completed_at) return false;
+    const resetTime = currentStore?.reset_time || "05:00";
+    const now = new Date();
+    const update = new Date(action.completed_at);
+
+    // 営業日の切り替わり時刻を計算
+    const [h, m] = resetTime.split(':').map(Number);
+    let lastReset = new Date(now);
+    lastReset.setHours(h, m, 0, 0);
+
+    if (now < lastReset) {
+        lastReset.setDate(lastReset.getDate() - 1);
+    }
+
+    return update >= lastReset;
+}
+
+function renderPurchaseContent(shortItems, linkedPurchaseItems = []) {
     const vendorBar = document.getElementById('proc-vendor-bar');
+    const main = document.getElementById('proc-main-content');
+    
     if (vendorBar) {
         vendorBar.style.display = 'flex';
         const storeLabel = document.getElementById('secondary-store-name-label');
@@ -752,7 +830,6 @@ function renderPurchaseContent(shortItems) {
 
     // 業者未選択時の表示
     if (!selectedVendor) {
-        const main = document.getElementById('proc-main-content');
         if (main) {
             main.innerHTML = `
                 <div style="text-align:center; padding: 5rem 2rem; color: #94a3b8;">
@@ -790,7 +867,7 @@ function renderPurchaseContent(shortItems) {
     renderMainContent(filteredItems);
 }
 
-function renderTransferContent(items) {
+function renderTransferContent(items, consumeItems = []) {
     const main = document.getElementById('proc-main-content');
     if (!main) return;
 
@@ -802,52 +879,61 @@ function renderTransferContent(items) {
             storeLabel.style.display = 'block';
             storeLabel.textContent = (currentStore?.store_name || currentStore?.Name || '') + ' への移動';
         }
-        
         const vendorSelector = document.getElementById('btn-vendor-selector');
         if (vendorSelector) vendorSelector.style.display = 'none';
         const batchBtn = document.getElementById('btn-master-batch-confirm');
         if (batchBtn) batchBtn.style.display = 'none';
     }
 
-    if (items.length === 0) {
-        main.innerHTML = `<div style="text-align:center; padding:4rem; color:var(--text-secondary);"><i class="fas fa-check-circle" style="font-size:3rem; color:#10b981; opacity:0.2;"></i><p>現在、移動が必要な品目はありません</p></div>`;
+    if (items.length === 0 && consumeItems.length === 0) {
+        main.innerHTML = `<div style="text-align:center; padding:4rem; color:var(--text-secondary);"><i class="fas fa-check-circle" style="font-size:3rem; color:#10b981; opacity:0.2;"></i><p>現在、移動・消費が必要な品目はありません</p></div>`;
         return;
     }
 
-    // Group items by Source Store
-    const itemsBySource = {};
+    // 移動元店舗ごとに品目をグループ化（通常移動 + 消費）
+    const combinedBySource = {};
+
     items.forEach(si => {
         const sourceId = si.default_source_store_id || 'UNKNOWN';
-        if (!itemsBySource[sourceId]) itemsBySource[sourceId] = [];
-        itemsBySource[sourceId].push(si);
+        if (!combinedBySource[sourceId]) combinedBySource[sourceId] = { transfers: [], consumes: [] };
+        combinedBySource[sourceId].transfers.push(si);
     });
 
-    let html = ``;
-    Object.keys(itemsBySource).sort().forEach(sourceId => {
+    consumeItems.forEach(ci => {
+        const sourceId = ci.action.source_store_id || 'UNKNOWN';
+        if (!combinedBySource[sourceId]) combinedBySource[sourceId] = { transfers: [], consumes: [] };
+        combinedBySource[sourceId].consumes.push(ci);
+    });
+
+    let html = '';
+    Object.keys(combinedBySource).sort().forEach(sourceId => {
         const sourceStore = allGroupStores.find(s => s.id === sourceId || s.store_id === sourceId);
         const sourceName = sourceStore?.store_name || sourceStore?.Name || (sourceId === 'UNKNOWN' ? '移動元未設定' : sourceId);
-        const sourceItems = itemsBySource[sourceId];
-        
+        const { transfers, consumes } = combinedBySource[sourceId];
         const isExpanded = expandedItems.has(sourceId);
 
         html += `
-            <div class="inventory-section-group ${isExpanded ? 'expanded' : ''}" style="margin-bottom: 0.5rem;">
-                <div class="section-header" onclick="window.toggleProcSection('${sourceId}')" style="background: #FFF5F5; border-left: 4px solid var(--primary); padding: 0.8rem 1rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
-                    <div style="display: flex; align-items: center; gap: 0.8rem;">
-                        <i class="fas fa-truck" style="color: var(--primary);"></i>
-                        <span class="section-title" style="font-size: 1rem; font-weight: 800; color: #1e293b;">${sourceName} からの移動</span>
+            <div class="inventory-section-group ${isExpanded ? 'expanded' : ''}" style="margin-bottom:0.5rem;">
+                <div class="section-header" onclick="window.toggleProcSection('${sourceId}')" style="background:#FFF5F5; border-left:4px solid var(--primary); padding:0.8rem 1rem; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                    <div style="display:flex; align-items:center; gap:0.8rem;">
+                        <i class="fas fa-truck" style="color:var(--primary);"></i>
+                        <span style="font-size:1rem; font-weight:800; color:#1e293b;">${sourceName} から移動・消費</span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 0.6rem;">
-                        <span class="section-count" style="background: #fee2e2; color: #b91c1c; padding: 2px 8px; border-radius: 10px; font-weight: 700;">${sourceItems.length} 品目</span>
-                        <i class="fas ${isExpanded ? 'fa-chevron-down' : 'fa-chevron-right'} chevron" style="font-size: 0.8rem; color: #94a3b8; transition: transform 0.3s;"></i>
+                    <div style="display:flex; align-items:center; gap:0.4rem;">
+                        ${transfers.length > 0 ? `<span style="background:#fee2e2; color:#b91c1c; padding:2px 8px; border-radius:10px; font-weight:700; font-size:0.75rem;">${transfers.length}</span>` : ''}
+                        ${consumes.length > 0 ? `<span style="background:#ffedd5; color:#c2410c; padding:2px 8px; border-radius:10px; font-weight:700; font-size:0.75rem;">🔥 ${consumes.length}</span>` : ''}
+                        <i class="fas ${isExpanded ? 'fa-chevron-down' : 'fa-chevron-right'}" style="font-size:0.8rem; color:#94a3b8; margin-left:4px;"></i>
                     </div>
                 </div>
-                <div class="section-content" style="${isExpanded ? 'display:block;' : 'display:none;'} background: white;">
-                    ${sourceItems.map(si => {
-                        const master = cachedItems.find(i => i.id === si.ProductID) || cachedIngredients.find(m => m.id === si.ProductID);
-                        // 移動モードでは店舗名表示を強制OFFにするため、第3引数を false に設定
+                <div style="${isExpanded ? 'display:block;' : 'display:none;'} background:white;">
+                    <!-- 通常移動 -->
+                    ${transfers.map(si => { 
+                        const master = cachedItems.find(i => i.id === si.ProductID) || cachedIngredients.find(m => m.id === si.ProductID); 
                         return renderItemRow(si, master, false); 
                     }).join('')}
+                    
+                    <!-- 仕込み連動消費 -->
+                    ${consumes.map(ci => renderMobileConsumeRow(ci)).join('')}
                 </div>
             </div>
         `;
@@ -855,6 +941,96 @@ function renderTransferContent(items) {
 
     main.innerHTML = html;
     attachMainContentListeners(main);
+
+    // 消費完了ボタンのリスナー
+    main.querySelectorAll('.btn-mobile-consume').forEach(btn => {
+        btn.onclick = async (e) => {
+            e.stopPropagation();
+            const uniqueKey = btn.dataset.uniqueKey;
+            const ci = consumeItems.find(c => `${c.parentSi.id}_${c.action.consume_item_id}` === uniqueKey);
+            if (!ci) return;
+            const inputEl = main.querySelector(`.mobile-consume-qty[data-unique-key="${uniqueKey}"]`);
+            const qty = Number(inputEl?.value || ci.neededQty);
+            await executeMobileConsumeAction(ci, qty);
+        };
+    });
+}
+
+function renderMobileConsumeRow(ci) {
+    const { parentSi, action, master, neededQty, sourceItem } = ci;
+    const parentName = parentSi.display_name || cachedItems.find(i => i.id === parentSi.ProductID)?.name || '不明';
+    const consumeName = master?.name || action.consume_item_id || '不明';
+    const consumeUnit = action.consume_unit || master?.unit || '';
+    const sourceStock = Number(sourceItem?.個数 || 0);
+    const isLowStock = sourceStock < neededQty;
+    const uniqueKey = `${parentSi.id}_${action.consume_item_id}`;
+
+    // 移動元店舗の情報
+    const sourceId = action.source_store_id;
+    const sourceStore = allGroupStores.find(s => s.id === sourceId || s.store_id === sourceId || s.code === sourceId);
+    const sourceName = sourceStore?.store_name || sourceStore?.Name || '未設定';
+
+    return `
+        <div class="proc-item-row" style="border-left:4px solid #f97316; background:#fffbf5;">
+            <div class="proc-item-info">
+                <div class="proc-item-name" style="font-weight: 800;">
+                    ${consumeName}
+                    <span style="font-size:0.6rem; background:#ffedd5; color:#c2410c; padding:1px 6px; border-radius:10px; font-weight:800; margin-left:4px;">🔥 消費</span>
+                </div>
+                <div class="proc-item-meta" style="margin-top: 4px; display: flex; align-items: center; flex-wrap: wrap; gap: 4px;">
+                    <span class="stock-badge ${isLowStock ? 'critical' : ''}" style="background: ${isLowStock ? '#FFF1F2' : '#F0FDF4'}; color: ${isLowStock ? 'var(--primary)' : '#166534'}; padding: 2px 10px; border-radius: 8px; font-weight: 700; font-size: 0.75rem; white-space: nowrap;">
+                        ${sourceName} 在庫: ${sourceStock}
+                    </span>
+                    <span style="font-size:0.65rem; color:#f97316; font-weight:700;"><i class="fas fa-link"></i> ${parentName.slice(0, 8)}...連動</span>
+                </div>
+            </div>
+            
+            <div class="proc-req-badge">
+                <span style="font-size: 1.1rem; color:#c2410c;">${neededQty}</span>
+                <span style="font-size: 0.6rem; font-weight: 700; opacity: 0.8;">${consumeUnit}</span>
+            </div>
+
+            <div class="proc-stepper">
+                <button class="proc-stepper-btn" onclick="const inp=this.nextElementSibling; inp.value=Math.max(0,Number(inp.value)-1);"><i class="fas fa-minus"></i></button>
+                <input type="number" class="proc-qty-input mobile-consume-qty" value="${neededQty}" data-unique-key="${uniqueKey}" inputmode="numeric">
+                <button class="proc-stepper-btn" onclick="const inp=this.previousElementSibling; inp.value=Number(inp.value)+1;"><i class="fas fa-plus"></i></button>
+            </div>
+
+            <button class="proc-confirm-btn-small btn-mobile-consume" data-unique-key="${uniqueKey}" style="background:#f97316;">
+                <i class="fas fa-check"></i>
+            </button>
+        </div>
+    `;
+}
+
+async function executeMobileConsumeAction(ci, qty) {
+    if (!ci || qty <= 0) return;
+    const { action, master, sourceItem, parentSi } = ci;
+    const consumeName = master?.name || action.consume_item_id || '消費品目';
+    const consumeUnit = action.consume_unit || master?.unit || '';
+    if (!sourceItem) { showAlert('エラー', `消費元に「${consumeName}」が登録されていません`); return; }
+    const currentStock = Number(sourceItem.個数 || 0);
+    const parentName = parentSi.display_name || cachedItems.find(i => i.id === parentSi.ProductID)?.name || '不明';
+    if (!confirm(`「${consumeName}」 ${qty}${consumeUnit} 消費\n（${parentName}仕込み連動）\n在庫: ${currentStock} → ${currentStock - qty}`)) return;
+    await showLoading(true);
+    try {
+        const now = new Date().toISOString();
+        const newQty = currentStock - qty;
+        await updateDoc(doc(db, 'm_store_items', sourceItem.id), { 個数: newQty, updated_at: now });
+        await addDoc(collection(db, 't_inventory_history'), {
+            store_id: sourceItem.StoreID, item_id: sourceItem.ProductID, store_item_id: sourceItem.id,
+            change_qty: -qty, qty_after: newQty, reason_type: 'consume_out',
+            source_route: 'procurement_mobile', note: `消費（${parentName}連動）: ${qty}${consumeUnit}`,
+            executed_by: currentUser?.Name || 'unknown', executed_at: now
+        });
+        sourceItem.個数 = newQty;
+        showAlert('完了', `「${consumeName}」${qty}${consumeUnit} 消費完了`);
+        render();
+    } catch (err) {
+        showAlert('エラー', '消費処理に失敗: ' + err.message);
+    } finally {
+        await showLoading(false);
+    }
 }
 
 /**

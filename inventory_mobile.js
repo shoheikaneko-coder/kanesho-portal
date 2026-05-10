@@ -107,51 +107,109 @@ export const inventoryMobilePageHtml = `
         </div>
     </div>
 
-    <style>
-        /* This page only CSS overrides */
-        .page-content { overflow: hidden !important; padding: 0 !important; }
-        
-        .bottom-sheet { position: fixed; inset: 0; z-index: 10000; display: flex; flex-direction: column; justify-content: flex-end; }
-        .bottom-sheet-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
-        .bottom-sheet-content { position: relative; background: white; border-radius: 30px 30px 0 0; padding-bottom: env(safe-area-inset-bottom); max-height: 90vh; overflow-y: auto; animation: sheet-slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-        .bottom-sheet-handle { width: 40px; height: 5px; background: #e2e8f0; border-radius: 10px; margin: 12px auto; }
-        @keyframes sheet-slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        <!-- Item Settings Sheet -->
+        <div id="inv-item-settings-sheet" class="bottom-sheet" style="display: none;">
+            <div class="bottom-sheet-backdrop" onclick="closeItemSettings()"></div>
+            <div class="bottom-sheet-content">
+                <div class="bottom-sheet-handle"></div>
+                <div style="padding: 1rem 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 id="sheet-item-name" style="margin: 0; font-size: 1.1rem; font-weight: 900;">品目設定</h3>
+                        <button onclick="closeItemSettings()" style="background: none; border: none; font-size: 1.2rem; color: #94a3b8;"><i class="fas fa-times"></i></button>
+                    </div>
 
-        .mobile-tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #94a3b8; font-size: 0.65rem; font-weight: 800; }
-        .mobile-tab-item i { font-size: 1.2rem; }
-        .mobile-tab-item.active { color: var(--primary); }
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 800; color: #94a3b8;">表示名</label>
+                            <input type="text" id="sheet-display-name" class="mobile-input-v2" style="width: 100%;" placeholder="マスター名を使用">
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;">
+                            <div>
+                                <label style="font-size: 0.75rem; font-weight: 800; color: #94a3b8;">確認タイミング</label>
+                                <select id="sheet-timing" class="mobile-input-v2" style="width: 100%;"></select>
+                            </div>
+                            <div>
+                                <label style="font-size: 0.75rem; font-weight: 800; color: #94a3b8;">保管場所</label>
+                                <input type="text" id="sheet-location" class="mobile-input-v2" style="width: 100%;">
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;">
+                            <div>
+                                <label style="font-size: 0.75rem; font-weight: 800; color: #94a3b8;">定数</label>
+                                <input type="number" id="sheet-par" class="mobile-input-v2" style="width: 100%;">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.75rem; font-weight: 800; color: #94a3b8;">管理単位</label>
+                                <input type="text" id="sheet-unit" class="mobile-input-v2" style="width: 100%;">
+                            </div>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 800; color: #94a3b8;">単位換算</label>
+                            <div style="display: flex; align-items: center; gap: 0.4rem;">
+                                <span id="sheet-unit-preview" style="font-size: 0.8rem; font-weight: 800; color: #475569;">1 単位 =</span>
+                                <input type="number" id="sheet-conv" class="mobile-input-v2" style="flex: 1; min-width: 0;">
+                                <span id="sheet-master-unit" style="font-size: 0.8rem; font-weight: 800; color: #64748b;">-</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 800; color: #94a3b8;">不足時のアクション</label>
+                            <select id="sheet-action" class="mobile-input-v2" style="width: 100%;">
+                                <option value="purchase">仕入れ (通常)</option>
+                                <option value="transfer">店舗間移動</option>
+                                <option value="prep">店舗仕込み</option>
+                                <option value="consume">消費 (仕込連動)</option>
+                                <option value="linked_purchase">仕込連動仕入れ</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Configuration for Transfer -->
+                        <div id="sheet-source-store-container" style="display: none;">
+                            <label style="font-size: 0.75rem; font-weight: 800; color: #94a3b8;">移動元店舗</label>
+                            <select id="sheet-source-store" class="mobile-input-v2" style="width: 100%;"></select>
+                        </div>
 
-        .horizontal-scroll-chips-slim { display: flex; gap: 0.6rem; overflow-x: auto; scrollbar-width: none; padding: 0.4rem 1rem 0.8rem 1rem; }
-        .horizontal-scroll-chips-slim::-webkit-scrollbar { display: none; }
+                        <!-- Configuration for Linked Purchase -->
+                        <div id="sheet-linked-purchase-container" style="display: none;">
+                            <div style="background: #f8fafc; border-radius: 12px; padding: 0.8rem; display: flex; flex-direction: column; gap: 0.8rem; border: 1.5px solid #e2e8f0;">
+                                <div>
+                                    <label style="font-size: 0.7rem; font-weight: 900; color: #64748b; text-transform: uppercase;">連動して仕入れる原材料</label>
+                                    <select id="sheet-linked-item" class="mobile-input-v2" style="width: 100%; margin-top: 4px;"></select>
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.7rem; font-weight: 900; color: #64748b; text-transform: uppercase;">1単位あたりの仕入数</label>
+                                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 4px;">
+                                        <input type="number" id="sheet-linked-qty" class="mobile-input-v2" style="flex: 1;" placeholder="0.0">
+                                        <span id="sheet-linked-unit" style="font-size: 0.8rem; font-weight: 800; color: #475569;">単位</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button id="btn-sheet-save" class="btn btn-primary" style="width: 100%; height: 50px; border-radius: 12px; font-weight: 800; margin-top: 0.5rem;">設定を保存</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        .timing-chip { padding: 0.4rem 0.9rem; background: #f8fafc; color: #64748b; border-radius: 20px; font-weight: 800; font-size: 0.75rem; white-space: nowrap; border: 1.5px solid #f1f5f9; transition: all 0.2s; }
-        .timing-chip.active { background: #fff; color: var(--primary); border-color: var(--primary); box-shadow: 0 2px 6px rgba(230,57,70,0.1); }
-        .timing-chip.completed { background: var(--primary); color: white; border-color: var(--primary); }
-        .timing-chip.completed.active { box-shadow: 0 4px 10px rgba(230,57,70,0.3); }
-
-        .inv-row { display: flex; align-items: center; padding: 0.8rem 1rem; border-bottom: 1px solid #f8fafc; gap: 0.8rem; background: white; }
-        .inv-row.confirmed { background: #f0fdf4; }
-        .inv-row.shortage:not(.confirmed) { background: #fff5f5; }
-        .inv-row-content { flex: 1; min-width: 0; }
-        .inv-row-title { font-weight: 900; font-size: 0.95rem; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .inv-row-meta { font-size: 0.65rem; color: #94a3b8; font-weight: 700; }
-
-        .qty-stepper-sm { display: flex; align-items: center; background: #f8fafc; border-radius: 8px; padding: 2px; border: 1px solid #f1f5f9; }
-        .stepper-btn-sm { width: 32px; height: 32px; border-radius: 6px; background: white; color: #1e293b; border: none; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: center; }
-        .qty-input-sm { width: 44px; border: none; background: transparent; text-align: center; font-size: 1.1rem; font-weight: 900; color: var(--primary); outline: none; }
-
-        .btn-confirm-sm { width: 38px; height: 38px; border-radius: 10px; border: none; background: #f1f5f9; color: #cbd5e1; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; }
-        .btn-confirm-sm.active { background: #10b981; color: white; }
-
-        .inv-row-controls { display: flex; align-items: center; gap: 1.2rem; flex-shrink: 0; }
-
-        .btn-icon-sm { width: 32px; height: 32px; border-radius: 8px; border: none; background: #f8fafc; color: #94a3b8; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; }
-        .location-header-sm { padding: 0.4rem 1rem; background: #f8fafc; color: #94a3b8; font-size: 0.7rem; font-weight: 900; text-transform: uppercase; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; }
-
-        .btn-icon-mobile { width: 44px; height: 44px; border-radius: 12px; border: none; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
-        .store-item-row { padding: 1rem; background: white; border-radius: 12px; border: 1.5px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem; }
-        .store-item-row.active { border-color: var(--primary); background: #fff5f5; color: var(--primary); }
-    </style>
+        <style>
+            .mobile-input-v2 { height: 44px; padding: 0 0.8rem; border-radius: 10px; border: 1.5px solid #e2e8f0; background: #fff; font-size: 0.9rem; font-weight: 700; outline: none; }
+            .mobile-input-v2:focus { border-color: var(--primary); }
+            
+            /* ... existing styles ... */
+            .page-content { overflow: hidden !important; padding: 0 !important; }
+            .bottom-sheet { position: fixed; inset: 0; z-index: 10000; display: flex; flex-direction: column; justify-content: flex-end; }
+            .bottom-sheet-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+            .bottom-sheet-content { position: relative; background: white; border-radius: 30px 30px 0 0; padding-bottom: env(safe-area-inset-bottom); max-height: 90vh; overflow-y: auto; animation: sheet-slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+            .bottom-sheet-handle { width: 40px; height: 5px; background: #e2e8f0; border-radius: 10px; margin: 12px auto; }
+            @keyframes sheet-slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+            .mobile-tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #94a3b8; font-size: 0.65rem; font-weight: 800; }
+            .mobile-tab-item i { font-size: 1.2rem; }
+            .mobile-tab-item.active { color: var(--primary); }
+            .inv-row { display: flex; align-items: center; padding: 0.8rem 1rem; border-bottom: 1px solid #f8fafc; gap: 0.8rem; background: white; }
+            .qty-stepper-sm { display: flex; align-items: center; background: #f8fafc; border-radius: 8px; padding: 2px; border: 1px solid #f1f5f9; }
+            .btn-confirm-sm { width: 38px; height: 38px; border-radius: 10px; border: none; background: #f1f5f9; color: #cbd5e1; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; }
+            .btn-confirm-sm.active { background: #10b981; color: white; }
+        </style>
 `;
 
 // Global State
@@ -1918,10 +1976,48 @@ function showItemSettingsModal(itemId) {
     const sourceContainer = document.getElementById('sheet-source-store-container');
     const sourceSelect = document.getElementById('sheet-source-store');
     const actionSelect = document.getElementById('sheet-action');
+    const linkedContainer = document.getElementById('sheet-linked-purchase-container');
+    const linkedItemSelect = document.getElementById('sheet-linked-item');
+    const linkedQtyInput = document.getElementById('sheet-linked-qty');
+    const linkedUnitLabel = document.getElementById('sheet-linked-unit');
     
+    // shortage_actions 配列から現在の設定を復元
+    let currentLinkedAction = null;
+    if (item.shortage_actions && item.shortage_actions.length > 0) {
+        currentLinkedAction = item.shortage_actions.find(a => a.type === 'linked_purchase');
+        // もし shortage_action_type がセットされておらず、かつアクション配列がある場合は
+        // 1番目のアクションをデフォルトとして表示
+        if (!item.shortage_action_type && item.shortage_actions.length > 0) {
+            actionSelect.value = item.shortage_actions[0].type;
+        }
+    }
+
+    // 連動仕入れ用の品目リスト（原材料）をセット
+    const rawIngredients = cachedItems.filter(i => {
+        return cachedIngredients.some(ing => ing.item_id === i.id);
+    }).sort((a,b) => a.name.localeCompare(b.name));
+    
+    linkedItemSelect.innerHTML = rawIngredients.map(i => `<option value="${i.id}">${i.name}</option>`).join('');
+    
+    if (currentLinkedAction) {
+        linkedItemSelect.value = currentLinkedAction.purchase_item_id || "";
+        linkedQtyInput.value = currentLinkedAction.purchase_qty_per_unit || 0;
+    }
+
+    const updateLinkedUnit = () => {
+        const selId = linkedItemSelect.value;
+        const selItem = cachedItems.find(i => i.id === selId);
+        linkedUnitLabel.textContent = selItem?.unit || '単位';
+    };
+    linkedItemSelect.onchange = updateLinkedUnit;
+    updateLinkedUnit();
+
     const updateSourceVisibility = async () => {
-        if (actionSelect.value === 'transfer') {
-            sourceContainer.style.display = 'block';
+        const type = actionSelect.value;
+        sourceContainer.style.display = (type === 'transfer') ? 'block' : 'none';
+        linkedContainer.style.display = (type === 'linked_purchase') ? 'block' : 'none';
+
+        if (type === 'transfer') {
             const currentStoreData = allStores.find(s => s.code === selectedStore.code);
             const currentGroup = currentStoreData?.group_name;
             const sameGroupStores = allStores.filter(s => s.code !== selectedStore.code && s.group_name === currentGroup);
@@ -1942,7 +2038,6 @@ function showItemSettingsModal(itemId) {
                 }
             }
         } else {
-            sourceContainer.style.display = 'none';
             document.getElementById('sheet-unit').readOnly = false;
             document.getElementById('sheet-conv').readOnly = false;
             document.getElementById('sheet-unit').style.background = "";
@@ -1968,6 +2063,23 @@ async function saveItemSettings() {
     const overlay = document.getElementById('inv-loading-overlay');
     overlay.style.display = 'flex';
 
+    const selectedActionType = document.getElementById('sheet-action').value;
+    const actions = [{ type: selectedActionType }];
+
+    if (selectedActionType === 'transfer') {
+        actions[0].source_store_id = document.getElementById('sheet-source-store').value;
+    } else if (selectedActionType === 'linked_purchase') {
+        const itemId = document.getElementById('sheet-linked-item').value;
+        const item = cachedItems.find(i => i.id === itemId);
+        actions[0].purchase_item_id = itemId;
+        actions[0].purchase_qty_per_unit = Number(document.getElementById('sheet-linked-qty').value) || 0;
+        actions[0].purchase_unit = item?.unit || '';
+    } else if (selectedActionType === 'consume') {
+        // モバイル版では簡易的に既存の設定があれば維持（またはデフォルト）
+        const oldConsume = (editingItem.shortage_actions || []).find(a => a.type === 'consume');
+        if (oldConsume) actions[0] = { ...oldConsume };
+    }
+
     const data = {
         確認タイミング: document.getElementById('sheet-timing').value,
         display_name: document.getElementById('sheet-display-name').value.trim(),
@@ -1976,8 +2088,9 @@ async function saveItemSettings() {
         定数: Number(document.getElementById('sheet-par').value) || 0,
         display_unit: document.getElementById('sheet-unit').value,
         unit_conversion_amount: Number(document.getElementById('sheet-conv').value) || 1,
-        shortage_action_type: document.getElementById('sheet-action').value,
-        default_source_store_id: document.getElementById('sheet-action').value === 'transfer' ? document.getElementById('sheet-source-store').value : null,
+        shortage_action_type: selectedActionType,
+        shortage_actions: actions,
+        default_source_store_id: selectedActionType === 'transfer' ? document.getElementById('sheet-source-store').value : null,
         updated_at: new Date().toISOString()
     };
 
