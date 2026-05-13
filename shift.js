@@ -489,7 +489,7 @@ const injectStyles = () => {
         .staff-cell { 
             position: sticky; left: 0; z-index: 10; background: white; 
             padding: 0.6rem 0.8rem; font-weight: 700; font-size: 0.85rem;
-            border-right: 2px solid var(--border) !important; text-align: left; 
+            border-right: 2px solid var(--border) !important; text-align: center; 
             box-shadow: 4px 0 8px rgba(0,0,0,0.03); 
             min-width: 110px; white-space: nowrap;
         }
@@ -517,10 +517,6 @@ const injectStyles = () => {
             background-color: #fef2f2 !important; 
             background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(239, 68, 68, 0.05) 5px, rgba(239, 68, 68, 0.05) 10px) !important;
             cursor: not-allowed;
-        }
-        .is-off-column::after {
-            content: "店休"; position: absolute; font-size: 0.6rem; color: #ef4444; font-weight: 800;
-            top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.4; pointer-events: none;
         }
 
         /* --- Shift Block Designs --- */
@@ -1527,6 +1523,7 @@ function renderAdminGrid() {
                     <div class="date-num">${d.getDate()}</div>
                     <div class="weekday">${['日','月','火','水','木','金','土'][d.getDay()]}</div>
                     ${isHoliday ? `<div class="holiday-name-hdr">${cal.label || '祝日'}</div>` : ''}
+                    ${isOff ? `<div class="holiday-name-hdr">店休</div>` : ''}
                     ${cal.is_market_off ? `<div class="market-badge-hdr">市</div>` : ''}
                 </th>`;
         }
@@ -1615,6 +1612,7 @@ async function renderSubmissionGrid() {
                 <div class="date-num">${d.getDate()}</div>
                 <div class="weekday">${['日','月','火','水','木','金','土'][d.getDay()]}</div>
                 ${isHoliday ? `<div class="holiday-name-hdr">${cal.label || '祝日'}</div>` : ''}
+                ${isOff ? `<div class="holiday-name-hdr">店休</div>` : ''}
                 ${cal.is_market_off ? `<div class="market-badge-hdr">市</div>` : ''}
             </th>`;
     }
