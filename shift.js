@@ -654,35 +654,8 @@ const injectStyles = () => {
         }
     `;
     document.head.appendChild(s);
-};ection: column; align-items: flex-end; z-index: 10001;
-            }
-            .admin-fab-overlay {
-                position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4);
-                backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-                opacity: 0; visibility: hidden; transition: all 0.3s ease;
-            }
-            .admin-fab-overlay.show { opacity: 1; visibility: visible; }
-            #admin-fab-main-btn {
-                width: 60px; height: 60px; background: linear-gradient(135deg, var(--primary), #FF5A5F);
-                border-radius: 50%; display: flex; justify-content: center; align-items: center;
-                color: white; font-size: 1.5rem; box-shadow: 0 4px 15px rgba(230, 57, 70, 0.4);
-            }
-            .bottom-sheet {
-                position: fixed; left: 0; right: 0; bottom: 0; background: white;
-                border-radius: 24px 24px 0 0; box-shadow: 0 -10px 40px rgba(15, 23, 42, 0.25);
-                transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
-                z-index: 10002; padding-bottom: env(safe-area-inset-bottom);
-            }
-            .bottom-sheet.show { transform: translateY(0); }
-
-            /* シフト表のモバイル調整 */
-            #shift-admin-table th.date-hdr { min-width: 50px !important; font-size: 0.7rem !important; }
-            #shift-admin-table td.shift-cell { height: 60px !important; }
-            .staff-cell { min-width: 100px !important; font-size: 0.85rem !important; }
-        }
-        `;
-    document.head.appendChild(s);
 };
+
 
 /**
  * --- Initialization ---
