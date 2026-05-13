@@ -491,6 +491,7 @@ const injectStyles = () => {
             padding: 0.6rem 0.8rem; font-weight: 700; font-size: 0.85rem;
             border-right: 2px solid var(--border) !important; text-align: left; 
             box-shadow: 4px 0 8px rgba(0,0,0,0.03); 
+            min-width: 110px; white-space: nowrap;
         }
         
         .date-hdr { 
@@ -508,7 +509,7 @@ const injectStyles = () => {
         .holiday-name-hdr { font-size: 0.6rem; color: #ef4444; font-weight: 700; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .market-badge-hdr { background: #3b82f6; color: white; font-size: 0.6rem; padding: 1px 3px; border-radius: 3px; margin-top: 2px; display: inline-block; }
 
-        .shift-cell { height: 56px; cursor: pointer; padding: 3px; transition: background 0.1s; }
+        .shift-cell { height: 56px; cursor: pointer; padding: 3px; transition: background 0.1s; position: relative; }
         .shift-cell:hover { background: #f8fafc; }
         
         /* --- Business Calendar Concepts --- */
