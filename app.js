@@ -33,7 +33,7 @@ import { notificationsPageHtml, initNotificationsPage } from './notifications.js
 import { calendarAdminPageHtml, initCalendarAdminPage, calendarViewerPageHtml, initCalendarViewerPage } from './calendar.js?v=63';
 import { goalsAdminPageHtml, initGoalsAdminPage, goalsStorePageHtml, initGoalsStorePage } from './goals.js?v=7';
 import { homePageHtml, initHomePage } from './home.js?v=120';
-import { shiftSubmissionPageHtml, initShiftSubmissionPage, shiftAdminPageHtml, initShiftAdminPage, shiftViewerPageHtml, initShiftViewerPage, shiftViewerMobilePageHtml, initShiftViewerMobilePage, checkIfShiftPublished } from './shift.js?v=72';
+import { shiftSubmissionPageHtml, initShiftSubmissionPage, shiftAdminPageHtml, initShiftAdminPage, shiftViewerPageHtml, initShiftViewerPage, shiftViewerMobilePageHtml, initShiftViewerMobilePage, checkIfShiftPublished } from './shift.js';
 import { shiftAdminMobilePageHtml, initShiftAdminMobilePage } from './shift_mobile.js';
 import { loansPageHtml, initLoansPage } from './loans.js?v=116';
 import { hubPageHtml, initHubPage } from './hubs.js?v=20260428_02';
