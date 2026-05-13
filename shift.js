@@ -5,7 +5,7 @@ import { showAlert, showConfirm, showLoader } from './ui_utils.js';
 /**
  * --- Date Utilities ---
  */
-const formatDateJST = (d) => {
+export const formatDateJST = (d) => {
     if (!d) return "";
     const jstDate = new Date(d.getTime() + (9 * 60 * 60 * 1000));
     return jstDate.toISOString().split("T")[0];
@@ -14,7 +14,7 @@ const formatDateJST = (d) => {
 /**
  * --- Shared State & Slots ---
  */
-let currentSlot = {
+export let currentSlot = {
     year: 0, month: 0, slot: 1, 
     startDate: null, endDate: null,
     deadLine: null
@@ -463,21 +463,26 @@ export const shiftAdminPageHtml = `
 /**
  * --- Internal State & Styles ---
  */
-let currentShifts = {}; 
-let currentTargetUser = null;
-let allStoreUsers = [];
-let helpUsers = [];
-let globalShiftMap = {}; // 28h判定用：全店舗・複数シフトを保持 { uid: { date: [shift1, shift2] } }
+export let currentShifts = {}; 
+export let currentTargetUser = null;
+export let allStoreUsers = [];
+export let helpUsers = [];
+export let globalShiftMap = {}; 
+export let isBulkMode = false;
+export let selectedCells = []; 
+export let dailyGoalSales = {};
+export let adminMode = false;
+export let calendarData = {}; 
+export let viewerActiveSlot = null; 
 
-// 一括入力用
-let isBulkMode = false;
-let selectedCells = []; // [{uid, date}]
-let dailyGoalSales = {};
-let adminMode = false;
-let calendarData = {}; // { YYYY-MM-DD: { type, is_holiday, label } }
-let viewerActiveSlot = null; // 閲覧画面用のアクティブスロット
+export function setShiftState(key, value) {
+    if (key === 'adminMode') adminMode = value;
+    if (key === 'isBulkMode') isBulkMode = value;
+    if (key === 'currentTargetUser') currentTargetUser = value;
+    if (key === 'selectedCells') selectedCells = value;
+}
 
-const injectStyles = () => {
+export const injectStyles = () => {
     if (document.getElementById('shift-styles')) return;
     const s = document.createElement('style');
     s.id = 'shift-styles';
@@ -657,7 +662,7 @@ const injectStyles = () => {
 /**
  * --- Initialization ---
  */
-async function fetchCalendarData(sid, start, end) {
+export async function fetchCalendarData(sid, start, end) {
     if (!sid) return;
     calendarData = {};
     const startDate = start || currentSlot.startDate;
@@ -1263,7 +1268,7 @@ async function saveShiftsBulk() {
     finally { if(loader) loader.remove(); }
 }
 
-async function loadShiftMemo(sid) {
+export async function loadShiftMemo(sid) {
     if (!sid) return;
     const memoId = `${sid}_${currentSlot.year}_${currentSlot.month}_${currentSlot.slot}`;
     const snap = await getDoc(doc(db, "t_shift_memos", memoId));
@@ -1272,7 +1277,7 @@ async function loadShiftMemo(sid) {
     if (el) el.value = memoText;
 }
 
-async function saveShiftMemo() {
+export async function saveShiftMemo() {
     const me = JSON.parse(localStorage.getItem('currentUser'));
     const sid = window.currentAdminStoreId || me.StoreID || me.StoreId;
     if (!sid) return;
@@ -1304,7 +1309,7 @@ async function saveShiftMemo() {
 /**
  * --- Data Loading & Rendering ---
  */
-async function loadStoreStaff(sid, sname) {
+export async function loadStoreStaff(sid, sname) {
     if (!sid || sid === 'UNKNOWN') return;
     allStoreUsers = [];
     try {
@@ -1335,7 +1340,7 @@ async function loadStoreStaff(sid, sname) {
     } catch (e) { console.error("Error loading store staff:", e); }
 }
 
-async function loadShiftsBatch(sid, uid = null) {
+export async function loadShiftsBatch(sid, uid = null) {
     if (!currentSlot.startDate || !currentSlot.endDate) {
         console.warn("loadShiftsBatch: currentSlot range is missing.");
         return;
@@ -1402,7 +1407,7 @@ async function loadShiftsBatch(sid, uid = null) {
     }
 }
 
-function getExtendedRange(start, end) {
+export function getExtendedRange(start, end) {
     if (!start || !end) return { start: "", end: "" };
     const s = new Date(start);
     s.setDate(s.getDate() - s.getDay()); 
@@ -1414,7 +1419,7 @@ function getExtendedRange(start, end) {
     };
 }
 
-async function loadDailyGoalData(sid) {
+export async function loadDailyGoalData(sid) {
     if (!sid) return;
     dailyGoalSales = {};
     const ym = `${currentSlot.year}-${String(currentSlot.month).padStart(2, '0')}`;
@@ -1503,7 +1508,7 @@ async function loadDailyGoalData(sid) {
     }
 }
 
-function renderAdminGrid() {
+export function renderAdminGrid() {
     const body = document.getElementById('admin-table-body');
     const header = document.getElementById('admin-table-header');
     if (!header || !body) return;
@@ -2112,7 +2117,7 @@ async function checkDoubleBooking(uid, date, s, e) {
     return conflict;
 }
 
-function updateOverallKPIs() {
+export function updateOverallKPIs() {
     let hours = 0, target = 0;
     const users = [...allStoreUsers, ...helpUsers];
     const startDateStr = formatDateJST(currentSlot.startDate);
@@ -2297,7 +2302,7 @@ window.copyShiftForLine = async (date) => {
     }
 };
 
-async function publishShifts() {
+export async function publishShifts() {
     const btn = document.getElementById('btn-publish-shifts');
     if (btn) {
         btn.disabled = true;
@@ -2413,7 +2418,7 @@ async function publishShifts() {
 /**
  * --- 周知・共有機能 ---
  */
-async function shareShiftToLine(sid, sName) {
+export async function shareShiftToLine(sid, sName) {
     if (!sid) return showAlert('警告', '店舗IDが取得できませんでした。');
     const loader = showLoader();
     try {
@@ -2501,7 +2506,7 @@ ${portalUrl}
     }
 }
 
-async function openHelpStaffModal() {
+export async function openHelpStaffModal() {
     const modal = document.createElement('div');
     modal.className = "modal-overlay";
     modal.style = "display:flex; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:10001; align-items:center; justify-content:center;";
@@ -2771,7 +2776,7 @@ window.saveUserFixedShift = async (uid) => {
     }
 };
 
-async function applyFixedSchedules() {
+export async function applyFixedSchedules() {
     const span = Math.round((currentSlot.endDate - currentSlot.startDate) / (1000 * 60 * 60 * 24)) + 1;
     const batchOps = [];
     let count = 0;

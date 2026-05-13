@@ -34,6 +34,7 @@ import { calendarAdminPageHtml, initCalendarAdminPage, calendarViewerPageHtml, i
 import { goalsAdminPageHtml, initGoalsAdminPage, goalsStorePageHtml, initGoalsStorePage } from './goals.js?v=7';
 import { homePageHtml, initHomePage } from './home.js?v=120';
 import { shiftSubmissionPageHtml, initShiftSubmissionPage, shiftAdminPageHtml, initShiftAdminPage, shiftViewerPageHtml, initShiftViewerPage, shiftViewerMobilePageHtml, initShiftViewerMobilePage, checkIfShiftPublished } from './shift.js?v=72';
+import { shiftAdminMobilePageHtml, initShiftAdminMobilePage } from './shift_mobile.js';
 import { loansPageHtml, initLoansPage } from './loans.js?v=116';
 import { hubPageHtml, initHubPage } from './hubs.js?v=20260428_02';
 import { inviteNaviPageHtml, initInviteNaviPage } from './invite_navi.js';
@@ -639,8 +640,13 @@ async function showPage(target) {
             case 'shift_admin':
                 pageTitle.textContent = 'シフト作成・調整 (コックピット)';
                 if (pageTitleMobileCentral) pageTitleMobileCentral.textContent = 'シフト作成・調整 (コックピット)';
-                pageContent.innerHTML = shiftAdminPageHtml;
-                initShiftAdminPage();
+                if (window.innerWidth < 768) {
+                    pageContent.innerHTML = shiftAdminMobilePageHtml;
+                    initShiftAdminMobilePage();
+                } else {
+                    pageContent.innerHTML = shiftAdminPageHtml;
+                    initShiftAdminPage();
+                }
                 break;
             case 'loans':
                 pageTitle.textContent = '貸与物管理(アセット)';
