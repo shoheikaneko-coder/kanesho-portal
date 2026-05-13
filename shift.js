@@ -201,15 +201,15 @@ export const shiftSubmissionPageHtml = `
     <div class="animate-fade-in" id="shift-submission-container" style="max-width: 1400px; margin: 0 auto; padding-bottom: 3rem;">
         
         <!-- デスクトップ用アクションバー -->
-        <div class="glass-panel desktop-only" style="padding: 1.2rem 1.5rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid var(--primary);">
+        <div class="glass-panel desktop-only" style="padding: 0.8rem 1.2rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid var(--primary);">
             <div>
-                <p style="margin: 0; font-size: 0.85rem; color: var(--text-secondary); font-weight: 700;" id="shift-deadline-info"></p>
+                <p style="margin: 0; font-size: 0.8rem; color: var(--text-secondary); font-weight: 700;" id="shift-deadline-info"></p>
             </div>
-            <div style="display: flex; gap: 1rem; align-items: center;">
-                <button id="btn-bulk-mode-staff" class="btn btn-secondary" style="font-size: 0.85rem;"><i class="fas fa-check-double"></i> 一括入力</button>
-                <button id="btn-save-as-template" class="btn btn-secondary" style="font-size: 0.85rem;"><i class="fas fa-save"></i> 基本型に保存</button>
-                <button id="btn-apply-template" class="btn btn-secondary" style="font-size: 0.85rem;"><i class="fas fa-magic"></i> いつものパターン</button>
-                <button id="btn-submit-shifts" class="btn btn-primary" style="font-size: 0.9rem; padding: 0.6rem 2rem; font-weight: 800;">提出する</button>
+            <div style="display: flex; gap: 0.6rem; align-items: center;">
+                <button id="btn-bulk-mode-staff" class="btn btn-secondary btn-pro"><i class="fas fa-check-double"></i> 一括入力</button>
+                <button id="btn-save-as-template" class="btn btn-secondary btn-pro"><i class="fas fa-save"></i> 基本型に保存</button>
+                <button id="btn-apply-template" class="btn btn-secondary btn-pro"><i class="fas fa-magic"></i> いつものパターン</button>
+                <button id="btn-submit-shifts" class="btn btn-primary btn-pro" style="padding: 0.5rem 1.5rem;"><i class="fas fa-paper-plane"></i> 提出する</button>
             </div>
         </div>
 
@@ -311,44 +311,39 @@ export const shiftAdminPageHtml = `
 
         <div id="admin-mobile-kpi-bar-placeholder" class="mobile-only" style="height: 10px;"></div>
 
-        <!-- 【PC専用】KPIグリッドエリア -->
-        <div class="desktop-only admin-kpi-grid" style="margin-bottom: 1.5rem;">
-            <div class="glass-panel" style="padding: 1.2rem; border-left: 5px solid var(--secondary);">
-                <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700;">期間平均人時売上</div>
-                <div id="admin-avg-sph" style="font-size: 1.8rem; font-weight: 900; color: var(--secondary);">¥ 0</div>
+        <!-- 【PC専用】KPIストリップエリア -->
+        <div class="desktop-only admin-kpi-strip">
+            <div class="kpi-item" style="border-left: 4px solid var(--secondary);">
+                <div class="kpi-label">期間平均人時売上</div>
+                <div id="admin-avg-sph" class="kpi-value">¥ 0</div>
             </div>
-            <div class="glass-panel" style="padding: 1.2rem; border-left: 5px solid #ef4444; min-height: 100px;">
-                <div style="font-size: 0.75rem; color: #ef4444; font-weight: 700; display: flex; align-items: center; gap: 0.5rem;">
-                    <i class="fas fa-exclamation-triangle"></i> 28h制限アラート
-                </div>
-                <div id="admin-28h-alerts" style="font-size: 0.85rem; margin-top: 0.5rem; color: var(--text-primary); font-weight: 600;">
-                    <span style="color: var(--text-secondary); font-weight: 400;">チェック中...</span>
-                </div>
+            <div class="kpi-item" style="border-left: 4px solid #ef4444;">
+                <div class="kpi-label">28h制限アラート</div>
+                <div id="admin-28h-alerts" class="kpi-alert">チェック中...</div>
             </div>
-            <div class="glass-panel" style="padding: 1rem; border-left: 5px solid #10b981; position: relative;">
-                <div style="font-size: 0.75rem; color: #059669; font-weight: 700; display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                    <span><i class="fas fa-pen-nib"></i> 店長メモ・周知事項</span>
-                    <button id="btn-save-memo" class="btn btn-secondary btn-sm" style="padding: 0.1rem 0.5rem; font-size: 0.65rem;"><i class="fas fa-save"></i> 保存</button>
+            <div class="kpi-item memo-box" style="border-left: 4px solid #10b981;">
+                <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                    <div class="kpi-label"><i class="fas fa-pen-nib"></i> 店長メモ・周知事項</div>
+                    <button id="btn-save-memo" class="btn btn-secondary btn-sm" style="font-size: 0.6rem; padding: 2px 8px;"><i class="fas fa-save"></i> 保存</button>
                 </div>
-                <textarea id="admin-shift-memo" placeholder="新人の研修予定や行事など..." style="width: 100%; height: 50px; border: none; background: transparent; font-size: 0.8rem; resize: none; outline: none; margin: 0; padding: 0; color: var(--text-primary); line-height: 1.4;"></textarea>
+                <textarea id="admin-shift-memo" placeholder="新人の研修予定や行事など..." style="width: 100%; height: 32px; border: none; background: transparent; font-size: 0.8rem; resize: none; outline: none; margin: 0; padding: 0; color: var(--text-primary); line-height: 1.2;"></textarea>
             </div>
         </div>
 
-        <!-- 【PC専用】アクションバー -->
-        <div class="glass-panel desktop-only" style="padding: 1rem 1.5rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <!-- 【PC専用】アクションバー (高密度) -->
+        <div class="glass-panel desktop-only" style="padding: 0.6rem 1.2rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
             <div style="display: flex; align-items: center; gap: 1rem;">
-                <select id="admin-store-select" class="form-input" style="width: auto; min-width: 200px; margin: 0; padding: 0.4rem 0.8rem; font-weight: 700; height: 38px; display: none;">
-                    <option value="">店舗を選択してください</option>
-                </select>
-                <span id="admin-active-store-label" style="font-weight: 700; color: var(--text-primary); font-size: 1rem;"></span>
+                <span id="admin-active-store-label" style="font-weight: 800; color: var(--primary); font-size: 0.95rem;"></span>
+                <select id="admin-store-select" class="form-input" style="width: auto; height: 32px; font-size: 0.8rem; padding: 0 0.5rem; display: none;"></select>
             </div>
-            <div style="display: flex; gap: 0.8rem; justify-content: flex-end; flex: 1;">
-                <button id="btn-manage-fixed-shift" class="btn btn-secondary" style="font-size:0.85rem; border: 1px solid var(--border);"><i class="fas fa-user-clock"></i> 固定設定</button>
-                <button id="btn-bulk-mode" class="btn btn-secondary" style="font-size:0.85rem; border: 1px solid var(--border);"><i class="fas fa-check-double"></i> 一括入力</button>
-                <button id="btn-apply-fixed-schedule" class="btn btn-secondary" style="font-size:0.85rem; border: 1px solid var(--secondary); color: var(--secondary); background: rgba(0,0,0,0);"><i class="fas fa-magic"></i> 固定反映</button>
-                <button id="btn-add-help-staff" class="btn btn-secondary" style="font-size:0.85rem;"><i class="fas fa-user-plus"></i> ヘルプ追加</button>
-                <button id="btn-share-line" class="btn btn-line" style="font-size:0.85rem; font-weight:800; padding: 0.6rem 1.2rem; background:#06C755; color:white; border:none;"><i class="fab fa-line"></i> LINE周知</button>
-                <button id="btn-publish-shifts" class="btn btn-primary" style="font-size:0.85rem; font-weight:800; padding: 0.6rem 1.2rem;">一括確定・公開</button>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <button id="btn-manage-fixed-shift" class="btn btn-secondary btn-pro"><i class="fas fa-user-clock"></i> 固定設定</button>
+                <button id="btn-bulk-mode" class="btn btn-secondary btn-pro"><i class="fas fa-check-double"></i> 一括入力</button>
+                <button id="btn-apply-fixed-schedule" class="btn btn-secondary btn-pro" style="color: var(--secondary); border-color: var(--secondary);"><i class="fas fa-magic"></i> 固定反映</button>
+                <button id="btn-add-help-staff" class="btn btn-secondary btn-pro"><i class="fas fa-user-plus"></i> ヘルプ追加</button>
+                <div style="width: 1px; height: 20px; background: var(--border); margin: 0 0.5rem;"></div>
+                <button id="btn-share-line" class="btn btn-line btn-pro" style="background:#06C755; color:white; border:none;"><i class="fab fa-line"></i> LINE通知</button>
+                <button id="btn-publish-shifts" class="btn btn-primary btn-pro"><i class="fas fa-paper-plane"></i> 一括確定・公開</button>
             </div>
         </div>
 
@@ -487,18 +482,83 @@ const injectStyles = () => {
     const s = document.createElement('style');
     s.id = 'shift-styles';
     s.innerHTML = `
+        /* --- Base & Table Layout --- */
         #shift-submission-table th, #shift-submission-table td, #shift-admin-table th, #shift-admin-table td { border: 1px solid var(--border); text-align: center; }
-        .staff-cell { position: sticky; left: 0; z-index: 5; background: white; padding: 1rem; font-weight: 700; border-right: 2px solid var(--border) !important; text-align: left; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
-        .date-hdr { font-size: 0.8rem; font-weight: 800; min-width: 65px; padding: 0.8rem 0.2rem; cursor: pointer; }
-        .shift-cell { height: 70px; cursor: pointer; padding: 0.4rem; }
+        #shift-admin-table, #shift-submission-table { border-collapse: separate; border-spacing: 0; }
+        
+        .staff-cell { 
+            position: sticky; left: 0; z-index: 10; background: white; 
+            padding: 0.6rem 0.8rem; font-weight: 700; font-size: 0.85rem;
+            border-right: 2px solid var(--border) !important; text-align: left; 
+            box-shadow: 4px 0 8px rgba(0,0,0,0.03); 
+        }
+        
+        .date-hdr { 
+            font-size: 0.75rem; font-weight: 800; min-width: 60px; 
+            padding: 0.5rem 0.2rem; cursor: pointer; 
+            background: #fcfcfc; color: var(--text-secondary);
+            transition: background 0.2s;
+        }
+        .date-hdr:hover { background: #f1f5f9; }
+        .date-hdr.is-holiday .date-num { color: #ef4444; }
+        .date-hdr.is-holiday .weekday { color: #ef4444; }
+        
+        .date-num { font-size: 1rem; line-height: 1; }
+        .weekday { font-size: 0.65rem; font-weight: 700; margin-top: 2px; }
+        .holiday-name-hdr { font-size: 0.6rem; color: #ef4444; font-weight: 700; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .market-badge-hdr { background: #3b82f6; color: white; font-size: 0.6rem; padding: 1px 3px; border-radius: 3px; margin-top: 2px; display: inline-block; }
+
+        .shift-cell { height: 56px; cursor: pointer; padding: 3px; transition: background 0.1s; }
         .shift-cell:hover { background: #f8fafc; }
-        .shift-box { background: var(--primary); color: white; border-radius: 6px; padding: 0.3rem; font-size: 0.7rem; font-weight: 800; display: flex; flex-direction: column; justify-content: center; height: 100%; pointer-events: none; }
-        .shift-box.applied { background: #94a3b8; }
-        .shift-cell.selected-shift-cell { background: rgba(253, 224, 71, 0.2); border: 2px solid #eab308 !important; position: relative; z-index: 2; }
-        .sph-badge { display: inline-block; padding: 0.2rem 0.4rem; border-radius: 4px; color: white; font-size: 0.65rem; font-weight: 800; }
-        .sph-good { background: var(--secondary); }
-        .sph-warn { background: var(--warning); }
-        .sph-danger { background: var(--primary); }
+        
+        /* --- Business Calendar Concepts --- */
+        .is-off-column { 
+            background-color: #fef2f2 !important; 
+            background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(239, 68, 68, 0.05) 5px, rgba(239, 68, 68, 0.05) 10px) !important;
+            cursor: not-allowed;
+        }
+        .is-off-column::after {
+            content: "店休"; position: absolute; font-size: 0.6rem; color: #ef4444; font-weight: 800;
+            top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.4; pointer-events: none;
+        }
+
+        /* --- Shift Block Designs --- */
+        .shift-box { 
+            background: white; color: var(--text-primary); border-radius: 4px; 
+            padding: 0.2rem 0.4rem; font-size: 0.7rem; font-weight: 700; 
+            display: flex; flex-direction: column; justify-content: center; 
+            height: 100%; border: 1px solid #e2e8f0; border-left: 4px solid var(--primary);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05); pointer-events: none; 
+            position: relative;
+        }
+        .shift-box.applied { border-left-color: #94a3b8; color: #64748b; }
+        .official-stamp { position: absolute; right: 2px; top: 2px; color: #10b981; font-size: 0.7rem; }
+
+        .shift-cell.selected-shift-cell { background: rgba(253, 224, 71, 0.2) !important; border: 2px solid #eab308 !important; position: relative; z-index: 5; }
+
+        /* --- Admin KPI Strip --- */
+        .admin-kpi-strip {
+            display: flex; gap: 1rem; margin-bottom: 1rem; align-items: stretch;
+        }
+        .kpi-item {
+            background: white; border: 1px solid var(--border); border-radius: 8px;
+            padding: 0.5rem 1rem; display: flex; align-items: center; gap: 1rem; flex: 1;
+        }
+        .kpi-item.memo-box { flex: 2; align-items: flex-start; flex-direction: column; gap: 0.2rem; }
+        .kpi-label { font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; white-space: nowrap; }
+        .kpi-value { font-size: 1.2rem; font-weight: 900; color: var(--primary); }
+        .kpi-alert { color: #ef4444; font-size: 0.8rem; font-weight: 700; }
+
+        /* --- Buttons --- */
+        .btn-pro {
+            font-size: 0.8rem; padding: 0.4rem 0.8rem; border-radius: 6px; font-weight: 700;
+            display: flex; align-items: center; gap: 0.4rem; transition: all 0.2s;
+        }
+
+        /* --- Footer KPI --- */
+        .foot-kpi-row { background: #f8fafc; font-weight: 700; }
+        .foot-kpi-row td { padding: 0.4rem 0.2rem; font-size: 0.75rem; }
+        .badge-kpi { padding: 2px 4px; border-radius: 4px; color: white; font-size: 0.65rem; }
 
         /* モバイル用表示切り替え */
         .mobile-only { display: none !important; }
@@ -567,6 +627,34 @@ const injectStyles = () => {
             #admin-mobile-fab-hub {
                 position: fixed; bottom: calc(80px + env(safe-area-inset-bottom));
                 right: 20px; display: flex; flex-direction: column; align-items: flex-end; z-index: 10001;
+            }
+            .admin-fab-overlay {
+                position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4);
+                backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+                opacity: 0; visibility: hidden; transition: all 0.3s ease;
+            }
+            .admin-fab-overlay.show { opacity: 1; visibility: visible; }
+            #admin-fab-main-btn {
+                width: 60px; height: 60px; background: linear-gradient(135deg, var(--primary), #FF5A5F);
+                border-radius: 50%; display: flex; justify-content: center; align-items: center;
+                color: white; font-size: 1.5rem; box-shadow: 0 4px 15px rgba(230, 57, 70, 0.4);
+            }
+            .bottom-sheet {
+                position: fixed; left: 0; right: 0; bottom: 0; background: white;
+                border-radius: 24px 24px 0 0; box-shadow: 0 -10px 40px rgba(15, 23, 42, 0.25);
+                transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+                z-index: 10002; padding-bottom: env(safe-area-inset-bottom);
+            }
+            .bottom-sheet.show { transform: translateY(0); }
+
+            /* シフト表のモバイル調整 */
+            #shift-admin-table th.date-hdr { min-width: 50px !important; font-size: 0.7rem !important; }
+            #shift-admin-table td.shift-cell { height: 60px !important; }
+            .staff-cell { min-width: 100px !important; font-size: 0.85rem !important; }
+        }
+    `;
+    document.head.appendChild(s);
+};ection: column; align-items: flex-end; z-index: 10001;
             }
             .admin-fab-overlay {
                 position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4);
@@ -1461,9 +1549,11 @@ function renderAdminGrid() {
             const isOff = cal.type === 'off';
             
             header.innerHTML += `
-                <th class="date-hdr ${isHoliday ? 'is-holiday' : ''} ${isOff ? 'is-off' : ''}" onclick="window.showHourlyGraph('${ymd}')">
-                    ${d.getDate()}<br>${['日','月','火','水','木','金','土'][d.getDay()]}
-                    ${isHoliday ? `<div class="holiday-name">${cal.label || '祝日'}</div>` : ''}
+                <th class="date-hdr ${isHoliday ? 'is-holiday' : ''} ${isOff ? 'is-off-column' : ''}" onclick="window.showHourlyGraph('${ymd}')">
+                    <div class="date-num">${d.getDate()}</div>
+                    <div class="weekday">${['日','月','火','水','木','金','土'][d.getDay()]}</div>
+                    ${isHoliday ? `<div class="holiday-name-hdr">${cal.label || '祝日'}</div>` : ''}
+                    ${cal.is_market_off ? `<div class="market-badge-hdr">市</div>` : ''}
                 </th>`;
         }
 
@@ -1515,7 +1605,7 @@ function renderAdminGrid() {
                 const ymd = formatDateJST(d);
                 const cal = calendarData[ymd] || {};
                 const isOff = cal.type === 'off';
-                tr.innerHTML += `<td class="shift-cell ${isOff ? 'is-off' : ''}" id="cell-${u.id}-${ymd}" onclick="window.openTimeInput('${ymd}', '${u.id}')"></td>`;
+                tr.innerHTML += `<td class="shift-cell ${isOff ? 'is-off-column' : ''}" id="cell-${u.id}-${ymd}" onclick="window.openTimeInput('${ymd}', '${u.id}')"></td>`;
             }
             body.appendChild(tr);
             for(let i=0; i<span; i++){
@@ -1547,9 +1637,11 @@ async function renderSubmissionGrid() {
         const isOff = cal.type === 'off';
 
         header.innerHTML += `
-            <th class="date-hdr ${isHoliday ? 'is-holiday' : ''} ${isOff ? 'is-off' : ''}">
-                ${d.getDate()}<br>${['日','月','火','水','木','金','土'][d.getDay()]}
-                ${isHoliday ? `<div class="holiday-name">${cal.label || '祝日'}</div>` : ''}
+            <th class="date-hdr ${isHoliday ? 'is-holiday' : ''} ${isOff ? 'is-off-column' : ''}">
+                <div class="date-num">${d.getDate()}</div>
+                <div class="weekday">${['日','月','火','水','木','金','土'][d.getDay()]}</div>
+                ${isHoliday ? `<div class="holiday-name-hdr">${cal.label || '祝日'}</div>` : ''}
+                ${cal.is_market_off ? `<div class="market-badge-hdr">市</div>` : ''}
             </th>`;
     }
 
@@ -1568,7 +1660,7 @@ async function renderSubmissionGrid() {
         const ymd = formatDateJST(d);
         const cal = calendarData[ymd] || {};
         const isOff = cal.type === 'off';
-        return `<td class="shift-cell ${isOff ? 'is-off' : ''}" id="cell-${currentTargetUser.id}-${ymd}" onclick="window.openTimeInput('${ymd}', '${currentTargetUser.id}')"></td>`;
+        return `<td class="shift-cell ${isOff ? 'is-off-column' : ''}" id="cell-${currentTargetUser.id}-${ymd}" onclick="window.openTimeInput('${ymd}', '${currentTargetUser.id}')"></td>`;
     }).join('')}</tr>`;
 
     // モバイル用縦リストの描画
@@ -1625,7 +1717,8 @@ function renderCellUI(uid, date, data) {
             cell.innerHTML = `
                 <div class="shift-box ${isConfirmed ? '' : 'applied'}">
                     ${stampHtml}
-                    <div>${data.start}-${data.end}</div>
+                    <div style="font-size: 0.75rem;">${data.start} - ${data.end}</div>
+                    ${data.note ? `<div style="font-size: 0.55rem; opacity: 0.7; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">${data.note}</div>` : ''}
                 </div>
             `;
         }
@@ -2150,12 +2243,13 @@ function renderAdminFooter() {
 
     // 1. 人時売上行
     const trSPH = document.createElement('tr');
-    trSPH.innerHTML = '<td class="staff-cell">人時売上</td>';
+    trSPH.className = 'foot-kpi-row';
+    trSPH.innerHTML = '<td class="staff-cell" style="background:#f1f5f9;">人時売上</td>';
     
     // 2. 売上目標行
     const trGoal = document.createElement('tr');
-    trGoal.style.background = '#f8fafc';
-    trGoal.innerHTML = '<td class="staff-cell" style="color: var(--text-secondary); font-size: 0.75rem;">売上目標</td>';
+    trGoal.className = 'foot-kpi-row';
+    trGoal.innerHTML = '<td class="staff-cell" style="background:#f8fafc; color:var(--text-secondary); font-size:0.7rem;">売上目標</td>';
 
     const span = Math.round((currentSlot.endDate - currentSlot.startDate) / (1000 * 60 * 60 * 24)) + 1;
     for (let i = 0; i < span; i++) {
@@ -2173,12 +2267,12 @@ function renderAdminFooter() {
         
         // SPH計算
         const sph = dayH > 0 ? (dailyGoalSales[ymd] / dayH) : 0;
-        let cls = 'sph-good'; if(sph < 4000) cls = 'sph-danger'; else if(sph < 5000) cls = 'sph-warn';
-        trSPH.innerHTML += `<td><span class="sph-badge ${cls}">¥${Math.round(sph).toLocaleString()}</span></td>`;
+        let bg = '#10b981'; if(sph < 4000) bg = '#ef4444'; else if(sph < 5000) bg = '#f59e0b';
+        trSPH.innerHTML += `<td style="background:#f1f5f9;"><span class="badge-kpi" style="background:${bg};">¥${Math.round(sph).toLocaleString()}</span></td>`;
 
         // 目標売上表示
         const goalVal = dailyGoalSales[ymd] || 0;
-        trGoal.innerHTML += `<td style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700;">¥${Math.round(goalVal).toLocaleString()}</td>`;
+        trGoal.innerHTML += `<td style="background:#f8fafc; font-size: 0.75rem; color: var(--text-secondary); font-weight: 700;">¥${Math.round(goalVal).toLocaleString()}</td>`;
     }
     foot.appendChild(trSPH);
     foot.appendChild(trGoal);
