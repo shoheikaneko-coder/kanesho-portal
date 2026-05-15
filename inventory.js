@@ -2509,6 +2509,13 @@ function showItemSettingsModal(itemId) {
     
     editingItem = item;
     const modal = document.getElementById('inv-item-modal');
+    
+    // ロック状態をリセット (前の品目の設定が残らないようにする)
+    const mUnit = document.getElementById('modal-unit');
+    const mConv = document.getElementById('modal-conv');
+    if (mUnit) { mUnit.readOnly = false; mUnit.style.background = ''; }
+    if (mConv) { mConv.readOnly = false; mConv.style.background = ''; }
+
     document.getElementById('modal-item-name').textContent = productMap[item.ProductID] || '品目設定';
     
     // Find master unit for better UI
