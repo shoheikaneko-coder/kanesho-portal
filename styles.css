@@ -30,18 +30,12 @@ html, body {
   background-color: #FFFFFF;
   color: var(--text-primary);
   overflow-x: hidden !important;
-  /* iOS 100vh fix fallback */
-  min-height: -webkit-fill-available;
   min-height: 100vh;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
   padding-bottom: env(safe-area-inset-bottom);
   overscroll-behavior-y: none; /* 全体のバウンス（グレー漏れ）を防止 */
-  /* ダブルタップズームを防止し、タップの遅延を解消 */
-  touch-action: manipulation;
-  /* テキストの自動拡大を防止 */
-  -webkit-text-size-adjust: 100%;
 }
 
 /* Glassmorphism Utilities - Light Mode */
@@ -136,8 +130,7 @@ p { color: var(--text-secondary); line-height: 1.5; }
   color: var(--text-primary);
   border-radius: 8px;
   transition: var(--transition);
-  /* iOSでの自動ズームを防止するため、最低16px(1rem)を確保 */
-  font-size: 16px; 
+  font-size: 1rem;
 }
 
 .input-group input:focus {
@@ -150,10 +143,11 @@ p { color: var(--text-secondary); line-height: 1.5; }
   color: #CBD5E1;
 }
 
-/* 全ての入力要素でiOSの自動ズームを防止 */
-input, select, textarea {
-  font-size: 16px !important;
-  touch-action: manipulation;
+/* タブレット以上のサイズでiOSの自動ズームを防止 */
+@media (min-width: 768px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
 }
 
 .input-group i {

@@ -67,8 +67,7 @@
     padding: 0.6rem;
     border-radius: 6px;
     border: 1px solid #cbd5e1;
-    /* iOSでの自動ズームを防止するため、最低16pxを確保 */
-    font-size: 16px; 
+    font-size: 0.95rem;
     background: white;
 }
 
@@ -77,8 +76,7 @@
     padding: 0.6rem;
     border-radius: 6px;
     border: 1px solid #cbd5e1;
-    /* iOSでの自動ズームを防止するため、最低16pxを確保 */
-    font-size: 16px; 
+    font-size: 0.95rem;
     background: white;
     min-height: 80px;
     resize: vertical;
