@@ -2231,6 +2231,9 @@ function addActionCard(container, actionData, groupStores, itemProductId, curren
                 <select class="action-consume-source" style="width:100%; padding:0.5rem; border-radius:6px; border:1px solid #fca5a5; font-weight:600; background:white; color:#b91c1c; margin-top:0.2rem;">
                     ${consumeStoreOptions}
                 </select>
+                <div class="consume-source-warning" style="font-size:0.65rem; color:#dc2626; margin-top:0.3rem; font-weight:700; display:none;">
+                    <i class="fas fa-exclamation-triangle"></i> 選択した消費元店舗にこの品目は登録されていません
+                </div>
             </div>
             <div style="position:relative;">
                 <label style="font-size:0.7rem; font-weight:700; color:#b91c1c;">消費品目（倉庫から取り出す原材料）</label>
@@ -2306,7 +2309,18 @@ function addActionCard(container, actionData, groupStores, itemProductId, curren
             if (transferWarning) transferWarning.style.display = 'none';
             if (transferSynced) transferSynced.style.display = 'none';
             card.dataset.invalidSource = 'false';
+        }
+        
+        if (typeSelect.value === 'consume') {
+            // 消費に切り替わった場合は現在の店舗設定でチェックを実行
+            if (typeof checkConsumeSource === 'function') checkConsumeSource();
         } else {
+            const consumeWarning = card.querySelector('.consume-source-warning');
+            if (consumeWarning) consumeWarning.style.display = 'none';
+            card.dataset.invalidConsume = 'false';
+        }
+        
+        if (isTransfer) {
             // 移動に切り替わった場合は現在の店舗設定でチェックを実行
             if (sourceStoreSelect) checkTransferSource();
         }
@@ -2380,30 +2394,57 @@ function addActionCard(container, actionData, groupStores, itemProductId, curren
     const consumeUnitLabel = card.querySelector('.action-consume-unit-label');
     const consumeSourceSelect = card.querySelector('.action-consume-source');
     const targetUnitLabel = card.querySelector('.action-target-unit-label');
+    const consumeWarning = card.querySelector('.consume-source-warning');
 
-    // 消費元での単位を取得して更新する関数
-    const updateConsumeSourceUnit = async () => {
+    let consumeSourceItemsCache = null;
+
+    // 消費元での登録確認と単位を取得して更新する関数
+    const checkConsumeSource = async () => {
         const storeId = consumeSourceSelect?.value;
         const itemId = consumeItemHidden?.value;
-        if (!storeId || !itemId) return;
+        if (!storeId) return;
 
         try {
-            const sid = `${storeId}_${itemId}`;
-            const sDoc = await getDoc(doc(db, 'm_store_items', sid));
-            if (sDoc.exists()) {
-                const sData = sDoc.data();
-                const unit = sData.display_unit || sData.unit || '単位';
-                consumeUnitLabel.textContent = unit;
+            // キャッシュがないか、選択店舗が変わった場合は最新の在庫をロード
+            if (consumeSourceItemsCache === null || card.dataset.lastConsumeStoreId !== storeId) {
+                const q = query(collection(db, "m_store_items"), where("StoreID", "==", storeId));
+                const snap = await getDocs(q);
+                consumeSourceItemsCache = snap.docs.map(d => d.data().ProductID);
+                card.dataset.lastConsumeStoreId = storeId;
+            }
+
+            if (itemId) {
+                // 品目が選択されている場合、登録チェック
+                if (consumeSourceItemsCache.includes(itemId)) {
+                    if (consumeWarning) consumeWarning.style.display = 'none';
+                    card.dataset.invalidConsume = 'false';
+                    
+                    const sid = `${storeId}_${itemId}`;
+                    const sDoc = await getDoc(doc(db, 'm_store_items', sid));
+                    if (sDoc.exists()) {
+                        const sData = sDoc.data();
+                        consumeUnitLabel.textContent = sData.display_unit || sData.unit || '単位';
+                    }
+                } else {
+                    if (consumeWarning) consumeWarning.style.display = 'block';
+                    card.dataset.invalidConsume = 'true';
+                    
+                    const master = cachedItems.find(i => i.id === itemId);
+                    const ing = cachedIngredients.find(i => i.item_id === itemId);
+                    consumeUnitLabel.textContent = master?.unit || master?.単位 || ing?.unit || ing?.単位 || '単位';
+                }
             } else {
-                // 店舗未登録の場合はマスタから取得
-                const master = cachedItems.find(i => i.id === itemId);
-                const ing = cachedIngredients.find(i => i.item_id === itemId);
-                consumeUnitLabel.textContent = master?.unit || master?.単位 || ing?.unit || ing?.単位 || '単位';
+                if (consumeWarning) consumeWarning.style.display = 'none';
+                card.dataset.invalidConsume = 'false';
+                consumeUnitLabel.textContent = '単位';
             }
         } catch (e) {
-            console.error('Consume source unit check error:', e);
+            console.error('Consume source check error:', e);
         }
     };
+    
+    // addActionCard外からアクセス可能にする（type変更時のため）
+    card.checkConsumeSource = checkConsumeSource;
 
     // 初期値の設定（既存設定の読み込み時）
     if (consumeItemVal) {
@@ -2411,7 +2452,11 @@ function addActionCard(container, actionData, groupStores, itemProductId, curren
         if (initItem) {
             consumeSearchInput.value = initItem.name || initItem.id;
         }
-        updateConsumeSourceUnit();
+    }
+    
+    // 初期ロード時に consume ならチェックを実行
+    if (typeVal === 'consume') {
+        checkConsumeSource();
     }
 
     // ターゲット品目（今設定している品目）の単位ラベルを更新
@@ -2420,13 +2465,20 @@ function addActionCard(container, actionData, groupStores, itemProductId, curren
         if (targetUnitLabel) targetUnitLabel.textContent = val === '単位' ? '1単位' : val;
     };
     syncTargetUnitLabel();
-    // modal-unit の変更を監視
     document.getElementById('modal-unit')?.addEventListener('input', syncTargetUnitLabel);
 
     consumeSearchInput.oninput = () => {
         const q = consumeSearchInput.value.trim().toLowerCase();
         if (!q) { suggestionsDiv.style.display = 'none'; return; }
-        const matches = cachedItems.filter(i => (i.name || '').toLowerCase().includes(q)).slice(0, 25);
+        
+        let matches = cachedItems.filter(i => (i.name || '').toLowerCase().includes(q));
+        
+        // キャッシュがあれば、消費元店舗に存在する品目のみに絞り込む
+        if (consumeSourceItemsCache) {
+             matches = matches.filter(i => consumeSourceItemsCache.includes(i.id));
+        }
+        matches = matches.slice(0, 25);
+        
         if (matches.length === 0) { suggestionsDiv.style.display = 'none'; return; }
         suggestionsDiv.innerHTML = matches.map(i =>
             `<div style="padding:0.5rem 0.8rem; cursor:pointer; font-size:0.85rem; font-weight:600; color:#1e293b; border-bottom:1px solid #f1f5f9; transition:background 0.15s;"
@@ -2442,11 +2494,16 @@ function addActionCard(container, actionData, groupStores, itemProductId, curren
         e.preventDefault(); 
         consumeItemHidden.value = item.dataset.id;
         consumeSearchInput.value = item.dataset.name;
-        updateConsumeSourceUnit();
+        checkConsumeSource();
         suggestionsDiv.style.display = 'none';
     });
 
-    consumeSourceSelect.onchange = updateConsumeSourceUnit;
+    consumeSourceSelect.onchange = () => {
+        // 店舗が変わったら再選択させるためにリセット
+        consumeItemHidden.value = '';
+        consumeSearchInput.value = '';
+        checkConsumeSource();
+    };
 
     consumeSearchInput.onblur = () => {
         setTimeout(() => { suggestionsDiv.style.display = 'none'; }, 150);
@@ -2601,6 +2658,13 @@ async function saveSingleItemSettings() {
             actionEntry.consume_item_id = card.querySelector('.action-consume-item')?.value || '';
             actionEntry.consume_qty_per_unit = Number(card.querySelector('.action-consume-qty')?.value) || 1;
             actionEntry.consume_unit = card.querySelector('.action-consume-unit-label')?.textContent || '';
+            
+            // バリデーション: 消費元の在庫登録チェック
+            if (card.dataset.invalidConsume === 'true') {
+                const sourceName = card.querySelector('.action-consume-source option:checked')?.textContent || actionEntry.source_store_id;
+                const itemName = card.querySelector('.action-consume-search')?.value || '選択した品目';
+                throw new Error(`「${sourceName}」には「${itemName}」が登録されていません。消費対象として設定できません。`);
+            }
         } else if (type === 'linked_purchase') {
             actionEntry.purchase_item_id = card.querySelector('.action-linked-purchase-item')?.value || '';
             actionEntry.purchase_qty_per_unit = Number(card.querySelector('.action-linked-purchase-qty')?.value) || 1;
