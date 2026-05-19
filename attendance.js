@@ -271,7 +271,7 @@ function calcStaffStatuses() {
 }
 
 // ─── 未出勤者プルダウン ──────────────────────────────────────
-export function renderUnclockedDropdown(extraStoreFilter = null) {
+export function renderUnclockedDropdown(extraStoreObj = null) {
     const sel = document.getElementById('staff-select');
     const label = document.getElementById('current-store-label');
     if (!sel) return;
@@ -282,12 +282,12 @@ export function renderUnclockedDropdown(extraStoreFilter = null) {
         
         let warning = '';
         const isAdmin = currentUser.Role === 'Admin' || currentUser.Role === '管理者';
-        if (isAdmin && !tabletGroup && !extraStoreFilter) {
+        if (isAdmin && !tabletGroup && !extraStoreObj) {
             warning = `<div style="font-size:0.7rem; color:var(--danger); margin-top:0.3rem;"><i class="fas fa-exclamation-triangle"></i> グループ未設定のためCK共有が無効です</div>`;
         }
 
-        label.innerHTML = extraStoreFilter
-            ? `<div><i class="fas fa-hands-helping" style="color:var(--secondary);"></i> ヘルプ出勤モード：${extraStoreFilter}</div>`
+        label.innerHTML = extraStoreObj
+            ? `<div><i class="fas fa-hands-helping" style="color:var(--secondary);"></i> ヘルプ出勤モード：${extraStoreObj.store_name}</div>`
             : `<div><i class="fas fa-store"></i> ${storeDisplayName}${groupBadge}</div>${warning}`;
     }
 
@@ -306,10 +306,11 @@ export function renderUnclockedDropdown(extraStoreFilter = null) {
         // IDベースでの店舗一致（casing variants: StoreID, StoreId, store_id）
         const staffStoreID = s.StoreID || s.StoreId || s.store_id;
         
-        if (extraStoreFilter) {
-            // ヘルプモード時は店舗名での後方互換マッチ
+        if (extraStoreObj) {
+            // ヘルプモード時は店舗IDと店舗名の両方でマッチング
             const sName = s.Store || '';
-            if (sName === extraStoreFilter) return true;
+            if (staffStoreID === extraStoreObj.id) return true;
+            if (sName === extraStoreObj.store_name) return true;
         } else {
             // ID または店舗名での一致を許容（強固なフィルタリング）
             if (tabletStoreID && staffStoreID === tabletStoreID) return true;
@@ -317,7 +318,7 @@ export function renderUnclockedDropdown(extraStoreFilter = null) {
         }
 
         // CK共有の判定
-        if (!extraStoreFilter && tabletGroup) {
+        if (!extraStoreObj && tabletGroup) {
             const storeInfo = cachedStoresData.find(st => st.id === s.StoreID);
             if (storeInfo && storeInfo.store_type === 'CK' && storeInfo.group_name === tabletGroup) {
                 return true;
@@ -650,9 +651,9 @@ async function loadHelpStores() {
         snap.forEach(d => {
             const data = d.data();
             if (data.store_name && data.store_name !== tabletStore) {
-                allStores.push(data);
+                allStores.push({ id: d.id, ...data });
                 const opt = document.createElement('option');
-                opt.value = data.store_name;
+                opt.value = d.id; // Store ID を value にする
                 opt.textContent = data.store_name;
                 sel.appendChild(opt);
             }
@@ -669,15 +670,16 @@ function closeHelpModal() {
 
 function applyHelpMode() {
     const sel = document.getElementById('help-store-select');
-    const storeName = sel?.value;
-    if (!storeName) {
+    const storeId = sel?.value;
+    if (!storeId) {
         // 店舗未選択（リセット）の場合はヘルプモード解除
         renderUnclockedDropdown(null);
         closeHelpModal();
         return;
     }
+    const storeObj = allStores.find(s => s.id === storeId);
     closeHelpModal();
-    renderUnclockedDropdown(storeName);
+    renderUnclockedDropdown(storeObj);
 }
 
 // ─── 打刻修正（Admin限定） ───────────────────────────────────
