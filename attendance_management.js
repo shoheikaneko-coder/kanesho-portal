@@ -914,25 +914,30 @@ async function loadMonthlyData() {
             const records = staffGroup[sid].sort((a,b) => a.timestamp.localeCompare(b.timestamp));
             let lastIn = null;
             let bStart = null;
-            let currentBreaks = 0;
+            let breakSessions = [];
 
             records.forEach(r => {
                 const ts = new Date(r.timestamp);
                 if (r.type === 'check_in') {
                     lastIn = ts;
-                    currentBreaks = 0;
+                    breakSessions = [];
                     staffMap[sid].days.add(r.date);
                 } else if (r.type === 'break_start' && lastIn) bStart = ts;
                 else if (r.type === 'break_end' && bStart) {
-                    currentBreaks += (ts - bStart) / 3600000;
+                    breakSessions.push({ start: bStart, end: ts });
                     bStart = null;
                 } else if (r.type === 'check_out' && lastIn) {
-                    const dur = (ts - lastIn) / 3600000 - currentBreaks;
+                    const totalBreaks = breakSessions.reduce((sum, s) => sum + (s.end - s.start) / 3600000, 0);
+                    const dur = (ts - lastIn) / 3600000 - totalBreaks;
                     if (dur > 0) {
                         staffMap[sid].totalHours += dur;
-                        staffMap[sid].lateHours += calculateLateNightHours(lastIn, ts, currentBreaks);
+                        
+                        const rawLate = calculateOverlapLateNightHours(lastIn, ts);
+                        const lateBreaks = breakSessions.reduce((sum, s) => sum + calculateOverlapLateNightHours(s.start, s.end), 0);
+                        staffMap[sid].lateHours += Math.max(0, rawLate - lateBreaks);
                     }
                     lastIn = null;
+                    breakSessions = [];
                 }
             });
         });
@@ -972,20 +977,39 @@ window.switchToDailyFromMonthly = (store, date) => {
     switchView('daily');
 };
 
-function calculateLateNightHours(start, end, totalBreaks) {
-    let late = 0;
+function calculateOverlapLateNightHours(start, end) {
     const s = new Date(start);
     const e = new Date(end);
-    const l22 = new Date(s); l22.setHours(22, 0, 0, 0);
-    const l05 = new Date(s); l05.setDate(l05.getDate() + 1); l05.setHours(5, 0, 0, 0);
-    const overlapStart = s > l22 ? s : l22;
-    const overlapEnd = e < l05 ? e : l05;
-    if (overlapEnd > overlapStart) {
-        late = (overlapEnd - overlapStart) / 3600000;
-        const totalDuration = (e - s) / 3600000;
-        if (totalDuration > 0) late -= (totalBreaks * (late / totalDuration));
+    if (s >= e) return 0;
+
+    let totalLateMs = 0;
+
+    // startの前日〜endの翌日までループして、深夜時間枠（22:00〜翌05:00）をすべてカバー
+    const loopStart = new Date(s.getTime());
+    loopStart.setDate(loopStart.getDate() - 1);
+    const loopEnd = new Date(e.getTime());
+    loopEnd.setDate(loopEnd.getDate() + 1);
+
+    for (let d = new Date(loopStart); d <= loopEnd; d.setDate(d.getDate() + 1)) {
+        // d日の 22:00
+        const l22 = new Date(d);
+        l22.setHours(22, 0, 0, 0);
+
+        // d+1日の 05:00
+        const l05 = new Date(d);
+        l05.setDate(l05.getDate() + 1);
+        l05.setHours(5, 0, 0, 0);
+
+        // 重なりを計算
+        const overlapStart = s > l22 ? s : l22;
+        const overlapEnd = e < l05 ? e : l05;
+
+        if (overlapEnd > overlapStart) {
+            totalLateMs += (overlapEnd - overlapStart);
+        }
     }
-    return Math.max(0, late);
+
+    return totalLateMs / 3600000;
 }
 
 // ─── 承認ワークフロー（Phase 2） ──────────────────────────────

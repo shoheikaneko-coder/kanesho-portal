@@ -148,7 +148,7 @@ function processAttendance(users, allPunches, startDate, endDate) {
 
         let lastIn = null;
         let breakStart = null;
-        let currentBreaks = 0;
+        let breakSessions = [];
 
         for (const p of punches) {
             const type = p.type;
@@ -161,26 +161,33 @@ function processAttendance(users, allPunches, startDate, endDate) {
                     continue;
                 }
                 lastIn = time;
-                currentBreaks = 0;
+                breakSessions = [];
                 staffStats[sid].days.add(p.date);
             } 
             else if (type === 'break_start' && lastIn) {
                 breakStart = time;
             } 
             else if (type === 'break_end' && breakStart) {
-                currentBreaks += (time - breakStart) / 3600000;
+                breakSessions.push({ start: breakStart, end: time });
                 breakStart = null;
             } 
             else if (type === 'check_out' && lastIn) {
+                const totalBreaks = breakSessions.reduce((sum, s) => sum + (s.end - s.start) / 3600000, 0);
                 const totalShift = (time - lastIn) / 3600000;
-                const netLabor = totalShift - currentBreaks;
+                const netLabor = totalShift - totalBreaks;
                 
                 if (netLabor > 0) {
                     staffStats[sid].totalHours += netLabor;
                     // 深夜労働計算 (22:00 - 05:00)
-                    staffStats[sid].lateHours += calculateLateNightHours(lastIn, time, currentBreaks);
+                    // 1. 深夜時間枠との重複（休憩前）
+                    const rawLate = calculateOverlapLateNightHours(lastIn, time);
+                    // 2. 休憩時間のうち、深夜時間枠と重なっている部分
+                    const lateBreaks = breakSessions.reduce((sum, s) => sum + calculateOverlapLateNightHours(s.start, s.end), 0);
+                    
+                    staffStats[sid].lateHours += Math.max(0, rawLate - lateBreaks);
                 }
                 lastIn = null;
+                breakSessions = [];
             }
         }
     }
@@ -188,40 +195,40 @@ function processAttendance(users, allPunches, startDate, endDate) {
     return Object.values(staffStats);
 }
 
-// ─── 深夜労働計算 (22:00 〜 05:00) ──────────────────────────
-function calculateLateNightHours(start, end, totalBreaks) {
-    let late = 0;
+// ─── 深夜労働計算 (22:00 〜 05:00 の重複を算出) ──────────────────
+function calculateOverlapLateNightHours(start, end) {
     const s = new Date(start);
     const e = new Date(end);
+    if (s >= e) return 0;
 
-    // 22:00 のライン（開始日）
-    const l22 = new Date(s);
-    l22.setHours(22, 0, 0, 0);
+    let totalLateMs = 0;
 
-    // 翌 05:00 のライン
-    const l05 = new Date(s);
-    l05.setDate(l05.getDate() + 1);
-    l05.setHours(5, 0, 0, 0);
+    // startの前日〜endの翌日までループして、深夜時間枠（22:00〜翌05:00）をすべてカバー
+    const loopStart = new Date(s.getTime());
+    loopStart.setDate(loopStart.getDate() - 1);
+    const loopEnd = new Date(e.getTime());
+    loopEnd.setDate(loopEnd.getDate() + 1);
 
-    // 勤務時間と深夜枠の重なりを計算
-    const overlapStart = s > l22 ? s : l22;
-    const overlapEnd = e < l05 ? e : l05;
+    for (let d = new Date(loopStart); d <= loopEnd; d.setDate(d.getDate() + 1)) {
+        // d日の 22:00
+        const l22 = new Date(d);
+        l22.setHours(22, 0, 0, 0);
 
-    if (overlapEnd > overlapStart) {
-        late = (overlapEnd - overlapStart) / 3600000;
-        
-        // 休憩時間の扱い：深夜時間中に休憩したか厳密に追うのは困難なため、
-        // 労働時間に対する深夜の割合で按分するか、単純に差し引く。
-        // ここでは単純に「深夜時間帯が勤務の大部分を占める場合は休憩を引く」等の簡略化が必要。
-        // 今回は「深夜時間帯からも休憩時間を比例配分で引く」ロジックとする。
-        const totalDuration = (e - s) / 3600000;
-        if (totalDuration > 0) {
-            const ratio = late / totalDuration;
-            late -= (totalBreaks * ratio);
+        // d+1日の 05:00
+        const l05 = new Date(d);
+        l05.setDate(l05.getDate() + 1);
+        l05.setHours(5, 0, 0, 0);
+
+        // 重なりを計算
+        const overlapStart = s > l22 ? s : l22;
+        const overlapEnd = e < l05 ? e : l05;
+
+        if (overlapEnd > overlapStart) {
+            totalLateMs += (overlapEnd - overlapStart);
         }
     }
 
-    return Math.max(0, late);
+    return totalLateMs / 3600000;
 }
 
 // ─── CSV生成 ────────────────────────────────────────────────
