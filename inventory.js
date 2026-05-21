@@ -2471,7 +2471,7 @@ function addActionCard(container, actionData, groupStores, itemProductId, curren
         const q = consumeSearchInput.value.trim().toLowerCase();
         if (!q) { suggestionsDiv.style.display = 'none'; return; }
         
-        let matches = cachedItems.filter(i => (i.name || '').toLowerCase().includes(q));
+        let matches = cachedItems.filter(i => isInventoryTarget(i) && (i.name || '').toLowerCase().includes(q));
         
         // キャッシュがあれば、消費元店舗に存在する品目のみに絞り込む
         if (consumeSourceItemsCache) {
@@ -2530,7 +2530,7 @@ function addActionCard(container, actionData, groupStores, itemProductId, curren
         linkedSearchInput.oninput = () => {
             const q = linkedSearchInput.value.trim().toLowerCase();
             if (!q) { linkedSuggestionsDiv.style.display = 'none'; return; }
-            const matches = cachedItems.filter(i => (i.name || '').toLowerCase().includes(q)).slice(0, 25);
+            const matches = cachedItems.filter(i => isInventoryTarget(i) && (i.name || '').toLowerCase().includes(q)).slice(0, 25);
             if (matches.length === 0) { linkedSuggestionsDiv.style.display = 'none'; return; }
             linkedSuggestionsDiv.innerHTML = matches.map(i =>
                 `<div style="padding:0.5rem 0.8rem; cursor:pointer; font-size:0.85rem; font-weight:600; color:#1e293b; border-bottom:1px solid #f1f5f9; transition:background 0.15s;"
