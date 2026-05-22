@@ -1,9 +1,9 @@
 /**
  * かね将ポータル：マニュアル機能モジュール
- * [PC・タブレット表示に完全特化した設計]
+ * [PC・タブレット表示に完全特化した設計 - 図解画像付きプレミアムマニュアル版]
  */
 
-// 1. 各カテゴリの構造化マニュアルデータ (計9本)
+// 1. 各カテゴリの構造化マニュアルデータ (計12本)
 export const MANUALS_DATA = [
     // --- カテゴリ1: かね将ポータルの使い方 ---
     {
@@ -76,6 +76,232 @@ export const MANUALS_DATA = [
             }
         ]
     },
+    // --- 【追加】在庫・調達マニュアル① ---
+    {
+        id: 'manual_inventory_check',
+        title: '「在庫チェック」と「棚卸」の基本操作手順',
+        category: 'portal',
+        categoryName: 'かね将ポータルの使い方',
+        icon: 'fa-warehouse',
+        color: '#6366f1',
+        desc: '店舗での日々の在庫チェック、月末棚卸の実際の入力方法と、数量・単位入力における現場の重要ルールを解説します。',
+        author: '仕入・在庫管理部',
+        updatedAt: '2026/05/22',
+        readTime: '4分',
+        sections: [
+            {
+                title: '1. 在庫チェック（棚卸）の基本フロー',
+                content: `
+                    <p>かね将ポータルでの日々の在庫チェック（棚卸）は、以下の3ステップに沿ってスマホやタブレットで実物を確認しながら行います。</p>
+                    <div class="manual-step-list">
+                        <div class="manual-step-card">
+                            <div class="manual-step-num">1</div>
+                            <div class="manual-step-content">
+                                <strong>棚卸エリア（ロケーション）の選択</strong>
+                                在庫・調達画面の「在庫チェック」タブを開き、カウントする棚（例：「冷蔵庫」「ドライ倉庫」「ドリンク場」など）を選択します。棚ごとに食材が分類されているため迷いません。
+                            </div>
+                        </div>
+                        <div class="manual-step-card">
+                            <div class="manual-step-num">2</div>
+                            <div class="manual-step-content">
+                                <strong>実在庫の数量入力</strong>
+                                画面に並ぶ各食材の実物をカウントし、表示されるキーパッドを使って数量を1つずつ入力します。
+                            </div>
+                        </div>
+                        <div class="manual-step-card">
+                            <div class="manual-step-num">3</div>
+                            <div class="manual-step-content">
+                                <strong>「この棚を完了」を押下して確定</strong>
+                                入力がすべて終わったら、画面右上の緑色の<strong>「この棚を完了」</strong>ボタンを必ずタップします。これで論理在庫が確定・保存されます。
+                            </div>
+                        </div>
+                    </div>
+                    <div class="manual-img-container">
+                        <img src="./manual_inventory_flow.png" class="manual-img" alt="棚卸・在庫チェックの業務フロー図解">
+                    </div>
+                `
+            },
+            {
+                title: '2. カウントと「単位」の重要ルール',
+                content: `
+                    <p>食材ごとに、数える基準となる「単位」が定義されています。間違った単位で数えてしまうと、原価計算（フードコスト）が大幅に狂ってしまいます。</p>
+                    <ul>
+                        <li><strong>画面の「単位」表記を確認する</strong>: 現在庫欄に表示されている単位（「個（バラ）」「パック」「箱」「本」など）を必ず目視で確認し、その単位に合わせた数量を入力してください。</li>
+                        <li><strong>開封済みの小数点入力</strong>: かね将ポータルでは小数の入力が可能です。例えば、半分使ったキャベツは「0.5」、使いかけの秘伝タレ（1本1リットル）が残り200ml程度であれば「0.2」のように、小数点でリアルに記入してください。</li>
+                    </ul>
+                    <div class="manual-alert manual-alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>単位ミス防止の徹底:</strong><br>
+                        特に「キャベツ 1玉（個）」と「キャベツ 1箱（10玉入り）」の打ち間違いが多発しがちです。桁数が異常に多くなっていないか、完了ボタンを押す前に一呼吸置いて画面を見直す習慣をつけてください。
+                    </div>
+                `
+            },
+            {
+                title: '3. 「この棚を完了」ボタンの押し忘れ防止',
+                content: `
+                    <p>数量を入力しただけでは、システムへの最終保存および「在庫履歴ログ」への書き込みは完了していません。</p>
+                    <p>必ず各エリアのカウント完了時に、最上部または最下部にある<strong>「この棚を完了」</strong>をタップしてください。これを押し忘れてブラウザを閉じたり、別メニューに遷移したりすると、入力した数値が一時キャッシュから消えてしまい、最初からやり直すことになりますので十分注意してください。</p>
+                `
+            }
+        ]
+    },
+    // --- 【追加】在庫・調達マニュアル② ---
+    {
+        id: 'manual_procurement_transfer',
+        title: '「仕入れ（発注）」と「店舗間移動（振替）」の手順',
+        category: 'portal',
+        categoryName: 'かね将ポータルの使い方',
+        icon: 'fa-truck-ramp-box',
+        color: '#f59e0b',
+        desc: '日々の食材発注・受領チェックと、急な食材不足時に姉妹店同士で融通し合う「店舗間移動（振替）」の操作とルール。',
+        author: '仕入物流部',
+        updatedAt: '2026/05/22',
+        readTime: '5分',
+        sections: [
+            {
+                title: '1. 日常の発注（仕入れ）と受領完了処理',
+                content: `
+                    <p>業者（または自社CK）への発注は、ポータルの「仕入」メニューから各品目を指定して登録します。</p>
+                    <p>商品が実際に店舗に届いた際、在庫を正式に加算するために<strong>「受領完了」</strong>の手続きを行います。</p>
+                    <div class="manual-step-list">
+                        <div class="manual-step-card">
+                            <div class="manual-step-num">1</div>
+                            <div class="manual-step-content">
+                                <strong>伝票と届いた現物の突合</strong>
+                                届いた食材の現物と納品書を照らし合わせ、数量や品質（傷みがないかなど）を確認します。
+                            </div>
+                        </div>
+                        <div class="manual-step-card">
+                            <div class="manual-step-num">2</div>
+                            <div class="manual-step-content">
+                                <strong>「仕入」一覧から対象データを選択</strong>
+                                ポータルの「仕入」タブを開き、本日の受領待ちリストから対象の仕入伝票を選択します。
+                            </div>
+                        </div>
+                        <div class="manual-step-card">
+                            <div class="manual-step-num">3</div>
+                            <div class="manual-step-content">
+                                <strong>「受領完了」をタップして在庫加算</strong>
+                                数量に問題がなければ「受領完了」ボタンを押します。これで店舗の「現在庫数」へ即座に加算され、履歴が保管されます。
+                            </div>
+                        </div>
+                    </div>
+                `
+            },
+            {
+                title: '2. 急な食材不足時の「店舗間移動（振替）」手順',
+                content: `
+                    <p>金曜・土曜の夜など、急な大盛況により自店舗で「もつ肉」等の主力食材が欠品しそうになった場合、近隣の店舗（例：五反田店から中目黒店など）から一時的に食材を融通（移動）してもらうことができます。</p>
+                    <div class="manual-step-list">
+                        <div class="manual-step-card">
+                            <div class="manual-step-num">1</div>
+                            <div class="manual-step-content">
+                                <strong>事前に相手店舗へ「電話連絡」</strong>
+                                ポータルの「全店在庫一覧」で相手店の在庫状況にあたりをつけた後、必ず電話で「〇〇を〇個、緊急で融通してほしい」と直接口頭で承諾を得ます。
+                            </div>
+                        </div>
+                        <div class="manual-step-card">
+                            <div class="manual-step-num">2</div>
+                            <div class="manual-step-content">
+                                <strong>ポータルの「移動」タブから登録</strong>
+                                自店のポータルから「移動」タブを開き、移動元（食材を貸してくれる店舗）と移動先（自店）、品目、数量を入力し、「確定」ボタンを押します。
+                            </div>
+                        </div>
+                        <div class="manual-step-card">
+                            <div class="manual-step-num">3</div>
+                            <div class="manual-step-content">
+                                <strong>リアルタイムの在庫同期</strong>
+                                「確定」が完了した瞬間、相手店舗の在庫から自動で差し引かれ、自店舗の在庫へ即座に加算されます。
+                            </div>
+                        </div>
+                    </div>
+                    <div class="manual-img-container">
+                        <img src="./manual_transfer_flow.png" class="manual-img" alt="店舗間移動（振替）の安全連携フロー図解">
+                    </div>
+                `
+            },
+            {
+                title: '3. 移動入力の漏れがもたらす重大リスク',
+                content: `
+                    <p>店舗間移動（振替）を行った際、現物の移動だけで済ませ、ポータルへの入力登録を怠ると、両店舗のシステム上の在庫数が実在庫と完全に乖離してしまいます。</p>
+                    <div class="manual-alert manual-alert-danger">
+                        <i class="fas fa-hand-holding-hand"></i>
+                        <strong>移動時の絶対ルール:</strong><br>
+                        登録を忘れると、貸した側の店舗は月末の棚卸し時に「原因不明の棚卸減（大赤字）」になり、借りた側の店舗は「原因不明の棚卸増（過剰在庫）」となり、経理および監査上で重大な調査対象になります。食材を店から持ち出す・受け取ったその瞬間に、ポータルに入力することを徹底してください。
+                    </div>
+                `
+            }
+        ]
+    },
+    // --- 【追加】在庫・調達マニュアル③ ---
+    {
+        id: 'manual_ck_linked_purchase',
+        title: '「自店舗消費」と「仕込連動仕入れ」の仕組みと設定',
+        category: 'portal',
+        categoryName: 'かね将ポータルの使い方',
+        icon: 'fa-cubes',
+        color: '#10b981',
+        desc: '五反田CK等からの配送に関わる「自店舗消費」と、仕込み量に応じて原材料を自動仕入・消費する「仕込連動仕入れ」のロジック。',
+        author: 'システム開発チーム/総料理長',
+        updatedAt: '2026/05/22',
+        readTime: '6分',
+        sections: [
+            {
+                title: '1. セントラルキッチンからの配送と「自店舗消費」の概念',
+                content: `
+                    <p>セントラルキッチン（五反田CK）で一括生産した仕込み済みの食材（例：バッチ釜で一括調理したもつ煮込みベースなど）を各店舗に送る際、<strong>「自店舗消費ソース（移動元＝CK）」</strong>という仕組が働きます。</p>
+                    <p>CK側で「自店舗消費」として発送登録を行うと、受け取り側の店舗では自動的に「未受領の仕入データ」が起票されます。各店舗は納品時に現物を確認し、「仕入」タブから「受領完了」を押すだけで、店舗側の現在庫が正確に増え、CK側の在庫は綺麗にマイナスされます。仕入れと配送が完全に一本の線で繋がる仕組みです。</p>
+                `
+            },
+            {
+                title: '2. 仕込連動仕入れ（🔥）の自動消費ロジック',
+                content: `
+                    <p>かね将ポータルの誇る最もスマートな自動在庫調整システムが<strong>「仕込連動仕入れ（仕込連動）」</strong>です。これは、料理人が店舗で仕込み作業を行った際、それに必要な生の原材料を裏側で全自動で計算し、在庫から引き去るシステムです。</p>
+                    <p>例えば、店舗で「もつ煮込み」の仕込み（バッチ調理）をポータルに登録したとします（画面上には 🔥 マークのラベルが表示されます）。</p>
+                    <div class="manual-step-list">
+                        <div class="manual-step-card">
+                            <div class="manual-step-num">1</div>
+                            <div class="manual-step-content">
+                                <strong>仕込み登録を実行</strong>
+                                ポータルの仕込み画面で「もつ煮込み仕込み 3バッチ」のように入力し実行します。
+                            </div>
+                        </div>
+                        <div class="manual-step-card">
+                            <div class="manual-step-num">2</div>
+                            <div class="manual-step-content">
+                                <strong>レシピマスタによる自動逆算</strong>
+                                システムが「もつ煮込み 3バッチ」に必要な原材料（「もつ生肉 30kg」「秘伝タレ 6L」「各種調味料」など）のレシピ配合比を自動で取得します。
+                            </div>
+                        </div>
+                        <div class="manual-step-card">
+                            <div class="manual-step-num">3</div>
+                            <div class="manual-step-content">
+                                <strong>原材料の自動仕入・消費の記録</strong>
+                                原材料の在庫から必要量が自動で減算（消費）され、同時に完成した「もつ煮込みベース（仕込品）」が加算されます。
+                            </div>
+                        </div>
+                    </div>
+                    <div class="manual-img-container">
+                        <img src="./manual_linked_purchase.png" class="manual-img" alt="仕込連動仕入れの自動消費計算モデル図解">
+                    </div>
+                `
+            },
+            {
+                title: '3. 管理者向け：マスタ連動の追加・変更方法',
+                content: `
+                    <p>新メニューの登場やレシピ変更の際は、「在庫設定モーダル」で連動マスタの設定を行います。</p>
+                    <div class="manual-alert manual-alert-note">
+                        <i class="fas fa-cog"></i>
+                        <strong>設定の基本ルール:</strong><br>
+                        1. 設定ハブの「在庫品目マスタ」から対象の仕込品（完成品）を開きます。<br>
+                        2. 「移動元（仕込原材料の出元）」に原材料が管理されている倉庫（セントラルキッチンやドライ倉庫など）を指定します。<br>
+                        3. レシピの構成比を登録することで、以降店舗で仕込み登録がなされるたびに、原材料が自動かつ正確な分量で自動仕入・消費されるようになります。
+                    </div>
+                `
+            }
+        ]
+    },
+
     {
         id: 'manual_portal_notify',
         title: '通知機能とプロフィールの変更',
@@ -169,7 +395,7 @@ export const MANUALS_DATA = [
         categoryName: '営業',
         icon: 'fa-store',
         color: '#f59e0b',
-        desc: 'ホールの電気系統、POSレジの起動、朝礼の実施、かね将のれんの設置と外回り清掃手順。',
+        desc: 'ホールの電気系統、POSレジの起動、朝礼の実施、かね将のれんの設置と外回り清鎖手順。',
         author: '営業本部',
         updatedAt: '2026/05/15',
         readTime: '4分',
@@ -304,7 +530,7 @@ export const MANUALS_DATA = [
                             <div class="manual-step-num">2</div>
                             <div class="manual-step-content">
                                 <strong>売上袋への収納と金庫保管</strong>
-                                取り出した売上金を専用の売上袋に入れ、日付と金額を記入し、事務所の耐火金庫に速やかに投入して二重ロックを掛けます。
+                                取り出した売上金を専用 of 売上袋に入れ、日付と金額を記入し、事務所の耐火金庫に速やかに投入して二重ロックを掛けます。
                             </div>
                         </div>
                     </div>
@@ -645,7 +871,6 @@ export function initManualHubPage() {
         searchInput.oninput = (e) => {
             renderManuals(e.target.value);
         };
-        // フォーカスを自動的に当てる（PC/タブレットの入力性を高める）
         searchInput.focus();
     }
 }
@@ -896,6 +1121,32 @@ export const manualViewerPageHtml = `
             margin-bottom: 0.3rem;
             font-size: 0.98rem;
         }
+        
+        /* 【拡張】マニュアル内埋め込み画像表示用の完全スコープスタイル */
+        .manual-img-container {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 2rem 0;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        .manual-img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+            transition: transform 0.3s ease;
+        }
+        .manual-img:hover {
+            transform: scale(1.015);
+        }
+
         /* 横幅制限などのタブレット・PC表示適正化 */
         @media (max-width: 1024px) {
             .manual-viewer-container {
@@ -904,6 +1155,9 @@ export const manualViewerPageHtml = `
             }
             .manual-paper {
                 padding: 2rem;
+            }
+            .manual-img-container {
+                padding: 1rem;
             }
         }
     </style>
@@ -941,7 +1195,6 @@ export function initManualViewerPage() {
 
     if (catEl) catEl.textContent = manual.categoryName;
     if (titleEl) {
-        // パンくずのパース用の一貫性を保つため、spanなどを使わずタイトルのみをテキストとして挿入
         titleEl.textContent = manual.title;
     }
     if (authorEl) authorEl.textContent = manual.author;
@@ -988,13 +1241,11 @@ export function initManualViewerPage() {
         let currentId = '';
         sections.forEach(sec => {
             const top = sec.offsetTop;
-            // 画面上部から少し余裕を持たせた位置で判定
             if (window.scrollY >= top - 150) {
                 currentId = sec.getAttribute('id');
             }
         });
 
-        // どのセクションの上部にも達していない場合は最初のリンクをアクティブに
         if (!currentId && links.length > 0) {
             links.forEach((link, idx) => link.classList.toggle('active', idx === 0));
             return;
@@ -1027,7 +1278,6 @@ export function initManualViewerPage() {
                     behavior: 'smooth'
                 });
                 
-                // URLハッシュを書き換えるが画面の急スクロールを防ぐためhistory.replaceStateを使用
                 history.replaceState({ page: 'manual_viewer', id: manual.id }, "", `?page=manual_viewer&id=${manual.id}#${targetId}`);
             }
         };
