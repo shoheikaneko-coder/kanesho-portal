@@ -44,6 +44,7 @@ import { prototypeMenuPageHtml, initPrototypeMenuPage } from './prototype_menu.j
 import { competitorListPageHtml, initCompetitorListPage } from './competitor_list.js';
 import { managerMeetingPageHtml, initManagerMeetingPage } from './manager_meeting.js?v=20260428_01';
 import { PullToRefresh } from './ptr_logic.js';
+import { manualHubPageHtml, initManualHubPage, manualViewerPageHtml, initManualViewerPage } from './manual.js';
 
 
 
@@ -64,6 +65,7 @@ const defaultMenuItems = [
     { id: 'ops_hub', name: '店舗業務', icon: 'fa-store', category: 'ハブ' },
     { id: 'hr_hub', name: '人事総務業務', icon: 'fa-user-friends', category: 'ハブ' },
     { id: 'utility_hub', name: '便利機能', icon: 'fa-lightbulb', category: 'ハブ' },
+    { id: 'manual_hub', name: 'マニュアル', icon: 'fa-book', category: 'ハブ' },
     { id: 'master_hub', name: '設定', icon: 'fa-cog', category: 'ハブ' },
     
     { id: 'ops_hub_main', name: '在庫・調達', icon: 'fa-boxes-stacked', category: 'サブ機能' },
@@ -87,6 +89,7 @@ const hubLabels = {
     'ops_hub': '業務',
     'hr_hub': '人事',
     'utility_hub': '便利機能',
+    'manual_hub': 'マニュアル',
     'master_hub': '設定'
 };
 
@@ -127,7 +130,8 @@ const pageParentMap = {
     'goals_admin': 'master_hub',
     'goals_store': 'ops_hub',
     'prototype_menu': 'utility_hub',
-    'competitor_list': 'utility_hub'
+    'competitor_list': 'utility_hub',
+    'manual_viewer': 'manual_hub'
 };
 
 /**
@@ -308,8 +312,8 @@ async function renderSidebar(user) {
         }
     }
     
-    // 便利機能Hubは全従業員にデフォルト開放
-    const commonPerms = ['utility_hub', 'prototype_menu', 'competitor_list'];
+    // 便利機能Hub & マニュアルHubは全従業員にデフォルト開放
+    const commonPerms = ['utility_hub', 'prototype_menu', 'competitor_list', 'manual_hub', 'manual_viewer'];
     commonPerms.forEach(id => {
         if (!allowed.includes(id)) allowed.push(id);
     });
@@ -396,6 +400,21 @@ window.navigateTo = (target, pushToHistory = true) => {
         overlay?.classList.remove('show');
     }
     
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+window.navigateToManual = (manualId, pushToHistory = true) => {
+    if (pushToHistory) {
+        history.pushState({ page: 'manual_viewer', id: manualId }, "", `?page=manual_viewer&id=${manualId}`);
+    }
+    showPage('manual_viewer');
+    
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+    if (window.innerWidth <= 1024) {
+        sidebar?.classList.remove('show');
+        overlay?.classList.remove('show');
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
@@ -688,6 +707,16 @@ async function showPage(target) {
                 pageContent.innerHTML = competitorListPageHtml;
                 initCompetitorListPage();
                 break;
+            case 'manual_hub':
+                updateHeaderTitle('マニュアル');
+                pageContent.innerHTML = manualHubPageHtml;
+                initManualHubPage();
+                break;
+            case 'manual_viewer':
+                updateHeaderTitle('マニュアル詳細');
+                pageContent.innerHTML = manualViewerPageHtml;
+                initManualViewerPage();
+                break;
         }
 
 
@@ -925,7 +954,7 @@ function renderNavigationUI(target, titleEl, breadcrumbEl, backBtn, menuBtn) {
 
     const parentHubId = pageParentMap[target];
     const hubLabel = hubLabels[parentHubId] || 'メニュー';
-    const isHubPage = target === 'ops_hub' || target === 'hr_hub' || target === 'master_hub';
+    const isHubPage = target === 'ops_hub' || target === 'hr_hub' || target === 'master_hub' || target === 'manual_hub';
 
     // 1. パンくずリスト
     let breadcrumbHTML = `<span onclick="window.navigateTo('home')">ホーム</span>`;
