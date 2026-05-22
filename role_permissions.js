@@ -100,7 +100,8 @@ const menuItems = [
     // サイドバーのナビゲーションハブ
     { id: 'home', name: '[ナビ領域] メインホーム', icon: 'fa-home' },
     { id: 'ops_hub', name: '[ナビ領域] 店舗業務Hub', icon: 'fa-store' },
-    { id: 'hr_hub', name: '[ナビ領域] 人事総務業務Hub', icon: 'fa-user-friends' },
+    { id: 'hr_hub', name: '[ナビ領域] 人事総務Hub', icon: 'fa-user-friends' },
+    { id: 'manager_hub', name: '[ナビ領域] 店長業務Hub', icon: 'fa-user-tie' },
     { id: 'master_hub', name: '[ナビ領域] 設定Hub', icon: 'fa-cog' },
     // クイック操作 (FAB)
     { id: 'fab_attendance', name: '[クイック操作] 出退勤打刻', icon: 'fa-fingerprint' },

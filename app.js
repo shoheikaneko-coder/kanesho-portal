@@ -63,7 +63,8 @@ window.appState = state;
 const defaultMenuItems = [
     { id: 'home', name: 'メインホーム', icon: 'fa-home', category: 'ハブ' },
     { id: 'ops_hub', name: '店舗業務', icon: 'fa-store', category: 'ハブ' },
-    { id: 'hr_hub', name: '人事総務業務', icon: 'fa-user-friends', category: 'ハブ' },
+    { id: 'hr_hub', name: '人事総務', icon: 'fa-user-friends', category: 'ハブ' },
+    { id: 'manager_hub', name: '店長業務', icon: 'fa-user-tie', category: 'ハブ' },
     { id: 'utility_hub', name: '便利機能', icon: 'fa-lightbulb', category: 'ハブ' },
     { id: 'manual_hub', name: 'マニュアル', icon: 'fa-book', category: 'ハブ' },
     { id: 'master_hub', name: '設定', icon: 'fa-cog', category: 'ハブ' },
@@ -87,7 +88,8 @@ const defaultMenuItems = [
 const hubLabels = {
     'home': 'ホーム',
     'ops_hub': '業務',
-    'hr_hub': '人事',
+    'hr_hub': '人事総務',
+    'manager_hub': '店長業務',
     'utility_hub': '便利機能',
     'manual_hub': 'マニュアル',
     'master_hub': '設定'
@@ -128,7 +130,9 @@ const pageParentMap = {
     'product_analysis': 'master_hub',
     'calendar_admin': 'master_hub',
     'goals_admin': 'master_hub',
-    'goals_store': 'ops_hub',
+    'goals_store': 'manager_hub',
+    'manager_meeting': 'manager_hub',
+    'shift_admin': 'manager_hub',
     'prototype_menu': 'utility_hub',
     'competitor_list': 'utility_hub',
     'manual_viewer': 'manual_hub'
@@ -296,7 +300,7 @@ async function renderSidebar(user) {
     if (role === 'Admin' || role === '管理者') {
         allowed = defaultMenuItems.map(m => m.id);
         // 全般的な権限を付与
-        const adminPerms = ['sales','attendance','inventory','procurement','ops_hub_main','stocktake','inventory_history','store_items','product_analysis','home_performance','shift_admin','shift_submission','attendance_check','users','invite_navi','loans','role_permissions','stores','products','suppliers','sales_correction','csv_export','csv_import','calendar_admin','goals_admin','goals_store','line_share','daily_sakes','bottle_keep'];
+        const adminPerms = ['sales','attendance','inventory','procurement','ops_hub_main','stocktake','inventory_history','store_items','product_analysis','home_performance','shift_admin','shift_submission','attendance_check','users','invite_navi','loans','role_permissions','stores','products','suppliers','sales_correction','csv_export','csv_import','calendar_admin','goals_admin','goals_store','line_share','daily_sakes','bottle_keep','manager_hub'];
         adminPerms.forEach(id => { if (!allowed.includes(id)) allowed.push(id); });
     } else {
         try {
@@ -317,6 +321,11 @@ async function renderSidebar(user) {
     commonPerms.forEach(id => {
         if (!allowed.includes(id)) allowed.push(id);
     });
+
+    // Admin / Manager (店長) には店長業務ハブを自動開放
+    if (role === 'Admin' || role === '管理者' || role === 'Manager' || role === '店長') {
+        if (!allowed.includes('manager_hub')) allowed.push('manager_hub');
+    }
 
     state.permissions = allowed;
 
@@ -462,9 +471,14 @@ async function showPage(target) {
                 initHubPage('ops_hub');
                 break;
             case 'hr_hub':
-                updateHeaderTitle('人事総務業務');
-                pageContent.innerHTML = hubPageHtml('人事総務業務', '従業員管理、貸与物、勤怠チェック。');
+                updateHeaderTitle('人事総務');
+                pageContent.innerHTML = hubPageHtml('人事総務', '従業員管理、貸与物、勤怠チェック。');
                 initHubPage('hr_hub');
+                break;
+            case 'manager_hub':
+                updateHeaderTitle('店長業務');
+                pageContent.innerHTML = hubPageHtml('店長業務', '店舗運営計画・シフト管理。');
+                initHubPage('manager_hub');
                 break;
             case 'master_hub':
                 updateHeaderTitle('設定・マスタ');

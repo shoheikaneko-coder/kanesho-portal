@@ -25,13 +25,11 @@ const HUB_CONFIG = {
             { id: 'ops_hub_main', name: '在庫・調達', icon: 'fa-boxes-stacked', color: '#10b981', desc: '在庫チェック、移動、仕入れ、仕込みを一括管理' },
             { id: 'stocktake', name: '棚卸し履歴', icon: 'fa-history', color: '#8b5cf6', desc: '日次棚卸し額の記録・推移確認' },
             { id: 'inventory_history', name: '在庫履歴', icon: 'fa-list-alt', color: '#64748b', desc: '在庫増減の全履歴ログ' },
-            { id: 'recipe_viewer', name: 'レシピ閲覧', icon: 'fa-book-open', color: '#ec4899', desc: 'メニュー情報の確認' },
-            { id: 'manager_meeting', name: '店長会議資料', icon: 'fa-file-signature', color: '#14b8a6', desc: '実績とPDCAの入力・印刷' },
-            { id: 'goals_store', name: '月次計画(店長用)', icon: 'fa-tasks', color: '#f97316', desc: '目標管理と按分シミュ' }
+            { id: 'recipe_viewer', name: 'レシピ閲覧', icon: 'fa-book-open', color: '#ec4899', desc: 'メニュー情報の確認' }
         ]
     },
     'hr_hub': {
-        title: '人事総務業務',
+        title: '人事総務',
         description: '従業員管理・貸与物・権限の管理',
         sections: [
             {
@@ -68,6 +66,27 @@ const HUB_CONFIG = {
                 items: [
                     { id: 'loans', name: '貸与物管理(アセット)', icon: 'fa-key', color: '#8b5cf6' },
                     { id: 'doc_gen', name: '書類作成(雇用契約書等)', icon: 'fa-file-pdf', color: '#ef4444', isComingSoon: true }
+                ]
+            }
+        ]
+    },
+    'manager_hub': {
+        title: '店長業務',
+        description: '店舗運営計画・シフト管理',
+        sections: [
+            {
+                title: '勤務・シフト管理',
+                icon: 'fa-calendar-alt',
+                items: [
+                    { id: 'shift_admin', name: 'シフト作成・調整', icon: 'fa-user-edit', color: '#ec4899' }
+                ]
+            },
+            {
+                title: '目標・実績管理',
+                icon: 'fa-chart-line',
+                items: [
+                    { id: 'goals_store', name: '月次計画(店長用)', icon: 'fa-tasks', color: '#f97316' },
+                    { id: 'manager_meeting', name: '店長会議資料', icon: 'fa-file-signature', color: '#14b8a6' }
                 ]
             }
         ]
