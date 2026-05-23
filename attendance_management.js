@@ -236,8 +236,9 @@ export const attendanceManagementPageHtml = `
                     <span style="font-size: 0.75rem; color: #6366f1; font-weight: bold; background: rgba(99, 102, 241, 0.1); padding: 2px 10px; border-radius: 20px; border: 1px solid rgba(99, 102, 241, 0.2);">新版（PC特化）</span>
                 </h2>
             </div>
-            <button onclick="window.switchToIntegratedDashboardBack()" class="btn" style="padding: 0.55rem 1.2rem; font-size: 0.85rem; font-weight: 700; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; border-radius: 8px;">
-                <i class="fas fa-arrow-left"></i> 旧ハブメニュー（5つのボタン）に戻る
+            <!-- 旧メニューは廃止されるため、元の「人事総務」メインメニューに戻るように変更 -->
+            <button onclick="window.navigateTo('hr_hub')" class="btn" style="padding: 0.55rem 1.2rem; font-size: 0.85rem; font-weight: 700; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; border-radius: 8px;">
+                <i class="fas fa-arrow-left"></i> 人事総務Hubに戻る
             </button>
         </div>
 
@@ -657,15 +658,15 @@ export async function initAttendanceManagementPage() {
         cardApprovals.style.display = canDirectEdit ? 'block' : 'none';
     }
 
-    // 画面遷移ロジックの改善
+    // 画面遷移ロジックの改善（新ダッシュボードへ直接遷移）
     if (!canDirectEdit && canRequestCorrection) {
         // 店長（申請のみ）の場合はハブをスキップして直接日別画面へ
         switchView('daily');
         const titleEl = document.getElementById('page-title');
         if (titleEl) titleEl.textContent = '勤怠修正申請';
     } else {
-        switchView('hub');
-        // 管理者の場合は申請数を監視
+        // 管理者の場合は旧ハブ画面をスキップし、直接新しい統合ダッシュボードを起動
+        switchToIntegratedDashboard();
         if (canDirectEdit) {
             startApprovalsListener();
         }

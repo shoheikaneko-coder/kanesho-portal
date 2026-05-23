@@ -76,7 +76,7 @@ const defaultMenuItems = [
     { id: 'recipe_viewer', name: 'レシピ閲覧', icon: 'fa-book-open', category: 'サブ機能' },
     { id: 'daily_sakes', name: '日本酒管理', icon: 'fa-wine-glass-alt', category: 'サブ機能' },
     { id: 'bottle_keep', name: 'ボトルキープ', icon: 'fa-wine-bottle', category: 'サブ機能' },
-    { id: 'attendance_management', name: '勤怠管理', icon: 'fa-user-clock', category: 'サブ機能' },
+    { id: 'attendance_management', name: '勤怠管理', icon: 'fa-user-clock', category: 'サブ機能', hidden: true },
     { id: 'attendance_check', name: '勤怠照会', icon: 'fa-clipboard-check', category: 'サブ機能', hidden: true },
     { id: 'invite_navi', name: '従業員への招待案内', icon: 'fa-paper-plane', category: 'サブ機能' },
     { id: 'users', name: '従業員管理', icon: 'fa-users-cog', category: 'サブ機能', hidden: true }
