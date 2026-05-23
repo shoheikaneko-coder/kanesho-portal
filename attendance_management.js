@@ -293,8 +293,8 @@ export const attendanceManagementPageHtml = `
                     </div>
                     <div>
                         <!-- CSVエクスポートを設置 -->
-                        <button id="btn-attn-int-export-tkc" class="btn btn-primary" style="padding: 0.55rem 1.2rem; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; background: #10b981; border: none; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);">
-                            <i class="fas fa-file-csv"></i> TKC形式CSV出力 (当月分)
+                        <button onclick="window.openIntCsvModal()" class="btn btn-primary" style="padding: 0.55rem 1.2rem; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; background: #10b981; border: none; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);">
+                            <i class="fas fa-file-csv"></i> TKC形式CSV出力
                         </button>
                     </div>
                 </div>
@@ -326,8 +326,8 @@ export const attendanceManagementPageHtml = `
             <div id="attn-int-pane-monthly" class="attn-int-pane animate-fade-in" style="display: none;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem;">
                     <span id="attn-int-month-label" style="font-weight: 800; font-size: 1.2rem; color: var(--text-primary);">2026年05月度 集計</span>
-                    <button id="btn-attn-int-export-tkc-monthly" class="btn btn-primary" style="padding: 0.55rem 1.2rem; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; background: #10b981; border: none; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);">
-                        <i class="fas fa-file-csv"></i> TKC形式CSV出力 (当月分)
+                    <button onclick="window.openIntCsvModal()" class="btn btn-primary" style="padding: 0.55rem 1.2rem; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; background: #10b981; border: none; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);">
+                        <i class="fas fa-file-csv"></i> TKC形式CSV出力
                     </button>
                 </div>
 
@@ -382,7 +382,7 @@ export const attendanceManagementPageHtml = `
             <div id="attn-int-pane-errors" class="attn-int-pane animate-fade-in" style="display: none;">
                 <div style="margin-bottom: 1.2rem;">
                     <span style="font-weight: 800; font-size: 1.2rem; color: var(--text-primary);"><i class="fas fa-exclamation-triangle" style="color: var(--danger);"></i> 打刻エラー・不整合リスト</span>
-                    <p style="margin: 0.2rem 0 0; font-size: 0.85rem; color: var(--text-secondary);">出勤があって退勤がない、または退勤があって出勤がないなどの整合性エラーを自動検出します。</p>
+                    <p style="margin: 0.2rem 0 0; font-size: 0.85rem; color: var(--text-secondary);">出勤があって退勤がない、または退勤があって出勤がないなどの整合性エラーを自動検出します。(※当日の進行中データは除外されます)</p>
                 </div>
 
                 <div class="glass-panel" style="padding: 0; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.02);">
@@ -402,6 +402,53 @@ export const attendanceManagementPageHtml = `
                             </tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 7. 【CSVエクスポート設定】専用モーダルポップアップ -->
+    <div id="attn-int-csv-modal" class="attn-int-modal">
+        <div class="attn-int-modal-content" style="background: white; border: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.8rem;">
+                <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-file-csv" style="color: #10b981;"></i>
+                    TKC形式CSV出力設定
+                </h3>
+                <button onclick="window.closeIntCsvModal()" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-secondary);"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 1.2rem;">
+                <div class="input-group" style="margin-bottom: 0;">
+                    <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">出力対象店舗</label>
+                    <select id="attn-int-csv-store" class="store-selector" style="width: 100%; padding: 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; background: white;">
+                        <option value="">全店舗</option>
+                    </select>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="input-group" style="margin-bottom: 0;">
+                        <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">開始日 <span style="color: var(--danger); font-weight:bold;">*必須</span></label>
+                        <input type="date" id="attn-int-csv-start" style="padding: 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; background: white;">
+                    </div>
+                    <div class="input-group" style="margin-bottom: 0;">
+                        <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">終了日 <span style="color: var(--danger); font-weight:bold;">*必須</span></label>
+                        <input type="date" id="attn-int-csv-end" style="padding: 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; background: white;">
+                    </div>
+                </div>
+                
+                <div style="font-size: 0.78rem; color: #64748b; line-height: 1.5; background: #f8fafc; padding: 0.8rem; border-radius: 8px; border: 1px solid var(--border);">
+                    <i class="fas fa-info-circle" style="color:#3b82f6;"></i> <b>給与計算時のご注意:</b><br>
+                    給与算定期間が <b>21日〜翌月20日</b> に指定されていることをご確認のうえ出力してください。<br>期間未指定の場合はCSV出力できません。
+                </div>
+                
+                <div style="display: flex; gap: 0.8rem; justify-content: flex-end; margin-top: 0.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                    <button onclick="window.closeIntCsvModal()" class="btn" style="background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; font-weight: 700; padding: 0.6rem 1.2rem; border-radius: 8px;">
+                        キャンセル
+                    </button>
+                    <button id="btn-attn-int-csv-download" class="btn btn-primary" style="background: #10b981; border: none; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); font-weight: 700; padding: 0.6rem 1.5rem; border-radius: 8px; display: flex; align-items: center; gap: 0.4rem;">
+                        <i class="fas fa-download"></i> CSVダウンロード
+                    </button>
                 </div>
             </div>
         </div>
@@ -488,6 +535,40 @@ export const attendanceManagementPageHtml = `
     .attn-int-table tbody tr:hover {
         background-color: #fdf2f235 !important;
     }
+
+    /* CSV出力設定モーダル用スタイル */
+    .attn-int-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(15, 23, 42, 0.4);
+        backdrop-filter: blur(8px);
+        z-index: 10000;
+        justify-content: center;
+        align-items: center;
+        opacity: 0;
+        transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .attn-int-modal.show {
+        display: flex;
+        opacity: 1;
+    }
+    .attn-int-modal-content {
+        background: white;
+        padding: 2.2rem 2rem;
+        border-radius: 16px;
+        width: 480px;
+        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.15);
+        border: 1px solid var(--border);
+        transform: scale(0.95);
+        transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .attn-int-modal.show .attn-int-modal-content {
+        transform: scale(1);
+    }
 </style>
 `;
 
@@ -509,6 +590,8 @@ export async function initAttendanceManagementPage() {
     window.backToAttnHub = backToAttnHub;
     window.switchToIntegratedDashboard = switchToIntegratedDashboard;
     window.switchToIntegratedDashboardBack = switchToIntegratedDashboardBack;
+    window.openIntCsvModal = openIntCsvModal;
+    window.closeIntCsvModal = closeIntCsvModal;
 
     // 権限取得
     const userJson = localStorage.getItem('currentUser');
@@ -547,8 +630,7 @@ export async function initAttendanceManagementPage() {
     if (document.getElementById('btn-attn-int-search')) document.getElementById('btn-attn-int-search').onclick = () => loadIntegratedData();
     if (document.getElementById('btn-attn-int-day-prev')) document.getElementById('btn-attn-int-day-prev').onclick = () => shiftIntDay(-1);
     if (document.getElementById('btn-attn-int-day-next')) document.getElementById('btn-attn-int-day-next').onclick = () => shiftIntDay(1);
-    if (document.getElementById('btn-attn-int-export-tkc')) document.getElementById('btn-attn-int-export-tkc').onclick = () => handleIntTkcExport();
-    if (document.getElementById('btn-attn-int-export-tkc-monthly')) document.getElementById('btn-attn-int-export-tkc-monthly').onclick = () => handleIntTkcExport();
+    if (document.getElementById('btn-attn-int-csv-download')) document.getElementById('btn-attn-int-csv-download').onclick = () => handleIntTkcExport();
 
     // タブクリックイベント
     document.querySelectorAll('.attn-int-tab').forEach(btn => {
@@ -635,7 +717,7 @@ async function loadStoreList() {
         }
 
         selectors.forEach(sel => {
-            const isMonthly = sel.id === 'attn-mon-store-filter';
+            const isMonthly = sel.id === 'attn-mon-store-filter' || sel.id === 'attn-int-store-filter' || sel.id === 'attn-int-csv-store';
             sel.innerHTML = isMonthly ? '<option value="">全店舗</option>' : '';
             
             cachedStores.forEach(s => {
@@ -1673,6 +1755,25 @@ async function loadIntegratedData() {
             staffPunches[sid].push(p);
         });
 
+        // 当日・夜勤のエラー除外用ヘルパー
+        const nowTime = new Date();
+        const todayYmd = nowTime.toLocaleDateString('sv-SE'); // YYYY-MM-DD
+        const yesterdayTime = new Date(nowTime);
+        yesterdayTime.setDate(yesterdayTime.getDate() - 1);
+        const yesterdayYmd = yesterdayTime.toLocaleDateString('sv-SE');
+
+        const isCurrentOrOngoing = (errDate, staffStoreId) => {
+            const storeInfo = cachedStores.find(st => (st.store_id || st.id) === staffStoreId);
+            const dayChangeTime = storeInfo?.day_change_time !== undefined ? parseInt(storeInfo.day_change_time) : 5;
+            
+            const currentHour = nowTime.getHours();
+            if (currentHour < dayChangeTime) {
+                return errDate === todayYmd || errDate === yesterdayYmd;
+            } else {
+                return errDate === todayYmd;
+            }
+        };
+
         // 既存の計算アルゴリズムを 100% そのまま走らせて集計
         for (const [sid, records] of Object.entries(staffPunches)) {
             if (!staffMonthlyStats[sid]) continue;
@@ -1689,11 +1790,14 @@ async function loadIntegratedData() {
 
                 if (type === 'check_in' || type === '出勤') {
                     if (lastIn) {
-                        staffMonthlyStats[sid].errors.push({
-                            date: r.date || r.timestamp.substring(0,10),
-                            type: 'double_check_in',
-                            message: '退勤打刻がないまま、出勤打刻が連続して行われています。'
-                        });
+                        const errDate = r.date || r.timestamp.substring(0,10);
+                        if (!isCurrentOrOngoing(errDate, staffMap[sid].store_id)) {
+                            staffMonthlyStats[sid].errors.push({
+                                date: errDate,
+                                type: 'double_check_in',
+                                message: '退勤打刻がないまま、出勤打刻が連続して行われています。'
+                            });
+                        }
                     }
                     lastIn = { timestamp: ts, record: r };
                     breakSessions = [];
@@ -1734,21 +1838,27 @@ async function loadIntegratedData() {
                         lastIn = null;
                         breakSessions = [];
                     } else {
-                        staffMonthlyStats[sid].errors.push({
-                            date: r.date || r.timestamp.substring(0,10),
-                            type: 'no_check_in',
-                            message: '出勤打刻がない状態で、退勤打刻が行われています。'
-                        });
+                        const errDate = r.date || r.timestamp.substring(0,10);
+                        if (!isCurrentOrOngoing(errDate, staffMap[sid].store_id)) {
+                            staffMonthlyStats[sid].errors.push({
+                                date: errDate,
+                                type: 'no_check_in',
+                                message: '出勤打刻がない状態で、退勤打刻が行われています。'
+                            });
+                        }
                     }
                 }
             });
 
             if (lastIn) {
-                staffMonthlyStats[sid].errors.push({
-                    date: lastIn.record.date || lastIn.record.timestamp.substring(0,10),
-                    type: 'no_check_out',
-                    message: '出勤打刻はありますが、退勤打刻が行われていません。'
-                });
+                const errDate = lastIn.record.date || lastIn.record.timestamp.substring(0,10);
+                if (!isCurrentOrOngoing(errDate, staffMap[sid].store_id)) {
+                    staffMonthlyStats[sid].errors.push({
+                        date: errDate,
+                        type: 'no_check_out',
+                        message: '出勤打刻はありますが、退勤打刻が行われていません。'
+                    });
+                }
             }
         }
 
@@ -2042,19 +2152,58 @@ function renderIntErrors() {
     }
 }
 
-// CSV出力アクション（既存実績ロジックの無改造移植）
-async function handleIntTkcExport() {
-    const data = lastLoadedIntData;
-    if (!data) return showAlert('警告', 'データを読み込んでから出力してください。');
-
-    const month = data.month;
-    const storeId = data.storeId;
+// CSV出力用のモーダル開閉
+function openIntCsvModal() {
+    const modal = document.getElementById('attn-int-csv-modal');
+    if (!modal) return;
     
-    const storeInfo = cachedStores.find(s => (s.store_id || s.id) === storeId);
-    const storeNameFilter = storeInfo?.store_name || storeInfo?.Store || "";
+    // 対象店舗を新UIの共通フィルターから引き継ぐ
+    const activeStore = document.getElementById('attn-int-store-filter')?.value || '';
+    const modalStore = document.getElementById('attn-int-csv-store');
+    if (modalStore) modalStore.value = activeStore;
+    
+    // 現在選択されている対象月を取得して、前月21日〜当月20日をプリセット
+    const monthVal = document.getElementById('attn-int-month-select')?.value;
+    if (monthVal) {
+        const [yearStr, monthStr] = monthVal.split('-');
+        const year = parseInt(yearStr);
+        const month = parseInt(monthStr);
+        
+        let prevYear = year;
+        let prevMonth = month - 1;
+        if (prevMonth === 0) {
+            prevMonth = 12;
+            prevYear -= 1;
+        }
+        
+        const startYmd = `${prevYear}-${String(prevMonth).padStart(2, '0')}-21`;
+        const endYmd = `${year}-${String(month).padStart(2, '0')}-20`;
+        
+        const startInput = document.getElementById('attn-int-csv-start');
+        const endInput = document.getElementById('attn-int-csv-end');
+        if (startInput) startInput.value = startYmd;
+        if (endInput) endInput.value = endYmd;
+    }
+    
+    modal.classList.add('show');
+}
 
-    const btnId = activeIntTab === 'monthly' ? 'btn-attn-int-export-tkc-monthly' : 'btn-attn-int-export-tkc';
-    const btn = document.getElementById(btnId);
+function closeIntCsvModal() {
+    const modal = document.getElementById('attn-int-csv-modal');
+    if (modal) modal.classList.remove('show');
+}
+
+// CSV出力アクション（モーダルの期間指定・店舗指定に基づき、既存実績ロジックを100%踏襲して出力）
+async function handleIntTkcExport() {
+    const startDate = document.getElementById('attn-int-csv-start')?.value;
+    const endDate = document.getElementById('attn-int-csv-end')?.value;
+    const storeId = document.getElementById('attn-int-csv-store')?.value || ''; // モーダル内の店舗選択
+    
+    if (!startDate || !endDate) {
+        return showAlert('警告', 'CSV出力期間（開始日・終了日）を入力してください。');
+    }
+
+    const btn = document.getElementById('btn-attn-int-csv-download');
     if (!btn) return;
     
     const originalText = btn.innerHTML;
@@ -2062,53 +2211,137 @@ async function handleIntTkcExport() {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 出力中...';
 
     try {
-        const startDate = `${month}-01`;
-        const year = parseInt(month.split('-')[0]);
-        const m = parseInt(month.split('-')[1]);
-        const lastDayObj = new Date(year, m, 0);
-        const endDate = `${month}-${String(lastDayObj.getDate()).padStart(2, '0')}`;
-
-        const csvRows = [];
-        
-        Object.values(data.staffMap).forEach(s => {
-            if (storeId && String(s.store_id) !== String(storeId)) return;
+        // 1. スタッフマスターのロード（実績ある堅牢なマッピング）
+        const userSnap = await getDocs(collection(db, 'm_users'));
+        const staffMap = {};
+        userSnap.forEach(d => {
+            const data = d.data();
+            const sid = data.EmployeeCode || data.staff_id || data.staff_code || data.UserId || data.id || d.id;
+            const name = data.Name || data.name || data.staff_name || data.DisplayName || data.name_kanji || '(名前なし)';
+            const sName = data.Store || data.store_name || "";
+            const matchedStore = cachedStores.find(st => 
+                st.store_name === sName || 
+                st.id === data.StoreID || 
+                st.store_id === data.StoreID
+            );
             
-            const stats = data.staffMonthlyStats[s.code];
-            let totalHours = 0;
-            let lateHours = 0;
-            let daysCount = 0;
-            
-            if (stats) {
-                totalHours = stats.totalHours;
-                lateHours = stats.lateHours;
-                daysCount = stats.days.size;
-            }
-
-            csvRows.push({
-                code: s.code,
-                name: s.name,
-                totalHours: totalHours,
-                lateHours: lateHours,
-                daysCount: daysCount
-            });
+            const sidStr = String(sid).trim();
+            staffMap[sidStr] = { 
+                code: sidStr, 
+                name: String(name).trim(), 
+                store_id: matchedStore ? (matchedStore.store_id || matchedStore.id) : (data.StoreID || matchedStore?.id || ""),
+                store_name: matchedStore ? matchedStore.store_name : (data.Store || "不明")
+            };
         });
 
-        let csvContent = "\uFEFF"; // BOM for Excel
-        csvContent += "従業員コード,名前,総労働時間,総労働時間（深夜）,出勤日数\n";
+        // 2. 打刻データの取得（翌日分まで取得して夜勤に対応）
+        const nextDay = new Date(new Date(endDate).getTime() + 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
+        
+        // dateフィールドでフィルタ
+        const q = query(collection(db, 't_attendance'), 
+            where('date', '>=', startDate),
+            where('date', '<=', nextDay)
+        );
+        const punchSnap = await getDocs(q);
+        const punches = [];
+        punchSnap.forEach(d => punches.push({ docId: d.id, ...d.data() }));
+        
+        punches.sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
 
-        csvRows.sort((a,b) => a.code.localeCompare(b.code)).forEach(row => {
+        // 3. 集計ロジック（既存のprocessAttendanceと同様）
+        const staffStats = {};
+        Object.keys(staffMap).forEach(sid => {
+            staffStats[sid] = {
+                code: staffMap[sid].code,
+                name: staffMap[sid].name,
+                store_id: staffMap[sid].store_id,
+                store_name: staffMap[sid].store_name,
+                totalHours: 0,
+                lateHours: 0,
+                days: new Set()
+            };
+        });
+
+        // スタッフごとにグループ化
+        const staffPunches = {};
+        punches.forEach(p => {
+            const sid = String(p.staff_id || p.staff_code || p.EmployeeCode || "").trim();
+            if (!staffPunches[sid]) staffPunches[sid] = [];
+            staffPunches[sid].push(p);
+        });
+
+        for (const [sid, records] of Object.entries(staffPunches)) {
+            if (!staffStats[sid]) continue;
+
+            let lastIn = null;
+            let breakStart = null;
+            let breakSessions = [];
+
+            for (const p of records) {
+                const type = p.type;
+                const time = new Date(p.timestamp);
+
+                if (type === 'check_in' || type === '出勤') {
+                    if (p.date < startDate || p.date > endDate) {
+                        lastIn = null;
+                        continue;
+                    }
+                    lastIn = time;
+                    breakSessions = [];
+                    staffStats[sid].days.add(p.date);
+                } 
+                else if ((type === 'break_start' || type === '休憩開始') && lastIn) {
+                    breakStart = time;
+                } 
+                else if ((type === 'break_end' || type === '休憩終了') && breakStart) {
+                    breakSessions.push({ start: breakStart, end: time });
+                    breakStart = null;
+                } 
+                else if ((type === 'check_out' || type === '退勤') && lastIn) {
+                    const totalBreaks = breakSessions.reduce((sum, s) => sum + (s.end - s.start) / 3600000, 0);
+                    const totalShift = (time - lastIn) / 3600000;
+                    const netLabor = totalShift - totalBreaks;
+                    
+                    if (netLabor > 0) {
+                        staffStats[sid].totalHours += netLabor;
+                        
+                        const rawLate = calculateOverlapLateNightHours(lastIn, time);
+                        const lateBreaks = breakSessions.reduce((sum, s) => sum + calculateOverlapLateNightHours(s.start, s.end), 0);
+                        
+                        staffStats[sid].lateHours += Math.max(0, rawLate - lateBreaks);
+                    }
+                    lastIn = null;
+                    breakSessions = [];
+                }
+            }
+        }
+
+        // 店舗フィルタリング
+        let filteredStats = Object.values(staffStats);
+        if (storeId) {
+            filteredStats = filteredStats.filter(s => String(s.store_id) === String(storeId));
+        }
+
+        // CSV生成
+        let csvContent = "\uFEFF"; // BOM for Excel
+        csvContent += "従業員コード,名前,所属店舗,総労働時間,総労働時間（深夜）,出勤日数\n";
+
+        filteredStats.sort((a, b) => a.code.localeCompare(b.code)).forEach(row => {
             const line = [
                 row.code,
                 row.name,
+                row.store_name,
                 row.totalHours.toFixed(2),
                 row.lateHours.toFixed(2),
-                row.daysCount
+                row.days.size
             ].join(",");
             csvContent += line + "\n";
         });
 
-        const storeSuffix = storeNameFilter ? `_${storeNameFilter}` : '_全店舗';
-        const filename = `勤怠データ${month.replace('-', '')}${storeSuffix}.csv`;
+        const storeInfo = cachedStores.find(s => (s.store_id || s.id) === storeId);
+        const storeSuffix = storeInfo ? `_${storeInfo.store_name}` : '_全店舗';
+        const filename = `勤怠データ_${startDate.replace(/-/g, '')}_${endDate.replace(/-/g, '')}${storeSuffix}.csv`;
+        
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
@@ -2118,6 +2351,9 @@ async function handleIntTkcExport() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+
+        closeIntCsvModal();
+        showAlert('成功', 'CSVの出力が完了しました。');
 
     } catch (e) {
         console.error(e);
