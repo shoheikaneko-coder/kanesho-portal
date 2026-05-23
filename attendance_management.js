@@ -2265,7 +2265,7 @@ async function handleIntTkcExport() {
         
         punches.sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
 
-        // 3. 集計ロジック（既存のprocessAttendanceと同様）
+        // 3. 集計ロジック（エラーチェックも同時に実行）
         const staffStats = {};
         Object.keys(staffMap).forEach(sid => {
             staffStats[sid] = {
@@ -2278,6 +2278,27 @@ async function handleIntTkcExport() {
                 days: new Set()
             };
         });
+
+        const exportErrors = []; // 不整合エラーの一時収集配列
+
+        // 進行中の夜勤（当日・前日の夜勤中データ）をエラーから除外するための判定用
+        const nowTime = new Date();
+        const todayYmd = nowTime.toLocaleDateString('sv-SE');
+        const yesterdayTime = new Date(nowTime);
+        yesterdayTime.setDate(yesterdayTime.getDate() - 1);
+        const yesterdayYmd = yesterdayTime.toLocaleDateString('sv-SE');
+
+        const isCurrentOrOngoing = (errDate, staffStoreId) => {
+            const storeInfo = cachedStores.find(st => (st.store_id || st.id) === staffStoreId);
+            const dayChangeTime = storeInfo?.day_change_time !== undefined ? parseInt(storeInfo.day_change_time) : 5;
+            
+            const currentHour = nowTime.getHours();
+            if (currentHour < dayChangeTime) {
+                return errDate === todayYmd || errDate === yesterdayYmd;
+            } else {
+                return errDate === todayYmd;
+            }
+        };
 
         // スタッフごとにグループ化
         const staffPunches = {};
@@ -2303,7 +2324,20 @@ async function handleIntTkcExport() {
                         lastIn = null;
                         continue;
                     }
-                    lastIn = time;
+                    if (lastIn) {
+                        // エラー：連続出勤（未退勤）
+                        const errDate = p.date || p.timestamp.substring(0, 10);
+                        if (!isCurrentOrOngoing(errDate, staffMap[sid].store_id)) {
+                            exportErrors.push({
+                                staffName: staffMap[sid].name,
+                                staffCode: staffMap[sid].code,
+                                storeId: staffMap[sid].store_id,
+                                date: errDate,
+                                message: '退勤打刻がないまま、出勤打刻が連続して行われています。'
+                            });
+                        }
+                    }
+                    lastIn = { timestamp: time, record: p };
                     breakSessions = [];
                     staffStats[sid].days.add(p.date);
                 } 
@@ -2314,23 +2348,79 @@ async function handleIntTkcExport() {
                     breakSessions.push({ start: breakStart, end: time });
                     breakStart = null;
                 } 
-                else if ((type === 'check_out' || type === '退勤') && lastIn) {
-                    const totalBreaks = breakSessions.reduce((sum, s) => sum + (s.end - s.start) / 3600000, 0);
-                    const totalShift = (time - lastIn) / 3600000;
-                    const netLabor = totalShift - totalBreaks;
-                    
-                    if (netLabor > 0) {
-                        staffStats[sid].totalHours += netLabor;
+                else if (type === 'check_out' || type === '退勤') {
+                    if (lastIn) {
+                        const totalBreaks = breakSessions.reduce((sum, s) => sum + (s.end - s.start) / 3600000, 0);
+                        const totalShift = (time - lastIn.timestamp) / 3600000;
+                        const netLabor = totalShift - totalBreaks;
                         
-                        const rawLate = calculateOverlapLateNightHours(lastIn, time);
-                        const lateBreaks = breakSessions.reduce((sum, s) => sum + calculateOverlapLateNightHours(s.start, s.end), 0);
-                        
-                        staffStats[sid].lateHours += Math.max(0, rawLate - lateBreaks);
+                        if (netLabor > 0) {
+                            staffStats[sid].totalHours += netLabor;
+                            
+                            const rawLate = calculateOverlapLateNightHours(lastIn.timestamp, time);
+                            const lateBreaks = breakSessions.reduce((sum, s) => sum + calculateOverlapLateNightHours(s.start, s.end), 0);
+                            
+                            staffStats[sid].lateHours += Math.max(0, rawLate - lateBreaks);
+                        }
+                        lastIn = null;
+                        breakSessions = [];
+                    } else {
+                        // エラー：出勤なし退勤
+                        const errDate = p.date || p.timestamp.substring(0, 10);
+                        if (errDate >= startDate && errDate <= endDate) {
+                            if (!isCurrentOrOngoing(errDate, staffMap[sid].store_id)) {
+                                exportErrors.push({
+                                    staffName: staffMap[sid].name,
+                                    staffCode: staffMap[sid].code,
+                                    storeId: staffMap[sid].store_id,
+                                    date: errDate,
+                                    message: '出勤打刻がない状態で、退勤打刻が行われています。'
+                                });
+                            }
+                        }
                     }
-                    lastIn = null;
-                    breakSessions = [];
                 }
             }
+
+            if (lastIn) {
+                // エラー：出勤はあるが退勤なし
+                const errDate = lastIn.record.date || lastIn.record.timestamp.substring(0, 10);
+                if (!isCurrentOrOngoing(errDate, staffMap[sid].store_id)) {
+                    exportErrors.push({
+                        staffName: staffMap[sid].name,
+                        staffCode: staffMap[sid].code,
+                        storeId: staffMap[sid].store_id,
+                        date: errDate,
+                        message: '出勤打刻はありますが、退勤打刻が行われていません。'
+                    });
+                }
+            }
+        }
+
+        // 4. エラー検証および出力ブロック処理
+        let filteredErrors = exportErrors;
+        if (storeId) {
+            filteredErrors = exportErrors.filter(e => String(e.storeId) === String(storeId));
+        }
+
+        if (filteredErrors.length > 0) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+
+            const errLimit = 3;
+            let errMsg = `指定期間内に打刻エラー（未退勤・未出勤など）が <strong>${filteredErrors.length}件</strong> 検出されたため、CSV出力をブロックしました。<br><br>`;
+            
+            filteredErrors.slice(0, errLimit).forEach(e => {
+                errMsg += `・[${e.date}] <strong>${e.staffName}様</strong>: ${e.message}<br>`;
+            });
+
+            if (filteredErrors.length > errLimit) {
+                errMsg += `・他 ${filteredErrors.length - errLimit} 件のエラー<br>`;
+            }
+
+            errMsg += `<br>ダッシュボードの<strong>「エラーチェック」</strong>タブ、または<strong>「日別データ」</strong>にて不整合を修正してから、再度出力してください。`;
+
+            return showAlert('CSV出力ブロック (未修正エラーあり)', errMsg);
         }
 
         // 店舗フィルタリング
