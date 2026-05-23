@@ -10,7 +10,8 @@ export const attendanceManagementPageHtml = `
 <div id="attendance-mgmt-container" class="animate-fade-in">
     
     <!-- 1. トップハブ画面 -->
-    <div id="attn-hub-view" class="view-section">
+    <!-- 初期化中の店舗リスト通信待ち（非同期処理）における旧ハブ画面の一時チラつきを防ぐため、デフォルト非表示に設定 -->
+    <div id="attn-hub-view" class="view-section" style="display: none;">
         <!-- 新UI案内バナー -->
         <div class="glass-panel animate-fade-in" style="padding: 1.2rem; margin-bottom: 2rem; background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(244, 63, 94, 0.08)); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.05);">
             <div style="display: flex; align-items: center; gap: 1rem;">
