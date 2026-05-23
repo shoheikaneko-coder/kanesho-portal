@@ -1725,13 +1725,17 @@ async function loadIntegratedData() {
             };
         });
 
-        // 2. 打刻データのロード（対象月の全件 + 翌月1日まで（夜勤対応））
+        // 2. 打刻データのロード（前月末日 + 対象月の全件 + 翌月1日まで（夜勤対応））
         const startDate = `${month}-01`;
         const [yearStr, monthStr] = month.split('-');
         let year = parseInt(yearStr);
         let m = parseInt(monthStr);
 
-        // タイムゾーンによる1日のズレ（ローカルとUTCの時差）を完璧に防ぐため、純粋な数値計算で翌月1日を算出
+        // タイムゾーンによる1日のズレを防ぎつつ、前月の末日（YYYY-MM-DD）を算出
+        const prevMonthLastDate = new Date(year, m - 1, 0); // 0を指定すると前月の末日
+        const prevMonthLastDay = `${prevMonthLastDate.getFullYear()}-${String(prevMonthLastDate.getMonth() + 1).padStart(2, '0')}-${String(prevMonthLastDate.getDate()).padStart(2, '0')}`;
+
+        // 翌月1日を算出
         m++;
         if (m > 12) {
             m = 1;
@@ -1739,8 +1743,9 @@ async function loadIntegratedData() {
         }
         const nextMonthFirstDay = `${year}-${String(m).padStart(2, '0')}-01`;
 
+        // 前月末日から翌月1日まで広範囲にロードすることで、月またぎ夜勤のペアリングを完璧に成立させる
         const q = query(collection(db, 't_attendance'), 
-            where('date', '>=', startDate),
+            where('date', '>=', prevMonthLastDay),
             where('date', '<=', nextMonthFirstDay)
         );
         const punchSnap = await getDocs(q);
@@ -1791,7 +1796,7 @@ async function loadIntegratedData() {
             }
         };
 
-        // 既存の計算アルゴリズムを 100% そのまま走らせて集計
+        // 既存の計算アルゴリズムを 100% そのまま走らせて集計（インテリジェント・当月内フィルタリングを適用）
         for (const [sid, records] of Object.entries(staffPunches)) {
             if (!staffMonthlyStats[sid]) continue;
             
@@ -1809,16 +1814,23 @@ async function loadIntegratedData() {
                     if (lastIn) {
                         const errDate = r.date || r.timestamp.substring(0,10);
                         if (!isCurrentOrOngoing(errDate, staffMap[sid].store_id)) {
-                            staffMonthlyStats[sid].errors.push({
-                                date: errDate,
-                                type: 'double_check_in',
-                                message: '退勤打刻がないまま、出勤打刻が連続して行われています。'
-                            });
+                            // ★当月内のエラーのみ今月のリストに登録
+                            if (errDate >= startDate && errDate < nextMonthFirstDay) {
+                                staffMonthlyStats[sid].errors.push({
+                                    date: errDate,
+                                    type: 'double_check_in',
+                                    message: '退勤打刻がないまま、出勤打刻が連続して行われています。'
+                                });
+                            }
                         }
                     }
                     lastIn = { timestamp: ts, record: r };
                     breakSessions = [];
-                    staffMonthlyStats[sid].days.add(r.date);
+                    
+                    // ★当月の出勤のみ、今月の出勤日数にカウントする
+                    if (r.date >= startDate && r.date < nextMonthFirstDay) {
+                        staffMonthlyStats[sid].days.add(r.date);
+                    }
                 } 
                 else if ((type === 'break_start' || type === '休憩開始') && lastIn) {
                     bStart = { timestamp: ts, record: r };
@@ -1839,8 +1851,12 @@ async function loadIntegratedData() {
                             const lateBreaks = breakSessions.reduce((sum, s) => sum + calculateOverlapLateNightHours(s.start, s.end), 0);
                             lateLabor = Math.max(0, rawLate - lateBreaks);
                             
-                            staffMonthlyStats[sid].totalHours += netLabor;
-                            staffMonthlyStats[sid].lateHours += lateLabor;
+                            // ★セッション開始日（出勤日）が当月内の場合のみ、今月の労働時間に加算する
+                            const sessionDate = lastIn.record.date || lastIn.record.timestamp.substring(0, 10);
+                            if (sessionDate >= startDate && sessionDate < nextMonthFirstDay) {
+                                staffMonthlyStats[sid].totalHours += netLabor;
+                                staffMonthlyStats[sid].lateHours += lateLabor;
+                            }
                         }
 
                         staffSessions[sid].push({
@@ -1857,11 +1873,14 @@ async function loadIntegratedData() {
                     } else {
                         const errDate = r.date || r.timestamp.substring(0,10);
                         if (!isCurrentOrOngoing(errDate, staffMap[sid].store_id)) {
-                            staffMonthlyStats[sid].errors.push({
-                                date: errDate,
-                                type: 'no_check_in',
-                                message: '出勤打刻がない状態で、退勤打刻が行われています。'
-                            });
+                            // ★当月内のエラーのみ今月のリストに登録
+                            if (errDate >= startDate && errDate < nextMonthFirstDay) {
+                                staffMonthlyStats[sid].errors.push({
+                                    date: errDate,
+                                    type: 'no_check_in',
+                                    message: '出勤打刻がない状態で、退勤打刻が行われています。'
+                                });
+                            }
                         }
                     }
                 }
@@ -1870,11 +1889,14 @@ async function loadIntegratedData() {
             if (lastIn) {
                 const errDate = lastIn.record.date || lastIn.record.timestamp.substring(0,10);
                 if (!isCurrentOrOngoing(errDate, staffMap[sid].store_id)) {
-                    staffMonthlyStats[sid].errors.push({
-                        date: errDate,
-                        type: 'no_check_out',
-                        message: '出勤打刻はありますが、退勤打刻が行われていません。'
-                    });
+                    // ★当月内のエラーのみ今月のリストに登録
+                    if (errDate >= startDate && errDate < nextMonthFirstDay) {
+                        staffMonthlyStats[sid].errors.push({
+                            date: errDate,
+                            type: 'no_check_out',
+                            message: '出勤打刻はありますが、退勤打刻が行われていません。'
+                        });
+                    }
                 }
             }
         }
