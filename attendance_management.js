@@ -1725,8 +1725,24 @@ async function loadIntegratedData() {
             };
         });
 
-        // 2. 打刻データのロード（対象月の全件）
-        const q = query(collection(db, 't_attendance'), where('year_month', '==', month));
+        // 2. 打刻データのロード（対象月の全件 + 翌月1日まで（夜勤対応））
+        const startDate = `${month}-01`;
+        const [yearStr, monthStr] = month.split('-');
+        let year = parseInt(yearStr);
+        let m = parseInt(monthStr);
+
+        // タイムゾーンによる1日のズレ（ローカルとUTCの時差）を完璧に防ぐため、純粋な数値計算で翌月1日を算出
+        m++;
+        if (m > 12) {
+            m = 1;
+            year++;
+        }
+        const nextMonthFirstDay = `${year}-${String(m).padStart(2, '0')}-01`;
+
+        const q = query(collection(db, 't_attendance'), 
+            where('date', '>=', startDate),
+            where('date', '<=', nextMonthFirstDay)
+        );
         const punchSnap = await getDocs(q);
         const punches = [];
         punchSnap.forEach(d => punches.push({ docId: d.id, ...d.data() }));
