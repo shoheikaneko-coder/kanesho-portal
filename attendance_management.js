@@ -11,6 +11,22 @@ export const attendanceManagementPageHtml = `
     
     <!-- 1. トップハブ画面 -->
     <div id="attn-hub-view" class="view-section">
+        <!-- 新UI案内バナー -->
+        <div class="glass-panel animate-fade-in" style="padding: 1.2rem; margin-bottom: 2rem; background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(244, 63, 94, 0.08)); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.05);">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div style="width: 45px; height: 45px; border-radius: 10px; background: rgba(99, 102, 241, 0.15); color: #6366f1; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">
+                    <i class="fas fa-desktop"></i>
+                </div>
+                <div>
+                    <h4 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: var(--text-primary);">【新機能】統合勤怠管理ダッシュボード (PC特化版) が公開されました</h4>
+                    <p style="margin: 0.2rem 0 0; font-size: 0.75rem; color: var(--text-secondary);">日別・月別・承認・データ出力の5つの画面遷移を1つに統合し、PCでの作業効率を劇的に向上します。</p>
+                </div>
+            </div>
+            <button onclick="window.switchToIntegratedDashboard()" class="btn btn-primary" style="padding: 0.5rem 1.2rem; font-size: 0.85rem; font-weight: 700; box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3); border-radius: 8px; background: linear-gradient(135deg, #6366f1, #4f46e5); border: none;">
+                新ダッシュボードを開く <i class="fas fa-chevron-right" style="margin-left:0.3rem;"></i>
+            </button>
+        </div>
+
         <div style="margin-bottom: 2rem;">
             <p style="color: var(--text-secondary);">勤怠状況の確認・編集およびデータの出力を行います。</p>
         </div>
@@ -208,6 +224,188 @@ export const attendanceManagementPageHtml = `
             </div>
         </div>
     </div>
+
+    <!-- 6. 【新UI】 King of TIME風 PC特化型 統合ダッシュボード画面 -->
+    <div id="attn-integrated-dashboard-view" class="view-section" style="display: none;">
+        <!-- ヘッダー -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; background: rgba(255, 255, 255, 0.4); padding: 1.2rem; border-radius: 12px; border: 1px solid var(--border); backdrop-filter: blur(10px);">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <h2 style="margin: 0; font-size: 1.3rem; display: flex; align-items: center; gap: 0.6rem; color: var(--text-primary); font-weight: 800;">
+                    <i class="fas fa-desktop" style="color: var(--primary);"></i>
+                    統合勤怠管理ダッシュボード
+                    <span style="font-size: 0.75rem; color: #6366f1; font-weight: bold; background: rgba(99, 102, 241, 0.1); padding: 2px 10px; border-radius: 20px; border: 1px solid rgba(99, 102, 241, 0.2);">新版（PC特化）</span>
+                </h2>
+            </div>
+            <button onclick="window.switchToIntegratedDashboardBack()" class="btn" style="padding: 0.55rem 1.2rem; font-size: 0.85rem; font-weight: 700; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; border-radius: 8px;">
+                <i class="fas fa-arrow-left"></i> 旧ハブメニュー（5つのボタン）に戻る
+            </button>
+        </div>
+
+        <!-- 共通フィルターエリア -->
+        <div class="glass-panel" style="padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid var(--border);">
+            <div style="display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: flex-end;">
+                <div class="input-group" style="margin-bottom: 0; min-width: 220px;">
+                    <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">対象店舗</label>
+                    <select id="attn-int-store-filter" class="store-selector" style="width: 100%; padding: 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; background: white;">
+                        <option value="">全店舗</option>
+                    </select>
+                </div>
+                <div class="input-group" style="margin-bottom: 0; min-width: 180px;">
+                    <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">対象月</label>
+                    <input type="month" id="attn-int-month-select" style="padding: 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; background: white;">
+                </div>
+                <div class="input-group" style="margin-bottom: 0; min-width: 180px;" id="attn-int-date-filter-group">
+                    <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">表示日 (日別用)</label>
+                    <input type="date" id="attn-int-date-select" style="padding: 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; background: white;">
+                </div>
+                <button id="btn-attn-int-search" class="btn btn-primary" style="padding: 0.68rem 2.2rem; font-weight: 700; border-radius: 8px; display: flex; align-items: center; gap: 0.6rem; background: linear-gradient(135deg, var(--primary), var(--primary-dark, #e04f53)); border: none; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);">
+                    <i class="fas fa-search"></i> 検索・表示
+                </button>
+            </div>
+        </div>
+
+        <!-- タブナビゲーション -->
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid var(--border); padding-bottom: 0px;">
+            <button class="attn-int-tab active" data-tab="daily">
+                <i class="fas fa-calendar-day"></i> 日別データ
+            </button>
+            <button class="attn-int-tab" data-tab="monthly">
+                <i class="fas fa-calendar-alt"></i> 月別集計
+            </button>
+            <button class="attn-int-tab" data-tab="approvals" style="position: relative;">
+                <i class="fas fa-check-double"></i> 修正申請の承認
+                <span id="badge-attn-int-approvals" class="badge-attn-int">0</span>
+            </button>
+            <button class="attn-int-tab" data-tab="errors">
+                <i class="fas fa-exclamation-triangle"></i> エラーチェック
+            </button>
+        </div>
+
+        <!-- 各種タブコンテンツエリア -->
+        <div id="attn-int-tab-content">
+            <!-- 6-1. 日別データコンテンツ -->
+            <div id="attn-int-pane-daily" class="attn-int-pane animate-fade-in">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem;">
+                    <div style="display: flex; align-items: center; gap: 0.8rem;">
+                        <button id="btn-attn-int-day-prev" class="btn" style="padding: 0.45rem 1rem; background: white; border: 1px solid var(--border); border-radius: 6px; font-weight: 700; color: var(--text-secondary);"><i class="fas fa-chevron-left"></i> 前日</button>
+                        <span id="attn-int-day-label" style="font-weight: 800; font-size: 1.2rem; color: var(--text-primary);">2026/05/23</span>
+                        <button id="btn-attn-int-day-next" class="btn" style="padding: 0.45rem 1rem; background: white; border: 1px solid var(--border); border-radius: 6px; font-weight: 700; color: var(--text-secondary);">翌日 <i class="fas fa-chevron-right"></i></button>
+                    </div>
+                    <div>
+                        <!-- CSVエクスポートを設置 -->
+                        <button id="btn-attn-int-export-tkc" class="btn btn-primary" style="padding: 0.55rem 1.2rem; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; background: #10b981; border: none; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);">
+                            <i class="fas fa-file-csv"></i> TKC形式CSV出力 (当月分)
+                        </button>
+                    </div>
+                </div>
+
+                <div class="glass-panel" style="padding: 0; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.02);">
+                    <div style="overflow-x: auto;">
+                        <table class="attn-int-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 120px;">コード</th>
+                                    <th style="width: 180px;">従業員名</th>
+                                    <th style="width: 200px;">所属店舗</th>
+                                    <th style="width: 130px;">出勤時刻</th>
+                                    <th style="width: 130px;">退勤時刻</th>
+                                    <th style="width: 150px; text-align: right;">実労働時間</th>
+                                    <th style="width: 150px; text-align: right;">深夜労働h</th>
+                                    <th style="text-align: center;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attn-int-daily-body">
+                                <tr><td colspan="8" style="padding: 3rem; text-align: center; color: var(--text-secondary);"><i class="fas fa-search"></i> 共通フィルターを指定して「検索・表示」を押してください</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6-2. 月別集計コンテンツ -->
+            <div id="attn-int-pane-monthly" class="attn-int-pane animate-fade-in" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem;">
+                    <span id="attn-int-month-label" style="font-weight: 800; font-size: 1.2rem; color: var(--text-primary);">2026年05月度 集計</span>
+                    <button id="btn-attn-int-export-tkc-monthly" class="btn btn-primary" style="padding: 0.55rem 1.2rem; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; background: #10b981; border: none; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);">
+                        <i class="fas fa-file-csv"></i> TKC形式CSV出力 (当月分)
+                    </button>
+                </div>
+
+                <div class="glass-panel" style="padding: 0; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.02);">
+                    <div style="overflow-x: auto;">
+                        <table class="attn-int-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 120px;">コード</th>
+                                    <th style="width: 200px;">従業員名</th>
+                                    <th style="width: 220px;">所属店舗</th>
+                                    <th style="width: 150px; text-align: right;">出勤日数</th>
+                                    <th style="width: 180px; text-align: right;">総実労働時間</th>
+                                    <th style="width: 180px; text-align: right;">総深夜時間</th>
+                                    <th style="text-align: center;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attn-int-monthly-body">
+                                <tr><td colspan="7" style="padding: 3rem; text-align: center; color: var(--text-secondary);"><i class="fas fa-search"></i> 共通フィルターを指定して「検索・表示」を押してください</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6-3. 修正承認待ちコンテンツ -->
+            <div id="attn-int-pane-approvals" class="attn-int-pane animate-fade-in" style="display: none;">
+                <div style="margin-bottom: 1.2rem;">
+                    <span style="font-weight: 800; font-size: 1.2rem; color: var(--text-primary);"><i class="fas fa-check-double" style="color: var(--secondary);"></i> 修正申請の承認待ちリスト</span>
+                </div>
+
+                <div class="glass-panel" style="padding: 0; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.02);">
+                    <div style="overflow-x: auto;">
+                        <table class="attn-int-table" style="border-spacing: 0;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 150px; padding: 1rem 0.8rem;">操作</th>
+                                    <th style="width: 130px;">対象日</th>
+                                    <th style="width: 180px;">従業員情報</th>
+                                    <th>申請内容（打刻）</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attn-int-approvals-body">
+                                <tr><td colspan="4" style="padding: 3rem; text-align: center; color: var(--text-secondary);">現在、承認待ちの申請はありません。</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6-4. エラーチェックコンテンツ -->
+            <div id="attn-int-pane-errors" class="attn-int-pane animate-fade-in" style="display: none;">
+                <div style="margin-bottom: 1.2rem;">
+                    <span style="font-weight: 800; font-size: 1.2rem; color: var(--text-primary);"><i class="fas fa-exclamation-triangle" style="color: var(--danger);"></i> 打刻エラー・不整合リスト</span>
+                    <p style="margin: 0.2rem 0 0; font-size: 0.85rem; color: var(--text-secondary);">出勤があって退勤がない、または退勤があって出勤がないなどの整合性エラーを自動検出します。</p>
+                </div>
+
+                <div class="glass-panel" style="padding: 0; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.02);">
+                    <div style="overflow-x: auto;">
+                        <table class="attn-int-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 150px;">日付</th>
+                                    <th style="width: 180px;">従業員名</th>
+                                    <th style="width: 200px;">所属店舗</th>
+                                    <th>エラー内容</th>
+                                    <th style="width: 130px; text-align: center;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attn-int-errors-body">
+                                <tr><td colspan="5" style="padding: 3rem; text-align: center; color: var(--text-secondary);"><i class="fas fa-search"></i> 共通フィルターを指定して「検索・表示」を押してください</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <style>
@@ -231,6 +429,65 @@ export const attendanceManagementPageHtml = `
     
     #attn-daily-body tr:hover, #attn-monthly-body tr:hover { background: #fdf2f2; }
     #attn-daily-body td, #attn-monthly-body td { padding: 0.8rem 1rem; border-bottom: 1px solid #f1f5f9; }
+    
+    /* 統合ダッシュボード用のカスタムスタイル */
+    .attn-int-tab {
+        padding: 0.8rem 1.5rem;
+        font-weight: 700;
+        border: none;
+        background: none;
+        border-bottom: 3px solid transparent;
+        cursor: pointer;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .attn-int-tab.active {
+        color: var(--primary) !important;
+        border-bottom-color: var(--primary) !important;
+    }
+    .attn-int-tab:hover {
+        color: var(--primary);
+    }
+    .badge-attn-int {
+        background: var(--danger);
+        color: white;
+        border-radius: 10px;
+        padding: 1px 6px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        margin-left: 0.3rem;
+        display: none;
+    }
+    .attn-int-table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+        font-size: 0.88rem;
+    }
+    .attn-int-table th {
+        background: #f8fafc;
+        border-bottom: 2px solid var(--border);
+        color: var(--text-secondary);
+        padding: 0.8rem 1rem;
+        font-weight: 700;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .attn-int-table td {
+        padding: 0.9rem 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        color: var(--text-primary);
+        font-weight: 500;
+        vertical-align: middle;
+    }
+    .attn-int-table tbody tr:nth-child(even) {
+        background-color: #f8fafc25;
+    }
+    .attn-int-table tbody tr:hover {
+        background-color: #fdf2f235 !important;
+    }
 </style>
 `;
 
@@ -242,12 +499,16 @@ let currentEditPunches = []; // 編集中の打刻リスト
 let canDirectEdit = false;
 let canRequestCorrection = false;
 let unsubscribeApprovals = null;
+let activeIntTab = 'daily'; // 新UI用アクティブタブ
+let lastLoadedIntData = null; // 新UI用の統合計算済みデータキャッシュ
 
 // ─── 初期化 ──────────────────────────────────────────────────
 export async function initAttendanceManagementPage() {
     window.switchAttnView = switchView;
     window.openStaffEdit = openStaffEdit;
     window.backToAttnHub = backToAttnHub;
+    window.switchToIntegratedDashboard = switchToIntegratedDashboard;
+    window.switchToIntegratedDashboardBack = switchToIntegratedDashboardBack;
 
     // 権限取得
     const userJson = localStorage.getItem('currentUser');
@@ -269,6 +530,10 @@ export async function initAttendanceManagementPage() {
     if (document.getElementById('attn-month-select')) document.getElementById('attn-month-select').value = thisMonth;
     if (document.getElementById('attn-daily-date')) document.getElementById('attn-daily-date').value = todayYmd;
 
+    // 新UI用デフォルト日付セット
+    if (document.getElementById('attn-int-month-select')) document.getElementById('attn-int-month-select').value = thisMonth;
+    if (document.getElementById('attn-int-date-select')) document.getElementById('attn-int-date-select').value = todayYmd;
+
     // イベント
     document.getElementById('btn-attn-monthly-refresh').onclick = () => loadMonthlyData();
     document.getElementById('btn-attn-daily-refresh').onclick = () => loadDailyData();
@@ -277,6 +542,31 @@ export async function initAttendanceManagementPage() {
 
     const btnError = document.getElementById('btn-attn-error-check');
     if (btnError) btnError.onclick = () => showAlert('情報', 'エラーチェック機能は現在準備中です。');
+
+    // 新UI用イベント
+    if (document.getElementById('btn-attn-int-search')) document.getElementById('btn-attn-int-search').onclick = () => loadIntegratedData();
+    if (document.getElementById('btn-attn-int-day-prev')) document.getElementById('btn-attn-int-day-prev').onclick = () => shiftIntDay(-1);
+    if (document.getElementById('btn-attn-int-day-next')) document.getElementById('btn-attn-int-day-next').onclick = () => shiftIntDay(1);
+    if (document.getElementById('btn-attn-int-export-tkc')) document.getElementById('btn-attn-int-export-tkc').onclick = () => handleIntTkcExport();
+    if (document.getElementById('btn-attn-int-export-tkc-monthly')) document.getElementById('btn-attn-int-export-tkc-monthly').onclick = () => handleIntTkcExport();
+
+    // タブクリックイベント
+    document.querySelectorAll('.attn-int-tab').forEach(btn => {
+        btn.onclick = (e) => {
+            document.querySelectorAll('.attn-int-tab').forEach(b => b.classList.remove('active'));
+            const tabBtn = e.currentTarget;
+            tabBtn.classList.add('active');
+            activeIntTab = tabBtn.dataset.tab;
+            
+            // 日付フィルターの出し分け (日別データタブのときだけ表示日フィルターを見せる)
+            const dateFilterGroup = document.getElementById('attn-int-date-filter-group');
+            if (dateFilterGroup) {
+                dateFilterGroup.style.display = activeIntTab === 'daily' ? 'block' : 'none';
+            }
+
+            switchIntTabPane();
+        };
+    });
 
     // 承認カードの表示制御 (管理者のみ表示)
     const cardApprovals = document.getElementById('card-attn-approvals');
@@ -1228,4 +1518,614 @@ window.processAttnApproval = async (requestId, action) => {
         showAlert('エラー', '処理中にエラーが発生しました: ' + e.message);
     }
 };
+
+// =========================================================================
+// ─── 【新UI】 King of TIME風 統合ダッシュボード関連ロジック ──────────────
+// =========================================================================
+
+// 統合ダッシュボードの表示切り替え
+function switchToIntegratedDashboard() {
+    document.querySelectorAll('.view-section').forEach(v => v.style.display = 'none');
+    const dbView = document.getElementById('attn-integrated-dashboard-view');
+    if (dbView) {
+        dbView.style.display = 'block';
+    }
+    // タブ状態の初期化
+    activeIntTab = 'daily';
+    document.querySelectorAll('.attn-int-tab').forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === 'daily');
+    });
+    const dateFilterGroup = document.getElementById('attn-int-date-filter-group');
+    if (dateFilterGroup) dateFilterGroup.style.display = 'block';
+    
+    // 既存ハブ画面と同じ日付値を連動させる
+    const oldMonth = document.getElementById('attn-month-select')?.value;
+    const oldDate = document.getElementById('attn-daily-date')?.value;
+    const oldStore = document.getElementById('attn-day-store-filter')?.value;
+    
+    if (oldMonth && document.getElementById('attn-int-month-select')) {
+        document.getElementById('attn-int-month-select').value = oldMonth;
+    }
+    if (oldDate && document.getElementById('attn-int-date-select')) {
+        document.getElementById('attn-int-date-select').value = oldDate;
+    }
+    if (oldStore && document.getElementById('attn-int-store-filter')) {
+        document.getElementById('attn-int-store-filter').value = oldStore;
+    }
+    
+    switchIntTabPane();
+    loadIntegratedData();
+}
+
+function switchToIntegratedDashboardBack() {
+    switchView('hub');
+}
+
+function switchIntTabPane() {
+    document.querySelectorAll('.attn-int-pane').forEach(p => p.style.display = 'none');
+    const targetPane = document.getElementById(`attn-int-pane-${activeIntTab}`);
+    if (targetPane) {
+        targetPane.style.display = 'block';
+    }
+    
+    // すでにロード済みのデータがあれば描画のみ行う
+    if (lastLoadedIntData) {
+        renderIntActiveTab();
+    }
+}
+
+function shiftIntDay(offset) {
+    const dateInput = document.getElementById('attn-int-date-select');
+    if (!dateInput || !dateInput.value) return;
+    
+    const d = new Date(dateInput.value);
+    d.setDate(d.getDate() + offset);
+    dateInput.value = d.toISOString().split('T')[0];
+    
+    loadIntegratedData();
+}
+
+// 統合データの一括ロード・計算（実績ある計算ロジックを100%踏襲）
+async function loadIntegratedData() {
+    const storeId = document.getElementById('attn-int-store-filter')?.value || '';
+    const month = document.getElementById('attn-int-month-select')?.value;
+    const date = document.getElementById('attn-int-date-select')?.value;
+    
+    if (!month) {
+        return showAlert('通知', '対象月を選択してください。');
+    }
+    
+    // 日付ラベルや月ラベルの更新
+    const monthLabel = document.getElementById('attn-int-month-label');
+    if (monthLabel) monthLabel.textContent = `${month.replace('-', '年')}月度 集計`;
+    
+    const dayLabel = document.getElementById('attn-int-day-label');
+    if (dayLabel && date) {
+        const dObj = new Date(date);
+        const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][dObj.getDay()];
+        dayLabel.textContent = `${date.replace(/-/g, '/')} (${dayOfWeek})`;
+    }
+
+    // 読込中のUI表示
+    const dailyBody = document.getElementById('attn-int-daily-body');
+    const monthlyBody = document.getElementById('attn-int-monthly-body');
+    const approvalsBody = document.getElementById('attn-int-approvals-body');
+    const errorsBody = document.getElementById('attn-int-errors-body');
+    
+    const loadingHtml = '<tr><td colspan="10" style="text-align:center; padding:3rem;"><i class="fas fa-spinner fa-spin"></i> 計算中...</td></tr>';
+    if (dailyBody) dailyBody.innerHTML = loadingHtml;
+    if (monthlyBody) monthlyBody.innerHTML = loadingHtml;
+    if (approvalsBody) approvalsBody.innerHTML = loadingHtml;
+    if (errorsBody) errorsBody.innerHTML = loadingHtml;
+
+    try {
+        // 1. スタッフマスターのロード（実績ある堅牢なマッピング）
+        const userSnap = await getDocs(collection(db, 'm_users'));
+        const staffMap = {};
+        userSnap.forEach(d => {
+            const data = d.data();
+            const sid = data.EmployeeCode || data.staff_id || data.staff_code || data.UserId || data.id || d.id;
+            const name = data.Name || data.name || data.staff_name || data.DisplayName || data.name_kanji || '(名前なし)';
+            const sName = data.Store || data.store_name || "";
+            const matchedStore = cachedStores.find(st => 
+                st.store_name === sName || 
+                st.id === data.StoreID || 
+                st.store_id === data.StoreID
+            );
+            
+            const sidStr = String(sid).trim();
+            staffMap[sidStr] = { 
+                code: sidStr, 
+                name: String(name).trim(), 
+                store_id: matchedStore ? (matchedStore.store_id || matchedStore.id) : (data.StoreID || matchedStore?.id || ""),
+                store_name: matchedStore ? matchedStore.store_name : (data.Store || "不明")
+            };
+        });
+
+        // 2. 打刻データのロード（対象月の全件）
+        const q = query(collection(db, 't_attendance'), where('year_month', '==', month));
+        const punchSnap = await getDocs(q);
+        const punches = [];
+        punchSnap.forEach(d => punches.push({ docId: d.id, ...d.data() }));
+
+        const staffSessions = {}; // { staff_id: [ sessions ] }
+        const staffMonthlyStats = {}; // { staff_id: { code, name, totalHours, lateHours, days: Set, ... } }
+        
+        Object.keys(staffMap).forEach(sid => {
+            staffMonthlyStats[sid] = {
+                code: staffMap[sid].code,
+                name: staffMap[sid].name,
+                store_id: staffMap[sid].store_id,
+                store_name: staffMap[sid].store_name,
+                totalHours: 0,
+                lateHours: 0,
+                days: new Set(),
+                errors: [] // エラー情報
+            };
+            staffSessions[sid] = [];
+        });
+
+        // スタッフごとにグループ化
+        const staffPunches = {};
+        punches.forEach(p => {
+            const sid = String(p.staff_id || p.staff_code || p.EmployeeCode || "").trim();
+            if (!staffPunches[sid]) staffPunches[sid] = [];
+            staffPunches[sid].push(p);
+        });
+
+        // 既存の計算アルゴリズムを 100% そのまま走らせて集計
+        for (const [sid, records] of Object.entries(staffPunches)) {
+            if (!staffMonthlyStats[sid]) continue;
+            
+            records.sort((a,b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
+            
+            let lastIn = null;
+            let bStart = null;
+            let breakSessions = [];
+
+            records.forEach(r => {
+                const ts = new Date(r.timestamp);
+                const type = r.type;
+
+                if (type === 'check_in' || type === '出勤') {
+                    if (lastIn) {
+                        staffMonthlyStats[sid].errors.push({
+                            date: r.date || r.timestamp.substring(0,10),
+                            type: 'double_check_in',
+                            message: '退勤打刻がないまま、出勤打刻が連続して行われています。'
+                        });
+                    }
+                    lastIn = { timestamp: ts, record: r };
+                    breakSessions = [];
+                    staffMonthlyStats[sid].days.add(r.date);
+                } 
+                else if ((type === 'break_start' || type === '休憩開始') && lastIn) {
+                    bStart = { timestamp: ts, record: r };
+                }
+                else if ((type === 'break_end' || type === '休憩終了') && bStart) {
+                    breakSessions.push({ start: bStart.timestamp, end: ts, startRecord: bStart.record, endRecord: r });
+                    bStart = null;
+                }
+                else if (type === 'check_out' || type === '退勤') {
+                    if (lastIn) {
+                        const totalBreaks = breakSessions.reduce((sum, s) => sum + (s.end - s.start) / 3600000, 0);
+                        const grossShift = (ts - lastIn.timestamp) / 3600000;
+                        const netLabor = Math.max(0, grossShift - totalBreaks);
+                        
+                        let lateLabor = 0;
+                        if (netLabor > 0) {
+                            const rawLate = calculateOverlapLateNightHours(lastIn.timestamp, ts);
+                            const lateBreaks = breakSessions.reduce((sum, s) => sum + calculateOverlapLateNightHours(s.start, s.end), 0);
+                            lateLabor = Math.max(0, rawLate - lateBreaks);
+                            
+                            staffMonthlyStats[sid].totalHours += netLabor;
+                            staffMonthlyStats[sid].lateHours += lateLabor;
+                        }
+
+                        staffSessions[sid].push({
+                            date: lastIn.record.date || lastIn.record.timestamp.substring(0, 10),
+                            checkIn: lastIn,
+                            checkOut: { timestamp: ts, record: r },
+                            breakSessions: breakSessions,
+                            netLabor: netLabor,
+                            lateLabor: lateLabor
+                        });
+
+                        lastIn = null;
+                        breakSessions = [];
+                    } else {
+                        staffMonthlyStats[sid].errors.push({
+                            date: r.date || r.timestamp.substring(0,10),
+                            type: 'no_check_in',
+                            message: '出勤打刻がない状態で、退勤打刻が行われています。'
+                        });
+                    }
+                }
+            });
+
+            if (lastIn) {
+                staffMonthlyStats[sid].errors.push({
+                    date: lastIn.record.date || lastIn.record.timestamp.substring(0,10),
+                    type: 'no_check_out',
+                    message: '出勤打刻はありますが、退勤打刻が行われていません。'
+                });
+            }
+        }
+
+        // 3. 承認待ちデータの取得（リアルタイムリスナーのキャッシュ window.__pendingAttnRequests からの連携）
+        const pendingRequests = window.__pendingAttnRequests || [];
+
+        // 4. キャッシュに格納
+        lastLoadedIntData = {
+            staffMap: staffMap,
+            staffMonthlyStats: staffMonthlyStats,
+            staffSessions: staffSessions,
+            pendingRequests: pendingRequests,
+            month: month,
+            date: date,
+            storeId: storeId
+        };
+
+        // 新UIの承認タブバッジもリアルタイムで更新
+        const intBadge = document.getElementById('badge-attn-int-approvals');
+        if (intBadge) {
+            intBadge.textContent = pendingRequests.length;
+            intBadge.style.display = pendingRequests.length > 0 ? 'inline-block' : 'none';
+        }
+
+        // 描画実行
+        renderIntActiveTab();
+
+    } catch (e) {
+        console.error("loadIntegratedData error:", e);
+        const errHtml = `<tr><td colspan="10" style="color:var(--danger); text-align:center; padding:3rem;"><i class="fas fa-exclamation-triangle"></i> 読み込み失敗: ${e.message}</td></tr>`;
+        if (dailyBody) dailyBody.innerHTML = errHtml;
+        if (monthlyBody) monthlyBody.innerHTML = errHtml;
+    }
+}
+
+// アクティブタブに応じた描画の振り分け
+function renderIntActiveTab() {
+    if (activeIntTab === 'daily') renderIntDaily();
+    else if (activeIntTab === 'monthly') renderIntMonthly();
+    else if (activeIntTab === 'approvals') renderIntApprovals();
+    else if (activeIntTab === 'errors') renderIntErrors();
+}
+
+// 6-1. 日別データの描画
+function renderIntDaily() {
+    const data = lastLoadedIntData;
+    const body = document.getElementById('attn-int-daily-body');
+    if (!body || !data) return;
+
+    const storeId = data.storeId;
+    const date = data.date;
+
+    const activeStaff = Object.values(data.staffMap).filter(s => {
+        return !storeId || String(s.store_id) === String(storeId);
+    });
+
+    body.innerHTML = '';
+
+    if (activeStaff.length === 0) {
+        body.innerHTML = '<tr><td colspan="8" style="padding:3rem; text-align:center; color:var(--text-secondary);">該当店舗の従業員データがありません。</td></tr>';
+        return;
+    }
+
+    activeStaff.sort((a,b) => a.code.localeCompare(b.code)).forEach(s => {
+        const mySessions = data.staffSessions[s.code] || [];
+        const todaySession = mySessions.find(sess => sess.date === date);
+
+        let checkInStr = '-';
+        let checkOutStr = '-';
+        let laborStr = '-';
+        let lateStr = '-';
+
+        if (todaySession) {
+            checkInStr = todaySession.checkIn.record.timestamp.substring(11, 16);
+            checkOutStr = todaySession.checkOut.record.timestamp.substring(11, 16);
+            laborStr = `${todaySession.netLabor.toFixed(2)}h`;
+            lateStr = todaySession.lateLabor > 0 ? `${todaySession.lateLabor.toFixed(2)}h` : '-';
+        }
+
+        const tr = document.createElement('tr');
+        const btnLabel = canDirectEdit ? '実績編集' : '修正依頼';
+        const btnIcon = canDirectEdit ? 'fa-edit' : 'fa-paper-plane';
+
+        tr.innerHTML = `
+            <td style="font-family: monospace; font-size: 0.85rem;">${s.code}</td>
+            <td style="font-weight: 700; color: var(--text-primary); font-size: 0.9rem;">${s.name}</td>
+            <td style="color: var(--text-secondary); font-size: 0.85rem;">${s.store_name}</td>
+            <td style="font-weight: 600; font-size: 0.85rem; color: #475569;">${checkInStr}</td>
+            <td style="font-weight: 600; font-size: 0.85rem; color: #475569;">${checkOutStr}</td>
+            <td style="text-align: right; font-weight: 700; color: var(--text-primary);">${laborStr}</td>
+            <td style="text-align: right; font-weight: 700; color: var(--primary);">${lateStr}</td>
+            <td style="text-align: center;">
+                <button class="btn" style="padding: 0.35rem 0.8rem; font-size: 0.8rem; background: rgba(99, 102, 241, 0.08); color: #6366f1; border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 6px; font-weight: 700; transition: all 0.2s;" onclick="window.openStaffEdit('${s.code}', '${s.name}', '${date}')">
+                    <i class="fas ${btnIcon}"></i> ${btnLabel}
+                </button>
+            </td>
+        `;
+        body.appendChild(tr);
+    });
+}
+
+// 6-2. 月別集計の描画
+function renderIntMonthly() {
+    const data = lastLoadedIntData;
+    const body = document.getElementById('attn-int-monthly-body');
+    if (!body || !data) return;
+
+    const storeId = data.storeId;
+    const activeStaff = Object.values(data.staffMap).filter(s => {
+        return !storeId || String(s.store_id) === String(storeId);
+    });
+
+    body.innerHTML = '';
+
+    if (activeStaff.length === 0) {
+        body.innerHTML = '<tr><td colspan="7" style="padding:3rem; text-align:center; color:var(--text-secondary);">該当店舗の従業員データがありません。</td></tr>';
+        return;
+    }
+
+    activeStaff.sort((a,b) => a.code.localeCompare(b.code)).forEach(s => {
+        const stats = data.staffMonthlyStats[s.code];
+        
+        let daysCount = 0;
+        let hoursCount = 0;
+        let lateCount = 0;
+
+        if (stats) {
+            daysCount = stats.days.size;
+            hoursCount = stats.totalHours;
+            lateCount = stats.lateHours;
+        }
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="font-family: monospace; font-size: 0.85rem;">${s.code}</td>
+            <td style="font-weight: 700; color: var(--text-primary); font-size: 0.9rem;">${s.name}</td>
+            <td style="color: var(--text-secondary); font-size: 0.85rem;">${s.store_name}</td>
+            <td style="text-align: right; font-weight: 600; color: #475569;">${daysCount}日</td>
+            <td style="text-align: right; font-weight: 700; color: var(--text-primary); font-size: 0.9rem;">${hoursCount.toFixed(2)}h</td>
+            <td style="text-align: right; font-weight: 700; color: var(--primary); font-size: 0.9rem;">${lateCount.toFixed(2)}h</td>
+            <td style="text-align: center;">
+                <button class="btn" style="padding: 0.35rem 0.8rem; font-size: 0.8rem; background: #f1f5f9; color: #475569; border: 1px solid var(--border); border-radius: 6px; font-weight: 700;" onclick="window.switchToDailyFromIntMonthly('${s.store_name}', '${data.month}-01')">
+                    <i class="fas fa-search"></i> 日別で表示
+                </button>
+            </td>
+        `;
+        body.appendChild(tr);
+    });
+}
+
+window.switchToDailyFromIntMonthly = (storeName, dateYmd) => {
+    const store = cachedStores.find(st => (st.store_name || st.Store) === storeName);
+    if (store) {
+        document.getElementById('attn-int-store-filter').value = store.store_id || store.id;
+    }
+    document.getElementById('attn-int-date-select').value = dateYmd;
+    
+    document.querySelectorAll('.attn-int-tab').forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === 'daily');
+    });
+    activeIntTab = 'daily';
+    const dateFilterGroup = document.getElementById('attn-int-date-filter-group');
+    if (dateFilterGroup) dateFilterGroup.style.display = 'block';
+    
+    switchIntTabPane();
+    loadIntegratedData();
+};
+
+// 6-3. 修正承認待ちの描画
+function renderIntApprovals() {
+    const data = lastLoadedIntData;
+    const body = document.getElementById('attn-int-approvals-body');
+    if (!body || !data) return;
+
+    const requests = data.pendingRequests || [];
+
+    const badge = document.getElementById('badge-attn-int-approvals');
+    if (badge) {
+        badge.textContent = requests.length;
+        badge.style.display = requests.length > 0 ? 'inline-block' : 'none';
+    }
+
+    if (requests.length === 0) {
+        body.innerHTML = '<tr><td colspan="4" style="padding:3rem; text-align:center; color:var(--text-secondary);">現在、承認待ちの申請はありません。</td></tr>';
+        return;
+    }
+
+    body.innerHTML = requests.map(req => {
+        const punches = req.requested_punches || [];
+        
+        let punchDetails = '';
+        if (punches.length === 0) {
+            punchDetails = '<div style="color:var(--text-secondary); font-style:italic;">(打刻データなし)</div>';
+        } else {
+            punchDetails = punches.map(p => {
+                const ts = p.timestamp || '';
+                const timeStr = (typeof ts === 'string' && ts.length >= 16) ? ts.substring(11, 16) : '--:--';
+                if (p.deleteRequest) {
+                    return `<span style="color:var(--danger); margin-right:1rem; font-weight:700; background:rgba(239, 68, 68, 0.08); padding:2px 8px; border-radius:4px; border:1px solid rgba(239, 68, 68, 0.2); display:inline-block; font-size:0.75rem;">
+                        <i class="fas fa-trash-alt"></i> 削除: ${p.type} (${timeStr})
+                    </span>`;
+                } else {
+                    return `<span style="color:#6366f1; margin-right:1rem; font-weight:700; background:rgba(99, 102, 241, 0.08); padding:2px 8px; border-radius:4px; border:1px solid rgba(99, 102, 241, 0.2); display:inline-block; font-size:0.75rem;">
+                        <i class="fas fa-plus-circle"></i> 追加: ${p.type} (${timeStr})
+                    </span>`;
+                }
+            }).join(' ');
+        }
+
+        const targetDate = req.date || req.target_date || '-';
+        const requester = req.requested_by_name || req.requester_name || '店長';
+
+        return `
+            <tr style="border-bottom: 1px solid #f1f5f9; vertical-align: top;">
+                <td style="padding: 1rem; display: flex; gap: 0.5rem; justify-content: center; align-items: center; min-height:60px;">
+                    <button class="btn btn-primary" style="padding:0.4rem 0.8rem; font-size:0.8rem; background:#10b981; border:none; box-shadow: 0 2px 6px rgba(16,185,129,0.15);" onclick="window.processAttnIntApproval('${req.id}', 'approve')">
+                        <i class="fas fa-check"></i> 承認
+                    </button>
+                    <button class="btn" style="padding:0.4rem 0.8rem; font-size:0.8rem; background:#fef2f2; color:#ef4444; border:1px solid #fee2e2;" onclick="window.processAttnIntApproval('${req.id}', 'reject')">
+                        <i class="fas fa-times"></i> 却下
+                    </button>
+                </td>
+                <td style="padding: 1.1rem 1rem; font-weight: 800; color: #1e293b; font-size: 0.9rem;">
+                    ${targetDate}
+                </td>
+                <td style="padding: 1rem;">
+                    <div style="font-weight: 800; color: var(--text-primary);">${req.staff_name || '不明'}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); font-family: monospace;">コード: ${req.staff_id || '-'}</div>
+                </td>
+                <td style="padding: 1rem; font-size: 0.85rem;">
+                    <div style="margin-bottom:0.5rem; font-size: 0.75rem; color:var(--text-secondary);">
+                        <i class="fas fa-user-edit"></i> 申請者: ${requester} (${safeFormatDate(req.created_at)})
+                    </div>
+                    <div style="display:flex; flex-wrap:wrap; gap:0.3rem;">
+                        ${punchDetails}
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+window.processAttnIntApproval = async (requestId, action) => {
+    await window.processAttnApproval(requestId, action);
+    await loadIntegratedData();
+};
+
+// 6-4. エラーチェックの描画
+function renderIntErrors() {
+    const data = lastLoadedIntData;
+    const body = document.getElementById('attn-int-errors-body');
+    if (!body || !data) return;
+
+    body.innerHTML = '';
+    
+    let errorRowsHtml = '';
+    let errorCount = 0;
+
+    Object.values(data.staffMap).forEach(s => {
+        const stats = data.staffMonthlyStats[s.code];
+        if (stats && stats.errors && stats.errors.length > 0) {
+            stats.errors.forEach(err => {
+                if (data.storeId && String(s.store_id) !== String(data.storeId)) return;
+                
+                errorCount++;
+                errorRowsHtml += `
+                    <tr>
+                        <td style="font-weight: 700; color: #1e293b;">${err.date}</td>
+                        <td style="font-weight: 800; color: var(--text-primary);">${s.name}</td>
+                        <td style="color: var(--text-secondary); font-size: 0.85rem;">${s.store_name}</td>
+                        <td>
+                            <span style="color: var(--danger); font-weight: 700; background: rgba(239, 68, 68, 0.08); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(239, 68, 68, 0.2); font-size: 0.8rem; display: inline-flex; align-items: center; gap: 0.4rem;">
+                                <i class="fas fa-exclamation-triangle"></i> ${err.message}
+                            </span>
+                        </td>
+                        <td style="text-align: center;">
+                            <button class="btn" style="padding: 0.35rem 0.8rem; font-size: 0.8rem; background: rgba(239, 68, 68, 0.08); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 6px; font-weight: 700;" onclick="window.openStaffEdit('${s.code}', '${s.name}', '${err.date}')">
+                                <i class="fas fa-edit"></i> 修正する
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+    });
+
+    if (errorCount === 0) {
+        body.innerHTML = '<tr><td colspan="5" style="padding: 3rem; text-align: center; color: #10b981; font-weight: 700;"><i class="fas fa-check-circle"></i> エラーは検出されていません。すべての打刻データが正常に整合しています。</td></tr>';
+    } else {
+        body.innerHTML = errorRowsHtml;
+    }
+}
+
+// CSV出力アクション（既存実績ロジックの無改造移植）
+async function handleIntTkcExport() {
+    const data = lastLoadedIntData;
+    if (!data) return showAlert('警告', 'データを読み込んでから出力してください。');
+
+    const month = data.month;
+    const storeId = data.storeId;
+    
+    const storeInfo = cachedStores.find(s => (s.store_id || s.id) === storeId);
+    const storeNameFilter = storeInfo?.store_name || storeInfo?.Store || "";
+
+    const btnId = activeIntTab === 'monthly' ? 'btn-attn-int-export-tkc-monthly' : 'btn-attn-int-export-tkc';
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 出力中...';
+
+    try {
+        const startDate = `${month}-01`;
+        const year = parseInt(month.split('-')[0]);
+        const m = parseInt(month.split('-')[1]);
+        const lastDayObj = new Date(year, m, 0);
+        const endDate = `${month}-${String(lastDayObj.getDate()).padStart(2, '0')}`;
+
+        const csvRows = [];
+        
+        Object.values(data.staffMap).forEach(s => {
+            if (storeId && String(s.store_id) !== String(storeId)) return;
+            
+            const stats = data.staffMonthlyStats[s.code];
+            let totalHours = 0;
+            let lateHours = 0;
+            let daysCount = 0;
+            
+            if (stats) {
+                totalHours = stats.totalHours;
+                lateHours = stats.lateHours;
+                daysCount = stats.days.size;
+            }
+
+            csvRows.push({
+                code: s.code,
+                name: s.name,
+                totalHours: totalHours,
+                lateHours: lateHours,
+                daysCount: daysCount
+            });
+        });
+
+        let csvContent = "\uFEFF"; // BOM for Excel
+        csvContent += "従業員コード,名前,総労働時間,総労働時間（深夜）,出勤日数\n";
+
+        csvRows.sort((a,b) => a.code.localeCompare(b.code)).forEach(row => {
+            const line = [
+                row.code,
+                row.name,
+                row.totalHours.toFixed(2),
+                row.lateHours.toFixed(2),
+                row.daysCount
+            ].join(",");
+            csvContent += line + "\n";
+        });
+
+        const storeSuffix = storeNameFilter ? `_${storeNameFilter}` : '_全店舗';
+        const filename = `勤怠データ${month.replace('-', '')}${storeSuffix}.csv`;
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+    } catch (e) {
+        console.error(e);
+        showAlert('エラー', 'CSVの出力に失敗しました: ' + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
 
