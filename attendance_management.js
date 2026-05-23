@@ -2324,13 +2324,12 @@ async function handleIntTkcExport() {
 
         // CSV生成
         let csvContent = "\uFEFF"; // BOM for Excel
-        csvContent += "従業員コード,名前,所属店舗,総労働時間,総労働時間（深夜）,出勤日数\n";
+        csvContent += "従業員コード,名前,総労働時間,総労働時間（深夜）,出勤日数\n";
 
         filteredStats.sort((a, b) => a.code.localeCompare(b.code)).forEach(row => {
             const line = [
                 row.code,
                 row.name,
-                row.store_name,
                 row.totalHours.toFixed(2),
                 row.lateHours.toFixed(2),
                 row.days.size
