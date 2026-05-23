@@ -1623,10 +1623,9 @@ function switchToIntegratedDashboard() {
     const dateFilterGroup = document.getElementById('attn-int-date-filter-group');
     if (dateFilterGroup) dateFilterGroup.style.display = 'block';
     
-    // 既存ハブ画面と同じ日付値を連動させる
+    // 既存ハブ画面と同じ日付値のみ連動させる (店舗は同期せず「未選択/全店舗」をデフォルトにする)
     const oldMonth = document.getElementById('attn-month-select')?.value;
     const oldDate = document.getElementById('attn-daily-date')?.value;
-    const oldStore = document.getElementById('attn-day-store-filter')?.value;
     
     if (oldMonth && document.getElementById('attn-int-month-select')) {
         document.getElementById('attn-int-month-select').value = oldMonth;
@@ -1634,12 +1633,16 @@ function switchToIntegratedDashboard() {
     if (oldDate && document.getElementById('attn-int-date-select')) {
         document.getElementById('attn-int-date-select').value = oldDate;
     }
-    if (oldStore && document.getElementById('attn-int-store-filter')) {
-        document.getElementById('attn-int-store-filter').value = oldStore;
+    
+    // 対象店舗は同期させず、空値（＝未選択/全店舗）に固定して余計な読み込みを防ぐ
+    if (document.getElementById('attn-int-store-filter')) {
+        document.getElementById('attn-int-store-filter').value = "";
     }
     
     switchIntTabPane();
-    loadIntegratedData();
+    
+    // 【重要】起動時の自動Firestore読み込みを抑制し、余計なFirestore Read数消費を100%防ぎます。
+    // loadIntegratedData();
 }
 
 function switchToIntegratedDashboardBack() {
