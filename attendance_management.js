@@ -542,32 +542,33 @@ export const attendanceManagementPageHtml = `
         position: fixed;
         top: 0;
         left: 0;
-        width: 100%;
-        height: 100%;
+        width: 100vw;
+        height: 100vh;
         background: rgba(15, 23, 42, 0.4);
         backdrop-filter: blur(8px);
         z-index: 10000;
-        justify-content: center;
-        align-items: center;
         opacity: 0;
         transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .attn-int-modal.show {
-        display: flex;
+        display: block;
         opacity: 1;
     }
     .attn-int-modal-content {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.95);
         background: white;
         padding: 2.2rem 2rem;
         border-radius: 16px;
         width: 480px;
         box-shadow: 0 20px 40px rgba(15, 23, 42, 0.15);
         border: 1px solid var(--border);
-        transform: scale(0.95);
         transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     .attn-int-modal.show .attn-int-modal-content {
-        transform: scale(1);
+        transform: translate(-50%, -50%) scale(1);
     }
 </style>
 `;
