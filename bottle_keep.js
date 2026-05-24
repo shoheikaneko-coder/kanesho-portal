@@ -40,6 +40,9 @@ export const bottleKeepPageHtml = `
                 <button id="btn-area-settings" class="btn" style="height: 44px; width: 44px; padding: 0; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;" title="エリア・期限設定">
                     <i class="fas fa-cog"></i>
                 </button>
+                <button id="btn-disposal-history" class="btn" style="height: 44px; width: 44px; padding: 0; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;" title="廃棄履歴">
+                    <i class="fas fa-history"></i>
+                </button>
             </div>
         </div>
 
@@ -54,6 +57,8 @@ export const bottleKeepPageHtml = `
     <div id="bottle-modal" class="modal-overlay"></div>
     <div id="brand-modal" class="modal-overlay"></div>
     <div id="area-modal" class="modal-overlay"></div>
+    <div id="disposal-confirm-modal" class="modal-overlay"></div>
+    <div id="disposal-history-modal" class="modal-overlay"></div>
 `;
 
 export async function initBottleKeepPage() {
@@ -127,6 +132,7 @@ function setupEventListeners() {
             if (btn.id === 'btn-new-bottle') openBottleModal();
             else if (btn.id === 'btn-brand-master') openBrandModal();
             else if (btn.id === 'btn-area-settings') openAreaModal();
+            else if (btn.id === 'btn-disposal-history') openDisposalHistoryModal();
         };
     }
 
@@ -388,6 +394,10 @@ async function openBottleModal(bottleId = null) {
     const bottle = bottleId ? cachedBottles.find(b => b.id === bottleId) : null;
     const isEdit = !!bottle;
 
+    const lastDate = bottle?.lastServingDate ? (bottle.lastServingDate.toDate ? bottle.lastServingDate.toDate() : new Date(bottle.lastServingDate)) : null;
+    const diffDays = lastDate ? Math.floor((new Date() - lastDate) / (1000 * 60 * 60 * 24)) : 0;
+    const isExpired = lastDate && diffDays >= bottleSettings.expirationDays;
+
     modal.innerHTML = `
         <div class="modal-content-box animate-zoom-fade" style="max-width: 500px;">
             <div style="padding: 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
@@ -438,10 +448,15 @@ async function openBottleModal(bottleId = null) {
                     </div>
                 </form>
             </div>
-            <div style="padding: 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between;">
+            <div style="padding: 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
                 ${isEdit ? `
-                    <button class="btn" style="background: white; color: var(--danger); border: 1px solid #fee2e2;" onclick="deleteBottle('${bottle.id}')">
-                        <i class="fas fa-trash"></i> 削除
+                    <button class="btn" style="${
+                        isExpired 
+                            ? 'background: var(--danger); color: white; border: none; box-shadow: 0 4px 10px rgba(239, 68, 68, 0.2); font-weight: 700;' 
+                            : 'background: white; color: var(--danger); border: 1px solid #fee2e2; font-weight: 700;'
+                    }" onclick="openDisposalConfirmModal('${bottle.id}')">
+                        <i class="fas ${isExpired ? 'fa-dumpster' : 'fa-trash-alt'}"></i> 
+                        ${isExpired ? '期限切れのため廃棄する' : 'ボトルを廃棄する'}
                     </button>
                 ` : '<div></div>'}
                 <div style="display: flex; gap: 0.8rem;">
@@ -645,6 +660,234 @@ window.deleteBottle = (id) => {
     });
 };
 
+// --- New Disposal Flow Functions ---
+
+async function openDisposalConfirmModal(bottleId) {
+    const bottle = cachedBottles.find(b => b.id === bottleId);
+    if (!bottle) return;
+
+    const brand = cachedBrands.find(br => br.id === bottle.brandId)?.name || '不明';
+    const area = cachedAreas.find(a => a.id === bottle.areaId)?.name || '未配置';
+    const lastDate = bottle.lastServingDate ? (bottle.lastServingDate.toDate ? bottle.lastServingDate.toDate() : new Date(bottle.lastServingDate)) : null;
+    const diffDays = lastDate ? Math.floor((new Date() - lastDate) / (1000 * 60 * 60 * 24)) : 0;
+    const isExpired = lastDate && diffDays >= bottleSettings.expirationDays;
+
+    const modal = document.getElementById('disposal-confirm-modal');
+    modal.innerHTML = `
+        <div class="modal-content-box animate-zoom-fade" style="max-width: 450px;">
+            <div style="padding: 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; color: var(--danger);"><i class="fas fa-exclamation-triangle"></i> ボトルの廃棄確認</h3>
+                <button class="btn" style="background: transparent;" onclick="closeModal('disposal-confirm-modal')"><i class="fas fa-times"></i></button>
+            </div>
+            <div style="padding: 1.5rem; overflow-y: auto;">
+                <p style="font-weight: 700; margin-top: 0;">
+                    「<span style="font-size: 1.1rem; color: var(--text-primary); font-weight: 800;">${bottle.customerName}</span>」様のボトルを廃棄します。よろしいですか？
+                </p>
+                <div class="glass-panel" style="padding: 0.8rem 1.2rem; background: #f8fafc; border-radius: 8px; margin-bottom: 1.5rem; font-size: 0.85rem; border: 1px solid #cbd5e1;">
+                    <div style="display: grid; grid-template-columns: 80px 1fr; gap: 0.4rem;">
+                        <span style="color: #64748b;">銘柄:</span> <span style="font-weight: 700;">${brand}</span>
+                        <span style="color: #64748b;">保管場所:</span> <span style="font-weight: 700;">${area}</span>
+                        <span style="color: #64748b;">最終提供日:</span> <span style="font-weight: 700;">${lastDate ? lastDate.toLocaleDateString() : '不明'}</span>
+                        <span style="color: #64748b;">経過日数:</span> <span style="font-weight: 700; color: ${isExpired ? '#f43f5e' : 'inherit'}">${diffDays}日経過 ${isExpired ? '(期限切れ)' : ''}</span>
+                    </div>
+                </div>
+                <div class="input-group" style="margin-bottom: 0;">
+                    <label style="font-weight: 700;">廃棄メモ・理由 <span style="font-size:0.75rem; color:#94a3b8; font-weight:normal;">(自由入力)</span></label>
+                    <textarea id="disposal-memo" placeholder="例：半年以上来店がないため / お客様の承諾を得て処分 / 登録ミスのため 等" style="width: 100%; min-height: 80px; resize: none; border: 1px solid var(--border); border-radius: 8px; padding: 0.8rem; font-size: 0.9rem;"></textarea>
+                </div>
+            </div>
+            <div style="padding: 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 0.8rem;">
+                <button class="btn" onclick="closeModal('disposal-confirm-modal')">キャンセル</button>
+                <button class="btn" id="btn-execute-disposal" style="background: var(--danger); color: white; font-weight: 700;">廃棄を実行する</button>
+            </div>
+        </div>
+    `;
+
+    modal.style.setProperty('display', 'flex', 'important');
+    modal.classList.add('show');
+
+    document.getElementById('btn-execute-disposal').onclick = async (e) => {
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        const loader = showLoader();
+
+        try {
+            const memo = document.getElementById('disposal-memo').value.trim();
+            const now = new Date();
+            const expireAt = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000); // 365 days later
+
+            // 1. Save to disposal history (t_disposed_bottles)
+            await addDoc(collection(db, "t_disposed_bottles"), {
+                originalId: bottle.id,
+                storeId: bottle.storeId || currentUser.StoreID || currentUser.StoreId,
+                customerName: bottle.customerName,
+                customerFurigana: bottle.customerFurigana || "",
+                brandId: bottle.brandId,
+                brandName: brand,
+                areaName: area,
+                firstServingDate: bottle.firstServingDate || null,
+                lastServingDate: bottle.lastServingDate || null,
+                disposedAt: now,
+                disposedBy: currentUser.DisplayName || currentUser.UserName || "現場スタッフ",
+                disposalMemo: memo,
+                expireAt: expireAt
+            });
+
+            // 2. Delete from active bottles (t_bottles)
+            await deleteDoc(doc(db, "t_bottles", bottle.id));
+
+            closeModal('disposal-confirm-modal');
+            closeModal('bottle-modal');
+            showAlert("成功", "ボトルを廃棄しました。履歴は1年間保管されます。");
+        } catch (err) {
+            console.error("Disposal Error:", err);
+            showAlert("エラー", "ボトルの廃棄に失敗しました。");
+            btn.disabled = false;
+        } finally {
+            if (loader) loader.remove();
+        }
+    };
+}
+
+async function openDisposalHistoryModal() {
+    const modal = document.getElementById('disposal-history-modal');
+    const storeId = currentUser.StoreID || currentUser.StoreId;
+
+    modal.innerHTML = `
+        <div class="modal-content-box animate-zoom-fade" style="max-width: 650px; width: 90%; height: 80vh; display: flex; flex-direction: column;">
+            <!-- Header -->
+            <div style="padding: 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+                <h3 style="margin: 0;"><i class="fas fa-history"></i> 廃棄ボトル履歴一覧 <span style="font-size: 0.8rem; color: #94a3b8; font-weight: normal;">(過去1年分を表示)</span></h3>
+                <button class="btn" style="background: transparent;" onclick="closeModal('disposal-history-modal')"><i class="fas fa-times"></i></button>
+            </div>
+
+            <!-- Search Console -->
+            <div style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); flex-shrink: 0; background: #f8fafc;">
+                <div class="input-group" style="margin-bottom: 0; position: relative;">
+                    <i class="fas fa-search" style="position: absolute; left: 1rem; top: 0.8rem; color: #94a3b8;"></i>
+                    <input type="text" id="history-search-input" placeholder="お客様名・ふりがなで履歴を検索..." style="padding: 0.8rem 1rem 0.8rem 2.8rem; height: 44px; width: 100%; border: 1px solid var(--border); border-radius: 8px;">
+                </div>
+            </div>
+
+            <!-- List Body -->
+            <div id="disposal-history-list" style="flex: 1; overflow-y: auto; padding: 1.5rem;">
+                <div style="text-align: center; color: #94a3b8; padding-top: 2rem;">履歴を読み込み中...</div>
+            </div>
+            
+            <div style="padding: 1rem 1.5rem; border-top: 1px solid var(--border); text-align: right; flex-shrink: 0;">
+                <button class="btn" onclick="closeModal('disposal-history-modal')">閉じる</button>
+            </div>
+        </div>
+    `;
+
+    modal.style.setProperty('display', 'flex', 'important');
+    modal.classList.add('show');
+
+    // Read history from DB
+    const loader = showLoader();
+    let historyData = [];
+
+    try {
+        const snap = await getDocs(query(
+            collection(db, "t_disposed_bottles"), 
+            where("storeId", "==", storeId)
+        ));
+        historyData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        
+        // JS-side sort to avoid index-creation requirements
+        historyData.sort((a, b) => {
+            const timeA = a.disposedAt?.toDate ? a.disposedAt.toDate().getTime() : new Date(a.disposedAt).getTime();
+            const timeB = b.disposedAt?.toDate ? b.disposedAt.toDate().getTime() : new Date(b.disposedAt).getTime();
+            return timeB - timeA;
+        });
+    } catch (err) {
+        console.error("Fetch History Error:", err);
+        document.getElementById('disposal-history-list').innerHTML = `
+            <div style="text-align: center; color: var(--danger); padding: 2rem;">
+                履歴の取得に失敗しました。<br>
+                コンソールログを確認してください。
+            </div>
+        `;
+        if (loader) loader.remove();
+        return;
+    }
+
+    if (loader) loader.remove();
+
+    const searchInput = document.getElementById('history-search-input');
+    
+    // Render Function
+    const renderHistory = (filterQuery = "") => {
+        const listContainer = document.getElementById('disposal-history-list');
+        const q = filterQuery.trim().toLowerCase();
+
+        const filtered = historyData.filter(h => {
+            return h.customerName.toLowerCase().includes(q) || 
+                   (h.customerFurigana || "").toLowerCase().includes(q);
+        });
+
+        if (filtered.length === 0) {
+            listContainer.innerHTML = `
+                <div style="text-align: center; color: #94a3b8; padding-top: 3rem;">
+                    <i class="fas fa-folder-open" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                    <div>該当する廃棄履歴がありません</div>
+                </div>
+            `;
+            return;
+        }
+
+        listContainer.innerHTML = filtered.map(h => {
+            const dispDate = h.disposedAt ? (h.disposedAt.toDate ? h.disposedAt.toDate() : new Date(h.disposedAt)) : null;
+            const lastDate = h.lastServingDate ? (h.lastServingDate.toDate ? h.lastServingDate.toDate() : new Date(h.lastServingDate)) : null;
+
+            return `
+                <div class="history-card" style="
+                    border: 1px solid var(--border);
+                    border-radius: 12px;
+                    padding: 1.2rem;
+                    margin-bottom: 1rem;
+                    background: white;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+                    transition: transform 0.2s, box-shadow 0.2s;
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.6rem; flex-wrap: wrap; gap: 0.5rem;">
+                        <div>
+                            <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 600;">${h.customerFurigana || ''}</span>
+                            <h4 style="margin: 0; font-size: 1.1rem; font-weight: 800;">${h.customerName}</h4>
+                        </div>
+                        <div style="text-align: right; font-size: 0.75rem; color: #64748b;">
+                            <div>廃棄日: <span style="font-weight: 800; color: var(--text-primary);">${dispDate ? dispDate.toLocaleDateString() + ' ' + dispDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '不明'}</span></div>
+                            <div style="font-size:0.7rem; color: #94a3b8;">作業者: ${h.disposedBy || '不明'}</div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 0.8rem; flex-wrap: wrap;">
+                        <span class="badge" style="background: #f1f5f9; color: #475569; font-size: 0.75rem; padding: 4px 8px;">銘柄: ${h.brandName || '不明'}</span>
+                        <span class="badge badge-blue" style="font-size: 0.75rem; padding: 4px 8px;">元エリア: ${h.areaName || '未配置'}</span>
+                        <span class="badge" style="background: #fff1f2; color: #e11d48; font-size: 0.75rem; padding: 4px 8px;">最終提供: ${lastDate ? lastDate.toLocaleDateString() : '不明'}</span>
+                    </div>
+
+                    ${h.disposalMemo ? `
+                        <div style="background: #f8fafc; border-left: 4px solid #cbd5e1; padding: 0.6rem 0.8rem; border-radius: 4px; font-size: 0.85rem; color: #475569; margin-top: 0.5rem; word-break: break-all; white-space: pre-wrap;">
+                            <strong>廃棄時の現場メモ:</strong><br>${h.disposalMemo}
+                        </div>
+                    ` : `
+                        <div style="font-size: 0.8rem; color: #cbd5e1; font-style: italic; margin-top: 0.5rem;">※廃棄メモはありません</div>
+                    `}
+                </div>
+            `;
+        }).join('');
+    };
+
+    // Initial render
+    renderHistory();
+
+    // Bind Search Event
+    searchInput.oninput = (e) => {
+        renderHistory(e.target.value);
+    };
+}
+
 window.deleteBrand = (id, name) => {
     showConfirm("銘柄の削除", `「${name}」を削除しますか？`, async () => {
         await deleteDoc(doc(db, "m_bottle_brands", id));
@@ -683,6 +926,8 @@ window.moveArea = async (id, direction) => {
 window.openBottleModal = openBottleModal;
 window.openBrandModal = openBrandModal;
 window.openAreaModal = openAreaModal;
+window.openDisposalConfirmModal = openDisposalConfirmModal;
+window.openDisposalHistoryModal = openDisposalHistoryModal;
 
 // CSS Injection
 const style = document.createElement('style');
@@ -773,6 +1018,11 @@ style.textContent = `
         gap: 1rem;
         margin-bottom: 1.5rem;
     }
+    .history-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+        border-color: #cbd5e1;
+    }
     @media (max-width: 600px) {
         .bottle-modal-grid {
             grid-template-columns: 1fr;
@@ -785,3 +1035,4 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
