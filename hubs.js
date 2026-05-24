@@ -47,6 +47,7 @@ const HUB_CONFIG = {
                 icon: 'fa-sitemap',
                 items: [
                     { id: 'users', name: 'ユーザー・従業員管理', icon: 'fa-users-cog', color: '#14b8a6' },
+                    { id: 'invite_navi', name: '従業員への招待案内', icon: 'fa-paper-plane', color: '#3b82f6' },
                     { id: 'role_permissions', name: '権限振り分け設定', icon: 'fa-user-shield', color: '#ef4444' },
                     { id: 'org_chart', name: '組織図', icon: 'fa-network-wired', color: '#8b5cf6', isComingSoon: true }
                 ]
@@ -71,9 +72,16 @@ const HUB_CONFIG = {
         ]
     },
     'manager_hub': {
-        title: '店長業務',
-        description: '店舗運営計画・シフト管理',
+        title: 'マネジメント',
+        description: '店舗運営計画・経営分析・シフト管理',
         sections: [
+            {
+                title: '店舗経営',
+                icon: 'fa-store',
+                items: [
+                    { id: 'dashboard', name: '分析ダッシュボード', icon: 'fa-chart-line', color: '#3b82f6' }
+                ]
+            },
             {
                 title: '勤務・シフト管理',
                 icon: 'fa-calendar-alt',
@@ -112,6 +120,14 @@ const HUB_CONFIG = {
         items: [
             { id: 'prototype_menu', name: 'メニュー試作', icon: 'fa-flask', color: '#f59e0b', desc: '新メニューの原価計算シミュ' },
             { id: 'competitor_list', name: '行きたい店リスト', icon: 'fa-map-marked-alt', color: '#3b82f6', desc: '競合店の視察メモ・共有' }
+        ]
+    },
+    'special_hub': {
+        title: '店舗個別メニュー',
+        description: '店舗ごとに導入されている個別のオプション独自メニュー',
+        items: [
+            { id: 'daily_sakes', name: '日本酒管理', icon: 'fa-wine-glass-alt', color: '#10b981', desc: 'その日の日本酒のラインナップ・残量などを管理します。' },
+            { id: 'bottle_keep', name: 'ボトルキープ', icon: 'fa-wine-bottle', color: '#ff5a5f', desc: 'お客様のキープボトル配置・期限管理を行います。' }
         ]
     }
 };
@@ -161,11 +177,28 @@ export function initHubPage(type) {
         `;
     } else {
         // 従来のカード形式（グリッド）で描画
+        const visibleItems = config.items.filter(item => {
+            return item.id === 'manager_meeting' || permissions.length === 0 || permissions.includes(item.id);
+        });
+
+        if (visibleItems.length === 0) {
+            container.innerHTML = `
+                <div class="glass-panel animate-fade-in" style="padding: 4rem 2rem; text-align: center; max-width: 500px; margin: 3rem auto; border-radius: 24px; border: 1px solid var(--border); box-shadow: var(--shadow-md);">
+                    <div style="width: 70px; height: 70px; border-radius: 50%; background: #f1f5f9; color: #94a3b8; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto 1.5rem;">
+                        <i class="fas fa-cubes"></i>
+                    </div>
+                    <h3 style="margin: 0 0 0.6rem 0; color: var(--text-primary); font-weight: 800; font-size: 1.25rem;">有効な個別メニューがありません</h3>
+                    <p style="margin: 0; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6;">
+                        この店舗では、現在有効化されている店舗個別メニューがありません。機能を追加・表示するには、システム管理者にお問い合わせください。
+                    </p>
+                </div>
+            `;
+            return;
+        }
+
         container.innerHTML = `
             <div id="hub-content-grid" class="menu-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.5rem;">
-                ${config.items.filter(item => {
-                    return item.id === 'manager_meeting' || permissions.length === 0 || permissions.includes(item.id);
-                }).map(item => `
+                ${visibleItems.map(item => `
                     <div class="glass-panel hub-card" onclick="window.navigateTo('${item.id}')" style="padding: 1.5rem; cursor: pointer; transition: all 0.3s ease; position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 0.8rem; border: 1px solid rgba(255,255,255,0.4);">
                         <div style="width: 50px; height: 50px; border-radius: 12px; background: ${item.color}15; color: ${item.color}; display: flex; align-items: center; justify-content: center; font-size: 1.4rem;">
                             <i class="fas ${item.icon}"></i>

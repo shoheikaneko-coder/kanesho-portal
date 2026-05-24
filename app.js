@@ -64,21 +64,22 @@ const defaultMenuItems = [
     { id: 'home', name: 'メインホーム', icon: 'fa-home', category: 'ハブ' },
     { id: 'ops_hub', name: '店舗業務', icon: 'fa-store', category: 'ハブ' },
     { id: 'hr_hub', name: '人事総務', icon: 'fa-user-friends', category: 'ハブ' },
-    { id: 'manager_hub', name: '店長業務', icon: 'fa-user-tie', category: 'ハブ' },
+    { id: 'manager_hub', name: 'マネジメント', icon: 'fa-user-tie', category: 'ハブ' },
     { id: 'utility_hub', name: '便利機能', icon: 'fa-lightbulb', category: 'ハブ' },
     { id: 'manual_hub', name: 'マニュアル', icon: 'fa-book', category: 'ハブ' },
+    { id: 'special_hub', name: '店舗個別メニュー', icon: 'fa-cubes', category: 'ハブ' },
     { id: 'master_hub', name: '設定', icon: 'fa-cog', category: 'ハブ' },
     
-    { id: 'ops_hub_main', name: '在庫・調達', icon: 'fa-boxes-stacked', category: 'サブ機能' },
-    { id: 'dashboard', name: '分析ダッシュボード', icon: 'fa-chart-line', category: 'サブ機能' },
+    { id: 'ops_hub_main', name: '在庫・調達', icon: 'fa-boxes-stacked', category: 'サブ機能', hidden: true },
+    { id: 'dashboard', name: '分析ダッシュボード', icon: 'fa-chart-line', category: 'サブ機能', hidden: true },
     { id: 'shift_submission', name: 'シフト提出・確認', icon: 'fa-calendar-alt', category: 'サブ機能' },
-    { id: 'shift_admin', name: 'シフト作成・調整', icon: 'fa-user-edit', category: 'サブ機能' },
-    { id: 'recipe_viewer', name: 'レシピ閲覧', icon: 'fa-book-open', category: 'サブ機能' },
+    { id: 'shift_admin', name: 'シフト作成・調整', icon: 'fa-user-edit', category: 'サブ機能', hidden: true },
+    { id: 'recipe_viewer', name: 'レシピ閲覧', icon: 'fa-book-open', category: 'サブ機能', hidden: true },
     { id: 'daily_sakes', name: '日本酒管理', icon: 'fa-wine-glass-alt', category: 'サブ機能' },
     { id: 'bottle_keep', name: 'ボトルキープ', icon: 'fa-wine-bottle', category: 'サブ機能' },
     { id: 'attendance_management', name: '勤怠管理', icon: 'fa-user-clock', category: 'サブ機能', hidden: true },
     { id: 'attendance_check', name: '勤怠照会', icon: 'fa-clipboard-check', category: 'サブ機能', hidden: true },
-    { id: 'invite_navi', name: '従業員への招待案内', icon: 'fa-paper-plane', category: 'サブ機能' },
+    { id: 'invite_navi', name: '従業員への招待案内', icon: 'fa-paper-plane', category: 'サブ機能', hidden: true },
     { id: 'users', name: '従業員管理', icon: 'fa-users-cog', category: 'サブ機能', hidden: true }
 ];
 
@@ -89,9 +90,10 @@ const hubLabels = {
     'home': 'ホーム',
     'ops_hub': '業務',
     'hr_hub': '人事総務',
-    'manager_hub': '店長業務',
+    'manager_hub': 'マネジメント',
     'utility_hub': '便利機能',
     'manual_hub': 'マニュアル',
+    'special_hub': '個別メニュー',
     'master_hub': '設定'
 };
 
@@ -101,13 +103,13 @@ const hubLabels = {
 const pageParentMap = {
     'stocktake': 'ops_hub',
     'inventory_history': 'ops_hub',
-    'dashboard': 'ops_hub',
+    'dashboard': 'manager_hub',
     'attendance': 'ops_hub',
     'sales': 'ops_hub',
     'inventory': 'ops_hub',
     'procurement': 'ops_hub',
     'ops_hub_main': 'ops_hub',
-    'recipe_viewer': 'ops_hub',
+    'recipe_viewer': 'manual_hub',
     'menu_order': 'ops_hub',
     'calendar_viewer': 'ops_hub',
     'daily_sakes': 'ops_hub',
@@ -317,7 +319,7 @@ async function renderSidebar(user) {
     }
     
     // 便利機能Hub & マニュアルHubは全従業員にデフォルト開放
-    const commonPerms = ['utility_hub', 'prototype_menu', 'competitor_list', 'manual_hub', 'manual_viewer'];
+    const commonPerms = ['utility_hub', 'prototype_menu', 'competitor_list', 'manual_hub', 'manual_viewer', 'special_hub'];
     commonPerms.forEach(id => {
         if (!allowed.includes(id)) allowed.push(id);
     });
@@ -705,6 +707,11 @@ async function showPage(target) {
                 pageTitle.textContent = 'ボトルキープ管理';
                 pageContent.innerHTML = bottleKeepPageHtml;
                 initBottleKeepPage();
+                break;
+            case 'special_hub':
+                updateHeaderTitle('店舗個別メニュー');
+                pageContent.innerHTML = hubPageHtml('店舗個別メニュー', '店舗ごとにカスタマイズ・導入されている個別の独自メニュー。');
+                initHubPage('special_hub');
                 break;
             case 'utility_hub':
                 pageTitle.textContent = '便利機能';
