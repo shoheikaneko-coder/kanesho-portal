@@ -63,11 +63,11 @@ window.appState = state;
 const defaultMenuItems = [
     { id: 'home', name: 'メインホーム', icon: 'fa-home', category: 'ハブ' },
     { id: 'ops_hub', name: '店舗業務', icon: 'fa-store', category: 'ハブ' },
+    { id: 'special_hub', name: '店舗個別メニュー', icon: 'fa-cubes', category: 'ハブ' },
     { id: 'hr_hub', name: '人事総務', icon: 'fa-user-friends', category: 'ハブ' },
     { id: 'manager_hub', name: 'マネジメント', icon: 'fa-user-tie', category: 'ハブ' },
     { id: 'utility_hub', name: '便利機能', icon: 'fa-lightbulb', category: 'ハブ' },
     { id: 'manual_hub', name: 'マニュアル', icon: 'fa-book', category: 'ハブ' },
-    { id: 'special_hub', name: '店舗個別メニュー', icon: 'fa-cubes', category: 'ハブ' },
     { id: 'master_hub', name: '設定', icon: 'fa-cog', category: 'ハブ' },
     
     { id: 'ops_hub_main', name: '在庫・調達', icon: 'fa-boxes-stacked', category: 'サブ機能', hidden: true },
