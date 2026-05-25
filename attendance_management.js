@@ -2325,7 +2325,8 @@ async function handleIntTkcExport() {
                 store_id: matchedStore ? (matchedStore.store_id || matchedStore.id) : (data.StoreID || matchedStore?.id || ""),
                 store_name: matchedStore ? matchedStore.store_name : (data.Store || "不明"),
                 status: data.Status || 'active',
-                resignationDate: data.ResignationDate || ''
+                resignationDate: data.ResignationDate || '',
+                hireDate: data.HireDate || ''
             };
         });
 
@@ -2357,18 +2358,23 @@ async function handleIntTkcExport() {
             // 2. 退職ステータスだが退職日が未設定の場合の判定用
             const isRetiredWithoutDate = (status === 'retired' || status === '退職済') && !resDate;
 
+            // 3. 入社予定日が指定期間の終了日（endDate）より後の場合は除外
+            const isNotHiredYet = staff.hireDate && staff.hireDate > endDate;
+
             // 期間中の打刻データの有無をチェック（セーフティネット）
             const hasPunchesInPeriod = punches.some(p => {
                 const psid = String(p.staff_id || p.staff_code || p.EmployeeCode || "").trim();
                 return psid === sid && p.date >= startDate && p.date <= endDate;
             });
 
-            // 過去に退職済みで、かつこの期間中に打刻データもない場合は除外
+            // 過去に退職済み、または未来に入社予定で、かつこの期間中に打刻データもない場合は除外
             if (isRetiredInPast && !hasPunchesInPeriod) {
                 return;
             }
-            // 退職日不明の退職者で、かつ期間中に一度も打刻がない場合は除外
             if (isRetiredWithoutDate && !hasPunchesInPeriod) {
+                return;
+            }
+            if (isNotHiredYet && !hasPunchesInPeriod) {
                 return;
             }
 

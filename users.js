@@ -153,11 +153,17 @@ function renderFormView(container) {
                                         <input type="text" id="user-name" required placeholder="例: 山田 太郎" style="font-size: 1.1rem;">
                                     </div>
                                 </div>
-                                <div class="input-group" style="margin: 0;">
-                                    <label style="font-weight: 700; color: #475569;">シフト表示名 (ニックネーム)</label>
-                                    <input type="text" id="user-display-name" placeholder="例: 太郎" style="font-size: 1.1rem; background: #fffdf0; border: 1px solid #fde68a;">
-                                    <p style="font-size: 0.75rem; color: #b45309; margin-top: 0.3rem;">※シフト表に短く表示したい場合のみ入力</p>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem;">
+                                    <div class="input-group" style="margin: 0;">
+                                        <label style="font-weight: 700; color: #475569;">シフト表示名 (ニックネーム)</label>
+                                        <input type="text" id="user-display-name" placeholder="例: 太郎" style="font-size: 1.1rem; background: #fffdf0; border: 1px solid #fde68a;">
+                                    </div>
+                                    <div class="input-group" style="margin: 0;">
+                                        <label style="font-weight: 700; color: #475569;">入社日</label>
+                                        <input type="date" id="user-hire-date" style="font-size: 1.1rem; background: white;">
+                                    </div>
                                 </div>
+                                <p style="font-size: 0.75rem; color: #b45309; margin-top: 0.3rem;">※シフト表示名は、シフト表に短く表示したい場合のみ入力。未設定時は「お名前」が表示されます。</p>
                             </div>
                         </div>
 
@@ -304,6 +310,7 @@ function renderFormView(container) {
             document.getElementById('user-job-title').value = editingUserData.JobTitle || '';
             document.getElementById('user-visa-expiry').value = editingUserData.visa_expiry_date || '';
             document.getElementById('user-resignation-date').value = editingUserData.ResignationDate || '';
+            document.getElementById('user-hire-date').value = editingUserData.HireDate || '';
         }
 
         const statusSel = document.getElementById('user-status');
@@ -355,6 +362,7 @@ function setupFormLogic() {
             'Status': document.getElementById('user-status').value,
             'ResignationDate': document.getElementById('user-resignation-date')?.value || '',
             'visa_expiry_date': document.getElementById('user-visa-expiry').value,
+            'HireDate': document.getElementById('user-hire-date')?.value || '',
             'UpdatedAt': new Date().toISOString()
         };
 
