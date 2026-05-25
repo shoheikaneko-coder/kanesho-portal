@@ -2285,6 +2285,17 @@ function closeIntCsvModal() {
 
 // CSV出力アクション（モーダルの期間指定・店舗指定に基づき、既存実績ロジックを100%踏襲して出力）
 async function handleIntTkcExport() {
+    // 60進数時間変換用ヘルパー (例: 8.5時間 -> 8時間30分 -> "8.30")
+    function formatTo60Decimal(decimalHours) {
+        let hours = Math.floor(decimalHours);
+        let minutes = Math.round((decimalHours - hours) * 60);
+        if (minutes === 60) {
+            hours += 1;
+            minutes = 0;
+        }
+        return `${hours}.${String(minutes).padStart(2, '0')}`;
+    }
+
     const startDate = document.getElementById('attn-int-csv-start')?.value;
     const endDate = document.getElementById('attn-int-csv-end')?.value;
     const storeId = document.getElementById('attn-int-csv-store')?.value || ''; // モーダル内の店舗選択
@@ -2547,8 +2558,8 @@ async function handleIntTkcExport() {
             const line = [
                 row.code,
                 row.name,
-                row.totalHours.toFixed(2),
-                row.lateHours.toFixed(2),
+                formatTo60Decimal(row.totalHours),
+                formatTo60Decimal(row.lateHours),
                 row.days.size
             ].join(",");
             csvContent += line + "\n";
