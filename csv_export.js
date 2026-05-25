@@ -85,7 +85,9 @@ async function handleTkcExport(startDate, endDate) {
             users[sid] = {
                 code: data.EmployeeCode || '-',
                 name: data.Name || '-',
-                store: data.Store || '-'
+                store: data.Store || '-',
+                status: data.Status || 'active',
+                resignationDate: data.ResignationDate || ''
             };
         });
 
@@ -125,9 +127,32 @@ function processAttendance(users, allPunches, startDate, endDate) {
 
     // 初期化
     Object.keys(users).forEach(sid => {
+        const user = users[sid];
+        const status = user.status;
+        const resDate = user.resignationDate;
+
+        // 1. 退職ステータスで、かつ退職日が指定期間の開始日（startDate）より前の場合は除外
+        const isRetiredInPast = (status === 'retired' || status === '退職済' || status === 'resigning' || status === '退職手続き中') && 
+                                resDate && resDate < startDate;
+
+        // 2. 退職ステータスだが退職日が未設定の場合（例外パターン）の判定用
+        const isRetiredWithoutDate = (status === 'retired' || status === '退職済') && !resDate;
+
+        // 期間中の打刻データの有無をチェック（セーフティネット）
+        const hasPunchesInPeriod = allPunches.some(p => p.staff_id === sid && p.date >= startDate && p.date <= endDate);
+
+        // 過去に退職済みで、かつこの期間中に打刻データもない場合は除外
+        if (isRetiredInPast && !hasPunchesInPeriod) {
+            return;
+        }
+        // 退職日不明の退職者で、かつ期間中に一度も打刻がない場合は除外
+        if (isRetiredWithoutDate && !hasPunchesInPeriod) {
+            return;
+        }
+
         staffStats[sid] = {
-            code: users[sid].code,
-            name: users[sid].name,
+            code: user.code,
+            name: user.name,
             totalHours: 0,
             lateHours: 0,
             days: new Set()

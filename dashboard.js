@@ -316,8 +316,13 @@ const TAX_RATE = 1.1;
 export async function initDashboardPage() {
     injectStyles();
     const now = new Date();
+    // 昨日の日付を算出 (タイムゾーン安全・月末月初またぎ完全対応)
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yestYmd = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+
     document.getElementById('dash-date-from').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-    document.getElementById('dash-date-to').value = now.toISOString().substring(0, 10);
+    document.getElementById('dash-date-to').value = yestYmd;
 
     // タブ切り替え設定
     const tabBtns = document.querySelectorAll('.dash-tab-btn');

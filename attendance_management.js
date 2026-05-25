@@ -158,7 +158,7 @@ export const attendanceManagementPageHtml = `
                 <button id="btn-attn-save" class="btn btn-primary">
                     <i class="fas fa-save"></i> 保存
                 </button>
-                <button onclick="window.switchAttnView('daily')" class="btn" style="background: #f1f5f9; color: #475569;">
+                <button onclick="window.handleAttnEditCancel()" class="btn" style="background: #f1f5f9; color: #475569;">
                     キャンセル
                 </button>
             </div>
@@ -233,7 +233,7 @@ export const attendanceManagementPageHtml = `
             <div style="display: flex; align-items: center; gap: 1rem;">
                 <h2 style="margin: 0; font-size: 1.3rem; display: flex; align-items: center; gap: 0.6rem; color: var(--text-primary); font-weight: 800;">
                     <i class="fas fa-desktop" style="color: var(--primary);"></i>
-                    統合勤怠管理ダッシュボード
+                    勤怠管理ダッシュボード
                     <span style="font-size: 0.75rem; color: #6366f1; font-weight: bold; background: rgba(99, 102, 241, 0.1); padding: 2px 10px; border-radius: 20px; border: 1px solid rgba(99, 102, 241, 0.2);">新版（PC特化）</span>
                 </h2>
             </div>
@@ -595,6 +595,7 @@ export async function initAttendanceManagementPage() {
     window.switchToIntegratedDashboardBack = switchToIntegratedDashboardBack;
     window.openIntCsvModal = openIntCsvModal;
     window.closeIntCsvModal = closeIntCsvModal;
+    window.handleAttnEditCancel = handleAttnEditCancel;
 
     // 権限取得
     const userJson = localStorage.getItem('currentUser');
@@ -676,7 +677,21 @@ export async function initAttendanceManagementPage() {
     // 他のページから承認画面への直接遷移フラグをチェック
     if (window.__triggerAttnApprovals) {
         delete window.__triggerAttnApprovals;
-        switchView('approvals');
+        if (canDirectEdit) {
+            // 管理者の場合は統合ダッシュボードの承認タブを表示
+            switchToIntegratedDashboard();
+            activeIntTab = 'approvals';
+            document.querySelectorAll('.attn-int-tab').forEach(b => {
+                b.classList.toggle('active', b.dataset.tab === 'approvals');
+            });
+            const dateFilterGroup = document.getElementById('attn-int-date-filter-group');
+            if (dateFilterGroup) dateFilterGroup.style.display = 'none';
+            switchIntTabPane();
+            loadIntegratedData();
+        } else {
+            // 店長の場合は旧承認画面
+            switchView('approvals');
+        }
     }
 }
 
@@ -762,6 +777,9 @@ async function loadDailyData() {
         const staffList = [];
         userSnap.forEach(d => {
             const data = d.data();
+            // 店舗タブレットアカウントは勤怠集計から完全に除外する
+            if (data.Role === 'Tablet' || data.Role === '店舗タブレット') return;
+
             // あらゆる可能性を網羅するスマート・マッピング
             const sId = data.EmployeeCode || data.staff_id || data.staff_code || data.UserId || data.id || d.id;
             const sName = data.Name || data.name || data.staff_name || data.DisplayName || data.name_kanji || '';
@@ -857,6 +875,11 @@ async function loadDailyData() {
 
 // ─── 実績編集画面 ────────────────────────────────────────
 async function openStaffEdit(staffId, staffName, date) {
+    // 統合ダッシュボードからの呼び出しでない場合は、フラグを明示的に削除して干渉を防ぐ
+    if (!window.__fromIntegratedDashboard) {
+        delete window.__fromIntegratedDashboard;
+    }
+    
     currentStaff = { id: staffId, name: staffName };
     currentTargetDate = date;
     
@@ -905,6 +928,17 @@ async function openStaffEdit(staffId, staffName, date) {
     } catch (e) {
         console.error(e);
         body.innerHTML = '<tr><td colspan="5" style="color:var(--danger);">取得失敗</td></tr>';
+    }
+}
+
+function handleAttnEditCancel() {
+    if (window.__fromIntegratedDashboard) {
+        delete window.__fromIntegratedDashboard;
+        switchToIntegratedDashboard();
+        // 戻った際、ダッシュボード側のデータを最新状態に再読込
+        loadIntegratedData();
+    } else {
+        switchView('daily');
     }
 }
 
@@ -1216,8 +1250,14 @@ async function saveAttendanceEdits() {
             showAlert('申請完了', '最新の修正申請を送信しました。以前の未承認分は自動的に取り下げられました。');
         }
 
-        switchView('daily');
-        loadDailyData();
+        if (window.__fromIntegratedDashboard) {
+            delete window.__fromIntegratedDashboard;
+            switchToIntegratedDashboard();
+            loadIntegratedData();
+        } else {
+            switchView('daily');
+            loadDailyData();
+        }
     } catch (e) {
         console.error(e);
         showAlert('エラー', '保存に失敗しました: ' + e.message);
@@ -1248,6 +1288,9 @@ async function loadMonthlyData() {
         const staffMap = {};
         userSnap.forEach(d => {
             const data = d.data();
+            // 店舗タブレットアカウントは勤怠集計から完全に除外する
+            if (data.Role === 'Tablet' || data.Role === '店舗タブレット') return;
+
             // 日別データ表示 (line 292) と同様のより堅牢なスタッフ特定ロジックを採用
             const sid = data.EmployeeCode || data.staff_id || data.staff_code || data.UserId || data.id || d.id;
             const name = data.Name || data.name || data.staff_name || data.DisplayName || data.name_kanji || '(名前なし)';
@@ -1712,6 +1755,9 @@ async function loadIntegratedData() {
         const staffMap = {};
         userSnap.forEach(d => {
             const data = d.data();
+            // 店舗タブレットアカウントは勤怠集計から完全に除外する
+            if (data.Role === 'Tablet' || data.Role === '店舗タブレット') return;
+
             const sid = data.EmployeeCode || data.staff_id || data.staff_code || data.UserId || data.id || d.id;
             const name = data.Name || data.name || data.staff_name || data.DisplayName || data.name_kanji || '(名前なし)';
             const sName = data.Store || data.store_name || "";
@@ -1995,7 +2041,7 @@ function renderIntDaily() {
             <td style="text-align: right; font-weight: 700; color: var(--text-primary);">${laborStr}</td>
             <td style="text-align: right; font-weight: 700; color: var(--primary);">${lateStr}</td>
             <td style="text-align: center;">
-                <button class="btn" style="padding: 0.35rem 0.8rem; font-size: 0.8rem; background: rgba(99, 102, 241, 0.08); color: #6366f1; border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 6px; font-weight: 700; transition: all 0.2s;" onclick="window.openStaffEdit('${s.code}', '${s.name}', '${date}')">
+                <button class="btn" style="padding: 0.35rem 0.8rem; font-size: 0.8rem; background: rgba(99, 102, 241, 0.08); color: #6366f1; border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 6px; font-weight: 700; transition: all 0.2s;" onclick="window.__fromIntegratedDashboard = true; window.openStaffEdit('${s.code}', '${s.name}', '${date}')">
                     <i class="fas ${btnIcon}"></i> ${btnLabel}
                 </button>
             </td>
@@ -2179,7 +2225,7 @@ function renderIntErrors() {
                             </span>
                         </td>
                         <td style="text-align: center;">
-                            <button class="btn" style="padding: 0.35rem 0.8rem; font-size: 0.8rem; background: rgba(239, 68, 68, 0.08); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 6px; font-weight: 700;" onclick="window.openStaffEdit('${s.code}', '${s.name}', '${err.date}')">
+                            <button class="btn" style="padding: 0.35rem 0.8rem; font-size: 0.8rem; background: rgba(239, 68, 68, 0.08); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 6px; font-weight: 700;" onclick="window.__fromIntegratedDashboard = true; window.openStaffEdit('${s.code}', '${s.name}', '${err.date}')">
                                 <i class="fas fa-edit"></i> 修正する
                             </button>
                         </td>
@@ -2260,6 +2306,9 @@ async function handleIntTkcExport() {
         const staffMap = {};
         userSnap.forEach(d => {
             const data = d.data();
+            // 店舗タブレットアカウントは勤怠集計から完全に除外する
+            if (data.Role === 'Tablet' || data.Role === '店舗タブレット') return;
+
             const sid = data.EmployeeCode || data.staff_id || data.staff_code || data.UserId || data.id || d.id;
             const name = data.Name || data.name || data.staff_name || data.DisplayName || data.name_kanji || '(名前なし)';
             const sName = data.Store || data.store_name || "";

@@ -807,6 +807,32 @@ export function initManualHubPage() {
                    (m.sections && m.sections.some(s => s.title.toLowerCase().includes(queryText) || s.content.toLowerCase().includes(queryText)));
         });
 
+        // レシピ閲覧の権限がある場合、動的に「製造」カテゴリにマニュアルタイルを注入する
+        if (window.appState?.permissions?.includes('recipe_viewer')) {
+            const recipeItem = {
+                id: 'recipe_viewer',
+                title: 'レシピ閲覧（料理の作り方）',
+                category: 'prep',
+                categoryName: '製造',
+                icon: 'fa-book-open',
+                color: '#e11d48', // プレミアム・ローズレッド
+                desc: '料理の作り方、盛り付け手順、仕込み分量など、調理に関わる全レシピの業務マニュアルを閲覧します。',
+                author: '総料理長',
+                updatedAt: '2026/05/23',
+                readTime: 'マニュアル連携',
+                sections: []
+            };
+
+            const matchesQuery = !queryText || 
+                recipeItem.title.toLowerCase().includes(queryText) ||
+                recipeItem.desc.toLowerCase().includes(queryText) ||
+                recipeItem.categoryName.toLowerCase().includes(queryText);
+
+            if (matchesQuery) {
+                filteredData.push(recipeItem);
+            }
+        }
+
         if (filteredData.length === 0) {
             sectionsContainer.innerHTML = `
                 <div class="manual-no-results animate-fade-in">
@@ -841,18 +867,18 @@ export function initManualHubPage() {
                     <div class="tile-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem;">
                         ${catItems.map(item => `
                             <div class="business-tile" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 0.8rem; align-items: flex-start; background: white; border-radius: 16px; border: 1px solid var(--border); cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); min-height: 140px; position: relative;"
-                                 onclick="window.navigateToManual('${item.id}')">
+                                 onclick="${item.id === 'recipe_viewer' ? `window.navigateTo('recipe_viewer')` : `window.navigateToManual('${item.id}')`}">
                                 <div style="display: flex; width: 100%; align-items: center; gap: 0.8rem;">
                                     <div class="tile-icon" style="background: ${item.color}12; color: ${item.color}; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;">
                                         <i class="fas ${item.icon}"></i>
                                     </div>
                                     <div style="flex: 1; min-width: 0; padding-right: 1.5rem;">
                                         <span class="tile-name" style="font-weight: 800; font-size: 1.05rem; color: var(--text-primary); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.title}</span>
-                                        <span style="font-size: 0.7rem; color: var(--text-secondary); display: block; margin-top: 0.1rem;">最終更新: ${item.updatedAt} • 読了: ${item.readTime}</span>
+                                        <span style="font-size: 0.7rem; color: var(--text-secondary); display: block; margin-top: 0.1rem;">最終更新: ${item.updatedAt} • ${item.id === 'recipe_viewer' ? 'マニュアル連携' : `読了: ${item.readTime}`}</span>
                                     </div>
                                 </div>
                                 <p style="margin: 0; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">${item.desc}</p>
-                                <i class="fas fa-chevron-right tile-chevron" style="position: absolute; right: 1.2rem; top: 1.5rem; color: #cbd5e1; font-size: 0.85rem;"></i>
+                                <i class="fas ${item.id === 'recipe_viewer' ? 'fa-arrow-up-right-from-square' : 'fa-chevron-right'} tile-chevron" style="position: absolute; right: 1.2rem; top: 1.5rem; color: #cbd5e1; font-size: 0.85rem;"></i>
                             </div>
                         `).join('')}
                     </div>
