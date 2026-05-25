@@ -2323,7 +2323,9 @@ async function handleIntTkcExport() {
                 code: sidStr, 
                 name: String(name).trim(), 
                 store_id: matchedStore ? (matchedStore.store_id || matchedStore.id) : (data.StoreID || matchedStore?.id || ""),
-                store_name: matchedStore ? matchedStore.store_name : (data.Store || "不明")
+                store_name: matchedStore ? matchedStore.store_name : (data.Store || "不明"),
+                status: data.Status || 'active',
+                resignationDate: data.ResignationDate || ''
             };
         });
 
@@ -2344,11 +2346,37 @@ async function handleIntTkcExport() {
         // 3. 集計ロジック（エラーチェックも同時に実行）
         const staffStats = {};
         Object.keys(staffMap).forEach(sid => {
+            const staff = staffMap[sid];
+            const status = staff.status;
+            const resDate = staff.resignationDate;
+
+            // 1. 退職ステータスで、かつ退職日が指定期間の開始日（startDate）より前の場合は除外
+            const isRetiredInPast = (status === 'retired' || status === '退職済' || status === 'resigning' || status === '退職手続き中') && 
+                                    resDate && resDate < startDate;
+
+            // 2. 退職ステータスだが退職日が未設定の場合の判定用
+            const isRetiredWithoutDate = (status === 'retired' || status === '退職済') && !resDate;
+
+            // 期間中の打刻データの有無をチェック（セーフティネット）
+            const hasPunchesInPeriod = punches.some(p => {
+                const psid = String(p.staff_id || p.staff_code || p.EmployeeCode || "").trim();
+                return psid === sid && p.date >= startDate && p.date <= endDate;
+            });
+
+            // 過去に退職済みで、かつこの期間中に打刻データもない場合は除外
+            if (isRetiredInPast && !hasPunchesInPeriod) {
+                return;
+            }
+            // 退職日不明の退職者で、かつ期間中に一度も打刻がない場合は除外
+            if (isRetiredWithoutDate && !hasPunchesInPeriod) {
+                return;
+            }
+
             staffStats[sid] = {
-                code: staffMap[sid].code,
-                name: staffMap[sid].name,
-                store_id: staffMap[sid].store_id,
-                store_name: staffMap[sid].store_name,
+                code: staff.code,
+                name: staff.name,
+                store_id: staff.store_id,
+                store_name: staff.store_name,
                 totalHours: 0,
                 lateHours: 0,
                 days: new Set()
