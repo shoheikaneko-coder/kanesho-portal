@@ -341,6 +341,7 @@ export const shiftAdminPageHtml = `
                 <button id="btn-bulk-mode" class="btn btn-secondary btn-pro"><i class="fas fa-check-double"></i> 一括入力</button>
                 <button id="btn-apply-fixed-schedule" class="btn btn-secondary btn-pro" style="color: var(--secondary); border-color: var(--secondary);"><i class="fas fa-magic"></i> 固定反映</button>
                 <button id="btn-add-help-staff" class="btn btn-secondary btn-pro"><i class="fas fa-user-plus"></i> ヘルプ追加</button>
+                <button id="btn-toggle-rejected" class="btn btn-secondary btn-pro" style="color: var(--text-secondary); border-color: var(--border); background: transparent;"><i class="fas fa-eye-slash"></i> 削った希望を表示</button>
                 <div style="width: 1px; height: 20px; background: var(--border); margin: 0 0.5rem;"></div>
                 <button id="btn-share-line" class="btn btn-line btn-pro" style="background:#06C755; color:white; border:none;"><i class="fab fa-line"></i> LINE通知</button>
                 <button id="btn-publish-shifts" class="btn btn-primary btn-pro"><i class="fas fa-paper-plane"></i> 一括確定・公開</button>
@@ -474,12 +475,14 @@ export let dailyGoalSales = {};
 export let adminMode = false;
 export let calendarData = {}; 
 export let viewerActiveSlot = null; 
+export let showRejectedShifts = false; 
 
 export function setShiftState(key, value) {
     if (key === 'adminMode') adminMode = value;
     if (key === 'isBulkMode') isBulkMode = value;
     if (key === 'currentTargetUser') currentTargetUser = value;
     if (key === 'selectedCells') selectedCells = value;
+    if (key === 'showRejectedShifts') showRejectedShifts = value;
 }
 
 export const injectStyles = () => {
@@ -1145,6 +1148,26 @@ export async function initShiftAdminPage() {
             }
         };
     }
+
+    // 「削った希望を表示」トグルボタンのイベント設定
+    const toggleRejectedBtn = document.getElementById('btn-toggle-rejected');
+    if (toggleRejectedBtn) {
+        toggleRejectedBtn.onclick = () => {
+            showRejectedShifts = !showRejectedShifts;
+            if (showRejectedShifts) {
+                toggleRejectedBtn.innerHTML = '<i class="fas fa-eye"></i> 削った希望を表示中';
+                toggleRejectedBtn.style.color = 'var(--primary)';
+                toggleRejectedBtn.style.borderColor = 'var(--primary)';
+                toggleRejectedBtn.style.background = 'rgba(230, 57, 70, 0.08)';
+            } else {
+                toggleRejectedBtn.innerHTML = '<i class="fas fa-eye-slash"></i> 削った希望を表示';
+                toggleRejectedBtn.style.color = 'var(--text-secondary)';
+                toggleRejectedBtn.style.borderColor = 'var(--border)';
+                toggleRejectedBtn.style.background = 'transparent';
+            }
+            renderAdminGrid(); // シフト表の再描画
+        };
+    }
 }
 
 function exitBulkMode() {
@@ -1524,7 +1547,10 @@ export function renderAdminGrid() {
             const isOff = cal.type === 'off';
             
             header.innerHTML += `
-                <th class="date-hdr ${isHoliday ? 'is-holiday' : ''} ${isOff ? 'is-off-column' : ''}" onclick="window.showHourlyGraph('${ymd}')">
+                <th class="date-hdr ${isHoliday ? 'is-holiday' : ''} ${isOff ? 'is-off-column' : ''}" 
+                    onmouseenter="window.showHelperTooltip(event, '${ymd}')" 
+                    onmouseleave="window.hideHelperTooltip()" 
+                    onclick="window.showHelperTooltip(event, '${ymd}')">
                     <div class="date-num">${d.getDate()}</div>
                     <div class="weekday">${['日','月','火','水','木','金','土'][d.getDay()]}</div>
                     ${isHoliday ? `<div class="holiday-name-hdr">${cal.label || '祝日'}</div>` : ''}
@@ -1684,12 +1710,25 @@ function renderCellUI(uid, date, data) {
     const mobileCell = document.getElementById(`cell-mobile-${uid}-${date}`);
     
     const isConfirmed = data?.status === 'confirmed';
+    const isRejected = data?.status === 'rejected';
     const stampHtml = isConfirmed ? `<div class="official-stamp"><i class="fas fa-check-circle"></i></div>` : '';
     
     // デスクトップ用UI更新
     if (cell) {
-        if (!data || !data.start) {
+        if (!data || (!data.start && !isRejected)) {
             cell.innerHTML = '';
+        } else if (isRejected) {
+            if (adminMode && showRejectedShifts) {
+                cell.innerHTML = `
+                    <div class="shift-box rejected-hope">
+                        <div style="font-size: 0.55rem; font-weight: bold; opacity: 0.8; margin-bottom: 2px;"><i class="fas fa-eye-slash"></i> 削り希望</div>
+                        <div style="font-size: 0.7rem;">${data.hopeStart || '17:00'} - ${data.hopeEnd || '22:00'}</div>
+                        ${data.note ? `<div style="font-size: 0.55rem; opacity: 0.7; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">${data.note}</div>` : ''}
+                    </div>
+                `;
+            } else {
+                cell.innerHTML = '';
+            }
         } else {
             cell.innerHTML = `
                 <div class="shift-box ${isConfirmed ? '' : 'applied'}">
@@ -1703,8 +1742,23 @@ function renderCellUI(uid, date, data) {
 
     // モバイル用UI更新
     if (mobileCell) {
-        if (!data || !data.start) {
+        if (!data || (!data.start && !isRejected)) {
             mobileCell.innerHTML = '<div class="mobile-shift-empty">タップして入力</div>';
+        } else if (isRejected) {
+            if (adminMode && showRejectedShifts) {
+                mobileCell.innerHTML = `
+                    <div class="mobile-shift-time" style="color: #94a3b8; text-decoration: line-through;">
+                        <i class="fas fa-eye-slash" style="font-size:0.8rem; margin-right:0.3rem;"></i>${data.hopeStart || '17:00'} - ${data.hopeEnd || '22:00'}
+                    </div>
+                    <div class="mobile-shift-status">
+                        <span style="color: #64748b; background: rgba(148, 163, 184, 0.1); padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.65rem;">
+                            削り希望 (不採用)
+                        </span>
+                    </div>
+                `;
+            } else {
+                mobileCell.innerHTML = '<div class="mobile-shift-empty">タップして入力</div>';
+            }
         } else {
             mobileCell.innerHTML = `
                 <div class="mobile-shift-time">
@@ -1917,6 +1971,53 @@ window.openTimeInput = async (date, uid) => {
                 btnSave.disabled = false;
                 btnSave.innerHTML = '保存する';
             };
+
+            const btnDeleteSheet = document.getElementById('btn-delete-sheet');
+            if (btnDeleteSheet) {
+                if (!sData.start && !sData.hopeStart) {
+                    btnDeleteSheet.style.display = 'none';
+                } else {
+                    btnDeleteSheet.style.display = 'block';
+                    btnDeleteSheet.onclick = async () => {
+                        const ok = await showConfirm('不採用確認', 'このシフト希望を不採用（削り）にしますか？');
+                        if (!ok) return;
+                        
+                        btnDeleteSheet.disabled = true;
+                        btnDeleteSheet.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 処理中...';
+                        
+                        const news = {
+                            userId: uid,
+                            userName: user.Name || user.DisplayName,
+                            date,
+                            start: '',
+                            end: '',
+                            breakMin: 0,
+                            note: document.getElementById('sheet-note')?.value || sData.note || '',
+                            status: 'rejected',
+                            hopeStart: sData.hopeStart || sData.start || '17:00',
+                            hopeEnd: sData.hopeEnd || sData.end || '22:00',
+                            storeId: String(window.currentAdminStoreId || sData.storeId || ''),
+                            storeName: String(window.currentAdminStoreName || sData.storeName || ''),
+                            updatedAt: new Date().toISOString()
+                        };
+                        
+                        try {
+                            await setDoc(doc(db, 't_shifts', `${date}_${uid}`), news);
+                            if (!currentShifts[uid]) currentShifts[uid] = {};
+                            currentShifts[uid][date] = news;
+                            renderCellUI(uid, date, news);
+                            updateOverallKPIs();
+                            sheet.classList.remove('show');
+                        } catch (err) {
+                            console.error(err);
+                            showAlert('エラー', '不採用処理に失敗しました。');
+                        } finally {
+                            btnDeleteSheet.disabled = false;
+                            btnDeleteSheet.innerHTML = '<i class="fas fa-trash-alt"></i> 不採用にする';
+                        }
+                    };
+                }
+            }
             return;
         }
     }
@@ -1970,16 +2071,42 @@ window.openTimeInput = async (date, uid) => {
     // ✅ 【バグ修正】削除ボタンのonclickハンドラーを設定（PC/スタッフ画面用）
     if (clearBtn) {
         clearBtn.onclick = async () => {
-            if (!currentShifts[uid]?.[date]?.start) {
+            if (!currentShifts[uid]?.[date]?.start && !currentShifts[uid]?.[date]?.hopeStart) {
                 document.getElementById('shift-input-modal').style.display = 'none';
                 return;
             }
-            const ok = await showConfirm('削除確認', 'このシフト希望を削除してもよいですか？');
+            const ok = await showConfirm('削除確認', adminMode ? 'このシフト希望を不採用（削り）にしますか？' : 'このシフト希望を削除してもよいですか？');
             if (!ok) return;
             try {
-                await deleteDoc(doc(db, 't_shifts', `${date}_${uid}`));
-                if (currentShifts[uid]) delete currentShifts[uid][date];
-                renderCellUI(uid, date, null);
+                if (adminMode) {
+                    // 店長画面：論理削除 (status: 'rejected' に更新)
+                    const prevS = currentShifts[uid]?.[date] || {};
+                    const news = {
+                        userId: uid,
+                        userName: user.Name || user.DisplayName,
+                        date,
+                        start: '',
+                        end: '',
+                        breakMin: 0,
+                        note: document.getElementById('modal-note')?.value || prevS.note || '',
+                        status: 'rejected',
+                        hopeStart: prevS.hopeStart || prevS.start || '17:00',
+                        hopeEnd: prevS.hopeEnd || prevS.end || '22:00',
+                        storeId: String(window.currentAdminStoreId || prevS.storeId || ''),
+                        storeName: String(window.currentAdminStoreName || prevS.storeName || ''),
+                        updatedAt: new Date().toISOString()
+                    };
+                    await setDoc(doc(db, 't_shifts', `${date}_${uid}`), news);
+                    if (!currentShifts[uid]) currentShifts[uid] = {};
+                    currentShifts[uid][date] = news;
+                    renderCellUI(uid, date, news);
+                    updateOverallKPIs();
+                } else {
+                    // スタッフ画面：物理削除
+                    await deleteDoc(doc(db, 't_shifts', `${date}_${uid}`));
+                    if (currentShifts[uid]) delete currentShifts[uid][date];
+                    renderCellUI(uid, date, null);
+                }
                 document.getElementById('shift-input-modal').style.display = 'none';
             } catch (e) {
                 console.error(e);
@@ -2010,6 +2137,7 @@ async function applyShiftUpdate(uid, date, data) {
         return false;
     }
 
+    const prevS = currentShifts[uid]?.[date] || {};
     const news = {
         userId: uid, userName: user.Name, date, 
         start: data.start, end: data.end, 
@@ -2020,7 +2148,9 @@ async function applyShiftUpdate(uid, date, data) {
         storeName: sName,
         StoreName: sName,
         updatedAt: new Date().toISOString(),
-        Has28hLimit: !!user.Has28hLimit
+        Has28hLimit: !!user.Has28hLimit,
+        hopeStart: prevS.hopeStart || prevS.start || data.hopeStart || '',
+        hopeEnd: prevS.hopeEnd || prevS.end || data.hopeEnd || ''
     };
 
     if (!currentShifts[uid]) currentShifts[uid] = {};
@@ -2076,6 +2206,7 @@ async function saveShift(uid, date, userName) {
     const conflict = await checkDoubleBooking(uid, date, s, e);
     if (conflict) return showAlert('⚠ 重複', `【${conflict.storeName}】ですでに確定済みのシフトと重なっています。`);
 
+    const prevS = currentShifts[uid]?.[date] || {};
     const news = {
         userId: uid, userName, date, start: s, end: e,
         breakMin: parseInt(document.getElementById('modal-break').value) || 0,
@@ -2083,7 +2214,9 @@ async function saveShift(uid, date, userName) {
         status: adminMode ? 'confirmed' : 'applied',
         storeId: sid, storeName: sName, updatedAt: new Date().toISOString(),
         // 28hフラグをデータ自体に焼き付ける（将来的な集計漏れ防止・他店参照用）
-        Has28hLimit: !!([...allStoreUsers, ...helpUsers].find(u => u.id === uid)?.Has28hLimit)
+        Has28hLimit: !!([...allStoreUsers, ...helpUsers].find(u => u.id === uid)?.Has28hLimit),
+        hopeStart: prevS.hopeStart || prevS.start || '',
+        hopeEnd: prevS.hopeEnd || prevS.end || ''
     };
 
     if (!currentShifts[uid]) currentShifts[uid] = {};
@@ -2128,7 +2261,7 @@ export function updateOverallKPIs() {
         target += dailyGoalSales[ymd];
         users.forEach(u => {
             const s = currentShifts[u.id]?.[ymd];
-            if (s && s.start && s.end) {
+            if (s && s.start && s.end && s.status !== 'rejected') {
                 const sA = s.start.split(':').map(Number); const eA = s.end.split(':').map(Number);
                 let h = (eA[0] + eA[1]/60) - (sA[0] + sA[1]/60); if (h < 0) h += 24;
                 const net = Math.max(0, h - (s.breakMin || 0)/60);
@@ -2176,7 +2309,7 @@ export function updateOverallKPIs() {
                 // globalShiftMapから全店舗の勤務を取得 (loadShiftsBatchで同期済み)
                 const dayShifts = globalShiftMap[u.id]?.[iso] || [];
                 dayShifts.forEach(s => {
-                    if (s && s.start && s.end) {
+                    if (s && s.start && s.end && s.status !== 'rejected') {
                         const sA = s.start.split(':').map(Number); 
                         const eA = s.end.split(':').map(Number);
                         let h = (eA[0] + eA[1]/60) - (sA[0] + sA[1]/60); if (h < 0) h += 24;
@@ -2235,7 +2368,7 @@ function renderAdminFooter() {
         let dayH = 0;
         [...allStoreUsers, ...helpUsers].forEach(u => {
             const s = currentShifts[u.id]?.[ymd];
-            if (s && s.start) {
+            if (s && s.start && s.status !== 'rejected') {
                 const sA = s.start.split(':').map(Number); const eA = s.end.split(':').map(Number);
                 let h = (eA[0]+eA[1]/60) - (sA[0]+sA[1]/60); if(h<0) h+=24;
                 dayH += Math.max(0, h - (s.breakMin||0)/60);
@@ -2255,6 +2388,104 @@ function renderAdminFooter() {
     foot.appendChild(trGoal);
 }
 
+// 代打候補（不採用希望者）ツールチップの表示
+window.showHelperTooltip = (e, ymd) => {
+    e.stopPropagation();
+    
+    // 既存のツールチップがあれば削除
+    window.hideHelperTooltip();
+
+    const candidates = [];
+    const users = [...allStoreUsers, ...helpUsers];
+    
+    users.forEach(u => {
+        const s = currentShifts[u.id]?.[ymd];
+        if (s && s.status === 'rejected') {
+            candidates.push({
+                name: u.DisplayName || u.Name,
+                start: s.hopeStart || '17:00',
+                end: s.hopeEnd || '22:00'
+            });
+        }
+    });
+
+    // ツールチップ要素を作成
+    const tooltip = document.createElement('div');
+    tooltip.id = 'daily-helper-tooltip';
+    tooltip.className = 'daily-helper-tooltip';
+
+    const d = new Date(ymd);
+    const dow = ['日','月','火','水','木','金','土'][d.getDay()];
+    
+    let listHtml = '';
+    if (candidates.length > 0) {
+        listHtml = `<ul class="daily-helper-tooltip-list">`;
+        candidates.forEach(c => {
+            listHtml += `
+                <li class="daily-helper-tooltip-item">
+                    <span class="daily-helper-name">👤 ${c.name}</span>
+                    <span class="daily-helper-time">${c.start}〜${c.end}</span>
+                </li>
+            `;
+        });
+        listHtml += `</ul>`;
+    } else {
+        listHtml = `<div class="daily-helper-tooltip-empty">不採用の希望はありません</div>`;
+    }
+
+    tooltip.innerHTML = `
+        <div class="daily-helper-tooltip-title">
+            <i class="fas fa-user-check"></i> ${d.getMonth() + 1}/${d.getDate()} (${dow}) の代打候補
+        </div>
+        ${listHtml}
+        <div style="margin-top: 8px; text-align: center; border-top: 1px solid var(--border); padding-top: 6px; pointer-events: auto;">
+            <button class="btn btn-secondary btn-sm" style="font-size: 0.65rem; padding: 2px 8px; width: 100%;" onclick="window.showHelperTooltipGraph(event, '${ymd}')">
+                <i class="fas fa-chart-bar"></i> 人数グラフを表示
+            </button>
+        </div>
+    `;
+
+    document.body.appendChild(tooltip);
+
+    // ポップアップ位置計算 (ヘッダーの下に浮かせる)
+    const rect = e.currentTarget.getBoundingClientRect();
+    
+    // スクロール量を考慮
+    const top = rect.bottom + window.scrollY + 6;
+    let left = rect.left + window.scrollX + (rect.width - tooltip.offsetWidth) / 2;
+    
+    // 画面端からはみ出さないようにガード
+    if (left < 10) left = 10;
+    if (left + tooltip.offsetWidth > window.innerWidth - 10) {
+        left = window.innerWidth - tooltip.offsetWidth - 10;
+    }
+
+    tooltip.style.top = `${top}px`;
+    tooltip.style.left = `${left}px`;
+
+    // フェードイン
+    setTimeout(() => tooltip.classList.add('show'), 10);
+
+    // スマホでの「外側タップで閉じる」ためのドキュメントイベント
+    const closeHandler = () => {
+        window.hideHelperTooltip();
+        document.removeEventListener('click', closeHandler);
+    };
+    // わずかに遅らせてバブリングによる即時閉鎖を防ぐ
+    setTimeout(() => document.addEventListener('click', closeHandler), 100);
+};
+
+window.hideHelperTooltip = () => {
+    const el = document.getElementById('daily-helper-tooltip');
+    if (el) el.remove();
+};
+
+window.showHelperTooltipGraph = (e, ymd) => {
+    e.stopPropagation();
+    window.hideHelperTooltip();
+    window.showHourlyGraph(ymd);
+};
+
 window.showHourlyGraph = (date) => {
     const panel = document.getElementById('hourly-graph-panel');
     const container = document.getElementById('hourly-bars-container');
@@ -2264,7 +2495,7 @@ window.showHourlyGraph = (date) => {
     const counts = new Array(24).fill(0);
     [...allStoreUsers, ...helpUsers].forEach(u => {
         const s = currentShifts[u.id]?.[date];
-        if (s && s.start) {
+        if (s && s.start && s.status !== 'rejected') {
             let start = parseInt(s.start.replace(':','')), end = parseInt(s.end.replace(':',''));
             if(end < start) end += 2400;
             for(let h=0; h<24; h++){
@@ -2338,7 +2569,7 @@ export async function publishShifts() {
             for (const ymd in userShifts) {
                 const s = userShifts[ymd];
                 // 確定（confirmed）以外で、時間が入っているものはすべて対象にする
-                if (s && s.start && s.status !== 'confirmed') {
+                if (s && s.start && s.status === 'applied') {
                     console.log(`Matching shift: User=${uid}, Date=${ymd}, Status=${s.status}`);
                     s.status = 'confirmed';
                     

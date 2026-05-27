@@ -2898,3 +2898,91 @@ input:checked + .toggle-slider:before {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* --- 削り希望（不採用希望）および代打候補ツールチップ用スタイル --- */
+
+/* 不採用希望セルの表示 */
+.shift-box.rejected-hope {
+  background: rgba(241, 245, 249, 0.45) !important;
+  border: 1px dashed #cbd5e1 !important;
+  color: #94a3b8 !important;
+  text-decoration: line-through;
+  opacity: 0.8;
+  cursor: pointer;
+  box-shadow: none !important;
+}
+
+.shift-box.rejected-hope:hover {
+  background: rgba(226, 232, 240, 0.7) !important;
+  border-color: var(--primary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* 代打候補（不採用希望者）ポップアップ・ツールチップ */
+.daily-helper-tooltip {
+  position: absolute;
+  z-index: 99999 !important;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  padding: 12px 16px;
+  min-width: 220px;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(8px) scale(0.95);
+  transition: opacity 0.15s ease, transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.daily-helper-tooltip.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.daily-helper-tooltip-title {
+  font-weight: 800;
+  color: var(--primary);
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.daily-helper-tooltip-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.daily-helper-tooltip-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px dashed rgba(0,0,0,0.03);
+}
+
+.daily-helper-tooltip-item:last-child {
+  border-bottom: none;
+}
+
+.daily-helper-name {
+  font-weight: 700;
+}
+
+.daily-helper-time {
+  color: var(--text-secondary);
+  font-family: monospace;
+}
+
+.daily-helper-tooltip-empty {
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 6px 0;
+  font-style: italic;
+}

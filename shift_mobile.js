@@ -8,7 +8,7 @@ import {
     loadShiftsBatch, loadDailyGoalData, renderAdminGrid, updateOverallKPIs, 
     publishShifts, shareShiftToLine, formatDateJST, fetchCalendarData, 
     openHelpStaffModal, applyFixedSchedules, calculateSlot, getRollingSlots,
-    setShiftState
+    setShiftState, showRejectedShifts
 } from './shift.js';
 
 export const shiftAdminMobilePageHtml = `
@@ -17,7 +17,10 @@ export const shiftAdminMobilePageHtml = `
         <!-- モバイル専用：ヘッダー・店舗表示 -->
         <div class="mobile-only" style="padding: 1rem; background: white; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100;">
             <div id="admin-active-store-mobile" style="font-weight: 800; color: var(--primary); font-size: 0.9rem;">📍 店舗読み込み中...</div>
-            <button id="btn-edit-memo-mobile" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.8rem;"><i class="fas fa-edit"></i> メモ</button>
+            <div style="display: flex; gap: 0.4rem; align-items: center;">
+                <button id="btn-toggle-rejected-mobile" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.6rem; background: transparent; color: var(--text-secondary); border: 1px solid var(--border);"><i class="fas fa-eye-slash"></i></button>
+                <button id="btn-edit-memo-mobile" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.8rem;"><i class="fas fa-edit"></i> メモ</button>
+            </div>
         </div>
 
         <!-- PC/タブレット向けの既存KPIストリップ (モバイルでは非表示にするか調整) -->
@@ -121,9 +124,12 @@ export const shiftAdminMobilePageHtml = `
                         </div>
                     </div>
                 </div>
-                <div class="sheet-actions">
-                    <button class="btn btn-cancel-sheet" onclick="window.closeAdminBottomSheet()">キャンセル</button>
-                    <button id="btn-save-sheet" class="btn btn-save-sheet">保存する</button>
+                <div class="sheet-actions" style="display: flex; justify-content: space-between; gap: 0.5rem; width: 100%;">
+                    <button id="btn-delete-sheet" class="btn btn-secondary" style="background: var(--danger); color: white; border: none; padding: 0.75rem 0.8rem; font-size: 0.85rem;"><i class="fas fa-trash-alt"></i> 不採用</button>
+                    <div style="display: flex; gap: 0.4rem;">
+                        <button class="btn btn-cancel-sheet" onclick="window.closeAdminBottomSheet()" style="font-size: 0.85rem; padding: 0.75rem 0.8rem;">キャンセル</button>
+                        <button id="btn-save-sheet" class="btn btn-save-sheet" style="font-size: 0.85rem; padding: 0.75rem 0.8rem;">保存する</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -218,6 +224,27 @@ export async function initShiftAdminMobilePage() {
     await updateView(sid);
 
     // モバイル専用ボタンのバインド
+    const btnToggleRejectedMobile = document.getElementById('btn-toggle-rejected-mobile');
+    if (btnToggleRejectedMobile) {
+        btnToggleRejectedMobile.onclick = () => {
+            const nextState = !showRejectedShifts;
+            setShiftState('showRejectedShifts', nextState);
+            
+            if (nextState) {
+                btnToggleRejectedMobile.innerHTML = '<i class="fas fa-eye"></i>';
+                btnToggleRejectedMobile.style.color = 'var(--primary)';
+                btnToggleRejectedMobile.style.borderColor = 'var(--primary)';
+                btnToggleRejectedMobile.style.background = 'rgba(230, 57, 70, 0.08)';
+            } else {
+                btnToggleRejectedMobile.innerHTML = '<i class="fas fa-eye-slash"></i>';
+                btnToggleRejectedMobile.style.color = 'var(--text-secondary)';
+                btnToggleRejectedMobile.style.borderColor = 'var(--border)';
+                btnToggleRejectedMobile.style.background = 'transparent';
+            }
+            renderAdminGrid(); // スマホ用グリッドの再描画
+        };
+    }
+
     const btnPublishMobile = document.getElementById('btn-publish-mobile');
     if (btnPublishMobile) btnPublishMobile.onclick = () => { window.toggleAdminFabHub(false); publishShifts(); };
 
