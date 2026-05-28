@@ -614,6 +614,10 @@ async function buildKpiPdcaBoards() {
         // KPI別アクションリスト
         const kpiActions = (editingMeetingData.actions || []).filter(a => a.kpi_type === key);
 
+        // 売上の場合はヘッダーに「月間合計（月次）」を表示し、他のKPIはそのまま実績・目標を表示する
+        const headerTgt = key === 'sales' ? kpi.totalTarget : tgt;
+        const headerVal = key === 'sales' ? kpi.totalActual : val;
+
         const card = document.createElement('div');
         card.className = 'glass-panel mm-kpi-card';
         card.innerHTML = `
@@ -624,9 +628,9 @@ async function buildKpiPdcaBoards() {
                         ${shortName}
                     </h3>
                     <div style="display:flex; align-items:center; gap:1rem; font-size:0.95rem; font-weight:700; color:var(--text-secondary);">
-                        <span>目標: <strong style="color:var(--text-primary); font-size:1.05rem;">${formatKpiVal(tgt, kpi)}${key === 'sales' ? ' /日' : ''}</strong></span>
+                        <span>目標: <strong style="color:var(--text-primary); font-size:1.05rem;">${formatKpiVal(headerTgt, kpi)}</strong></span>
                         <span style="color:var(--border);">|</span>
-                        <span>実績: <strong style="color:var(--text-primary); font-size:1.05rem;">${formatKpiVal(val, kpi)}${key === 'sales' ? ' /日' : ''}</strong></span>
+                        <span>実績: <strong style="color:var(--text-primary); font-size:1.05rem;">${formatKpiVal(headerVal, kpi)}</strong></span>
                     </div>
                 </div>
                 <div class="${pctClass}" style="font-size:1.25rem; font-weight:950; display:flex; align-items:center; gap:0.3rem;">
