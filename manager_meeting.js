@@ -580,11 +580,18 @@ async function buildKpiPdcaBoards() {
     container.innerHTML = '';
     
     const kpiKeys = ['sales', 'customers', 'spend', 'productivity'];
+    const shortNames = {
+        sales: '売上',
+        customers: '来客数',
+        spend: '客単価',
+        productivity: '営業人時売上'
+    };
     
     kpiKeys.forEach(key => {
         const kpi = kpis[key];
         const val = kpi.actual;
         const tgt = kpi.target;
+        const shortName = shortNames[key] || kpi.name;
         
         // 達成率
         const pct = tgt > 0 ? (val / tgt) * 100 : 0;
@@ -610,14 +617,19 @@ async function buildKpiPdcaBoards() {
         const card = document.createElement('div');
         card.className = 'glass-panel mm-kpi-card';
         card.innerHTML = `
-            <div class="mm-kpi-card-header">
-                <div>
-                    <h3 style="margin:0; font-size:1.15rem; font-weight:900; color:var(--text-primary); display:flex; align-items:center; gap:0.5rem;">
+            <div class="mm-kpi-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; border-bottom:1.5px solid var(--border); padding-bottom:0.8rem; margin-bottom:1.2rem;">
+                <div style="display:flex; align-items:center; flex-wrap:wrap; gap:1.5rem;">
+                    <h3 style="margin:0; font-size:1.25rem; font-weight:900; color:var(--text-primary); display:flex; align-items:center; gap:0.5rem;">
                         <span class="mm-kpi-dot ${key}"></span>
-                        ${kpi.name}
+                        ${shortName}
                     </h3>
+                    <div style="display:flex; align-items:center; gap:1rem; font-size:0.95rem; font-weight:700; color:var(--text-secondary);">
+                        <span>目標: <strong style="color:var(--text-primary); font-size:1.05rem;">${formatKpiVal(tgt, kpi)}${key === 'sales' ? ' /日' : ''}</strong></span>
+                        <span style="color:var(--border);">|</span>
+                        <span>実績: <strong style="color:var(--text-primary); font-size:1.05rem;">${formatKpiVal(val, kpi)}${key === 'sales' ? ' /日' : ''}</strong></span>
+                    </div>
                 </div>
-                <div class="${pctClass}" style="font-size:1.25rem; font-weight:950;">
+                <div class="${pctClass}" style="font-size:1.25rem; font-weight:950; display:flex; align-items:center; gap:0.3rem;">
                     達成率: ${pctText}
                 </div>
             </div>
@@ -656,9 +668,6 @@ async function buildKpiPdcaBoards() {
                 </div>
             </div>
 
-            <!-- 売上限定：目標達成のロードマップ表示 (1日ギャップ自動ブレイクダウン) -->
-            ${key === 'sales' ? renderSalesRoadmap(kpi, kpis.spend.actual || targetAvgSpend, performanceMap[targetYm].cust / opDaysActual) : ''}
-
             <!-- アクションプランエリア -->
             <div class="mm-actions-area">
                 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed var(--border); padding-bottom:0.8rem; margin-bottom:1rem;">
@@ -693,56 +702,7 @@ function formatKpiVal(val, kpi) {
     return `${Math.round(val).toLocaleString()} ${kpi.unit}`;
 }
 
-// -------------------------------------------------------------
-// 売上ロードマップレンダラー (売上カードの最下部アドバイス領域)
-// -------------------------------------------------------------
-function renderSalesRoadmap(salesKpi, currentSpend, currentDailyCust) {
-    const gapDaily = salesKpi.target - salesKpi.actual;
-    
-    if (gapDaily <= 0) {
-        return `
-            <div class="mm-roadmap-box" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 1.2rem; font-size: 0.85rem; color: #1e293b; line-height: 1.6;">
-                <div style="font-weight: 800; color: #15803d; font-size: 0.9rem; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.4rem;">
-                    <i class="fas fa-check-circle"></i> 🎉 素晴らしい！目標を達成しました
-                </div>
-                <div>
-                    今月は見事に営業目標をクリアしています。現在の「1日平均売上 ¥${Math.round(salesKpi.actual).toLocaleString()}」と素晴らしい営業の質を維持・継続し、成功要因を具体的な施策ログとして蓄積しましょう！
-                </div>
-            </div>
-        `;
-    }
 
-    // ギャップ自動分析
-    const activeDailyCust = currentDailyCust > 0 ? currentDailyCust : (salesKpi.totalActual / 3050 / (salesKpi.opDays || 25)) || 60;
-    const activeSpend = currentSpend > 0 ? currentSpend : 3050;
-
-    const spendGap = gapDaily / activeDailyCust;
-    const custGap = gapDaily / activeSpend;
-
-    return `
-        <div class="mm-roadmap-box" style="margin-bottom: 1.5rem; background: #eff6ff; border: 1px solid rgba(59,130,246,0.15); border-radius: 6px; padding: 1.2rem; font-size: 0.85rem; color: #1e293b; line-height: 1.6;">
-            <div style="font-weight: 800; color: #1e40af; font-size: 0.9rem; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 0.4rem;">
-                <i class="fas fa-lightbulb"></i> 🎯 目標達成のロードマップ (日次ギャップ分析)
-            </div>
-            <div>
-                月次目標売上を達成するためには、1日あたりあと <strong style="color:var(--primary); font-size:1.05rem; font-weight:900;">+¥${Math.round(gapDaily).toLocaleString()}円</strong> の売上改善が必要です。<br>
-                これを分解すると、以下のいずれかの具体的な施策でクリアできます。
-            </div>
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-top:0.8rem; background:white; padding:0.8rem; border-radius:4px; border:1px solid #e2e8f0;">
-                <div>
-                    <span style="display:block; color:#64748b; font-size:0.72rem; font-weight:800;">💡 客単価で改善する場合</span>
-                    <strong style="color:var(--primary); font-size:1rem; font-weight:900;">客単価を1人あたり あと +${Math.round(spendGap).toLocaleString()}円 向上させる</strong>
-                    <span style="display:block; font-size:0.7rem; color:#94a3b8; margin-top:0.15rem;">(現在の1日平均来客数 ${Math.round(activeDailyCust)}名換算)</span>
-                </div>
-                <div style="border-left:1px solid #f1f5f9; padding-left:1rem;" class="roadmap-sep">
-                    <span style="display:block; color:#64748b; font-size:0.72rem; font-weight:800;">💡 集客数で改善する場合</span>
-                    <strong style="color:var(--primary); font-size:1rem; font-weight:900;">1日の来客数を あと +${Math.round(custGap * 10) / 10}名 増加させる</strong>
-                    <span style="display:block; font-size:0.7rem; color:#94a3b8; margin-top:0.15rem;">(現在の客単価 ¥${Math.round(activeSpend).toLocaleString()}換算)</span>
-                </div>
-            </div>
-        </div>
-    `;
-}
 
 // -------------------------------------------------------------
 // トレンドグラフの描画 (Canvas API を用いた動的レンダリング)
