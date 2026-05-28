@@ -686,6 +686,13 @@ async function buildKpiPdcaBoards() {
     });
 }
 
+function formatKpiVal(val, kpi) {
+    if (kpi.isCurrency) {
+        return `¥${Math.round(val).toLocaleString()}`;
+    }
+    return `${Math.round(val).toLocaleString()} ${kpi.unit}`;
+}
+
 // -------------------------------------------------------------
 // 売上ロードマップレンダラー (売上カードの最下部アドバイス領域)
 // -------------------------------------------------------------
