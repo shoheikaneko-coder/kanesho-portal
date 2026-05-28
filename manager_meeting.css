@@ -15,7 +15,7 @@
 
 .mm-card {
     background: white;
-    border-radius: 16px;
+    border-radius: 6px;
     box-shadow: 0 4px 20px -2px rgba(0,0,0,0.05);
     padding: 2rem;
     margin-bottom: 2rem;
@@ -65,7 +65,7 @@
 .mm-input {
     width: 100%;
     padding: 0.6rem;
-    border-radius: 10px;
+    border-radius: 6px;
     border: 1px solid #cbd5e1;
     font-size: 0.95rem;
     background: white;
@@ -82,7 +82,7 @@
 .mm-textarea {
     width: 100%;
     padding: 0.6rem;
-    border-radius: 10px;
+    border-radius: 6px;
     border: 1px solid #cbd5e1;
     font-size: 0.95rem;
     background: white;
@@ -92,12 +92,12 @@
 }
 
 /* =============================================================
-   KPI PDCAボード用 新規追加クラス
+   KPI PDCAボード用 新規追加クラス (角丸をシャープ化: 6px / 4px)
    ============================================================= */
 
 .mm-kpi-card {
     background: white;
-    border-radius: 16px;
+    border-radius: 6px;
     border: 1px solid var(--border);
     box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.04);
     padding: 1.8rem;
@@ -135,7 +135,7 @@
     gap: 1rem;
     background: #f8fafc;
     padding: 1rem 1.2rem;
-    border-radius: 12px;
+    border-radius: 6px;
     border: 1px solid #f1f5f9;
     margin-bottom: 1.5rem;
 }
@@ -176,14 +176,14 @@
 
 .mm-actions-area {
     background: #ffffff;
-    border-radius: 12px;
+    border-radius: 6px;
     margin-top: 1.2rem;
 }
 
 .mm-action-item-panel {
     background: #f8fafc;
     border: 1px solid #e2e8f0;
-    border-radius: 12px;
+    border-radius: 4px;
     padding: 1.2rem;
     transition: all 0.2s;
 }
@@ -205,16 +205,25 @@
 
 .mm-badge {
     padding: 0.25rem 0.6rem;
-    border-radius: 20px;
+    border-radius: 4px;
     font-size: 0.7rem;
     font-weight: 800;
     display: inline-block;
 }
 
 /* =============================================================
-   印刷用スタイル (A4縦に完全最適化)
+   印刷用スタイル (A4縦に完全最適化 & スクロール・高さ制限の強制排除)
    ============================================================= */
 @media print {
+    /* 印刷時の全親要素のスクロール・高さ制限を完全に無効化し、改ページ途切れを解消 */
+    html, body, #dashboard-layout, #page-content, .dashboard-layout, .app-container {
+        height: auto !important;
+        min-height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+        position: relative !important;
+    }
+    
     body * {
         visibility: hidden;
     }
@@ -234,6 +243,9 @@
         margin: 0;
         color: #000 !important;
         background: #fff !important;
+        display: block !important;
+        height: auto !important;
+        overflow: visible !important;
     }
 
     .mm-card, .mm-kpi-card, .mm-action-item-panel {
@@ -244,6 +256,7 @@
         padding: 12px !important;
         background: #fff !important;
         transform: none !important;
+        border-radius: 4px !important;
     }
 
     .mm-kpi-metrics-grid {
@@ -251,6 +264,7 @@
         border: 1px solid #ddd !important;
         padding: 8px !important;
         gap: 6px !important;
+        border-radius: 4px !important;
     }
 
     .glass-panel {
@@ -258,6 +272,7 @@
         color: #000 !important;
         border: 1px solid #ccc !important;
         box-shadow: none !important;
+        border-radius: 4px !important;
     }
 
     .no-print {
@@ -300,6 +315,7 @@
         background: #fff !important;
         border: 1px solid #ccc !important;
         color: #000 !important;
+        border-radius: 3px !important;
     }
 
     .metric-val.primary {

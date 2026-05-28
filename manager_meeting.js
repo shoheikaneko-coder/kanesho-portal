@@ -62,7 +62,7 @@ async function renderArchiveView(container) {
 
         <!-- 新規作成モーダル -->
         <div id="mm-create-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:10000; justify-content:center; align-items:center; backdrop-filter: blur(4px);">
-            <div class="glass-panel animate-fade-in" style="background:white; padding:2rem; border-radius:16px; width:90%; max-width:420px; border: 1px solid var(--border); box-shadow: var(--shadow-lg);">
+            <div class="glass-panel animate-fade-in" style="background:white; padding:2rem; border-radius:6px; width:90%; max-width:420px; border: 1px solid var(--border); box-shadow: var(--shadow-lg);">
                 <h3 style="margin-top:0; color:var(--text-primary); font-weight:900; font-size:1.2rem; border-bottom:1px solid var(--border); padding-bottom:0.8rem; margin-bottom:1.5rem;">新規店舗PDCAの作成</h3>
                 <div class="input-group" style="margin-bottom: 1.2rem;">
                     <label style="display:block; margin-bottom:0.5rem; font-weight:700; font-size:0.8rem; color:var(--text-secondary);">対象店舗</label>
@@ -280,10 +280,10 @@ async function renderFormView(container) {
         </div>
 
         <div id="mm-printable-area">
-            <div class="glass-panel" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; padding: 2rem; border-radius: 20px; margin-bottom: 2rem; border: none; box-shadow: var(--shadow-md);">
+            <div class="glass-panel" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; padding: 2rem; border-radius: 6px; margin-bottom: 2rem; border: none; box-shadow: var(--shadow-md);">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
                     <div>
-                        <h1 style="margin: 0; font-size: 1.6rem; font-weight: 900; letter-spacing: -0.5px;">
+                        <h1 style="margin: 0; font-size: 1.6rem; font-weight: 900; letter-spacing: -0.5px; color: #ffffff;">
                             ${editingMeetingData.store_name} 店舗PDCAボード
                         </h1>
                         <p style="margin: 0.4rem 0 0; color: #94a3b8; font-weight: 600; font-size: 1rem;">
@@ -778,7 +778,7 @@ window.addNewActionClick = (kpiKey) => {
     }
 
     modal.innerHTML = `
-        <div class="glass-panel animate-scale-in" style="background:white; padding:2rem; border-radius:16px; width:90%; max-width:480px; border: 1px solid var(--border); box-shadow: var(--shadow-lg);">
+        <div class="glass-panel animate-scale-in" style="background:white; padding:2rem; border-radius:6px; width:90%; max-width:480px; border: 1px solid var(--border); box-shadow: var(--shadow-lg);">
             <h3 style="margin-top:0; color:var(--text-primary); font-weight:900; font-size:1.15rem; border-bottom:1px solid var(--border); padding-bottom:0.6rem; margin-bottom:1.2rem;">新規実行施策の登録</h3>
             
             <div class="input-group" style="margin-bottom:1rem;">
@@ -869,7 +869,7 @@ window.toggleActionStatusClick = (actionId) => {
     }
 
     modal.innerHTML = `
-        <div class="glass-panel animate-scale-in" style="background:white; padding:2rem; border-radius:16px; width:90%; max-width:480px; border: 1px solid var(--border); box-shadow: var(--shadow-lg);">
+        <div class="glass-panel animate-scale-in" style="background:white; padding:2rem; border-radius:6px; width:90%; max-width:480px; border: 1px solid var(--border); box-shadow: var(--shadow-lg);">
             <h3 style="margin-top:0; color:var(--text-primary); font-weight:900; font-size:1.15rem; border-bottom:1px solid var(--border); padding-bottom:0.6rem; margin-bottom:1.2rem;">施策の振り返り (Check & Action)</h3>
             
             <div style="background:#eff6ff; border-radius:8px; padding:0.8rem; border:1px solid rgba(59,130,246,0.1); margin-bottom:1.2rem; font-size:0.82rem;">
