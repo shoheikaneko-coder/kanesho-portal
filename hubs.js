@@ -156,7 +156,7 @@ export function initHubPage(type) {
                         </div>
                         <div class="tile-grid">
                             ${section.items.filter(item => {
-                                return permissions.length === 0 || permissions.includes(item.id) || item.isComingSoon;
+                                return item.id === 'manager_meeting' || permissions.length === 0 || permissions.includes(item.id) || item.isComingSoon;
                             }).map(item => `
                                 <div class="business-tile ${item.isComingSoon ? 'tile-coming-soon' : ''}" 
                                      onclick="${item.isComingSoon ? "alert('この機能は現在開発中です。')" : `window.navigateTo('${item.id}')`}">
