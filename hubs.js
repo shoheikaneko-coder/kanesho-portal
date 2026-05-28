@@ -79,7 +79,8 @@ const HUB_CONFIG = {
                 title: '店舗経営',
                 icon: 'fa-store',
                 items: [
-                    { id: 'dashboard', name: '分析ダッシュボード', icon: 'fa-chart-line', color: '#3b82f6' }
+                    { id: 'dashboard', name: '分析ダッシュボード', icon: 'fa-chart-line', color: '#3b82f6' },
+                    { id: 'manager_meeting', name: '店舗PDCA', icon: 'fa-sync-alt', color: '#14b8a6' }
                 ]
             },
             {
@@ -93,8 +94,7 @@ const HUB_CONFIG = {
                 title: '目標・実績管理',
                 icon: 'fa-chart-line',
                 items: [
-                    { id: 'goals_store', name: '月次計画(店長用)', icon: 'fa-tasks', color: '#f97316' },
-                    { id: 'manager_meeting', name: '店長会議資料', icon: 'fa-file-signature', color: '#14b8a6' }
+                    { id: 'goals_store', name: '月次計画(店長用)', icon: 'fa-tasks', color: '#f97316' }
                 ]
             }
         ]

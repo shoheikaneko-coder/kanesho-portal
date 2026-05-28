@@ -1,7 +1,7 @@
 /* manager_meeting.css */
 
 .manager-meeting-container {
-    max-width: 1000px;
+    max-width: 1200px;
     margin: 0 auto;
     padding: 1.5rem;
 }
@@ -15,10 +15,10 @@
 
 .mm-card {
     background: white;
-    border-radius: 12px;
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px -2px rgba(0,0,0,0.05);
+    padding: 2rem;
+    margin-bottom: 2rem;
     border: 1px solid var(--border);
 }
 
@@ -65,62 +65,166 @@
 .mm-input {
     width: 100%;
     padding: 0.6rem;
-    border-radius: 6px;
+    border-radius: 10px;
     border: 1px solid #cbd5e1;
     font-size: 0.95rem;
     background: white;
+    box-sizing: border-box;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.mm-input:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(230,57,70,0.1);
 }
 
 .mm-textarea {
     width: 100%;
     padding: 0.6rem;
-    border-radius: 6px;
+    border-radius: 10px;
     border: 1px solid #cbd5e1;
     font-size: 0.95rem;
     background: white;
     min-height: 80px;
     resize: vertical;
+    box-sizing: border-box;
 }
 
-/* KPI Table */
-.mm-kpi-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 1rem;
-}
+/* =============================================================
+   KPI PDCAボード用 新規追加クラス
+   ============================================================= */
 
-.mm-kpi-table th, .mm-kpi-table td {
-    padding: 0.8rem;
+.mm-kpi-card {
+    background: white;
+    border-radius: 16px;
     border: 1px solid var(--border);
-    text-align: right;
-    font-size: 0.9rem;
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.04);
+    padding: 1.8rem;
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.mm-kpi-table th {
-    background: #f1f5f9;
-    font-weight: 700;
-    color: var(--text-secondary);
-    text-align: center;
+.mm-kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 35px -10px rgba(0, 0, 0, 0.08);
 }
 
-.mm-kpi-table td:first-child {
-    text-align: left;
-    font-weight: 700;
+.mm-kpi-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #f1f5f9;
+    padding-bottom: 1rem;
+    margin-bottom: 1.2rem;
+}
+
+.mm-kpi-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+}
+.mm-kpi-dot.sales { background: var(--primary); }
+.mm-kpi-dot.customers { background: #3b82f6; }
+.mm-kpi-dot.spend { background: #f59e0b; }
+.mm-kpi-dot.productivity { background: #10b981; }
+
+.mm-kpi-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 1rem;
     background: #f8fafc;
+    padding: 1rem 1.2rem;
+    border-radius: 12px;
+    border: 1px solid #f1f5f9;
+    margin-bottom: 1.5rem;
 }
 
-/* Print Styles */
+.metric-box {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.metric-label {
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.15rem;
+}
+
+.metric-val {
+    font-size: 1.1rem;
+    font-weight: 900;
+    color: var(--text-primary);
+}
+
+.metric-val.primary {
+    color: var(--primary);
+    font-size: 1.2rem;
+}
+
+.mm-up {
+    color: #10b981 !important;
+}
+
+.mm-down {
+    color: #ef4444 !important;
+}
+
+.mm-actions-area {
+    background: #ffffff;
+    border-radius: 12px;
+    margin-top: 1.2rem;
+}
+
+.mm-action-item-panel {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.2rem;
+    transition: all 0.2s;
+}
+
+.mm-action-item-panel:hover {
+    border-color: #cbd5e1;
+    background: #f1f5f9;
+}
+
+.mm-action-item-panel.completed {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+.mm-action-item-panel.completed:hover {
+    background: #dcfce7;
+    border-color: #86efac;
+}
+
+.mm-badge {
+    padding: 0.25rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    display: inline-block;
+}
+
+/* =============================================================
+   印刷用スタイル (A4縦に完全最適化)
+   ============================================================= */
 @media print {
     body * {
         visibility: hidden;
     }
     
-    .manager-meeting-container, 
-    .manager-meeting-container * {
+    #mm-printable-area, 
+    #mm-printable-area * {
         visibility: visible;
     }
     
-    .manager-meeting-container {
+    #mm-printable-area {
         position: absolute;
         left: 0;
         top: 0;
@@ -128,38 +232,87 @@
         max-width: none;
         padding: 0;
         margin: 0;
+        color: #000 !important;
+        background: #fff !important;
     }
 
-    .mm-card {
-        box-shadow: none;
-        border: 1px solid #ccc;
+    .mm-card, .mm-kpi-card, .mm-action-item-panel {
+        box-shadow: none !important;
+        border: 1px solid #ccc !important;
         break-inside: avoid;
-        margin-bottom: 10px;
-        padding: 15px;
+        margin-bottom: 12px !important;
+        padding: 12px !important;
+        background: #fff !important;
+        transform: none !important;
+    }
+
+    .mm-kpi-metrics-grid {
+        background: #fff !important;
+        border: 1px solid #ddd !important;
+        padding: 8px !important;
+        gap: 6px !important;
+    }
+
+    .glass-panel {
+        background: #fff !important;
+        color: #000 !important;
+        border: 1px solid #ccc !important;
+        box-shadow: none !important;
     }
 
     .no-print {
         display: none !important;
     }
 
-    /* Adjust sizing for A4 */
     @page {
-        size: A4;
-        margin: 1cm;
+        size: A4 portrait;
+        margin: 0.8cm;
+    }
+    
+    h1 {
+        font-size: 1.3rem !important;
+        margin-bottom: 0.8rem !important;
+        color: #000 !important;
+    }
+
+    h2, h3, h4 {
+        font-size: 0.95rem !important;
+        margin-bottom: 0.4rem !important;
+        color: #000 !important;
     }
     
     .mm-section-title {
-        font-size: 1rem;
-        padding-bottom: 2px;
-        margin-bottom: 5px;
+        font-size: 0.95rem !important;
+        padding-bottom: 2px !important;
+        margin-bottom: 5px !important;
+        color: #000 !important;
+        border-bottom: 1px solid #000 !important;
     }
     
-    .mm-label {
-        font-size: 0.7rem;
+    .mm-label, .metric-label {
+        font-size: 0.62rem !important;
+        color: #555 !important;
     }
     
-    .mm-input, .mm-textarea, .mm-value {
-        padding: 0.3rem;
-        font-size: 0.85rem;
+    .mm-input, .mm-textarea, .mm-value, .metric-val {
+        padding: 0.3rem !important;
+        font-size: 0.8rem !important;
+        background: #fff !important;
+        border: 1px solid #ccc !important;
+        color: #000 !important;
+    }
+
+    .metric-val.primary {
+        font-size: 0.9rem !important;
+        color: #000 !important;
+    }
+
+    .mm-action-item-panel.completed {
+        background: #fff !important;
+        border-color: #999 !important;
+    }
+
+    canvas {
+        max-height: 30px !important;
     }
 }
