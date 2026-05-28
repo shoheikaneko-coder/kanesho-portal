@@ -618,6 +618,13 @@ async function buildKpiPdcaBoards() {
         const headerTgt = key === 'sales' ? kpi.totalTarget : tgt;
         const headerVal = key === 'sales' ? kpi.totalActual : val;
 
+        let tgtSuffix = '';
+        let actSuffix = '';
+        if (key === 'sales') {
+            tgtSuffix = ` <span style="font-size:0.75rem; font-weight:600; color:var(--text-secondary); margin-left:0.2rem;">(予定: ${kpi.opDaysTarget}日)</span>`;
+            actSuffix = ` <span style="font-size:0.75rem; font-weight:600; color:var(--text-secondary); margin-left:0.2rem;">(実働: ${kpi.opDays}日)</span>`;
+        }
+
         const card = document.createElement('div');
         card.className = 'glass-panel mm-kpi-card';
         card.innerHTML = `
@@ -628,9 +635,9 @@ async function buildKpiPdcaBoards() {
                         ${shortName}
                     </h3>
                     <div style="display:flex; align-items:center; gap:1rem; font-size:0.95rem; font-weight:700; color:var(--text-secondary);">
-                        <span>目標: <strong style="color:var(--text-primary); font-size:1.05rem;">${formatKpiVal(headerTgt, kpi)}</strong></span>
+                        <span>目標: <strong style="color:var(--text-primary); font-size:1.05rem;">${formatKpiVal(headerTgt, kpi)}</strong>${tgtSuffix}</span>
                         <span style="color:var(--border);">|</span>
-                        <span>実績: <strong style="color:var(--text-primary); font-size:1.05rem;">${formatKpiVal(headerVal, kpi)}</strong></span>
+                        <span>実績: <strong style="color:var(--text-primary); font-size:1.05rem;">${formatKpiVal(headerVal, kpi)}</strong>${actSuffix}</span>
                     </div>
                 </div>
                 <div class="${pctClass}" style="font-size:1.25rem; font-weight:950; display:flex; align-items:center; gap:0.3rem;">
@@ -642,12 +649,10 @@ async function buildKpiPdcaBoards() {
                 <div class="metric-box">
                     <span class="metric-label">当月実績</span>
                     <strong class="metric-val primary">${formatKpiVal(val, kpi)}${key === 'sales' ? ' /日' : ''}</strong>
-                    ${key === 'sales' ? `<span style="font-size:0.65rem; color:var(--text-secondary); margin-top:0.15rem; font-weight:600;">月間合計: ¥${Math.round(kpi.totalActual).toLocaleString()}<br>実営業日数: ${kpi.opDays}日</span>` : ''}
                 </div>
                 <div class="metric-box">
                     <span class="metric-label">定量目標</span>
                     <strong class="metric-val">${formatKpiVal(tgt, kpi)}${key === 'sales' ? ' /日' : ''}</strong>
-                    ${key === 'sales' ? `<span style="font-size:0.65rem; color:var(--text-secondary); margin-top:0.15rem; font-weight:600;">月間合計: ¥${Math.round(kpi.totalTarget).toLocaleString()}<br>予定営業日数: ${kpi.opDaysTarget}日</span>` : ''}
                 </div>
                 <div class="metric-box">
                     <span class="metric-label">前月実績比</span>
