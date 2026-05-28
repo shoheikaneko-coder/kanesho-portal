@@ -53,14 +53,14 @@ async function renderArchiveView(container) {
             </button>
         </div>
 
-        <div class="mm-card no-print" style="margin-top: 1.5rem; border-radius: 16px;">
+        <div class="mm-card no-print" style="margin-top: 1.5rem; border-radius: 6px;">
             <h3 style="margin-top:0; font-size:1.1rem; color:var(--text-primary); font-weight:800; margin-bottom:1.5rem;">提出履歴一覧</h3>
             <div id="mm-archive-list" style="display: flex; flex-direction: column; gap: 1rem;">
                 <p style="text-align:center; padding: 3rem; color: var(--text-secondary);"><i class="fas fa-spinner fa-spin"></i> 履歴をロード中...</p>
             </div>
         </div>
 
-        <!-- 新規作成モーダル -->
+        <!-- 新規作成モーダル (丸み 6px) -->
         <div id="mm-create-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:10000; justify-content:center; align-items:center; backdrop-filter: blur(4px);">
             <div class="glass-panel animate-fade-in" style="background:white; padding:2rem; border-radius:6px; width:90%; max-width:420px; border: 1px solid var(--border); box-shadow: var(--shadow-lg);">
                 <h3 style="margin-top:0; color:var(--text-primary); font-weight:900; font-size:1.2rem; border-bottom:1px solid var(--border); padding-bottom:0.8rem; margin-bottom:1.5rem;">新規店舗PDCAの作成</h3>
@@ -280,6 +280,7 @@ async function renderFormView(container) {
         </div>
 
         <div id="mm-printable-area">
+            <!-- 上部タイトルカード (角丸を6px化、h1文字色を明示的白#ffffff化) -->
             <div class="glass-panel" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; padding: 2rem; border-radius: 6px; margin-bottom: 2rem; border: none; box-shadow: var(--shadow-md);">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
                     <div>
@@ -306,46 +307,46 @@ async function renderFormView(container) {
                 <p style="text-align:center; padding:3rem; color:var(--text-secondary);"><i class="fas fa-spinner fa-spin"></i> 実績値およびKPIボードの自動構築中...</p>
             </div>
 
-            <!-- 定性・自由目標エリア -->
+            <!-- 定性・自由目標エリア (丸み 6pxへ) -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem; margin-top: 3rem;">
-                <div class="mm-card" style="border-radius:16px;">
+                <div class="mm-card" style="border-radius:6px;">
                     <div class="mm-section-title" style="font-size:1.1rem; font-weight:900; margin-bottom:1.5rem; display:flex; align-items:center; gap:0.5rem; color:var(--text-primary);">
                         <i class="fas fa-bullseye" style="color:#f59e0b;"></i> 自由目標エリア (文化・教育・接客品質)
                     </div>
                     <div class="input-group" style="margin-bottom: 1.2rem;">
                         <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">教育・チーム作り</label>
-                        <textarea id="mm-input-edu" class="mm-input" rows="3" style="width:100%; border-radius:10px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="スタッフの教育進捗、チームワーク、帰属意識の醸成について現状と対策"></textarea>
+                        <textarea id="mm-input-edu" class="mm-input" rows="3" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="スタッフの教育進捗、チームワーク、帰属意識の醸成について現状と対策"></textarea>
                     </div>
                     <div class="input-group" style="margin-bottom: 1.2rem;">
                         <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">活気・接客品質</label>
-                        <textarea id="mm-input-hos" class="mm-input" rows="3" style="width:100%; border-radius:10px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="店舗の活気、サービスレベル、常連顧客づくりのための接客向上計画"></textarea>
+                        <textarea id="mm-input-hos" class="mm-input" rows="3" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="店舗の活気、サービスレベル、常連顧客づくりのための接客向上計画"></textarea>
                     </div>
                     <div class="input-group">
                         <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">オペレーション改善</label>
-                        <textarea id="mm-input-ope" class="mm-input" rows="3" style="width:100%; border-radius:10px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="キッチンの回転率、オペレーションの無駄、クリンリネス向上などの改善案"></textarea>
+                        <textarea id="mm-input-ope" class="mm-input" rows="3" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="キッチンの回転率、オペレーションの無駄、クリンリネス向上などの改善案"></textarea>
                     </div>
                 </div>
 
-                <!-- 採用・共有事項エリア -->
-                <div class="mm-card" style="border-radius:16px;">
+                <!-- 採用・共有事項エリア (丸み 6pxへ) -->
+                <div class="mm-card" style="border-radius:6px;">
                     <div class="mm-section-title" style="font-size:1.1rem; font-weight:900; margin-bottom:1.5rem; display:flex; align-items:center; gap:0.5rem; color:var(--text-primary);">
                         <i class="fas fa-users" style="color:#3b82f6;"></i> スタッフ・採用共有エリア
                     </div>
                     <div class="input-group" style="margin-bottom: 1.2rem;">
                         <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">採用予定・人員計画</label>
-                        <textarea id="mm-input-rec" class="mm-input" rows="2" style="width:100%; border-radius:10px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="今月・来月の採用目標、充足状況、シフト枠の埋まり具合"></textarea>
+                        <textarea id="mm-input-rec" class="mm-input" rows="2" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="今月・来月の採用目標、充足状況、シフト枠の埋まり具合"></textarea>
                     </div>
                     <div class="input-group" style="margin-bottom: 1.2rem;">
                         <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">退職懸念・モチベーション</label>
-                        <textarea id="mm-input-ret" class="mm-input" rows="2" style="width:100%; border-radius:10px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="スタッフの不満、モチベーション低下、退職の予兆などの懸念事項"></textarea>
+                        <textarea id="mm-input-ret" class="mm-input" rows="2" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="スタッフの不満、モチベーション低下、退職の予兆などの懸念事項"></textarea>
                     </div>
                     <div class="input-group" style="margin-bottom: 1.2rem;">
                         <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">外国人スタッフ VISA期限確認</label>
-                        <textarea id="mm-input-visa" class="mm-input" rows="2" style="width:100%; border-radius:10px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="期限切れの近い留学生・就労スタッフがいないかのチェック結果"></textarea>
+                        <textarea id="mm-input-visa" class="mm-input" rows="2" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="期限切れの近い留学生・就労スタッフがいないかのチェック結果"></textarea>
                     </div>
                     <div class="input-group">
                         <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">教育進捗・昇格候補</label>
-                        <textarea id="mm-input-train" class="mm-input" rows="2" style="width:100%; border-radius:10px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="サブ店長昇格候補、新人の育成進捗、キーマン育成について"></textarea>
+                        <textarea id="mm-input-train" class="mm-input" rows="2" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="サブ店長昇格候補、新人の育成進捗、キーマン育成について"></textarea>
                     </div>
                 </div>
             </div>
@@ -386,7 +387,7 @@ async function renderFormView(container) {
 }
 
 // -------------------------------------------------------------
-// KPI PDCAボードの自動構築 (集計とUIレンダリング)
+// KPI PDCAボードの自動構築 (集計とUIレンダリング - 売上日次平均メイン ＆ ロードマップ自動提示)
 // -------------------------------------------------------------
 const TAX_RATE = 1.1;
 
@@ -416,7 +417,24 @@ async function buildKpiPdcaBoards() {
     const prevYearY = currentYear - 1;
     const prevYearYm = getMonthString(prevYearY, currentMonth);
 
-    // --- 2. 目標値の取得 (月次 & 年間マスタから逆算) ---
+    // --- 2. 予定営業日数の取得 (カレンダーマスタ) ---
+    let targetOpDays = 25; // デフォルト営業日数
+    try {
+        let calSnap = await getDoc(doc(db, "m_calendars", `${targetYm}_${storeId}`));
+        if (!calSnap.exists()) {
+            calSnap = await getDoc(doc(db, "m_calendars", `${targetYm}_common`));
+        }
+        if (calSnap.exists()) {
+            const calData = calSnap.data();
+            const daysArr = calData.days || [];
+            const count = daysArr.filter(d => d.type === 'work').length;
+            if (count > 0) targetOpDays = count;
+        }
+    } catch(e) {
+        console.warn("Failed to fetch calendar days:", e);
+    }
+
+    // --- 3. 目標値の取得 (月次 & 年間マスタから逆算) ---
     let targetSales = 0;       // 売上目標 (税抜)
     let targetSphOp = 0;       // 営業人時売上目標 (生産性)
     let targetAvgSpend = 3050; // 客単価目標 (標準デフォルト ¥3,050)
@@ -450,8 +468,13 @@ async function buildKpiPdcaBoards() {
     const targetCustomers = targetAvgSpend > 0 ? Math.round(targetSales / targetAvgSpend) : 0;
     const targetLaborHours = targetSphOp > 0 ? targetSales / targetSphOp : 0;
 
-    // --- 3. 実績値の集計 ---
-    const performanceMap = { [targetYm]: { sales: 0, cust: 0 }, [prevYm]: { sales: 0, cust: 0 }, [prev2Ym]: { sales: 0, cust: 0 }, [prevYearYm]: { sales: 0, cust: 0 } };
+    // --- 4. 実績値の集計 ---
+    const performanceMap = { 
+        [targetYm]: { sales: 0, cust: 0, days: 0 }, 
+        [prevYm]: { sales: 0, cust: 0, days: 0 }, 
+        [prev2Ym]: { sales: 0, cust: 0, days: 0 }, 
+        [prevYearYm]: { sales: 0, cust: 0, days: 0 } 
+    };
     const laborMap = { [targetYm]: 0, [prevYm]: 0, [prev2Ym]: 0, [prevYearYm]: 0 };
 
     try {
@@ -468,6 +491,11 @@ async function buildKpiPdcaBoards() {
                 
                 performanceMap[ym].sales += salesTaxEx;
                 performanceMap[ym].cust += cust;
+                
+                // 実際に売上が発生した日を営業日数としてカウント
+                if (salesTaxEx > 0) {
+                    performanceMap[ym].days++;
+                }
             }
         });
 
@@ -493,17 +521,28 @@ async function buildKpiPdcaBoards() {
         console.error("Error aggregating performance data:", e);
     }
 
-    // 各KPIの数値定義
+    // 各月の実営業日数 (0件の場合は予定/標準日数でフォールバック)
+    const opDaysActual = performanceMap[targetYm].days || targetOpDays;
+    const opDaysPrev = performanceMap[prevYm].days || 25;
+    const opDaysPrev2 = performanceMap[prev2Ym].days || 25;
+    const opDaysPrevYear = performanceMap[prevYearYm].days || 25;
+
+    // 各KPIの数値定義 (売上は1日平均をメインとする)
     const kpis = {
         sales: {
-            name: '月間売上 (税抜)',
+            name: '売上 (日次平均 ＆ 月次合計)',
             unit: '円',
             isCurrency: true,
-            target: targetSales,
-            actual: performanceMap[targetYm].sales,
-            prev: performanceMap[prevYm].sales,
-            prev2: performanceMap[prev2Ym].sales,
-            prevYear: performanceMap[prevYearYm].sales
+            target: targetSales / targetOpDays, // 1日平均目標
+            actual: performanceMap[targetYm].sales / opDaysActual, // 1日平均実績
+            prev: performanceMap[prevYm].sales / opDaysPrev,
+            prev2: performanceMap[prev2Ym].sales / opDaysPrev2,
+            prevYear: performanceMap[prevYearYm].sales / opDaysPrevYear,
+            // 補正参照用の合計値
+            totalTarget: targetSales,
+            totalActual: performanceMap[targetYm].sales,
+            opDays: opDaysActual,
+            opDaysTarget: targetOpDays
         },
         customers: {
             name: '平均来客数 (月間合計)',
@@ -586,26 +625,28 @@ async function buildKpiPdcaBoards() {
             <div class="mm-kpi-metrics-grid">
                 <div class="metric-box">
                     <span class="metric-label">当月実績</span>
-                    <strong class="metric-val primary">${formatKpiVal(val, kpi)}</strong>
+                    <strong class="metric-val primary">${formatKpiVal(val, kpi)}${key === 'sales' ? ' /日' : ''}</strong>
+                    ${key === 'sales' ? `<span style="font-size:0.65rem; color:var(--text-secondary); margin-top:0.15rem; font-weight:600;">月間合計: ¥${Math.round(kpi.totalActual).toLocaleString()}<br>実営業日数: ${kpi.opDays}日</span>` : ''}
                 </div>
                 <div class="metric-box">
                     <span class="metric-label">定量目標</span>
-                    <strong class="metric-val">${formatKpiVal(tgt, kpi)}</strong>
+                    <strong class="metric-val">${formatKpiVal(tgt, kpi)}${key === 'sales' ? ' /日' : ''}</strong>
+                    ${key === 'sales' ? `<span style="font-size:0.65rem; color:var(--text-secondary); margin-top:0.15rem; font-weight:600;">月間合計: ¥${Math.round(kpi.totalTarget).toLocaleString()}<br>予定営業日数: ${kpi.opDaysTarget}日</span>` : ''}
                 </div>
                 <div class="metric-box">
                     <span class="metric-label">前月実績比</span>
-                    <strong class="metric-val ${diffPrevClass}">${diffPrevText}</strong>
-                    <span style="font-size:0.65rem; color:var(--text-secondary);">前月: ${formatKpiVal(kpi.prev, kpi)}</span>
+                    <strong class="metric-val ${diffPrevClass}">${diffPrevText}${key === 'sales' ? ' /日' : ''}</strong>
+                    <span style="font-size:0.65rem; color:var(--text-secondary);">前月: ${formatKpiVal(kpi.prev, kpi)}${key === 'sales' ? ' /日' : ''}</span>
                 </div>
                 <div class="metric-box">
                     <span class="metric-label">前年同月比</span>
-                    <strong class="metric-val ${diffYearClass}">${diffYearText}</strong>
-                    <span style="font-size:0.65rem; color:var(--text-secondary);">前年: ${formatKpiVal(kpi.prevYear, kpi)}</span>
+                    <strong class="metric-val ${diffYearClass}">${diffYearText}${key === 'sales' ? ' /日' : ''}</strong>
+                    <span style="font-size:0.65rem; color:var(--text-secondary);">前年: ${formatKpiVal(kpi.prevYear, kpi)}${key === 'sales' ? ' /日' : ''}</span>
                 </div>
                 <div class="metric-box">
                     <span class="metric-label">直近3ヶ月平均</span>
-                    <strong class="metric-val" style="color:var(--text-primary);">${formatKpiVal(avg3, kpi)}</strong>
-                    <span style="font-size:0.65rem; color:var(--text-secondary);">前々月: ${formatKpiVal(kpi.prev2, kpi)}</span>
+                    <strong class="metric-val" style="color:var(--text-primary);">${formatKpiVal(avg3, kpi)}${key === 'sales' ? ' /日' : ''}</strong>
+                    <span style="font-size:0.65rem; color:var(--text-secondary);">前々月: ${formatKpiVal(kpi.prev2, kpi)}${key === 'sales' ? ' /日' : ''}</span>
                 </div>
                 
                 <!-- トレンドグラフを描画するCanvas -->
@@ -614,6 +655,9 @@ async function buildKpiPdcaBoards() {
                     <canvas id="canvas-trend-${key}" width="140" height="42" style="max-height:42px;"></canvas>
                 </div>
             </div>
+
+            <!-- 売上限定：目標達成のロードマップ表示 (1日ギャップ自動ブレイクダウン) -->
+            ${key === 'sales' ? renderSalesRoadmap(kpi, kpis.spend.actual || targetAvgSpend, performanceMap[targetYm].cust / opDaysActual) : ''}
 
             <!-- アクションプランエリア -->
             <div class="mm-actions-area">
@@ -642,11 +686,55 @@ async function buildKpiPdcaBoards() {
     });
 }
 
-function formatKpiVal(val, kpi) {
-    if (kpi.isCurrency) {
-        return `¥${Math.round(val).toLocaleString()}`;
+// -------------------------------------------------------------
+// 売上ロードマップレンダラー (売上カードの最下部アドバイス領域)
+// -------------------------------------------------------------
+function renderSalesRoadmap(salesKpi, currentSpend, currentDailyCust) {
+    const gapDaily = salesKpi.target - salesKpi.actual;
+    
+    if (gapDaily <= 0) {
+        return `
+            <div class="mm-roadmap-box" style="margin-bottom: 1.5rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 1.2rem; font-size: 0.85rem; color: #1e293b; line-height: 1.6;">
+                <div style="font-weight: 800; color: #15803d; font-size: 0.9rem; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.4rem;">
+                    <i class="fas fa-check-circle"></i> 🎉 素晴らしい！目標を達成しました
+                </div>
+                <div>
+                    今月は見事に営業目標をクリアしています。現在の「1日平均売上 ¥${Math.round(salesKpi.actual).toLocaleString()}」と素晴らしい営業の質を維持・継続し、成功要因を具体的な施策ログとして蓄積しましょう！
+                </div>
+            </div>
+        `;
     }
-    return `${Math.round(val).toLocaleString()} ${kpi.unit}`;
+
+    // ギャップ自動分析
+    const activeDailyCust = currentDailyCust > 0 ? currentDailyCust : (salesKpi.totalActual / 3050 / (salesKpi.opDays || 25)) || 60;
+    const activeSpend = currentSpend > 0 ? currentSpend : 3050;
+
+    const spendGap = gapDaily / activeDailyCust;
+    const custGap = gapDaily / activeSpend;
+
+    return `
+        <div class="mm-roadmap-box" style="margin-bottom: 1.5rem; background: #eff6ff; border: 1px solid rgba(59,130,246,0.15); border-radius: 6px; padding: 1.2rem; font-size: 0.85rem; color: #1e293b; line-height: 1.6;">
+            <div style="font-weight: 800; color: #1e40af; font-size: 0.9rem; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 0.4rem;">
+                <i class="fas fa-lightbulb"></i> 🎯 目標達成のロードマップ (日次ギャップ分析)
+            </div>
+            <div>
+                月次目標売上を達成するためには、1日あたりあと <strong style="color:var(--primary); font-size:1.05rem; font-weight:900;">+¥${Math.round(gapDaily).toLocaleString()}円</strong> の売上改善が必要です。<br>
+                これを分解すると、以下のいずれかの具体的な施策でクリアできます。
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-top:0.8rem; background:white; padding:0.8rem; border-radius:4px; border:1px solid #e2e8f0;">
+                <div>
+                    <span style="display:block; color:#64748b; font-size:0.72rem; font-weight:800;">💡 客単価で改善する場合</span>
+                    <strong style="color:var(--primary); font-size:1rem; font-weight:900;">客単価を1人あたり あと +${Math.round(spendGap).toLocaleString()}円 向上させる</strong>
+                    <span style="display:block; font-size:0.7rem; color:#94a3b8; margin-top:0.15rem;">(現在の1日平均来客数 ${Math.round(activeDailyCust)}名換算)</span>
+                </div>
+                <div style="border-left:1px solid #f1f5f9; padding-left:1rem;" class="roadmap-sep">
+                    <span style="display:block; color:#64748b; font-size:0.72rem; font-weight:800;">💡 集客数で改善する場合</span>
+                    <strong style="color:var(--primary); font-size:1rem; font-weight:900;">1日の来客数を あと +${Math.round(custGap * 10) / 10}名 増加させる</strong>
+                    <span style="display:block; font-size:0.7rem; color:#94a3b8; margin-top:0.15rem;">(現在の客単価 ¥${Math.round(activeSpend).toLocaleString()}換算)</span>
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 // -------------------------------------------------------------
@@ -885,7 +973,7 @@ window.toggleActionStatusClick = (actionId) => {
 
             <div class="input-group" style="margin-bottom:1rem;">
                 <label style="display:block; margin-bottom:0.3rem; font-weight:800; font-size:0.75rem; color:#64748b;">結果と要因の振り返り (定性)</label>
-                <textarea id="reflect-act-comment" class="mm-input" rows="3" style="width:100%; border-radius:8px; border:1px solid var(--border); padding:0.7rem; font-size:0.85rem;" placeholder="計画通りに進んだか、未達要因または成功要因は何だったか">${act.result_comment || ''}</textarea>
+                <textarea id="reflect-act-comment" class="mm-input" rows="3" style="width:100%; border-radius:8px; border:1px solid var(--border); font-size:0.85rem;" placeholder="計画通りに進んだか、未達要因または成功要因は何だったか">${act.result_comment || ''}</textarea>
             </div>
 
             <div class="input-group" style="margin-bottom:1.5rem;">
@@ -948,7 +1036,7 @@ async function loadArchiveList() {
             const completedCount = d.actions ? d.actions.filter(a => a.status === 'completed').length : 0;
 
             html += `
-                <div class="glass-panel" style="padding: 1.2rem 1.8rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s; border-radius: 12px;"
+                <div class="glass-panel" style="padding: 1.2rem 1.8rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s; border-radius: 6px;"
                      onclick="window.openMeeting('${docSnap.id}')"
                      onmouseover="this.style.borderColor='var(--primary)'; this.style.boxShadow='var(--shadow-sm)';"
                      onmouseout="this.style.borderColor='var(--border)'; this.style.boxShadow='none';">
