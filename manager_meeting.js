@@ -284,7 +284,7 @@ async function renderFormView(container) {
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
                     <div>
                         <h1 style="margin: 0; font-size: 1.6rem; font-weight: 900; letter-spacing: -0.5px; color: #ffffff;">
-                            ${editingMeetingData.store_name} 店舗PDCAボード
+                            ${editingMeetingData.store_name}
                         </h1>
                         <p style="margin: 0.4rem 0 0; color: #94a3b8; font-weight: 600; font-size: 1rem;">
                             対象月度: <span id="display-target-month">${editingMeetingData.target_month}</span>
@@ -300,7 +300,7 @@ async function renderFormView(container) {
 
             <!-- KPI PDCAボード (グリッド) -->
             <h2 style="font-size: 1.2rem; font-weight: 900; color: var(--text-primary); margin-bottom: 1rem; display:flex; align-items:center; gap:0.5rem;" class="no-print">
-                <i class="fas fa-chart-line" style="color:var(--primary);"></i> KPI別PDCAコントロールボード
+                <i class="fas fa-chart-line" style="color:var(--primary);"></i> KPI改善ダッシュボード
             </h2>
             <div id="mm-kpi-boards-container" style="display: flex; flex-direction: column; gap: 2rem;">
                 <p style="text-align:center; padding:3rem; color:var(--text-secondary);"><i class="fas fa-spinner fa-spin"></i> 実績値およびKPIボードの自動構築中...</p>
@@ -619,7 +619,7 @@ async function buildKpiPdcaBoards() {
             <div class="mm-actions-area">
                 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed var(--border); padding-bottom:0.8rem; margin-bottom:1rem;">
                     <h4 style="margin:0; font-size:0.9rem; font-weight:800; color:var(--text-secondary); display:flex; align-items:center; gap:0.4rem;">
-                        <i class="fas fa-tasks"></i> 実行施策 (PDCA)
+                        <i class="fas fa-tasks"></i> 改善のための具体的な施策
                     </h4>
                     <button class="btn btn-secondary no-print" onclick="window.addNewActionClick('${key}')" style="font-size:0.75rem; padding:0.4rem 1rem; border-radius:20px; font-weight:700;">
                         <i class="fas fa-plus"></i> 施策を追加
