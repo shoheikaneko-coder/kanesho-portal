@@ -545,14 +545,19 @@ async function buildKpiPdcaBoards() {
             opDaysTarget: targetOpDays
         },
         customers: {
-            name: '平均来客数 (月間合計)',
+            name: '平均来客数 (日次平均)',
             unit: '人',
             isCurrency: false,
-            target: targetCustomers,
-            actual: performanceMap[targetYm].cust,
-            prev: performanceMap[prevYm].cust,
-            prev2: performanceMap[prev2Ym].cust,
-            prevYear: performanceMap[prevYearYm].cust
+            target: targetCustomers / targetOpDays, // 1日平均目標
+            actual: performanceMap[targetYm].cust / opDaysActual, // 1日平均実績
+            prev: performanceMap[prevYm].cust / opDaysPrev,
+            prev2: performanceMap[prev2Ym].cust / opDaysPrev2,
+            prevYear: performanceMap[prevYearYm].cust / opDaysPrevYear,
+            // 補正参照用の合計値
+            totalTarget: targetCustomers,
+            totalActual: performanceMap[targetYm].cust,
+            opDays: opDaysActual,
+            opDaysTarget: targetOpDays
         },
         spend: {
             name: '客単価 (税抜)',
@@ -598,29 +603,66 @@ async function buildKpiPdcaBoards() {
         const pctText = tgt > 0 ? `${Math.round(pct)}%` : '-';
         const pctClass = pct >= 100 ? 'text-success' : 'text-danger';
         
-        // 前月比差分
-        const diffPrev = val - kpi.prev;
-        const diffPrevText = diffPrev >= 0 ? `+${formatKpiVal(diffPrev, kpi)}` : `-${formatKpiVal(Math.abs(diffPrev), kpi)}`;
-        const diffPrevClass = diffPrev >= 0 ? 'mm-up' : 'mm-down';
+        // 前月・前々月の実名（〇月）の算出
+        const getMonthName = (monthOffset) => {
+            let m = currentMonth - monthOffset;
+            while (m <= 0) m += 12;
+            return `${m}月`;
+        };
+        const prevMonthName = getMonthName(1);
+        const prev2MonthName = getMonthName(2);
 
-        // 前年比差分
-        const diffYear = val - kpi.prevYear;
-        const diffYearText = diffYear >= 0 ? `+${formatKpiVal(diffYear, kpi)}` : `-${formatKpiVal(Math.abs(diffYear), kpi)}`;
-        const diffYearClass = diffYear >= 0 ? 'mm-up' : 'mm-down';
+        // 各KPIカードごとのラベルマッピング
+        const labelNames = {
+            sales: { actual: '当月日次売上平均', target: '目標平均売上' },
+            customers: { actual: '当月日次客数平均', target: '目標平均来客数' },
+            spend: { actual: '当月客単価実績', target: '目標客単価' },
+            productivity: { actual: '当月日次人時売上平均', target: '目標営業人時売上' }
+        };
+        const labels = labelNames[key] || { actual: '当月実績', target: '定量目標' };
 
-        // 3ヶ月平均
+        // 単位サフィックス (/日 など) の判定
+        const dailySuffix = (key === 'sales' || key === 'customers' || key === 'productivity') ? ' /日' : '';
+
+        // 前月比差分（前月 ➔ 当月への成長度）
+        const diffVal = val - kpi.prev;
+        const diffPct = kpi.prev > 0 ? (diffVal / kpi.prev) * 100 : 0;
+        const diffValText = diffVal >= 0 ? `+${formatKpiVal(diffVal, kpi)}` : `-${formatKpiVal(Math.abs(diffVal), kpi)}`;
+        const diffPctText = diffPct >= 0 ? `+${Math.round(diffPct * 10) / 10}%` : `${Math.round(diffPct * 10) / 10}%`;
+        const diffClass = diffVal >= 0 ? 'text-success' : 'text-danger';
+        const diffArrow = diffVal >= 0 ? '▲' : '▼';
+
+        // 前々月比差分（前々月 ➔ 前月への成長度）
+        const diffValPrev2 = kpi.prev - kpi.prev2;
+        const diffPctPrev2 = kpi.prev2 > 0 ? (diffValPrev2 / kpi.prev2) * 100 : 0;
+        const diffValTextPrev2 = diffValPrev2 >= 0 ? `+${formatKpiVal(diffValPrev2, kpi)}` : `-${formatKpiVal(Math.abs(diffValPrev2), kpi)}`;
+        const diffPctTextPrev2 = diffPctPrev2 >= 0 ? `+${Math.round(diffPctPrev2 * 10) / 10}%` : `${Math.round(diffPctPrev2 * 10) / 10}%`;
+        const diffClassPrev2 = diffValPrev2 >= 0 ? 'text-success' : 'text-danger';
+        const diffArrowPrev2 = diffValPrev2 >= 0 ? '▲' : '▼';
+
+        // 3ヶ月平均値
         const avg3 = (val + kpi.prev + kpi.prev2) / 3;
+
+        // 目標ギャップ値の算出
+        const gapVal = tgt - val;
+        const gapClass = gapVal <= 0 ? 'text-success' : 'text-danger';
+        const gapText = gapVal <= 0 ? '目標達成済! 🎉' : `残りギャップ: -${formatKpiVal(gapVal, kpi)}${dailySuffix}`;
+
+        // 前年同月比差分（前年 ➔ 当月）
+        const diffYearVal = val - kpi.prevYear;
+        const diffYearValText = diffYearVal >= 0 ? `+${formatKpiVal(diffYearVal, kpi)}` : `-${formatKpiVal(Math.abs(diffYearVal), kpi)}`;
+        const diffYearClass = diffYearVal >= 0 ? 'mm-up' : 'mm-down';
 
         // KPI別アクションリスト
         const kpiActions = (editingMeetingData.actions || []).filter(a => a.kpi_type === key);
 
-        // 売上の場合はヘッダーに「月間合計（月次）」を表示し、他のKPIはそのまま実績・目標を表示する
-        const headerTgt = key === 'sales' ? kpi.totalTarget : tgt;
-        const headerVal = key === 'sales' ? kpi.totalActual : val;
+        // 売上と来客数の場合はヘッダーに「月間合計（月次）」を表示し、他のKPIはそのまま実績・目標を表示する
+        const headerTgt = (key === 'sales' || key === 'customers') ? kpi.totalTarget : tgt;
+        const headerVal = (key === 'sales' || key === 'customers') ? kpi.totalActual : val;
 
         let tgtSuffix = '';
         let actSuffix = '';
-        if (key === 'sales') {
+        if (key === 'sales' || key === 'customers') {
             tgtSuffix = ` <span style="font-size:0.75rem; font-weight:600; color:var(--text-secondary); margin-left:0.2rem;">(予定: ${kpi.opDaysTarget}日)</span>`;
             actSuffix = ` <span style="font-size:0.75rem; font-weight:600; color:var(--text-secondary); margin-left:0.2rem;">(実働: ${kpi.opDays}日)</span>`;
         }
@@ -645,34 +687,55 @@ async function buildKpiPdcaBoards() {
                 </div>
             </div>
 
-            <div class="mm-kpi-metrics-grid">
-                <div class="metric-box">
-                    <span class="metric-label">当月実績</span>
-                    <strong class="metric-val primary">${formatKpiVal(val, kpi)}${key === 'sales' ? ' /日' : ''}</strong>
+            <div class="mm-kpi-metrics-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+                <!-- 1マス目：当月実績 (実名時系列リスト付き) -->
+                <div class="metric-box" style="display:flex; flex-direction:column; justify-content:space-between; background:rgba(0,0,0,0.02); padding:1rem; border-radius:6px; border:1px solid var(--border); min-height:100px; box-sizing:border-box;">
+                    <div>
+                        <span class="metric-label" style="display:block; font-size:0.75rem; color:var(--text-secondary); font-weight:800; margin-bottom:0.3rem;">${labels.actual}</span>
+                        <strong class="metric-val primary" style="font-size:1.35rem; font-weight:900; color:var(--primary); line-height:1.2;">${formatKpiVal(val, kpi)}${dailySuffix}</strong>
+                    </div>
+                    <div style="margin-top:0.6rem; border-top:1px dashed var(--border); padding-top:0.4rem; display:flex; flex-direction:column; gap:0.25rem; width:100%;">
+                        <span style="font-size:0.7rem; color:var(--text-secondary); font-weight:600; display:flex; justify-content:space-between; align-items:center; width:100%;">
+                            <span>・ ${prevMonthName}実績: ${formatKpiVal(kpi.prev, kpi)}${dailySuffix}</span>
+                            <span class="${diffClass}" style="font-size:0.68rem; font-weight:800; margin-left:0.3rem;">(${diffArrow}${diffPctText} | ${diffValText})</span>
+                        </span>
+                        <span style="font-size:0.7rem; color:var(--text-secondary); font-weight:600; display:flex; justify-content:space-between; align-items:center; width:100%;">
+                            <span>・ ${prev2MonthName}実績: ${formatKpiVal(kpi.prev2, kpi)}${dailySuffix}</span>
+                            <span class="${diffClassPrev2}" style="font-size:0.68rem; font-weight:800; margin-left:0.3rem;">(${diffArrowPrev2}${diffPctTextPrev2} | ${diffValTextPrev2})</span>
+                        </span>
+                    </div>
                 </div>
-                <div class="metric-box">
-                    <span class="metric-label">定量目標</span>
-                    <strong class="metric-val">${formatKpiVal(tgt, kpi)}${key === 'sales' ? ' /日' : ''}</strong>
+
+                <!-- 2マス目：目標値 (残ギャップ自動提示) -->
+                <div class="metric-box" style="display:flex; flex-direction:column; justify-content:space-between; background:rgba(0,0,0,0.02); padding:1rem; border-radius:6px; border:1px solid var(--border); min-height:100px; box-sizing:border-box;">
+                    <div>
+                        <span class="metric-label" style="display:block; font-size:0.75rem; color:var(--text-secondary); font-weight:800; margin-bottom:0.3rem;">${labels.target}</span>
+                        <strong class="metric-val" style="font-size:1.35rem; font-weight:900; color:var(--text-primary); line-height:1.2;">${formatKpiVal(tgt, kpi)}${dailySuffix}</strong>
+                    </div>
+                    <div style="margin-top:0.6rem; border-top:1px dashed var(--border); padding-top:0.4rem; width:100%;">
+                        <span class="${gapClass}" style="font-size:0.7rem; font-weight:800; display:block; text-align:center;">
+                            ${gapText}
+                        </span>
+                    </div>
                 </div>
-                <div class="metric-box">
-                    <span class="metric-label">前月実績比</span>
-                    <strong class="metric-val ${diffPrevClass}">${diffPrevText}${key === 'sales' ? ' /日' : ''}</strong>
-                    <span style="font-size:0.65rem; color:var(--text-secondary);">前月: ${formatKpiVal(kpi.prev, kpi)}${key === 'sales' ? ' /日' : ''}</span>
+
+                <!-- 3マス目：前年実績比 ＆ 直近3ヶ月平均 -->
+                <div class="metric-box" style="display:flex; flex-direction:column; justify-content:space-between; background:rgba(0,0,0,0.02); padding:1rem; border-radius:6px; border:1px solid var(--border); min-height:100px; box-sizing:border-box;">
+                    <div>
+                        <span class="metric-label" style="display:block; font-size:0.75rem; color:var(--text-secondary); font-weight:800; margin-bottom:0.3rem;">前年同月比 (実力対比)</span>
+                        <strong class="metric-val ${diffYearVal >= 0 ? 'mm-up' : 'mm-down'}" style="font-size:1.25rem; font-weight:900; line-height:1.2;">${diffYearValText}${dailySuffix}</strong>
+                        <span style="display:block; font-size:0.65rem; color:var(--text-secondary); font-weight:600; margin-top:0.1rem;">(前年: ${formatKpiVal(kpi.prevYear, kpi)}${dailySuffix})</span>
+                    </div>
+                    <div style="margin-top:0.4rem; border-top:1px dashed var(--border); padding-top:0.4rem; width:100%;">
+                        <span style="font-size:0.7rem; color:var(--text-secondary); font-weight:700; display:block; text-align:left;">
+                            ・ 3ヶ月平均: ${formatKpiVal(avg3, kpi)}${dailySuffix}
+                        </span>
+                    </div>
                 </div>
-                <div class="metric-box">
-                    <span class="metric-label">前年同月比</span>
-                    <strong class="metric-val ${diffYearClass}">${diffYearText}${key === 'sales' ? ' /日' : ''}</strong>
-                    <span style="font-size:0.65rem; color:var(--text-secondary);">前年: ${formatKpiVal(kpi.prevYear, kpi)}${key === 'sales' ? ' /日' : ''}</span>
-                </div>
-                <div class="metric-box">
-                    <span class="metric-label">直近3ヶ月平均</span>
-                    <strong class="metric-val" style="color:var(--text-primary);">${formatKpiVal(avg3, kpi)}${key === 'sales' ? ' /日' : ''}</strong>
-                    <span style="font-size:0.65rem; color:var(--text-secondary);">前々月: ${formatKpiVal(kpi.prev2, kpi)}${key === 'sales' ? ' /日' : ''}</span>
-                </div>
-                
-                <!-- トレンドグラフを描画するCanvas -->
-                <div class="metric-box" style="justify-content: center; min-width: 140px;">
-                    <span class="metric-label" style="margin-bottom:0.2rem;">3ヶ月推移トレンド</span>
+
+                <!-- 4マス目：3ヶ月推移トレンド (Canvas) -->
+                <div class="metric-box" style="display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.02); padding:1rem; border-radius:6px; border:1px solid var(--border); min-height:100px; box-sizing:border-box;">
+                    <span class="metric-label" style="display:block; font-size:0.75rem; color:var(--text-secondary); font-weight:800; margin-bottom:0.4rem;">3ヶ月推移トレンド</span>
                     <canvas id="canvas-trend-${key}" width="140" height="42" style="max-height:42px;"></canvas>
                 </div>
             </div>
