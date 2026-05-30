@@ -736,9 +736,9 @@ async function buildKpiPdcaBoards() {
                 </div>
             </div>
 
-            <div class="mm-kpi-metrics-grid" style="display:flex; gap:1.2rem; margin-bottom:1.5rem; flex-wrap:wrap;">
+            <div class="mm-kpi-metrics-grid" style="display:flex; gap:1.2rem; margin-bottom:1.5rem; flex-wrap:wrap; align-items:stretch;">
                 <!-- 左列 (幅: 48% / 最小幅 320px)：当月実績 (実名時系列リスト付き - 改行なしの横広レイアウト) -->
-                <div class="metric-box" style="flex: 2; min-width: 320px; display:flex; flex-direction:column; justify-content:space-between; background:rgba(0,0,0,0.02); padding:1rem; border-radius:6px; border:1px solid var(--border); min-height:120px; box-sizing:border-box;">
+                <div class="metric-box" style="flex: 1; min-width: 320px; display:flex; flex-direction:column; justify-content:space-between; background:rgba(0,0,0,0.02); padding:1.2rem; border-radius:6px; border:1px solid var(--border); box-sizing:border-box;">
                     <div>
                         <span class="metric-label" style="display:block; font-size:0.75rem; color:var(--text-secondary); font-weight:800; margin-bottom:0.3rem;">${labels.actual}</span>
                         <strong class="metric-val primary" style="font-size:1.45rem; font-weight:900; color:var(--primary); line-height:1.2;">${formatKpiVal(val, kpi)}${dailySuffix}</strong>
@@ -755,32 +755,35 @@ async function buildKpiPdcaBoards() {
                     </div>
                 </div>
 
-                <!-- 中央列 (幅: 23% / 最小幅 180px)：目標値と前年比＆平均の「縦積みカード」 -->
-                <div style="flex: 1; min-width: 180px; display:flex; flex-direction:column; gap:0.6rem;">
-                    <!-- 上段：目標値 -->
-                    <div class="metric-box" style="flex: 1; display:flex; flex-direction:column; justify-content:center; background:rgba(0,0,0,0.02); padding:0.8rem 1rem; border-radius:6px; border:1px solid var(--border); box-sizing:border-box;">
-                        <span class="metric-label" style="display:block; font-size:0.7rem; color:var(--text-secondary); font-weight:800; margin-bottom:0.15rem;">${labels.target}</span>
-                        <strong style="font-size:1.15rem; font-weight:900; color:var(--text-primary);">${formatKpiVal(tgt, kpi)}${dailySuffix}</strong>
-                        <span class="${gapClass}" style="font-size:0.68rem; font-weight:800; display:block; margin-top:0.2rem;">
-                            ${gapText}
-                        </span>
+                <!-- 右列 (幅: 52% / 最小幅 340px)：目標値・前年比の横並び ＆ 12ヶ月定点トレンドの「縦積みカード」 -->
+                <div style="flex: 1.1; min-width: 340px; display:flex; flex-direction:column; gap:0.8rem; justify-content:space-between; box-sizing:border-box;">
+                    <!-- 上段：目標値と前年比の横並び -->
+                    <div style="display:flex; gap:0.8rem; width:100%;">
+                        <!-- 目標値 -->
+                        <div class="metric-box" style="flex: 1; min-width: 150px; display:flex; flex-direction:column; justify-content:center; background:rgba(0,0,0,0.02); padding:0.8rem 1rem; border-radius:6px; border:1px solid var(--border); box-sizing:border-box;">
+                            <span class="metric-label" style="display:block; font-size:0.7rem; color:var(--text-secondary); font-weight:800; margin-bottom:0.15rem;">${labels.target}</span>
+                            <strong style="font-size:1.15rem; font-weight:900; color:var(--text-primary);">${formatKpiVal(tgt, kpi)}${dailySuffix}</strong>
+                            <span class="${gapClass}" style="font-size:0.68rem; font-weight:800; display:block; margin-top:0.2rem;">
+                                ${gapText}
+                            </span>
+                        </div>
+                        <!-- 前年比 ＆ 3ヶ月平均 -->
+                        <div class="metric-box" style="flex: 1; min-width: 150px; display:flex; flex-direction:column; justify-content:center; background:rgba(0,0,0,0.02); padding:0.8rem 1rem; border-radius:6px; border:1px solid var(--border); box-sizing:border-box;">
+                            <span class="metric-label" style="display:block; font-size:0.7rem; color:var(--text-secondary); font-weight:800; margin-bottom:0.15rem;">前年同月比 (実力対比)</span>
+                            <strong class="${diffYearVal >= 0 ? 'mm-up' : 'mm-down'}" style="font-size:1.1rem; font-weight:900;">${diffYearValText}${dailySuffix}</strong>
+                            <span style="font-size:0.65rem; color:var(--text-secondary); font-weight:600; display:block;">(前年: ${formatKpiVal(kpi.prevYear, kpi)}${dailySuffix})</span>
+                            <span style="font-size:0.68rem; color:var(--text-secondary); font-weight:700; display:block; border-top:1px dashed var(--border); margin-top:0.25rem; padding-top:0.15rem;">
+                                3ヶ月平均: ${formatKpiVal(avg3, kpi)}${dailySuffix}
+                            </span>
+                        </div>
                     </div>
-                    <!-- 下段：前年比 ＆ 3ヶ月平均 -->
-                    <div class="metric-box" style="flex: 1; display:flex; flex-direction:column; justify-content:center; background:rgba(0,0,0,0.02); padding:0.8rem 1rem; border-radius:6px; border:1px solid var(--border); box-sizing:border-box;">
-                        <span class="metric-label" style="display:block; font-size:0.7rem; color:var(--text-secondary); font-weight:800; margin-bottom:0.15rem;">前年同月比 (実力対比)</span>
-                        <strong class="${diffYearVal >= 0 ? 'mm-up' : 'mm-down'}" style="font-size:1.1rem; font-weight:900;">${diffYearValText}${dailySuffix}</strong>
-                        <span style="font-size:0.65rem; color:var(--text-secondary); font-weight:600; display:block;">(前年: ${formatKpiVal(kpi.prevYear, kpi)}${dailySuffix})</span>
-                        <span style="font-size:0.68rem; color:var(--text-secondary); font-weight:700; display:block; border-top:1px dashed var(--border); margin-top:0.25rem; padding-top:0.15rem;">
-                            3ヶ月平均: ${formatKpiVal(avg3, kpi)}${dailySuffix}
-                        </span>
-                    </div>
-                </div>
 
-                <!-- 右列 (幅: 27% / 最小幅 220px)：直近12ヶ月（1年間）推移トレンド (Canvas) -->
-                <div class="metric-box" style="flex: 1.1; min-width: 220px; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.02); padding:1rem; border-radius:6px; border:1px solid var(--border); min-height:120px; box-sizing:border-box;">
-                    <span class="metric-label" style="display:block; font-size:0.75rem; color:var(--text-secondary); font-weight:800; margin-bottom:0.6rem;">12ヶ月定点トレンド (実力推移)</span>
-                    <div style="width:100%; display:flex; justify-content:center; align-items:center;">
-                        <canvas id="canvas-trend-${key}" width="220" height="60" style="max-height:60px; width:100%;"></canvas>
+                    <!-- 下段：直近12ヶ月（1年間）推移トレンド (Canvas) -->
+                    <div class="metric-box" style="width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.02); padding:0.8rem 1.2rem; border-radius:6px; border:1px solid var(--border); min-height:80px; box-sizing:border-box;">
+                        <span class="metric-label" style="display:block; font-size:0.75rem; color:var(--text-secondary); font-weight:800; margin-bottom:0.4rem; align-self:flex-start;">12ヶ月定点トレンド (実力推移)</span>
+                        <div style="width:100%; display:flex; justify-content:center; align-items:center;">
+                            <canvas id="canvas-trend-${key}" width="340" height="50" style="max-height:50px; width:100%;"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -844,8 +847,8 @@ function drawTrendGraph(canvasId, dataPoints, monthLabels, targetVal) {
 
         const paddingLeft = 14;
         const paddingRight = 14;
-        const paddingTop = 8;
-        const paddingBottom = 16; // ラベル用の余白
+        const paddingTop = 6;
+        const paddingBottom = 14; // ラベル用の余白
 
         // すべてが0の場合は直線を描く
         const maxVal = Math.max(...dataPoints, targetVal) || 1;
@@ -903,7 +906,7 @@ function drawTrendGraph(canvasId, dataPoints, monthLabels, targetVal) {
             // 被りを防ぐため、偶数月（2, 4, 6, 8, 10, 12）のみ、またはインデックスが偶数のもののみ描くのが極上です
             // ここでは等間隔にすっきり見せるため、1つ飛ばし（インデックスが奇数、つまり2番目、4番目...）で描画します
             if (i % 2 === 1) {
-                ctx.fillText(monthLabels[i], getX(i), h - 12);
+                ctx.fillText(monthLabels[i], getX(i), h - 10);
             }
         }
     }, 100);
