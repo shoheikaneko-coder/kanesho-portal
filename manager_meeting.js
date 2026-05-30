@@ -691,10 +691,10 @@ async function buildKpiPdcaBoards() {
 
         // 各KPIカードごとのラベルマッピング
         const labelNames = {
-            sales: { actual: '当月日次売上平均', target: '目標平均売上' },
-            customers: { actual: '当月日次客数平均', target: '目標平均来客数' },
-            spend: { actual: '当月客単価実績', target: '目標客単価' },
-            productivity: { actual: '当月日次人時売上平均', target: '目標営業人時売上' }
+            sales: { actual: `${currentMonth}月度日次売上平均`, target: '目標平均売上' },
+            customers: { actual: `${currentMonth}月度日次客数平均`, target: '目標平均来客数' },
+            spend: { actual: `${currentMonth}月度客単価実績`, target: '目標客単価' },
+            productivity: { actual: `${currentMonth}月度日次人時売上平均`, target: '目標営業人時売上' }
         };
         const labels = labelNames[key] || { actual: '当月実績', target: '定量目標' };
 
@@ -1184,24 +1184,22 @@ async function loadArchiveList() {
         snap.forEach(docSnap => {
             const d = docSnap.data();
             const dateStr = d.updated_at ? new Date(d.updated_at).toLocaleDateString('ja-JP') : '-';
-            const actionCount = d.actions ? d.actions.length : 0;
-            const completedCount = d.actions ? d.actions.filter(a => a.status === 'completed').length : 0;
 
             html += `
-                <div class="glass-panel" style="padding: 1.2rem 1.8rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s; border-radius: 6px;"
+                <div class="glass-panel" style="padding: 0.9rem 1.5rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s; border-radius: 6px;"
                      onclick="window.openMeeting('${docSnap.id}')"
                      onmouseover="this.style.borderColor='var(--primary)'; this.style.boxShadow='var(--shadow-sm)';"
                      onmouseout="this.style.borderColor='var(--border)'; this.style.boxShadow='none';">
-                    <div>
-                        <h4 style="margin:0; font-size:1.15rem; color:var(--text-primary); font-weight:800; display:flex; align-items:center; gap:0.5rem;">
+                    <div style="display:flex; align-items:baseline; gap:1.2rem; flex-wrap:wrap;">
+                        <h4 style="margin:0; font-size:1.1rem; color:var(--text-primary); font-weight:800; display:inline-flex; align-items:center;">
                             ${d.store_name} - ${d.target_month.split('-')[0]}年${parseInt(d.target_month.split('-')[1])}月度
                         </h4>
-                        <p style="margin:0.3rem 0 0; font-size:0.8rem; color:var(--text-secondary); font-weight:500;">
-                            記入者: ${d.author_name} | 最終更新: ${dateStr} | 登録施策数: ${actionCount}件 (振り返り済: ${completedCount}件)
-                        </p>
+                        <span style="font-size:0.8rem; color:var(--text-secondary); font-weight:600; letter-spacing: -0.1px;">
+                            記入者: ${d.author_name} | 最終更新: ${dateStr}
+                        </span>
                     </div>
                     <div>
-                        <span style="background:${d.status === '提出済み' ? 'var(--primary)' : '#e2e8f0'}; color:${d.status === '提出済み' ? 'white' : '#475569'}; padding:0.4rem 1rem; border-radius:20px; font-size:0.78rem; font-weight:800; border:1px solid rgba(0,0,0,0.02);">
+                        <span style="background:${d.status === '提出済み' ? 'var(--primary)' : '#e2e8f0'}; color:${d.status === '提出済み' ? 'white' : '#475569'}; padding:0.35rem 0.9rem; border-radius:20px; font-size:0.75rem; font-weight:800; border:1px solid rgba(0,0,0,0.02);">
                             ${d.status || '下書き'}
                         </span>
                     </div>
