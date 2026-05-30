@@ -772,11 +772,18 @@ async function buildKpiPdcaBoards() {
             <div class="mm-kpi-metrics-grid" style="display:flex; gap:1.2rem; margin-bottom:1.5rem; flex-wrap:wrap; align-items:stretch;">
                 <!-- 左列 (幅: 48% / 最小幅 320px)：当月実績 (実名時系列リスト付き - 改行なしの横広レイアウト) -->
                 <div class="metric-box" style="flex: 1; min-width: 320px; display:flex; flex-direction:column; justify-content:space-between; background:rgba(0,0,0,0.02); padding:1.2rem; border-radius:6px; border:1px solid var(--border); box-sizing:border-box;">
-                    <div>
-                        <span class="metric-label" style="display:block; font-size:0.82rem; color:var(--text-secondary); font-weight:800; margin-bottom:0.3rem;">${labels.actual}</span>
-                        <div style="display:flex; align-items:center; gap:1.0rem; flex-wrap:wrap; margin-top:0.4rem;">
-                            <strong class="metric-val primary" style="font-size:1.75rem; font-weight:950; color:var(--primary); line-height:1.1;">${formatKpiVal(val, kpi)}${dailySuffix}</strong>
-                            ${prevBadgeHtml}
+                    <div style="display:flex; justify-content:space-between; align-items:flex-end; width:100%;">
+                        <!-- 左ブロック: ラベル ＆ 特大実績数値 -->
+                        <div style="display:flex; flex-direction:column; justify-content:flex-end;">
+                            <span class="metric-label" style="display:block; font-size:0.82rem; color:var(--text-secondary); font-weight:800; margin-bottom:0.4rem;">${labels.actual}</span>
+                            <strong class="metric-val primary" style="font-size:1.75rem; font-weight:950; color:var(--primary); line-height:1.1; margin:0;">${formatKpiVal(val, kpi)}${dailySuffix}</strong>
+                        </div>
+                        <!-- 右ブロック: 前月対比ラベル ＆ 特大成長バッジ -->
+                        <div style="display:flex; flex-direction:column; align-items:flex-end; justify-content:flex-end;">
+                            <span class="metric-label" style="display:block; font-size:0.82rem; color:var(--text-secondary); font-weight:800; margin-bottom:0.4rem; letter-spacing:0.5px;">前月対比</span>
+                            <div style="display:flex; align-items:center; height:1.925rem; margin:0;">
+                                ${prevBadgeHtml}
+                            </div>
                         </div>
                     </div>
                     <div style="margin-top:1.2rem; border-top:1px dashed var(--border); padding-top:1.0rem; display:flex; flex-direction:column; gap:0.9rem; width:100%;">
