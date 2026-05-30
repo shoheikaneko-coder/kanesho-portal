@@ -414,6 +414,10 @@ async function buildKpiPdcaBoards() {
     if (prev2M === 0) { prev2M = 12; prev2Y--; }
     const prev2Ym = getMonthString(prev2Y, prev2M);
 
+    let prev3Y = prev2Y, prev3M = prev2M - 1;
+    if (prev3M === 0) { prev3M = 12; prev3Y--; }
+    const prev3Ym = getMonthString(prev3Y, prev3M);
+
     const prevYearY = currentYear - 1;
     const prevYearYm = getMonthString(prevYearY, currentMonth);
 
@@ -488,7 +492,7 @@ async function buildKpiPdcaBoards() {
     });
 
     // 比較用および算出用の過去年月キーが漏れないよう補正初期化
-    const ensureYmKeys = [targetYm, prevYm, prev2Ym, prevYearYm];
+    const ensureYmKeys = [targetYm, prevYm, prev2Ym, prev3Ym, prevYearYm];
     ensureYmKeys.forEach(ym => {
         if (performanceMap[ym] === undefined) {
             performanceMap[ym] = { sales: 0, cust: 0, days: 0 };
@@ -546,6 +550,7 @@ async function buildKpiPdcaBoards() {
     const opDaysActual = performanceMap[targetYm].days || targetOpDays;
     const opDaysPrev = performanceMap[prevYm].days || 25;
     const opDaysPrev2 = performanceMap[prev2Ym].days || 25;
+    const opDaysPrev3 = performanceMap[prev3Ym].days || 25;
     const opDaysPrevYear = performanceMap[prevYearYm].days || 25;
 
     // 各KPIの数値定義 (売上は1日平均をメインとする)
@@ -558,6 +563,7 @@ async function buildKpiPdcaBoards() {
             actual: performanceMap[targetYm].sales / opDaysActual, // 1日平均実績
             prev: performanceMap[prevYm].sales / opDaysPrev,
             prev2: performanceMap[prev2Ym].sales / opDaysPrev2,
+            prev3: performanceMap[prev3Ym].sales / opDaysPrev3,
             prevYear: performanceMap[prevYearYm].sales / opDaysPrevYear,
             // 補正参照用の合計値
             totalTarget: targetSales,
@@ -573,6 +579,7 @@ async function buildKpiPdcaBoards() {
             actual: performanceMap[targetYm].cust / opDaysActual, // 1日平均実績
             prev: performanceMap[prevYm].cust / opDaysPrev,
             prev2: performanceMap[prev2Ym].cust / opDaysPrev2,
+            prev3: performanceMap[prev3Ym].cust / opDaysPrev3,
             prevYear: performanceMap[prevYearYm].cust / opDaysPrevYear,
             // 補正参照用の合計値
             totalTarget: targetCustomers,
@@ -588,6 +595,7 @@ async function buildKpiPdcaBoards() {
             actual: performanceMap[targetYm].cust > 0 ? performanceMap[targetYm].sales / performanceMap[targetYm].cust : 0,
             prev: performanceMap[prevYm].cust > 0 ? performanceMap[prevYm].sales / performanceMap[prevYm].cust : 0,
             prev2: performanceMap[prev2Ym].cust > 0 ? performanceMap[prev2Ym].sales / performanceMap[prev2Ym].cust : 0,
+            prev3: performanceMap[prev3Ym].cust > 0 ? performanceMap[prev3Ym].sales / performanceMap[prev3Ym].cust : 0,
             prevYear: performanceMap[prevYearYm].cust > 0 ? performanceMap[prevYearYm].sales / performanceMap[prevYearYm].cust : 0
         },
         productivity: {
@@ -598,6 +606,7 @@ async function buildKpiPdcaBoards() {
             actual: laborMap[targetYm] > 0 ? performanceMap[targetYm].sales / laborMap[targetYm] : 0,
             prev: laborMap[prevYm] > 0 ? performanceMap[prevYm].sales / laborMap[prevYm] : 0,
             prev2: laborMap[prev2Ym] > 0 ? performanceMap[prev2Ym].sales / laborMap[prev2Ym] : 0,
+            prev3: laborMap[prev3Ym] > 0 ? performanceMap[prev3Ym].sales / laborMap[prev3Ym] : 0,
             prevYear: laborMap[prevYearYm] > 0 ? performanceMap[prevYearYm].sales / laborMap[prevYearYm] : 0
         }
     };
@@ -686,19 +695,26 @@ async function buildKpiPdcaBoards() {
         // 単位サフィックス (/日 など) の判定
         const dailySuffix = (key === 'sales' || key === 'customers' || key === 'productivity') ? ' /日' : '';
 
-        // 前月比差分（前月 ➔ 当月への成長度）
+        // 1. 当月バッジ (当月 - 前月)
         const diffVal = val - kpi.prev;
         const diffPct = kpi.prev > 0 ? (diffVal / kpi.prev) * 100 : 0;
         const diffValText = diffVal >= 0 ? `+${formatKpiVal(diffVal, kpi)}` : `-${formatKpiVal(Math.abs(diffVal), kpi)}`;
         const diffPctText = diffPct >= 0 ? `+${Math.round(diffPct * 10) / 10}%` : `${Math.round(diffPct * 10) / 10}%`;
         const prevBadgeHtml = makeBadge(diffVal, diffPctText, diffValText);
 
-        // 前々月比差分（前々月 ➔ 前月への成長度）
-        const diffValPrev2 = kpi.prev - kpi.prev2;
-        const diffPctPrev2 = kpi.prev2 > 0 ? (diffValPrev2 / kpi.prev2) * 100 : 0;
+        // 2. 前月バッジ (前月 - 前々月)
+        const diffValPrev = kpi.prev - kpi.prev2;
+        const diffPctPrev = kpi.prev2 > 0 ? (diffValPrev / kpi.prev2) * 100 : 0;
+        const diffValTextPrev = diffValPrev >= 0 ? `+${formatKpiVal(diffValPrev, kpi)}` : `-${formatKpiVal(Math.abs(diffValPrev), kpi)}`;
+        const diffPctTextPrev = diffPctPrev >= 0 ? `+${Math.round(diffPctPrev * 10) / 10}%` : `${Math.round(diffPctPrev * 10) / 10}%`;
+        const prev2BadgeHtml = makeBadge(diffValPrev, diffPctTextPrev, diffValTextPrev);
+
+        // 3. 前々月バッジ (前々月 - 前々々月)
+        const diffValPrev2 = kpi.prev2 - kpi.prev3;
+        const diffPctPrev2 = kpi.prev3 > 0 ? (diffValPrev2 / kpi.prev3) * 100 : 0;
         const diffValTextPrev2 = diffValPrev2 >= 0 ? `+${formatKpiVal(diffValPrev2, kpi)}` : `-${formatKpiVal(Math.abs(diffValPrev2), kpi)}`;
         const diffPctTextPrev2 = diffPctPrev2 >= 0 ? `+${Math.round(diffPctPrev2 * 10) / 10}%` : `${Math.round(diffPctPrev2 * 10) / 10}%`;
-        const prev2BadgeHtml = makeBadge(diffValPrev2, diffPctTextPrev2, diffValTextPrev2);
+        const prev3BadgeHtml = makeBadge(diffValPrev2, diffPctTextPrev2, diffValTextPrev2);
 
         // 3ヶ月平均値
         const avg3 = (val + kpi.prev + kpi.prev2) / 3;
@@ -752,16 +768,19 @@ async function buildKpiPdcaBoards() {
                 <div class="metric-box" style="flex: 1; min-width: 320px; display:flex; flex-direction:column; justify-content:space-between; background:rgba(0,0,0,0.02); padding:1.2rem; border-radius:6px; border:1px solid var(--border); box-sizing:border-box;">
                     <div>
                         <span class="metric-label" style="display:block; font-size:0.75rem; color:var(--text-secondary); font-weight:800; margin-bottom:0.3rem;">${labels.actual}</span>
-                        <strong class="metric-val primary" style="font-size:1.45rem; font-weight:900; color:var(--primary); line-height:1.2;">${formatKpiVal(val, kpi)}${dailySuffix}</strong>
+                        <div style="display:flex; align-items:baseline; gap:0.8rem; flex-wrap:wrap;">
+                            <strong class="metric-val primary" style="font-size:1.45rem; font-weight:900; color:var(--primary); line-height:1.2;">${formatKpiVal(val, kpi)}${dailySuffix}</strong>
+                            ${prevBadgeHtml}
+                        </div>
                     </div>
                     <div style="margin-top:1.2rem; border-top:1px dashed var(--border); padding-top:0.8rem; display:flex; flex-direction:column; gap:0.7rem; width:100%;">
                         <span style="font-size:0.82rem; color:var(--text-secondary); font-weight:700; display:flex; justify-content:space-between; align-items:center; width:100%; white-space:nowrap;">
                             <span>・ ${prevMonthName}実績: <strong style="color:var(--text-primary); font-size:0.88rem; font-weight:800; margin-left:0.2rem;">${formatKpiVal(kpi.prev, kpi)}${dailySuffix}</strong></span>
-                            ${prevBadgeHtml}
+                            ${prev2BadgeHtml}
                         </span>
                         <span style="font-size:0.82rem; color:var(--text-secondary); font-weight:700; display:flex; justify-content:space-between; align-items:center; width:100%; white-space:nowrap;">
                             <span>・ ${prev2MonthName}実績: <strong style="color:var(--text-primary); font-size:0.88rem; font-weight:800; margin-left:0.2rem;">${formatKpiVal(kpi.prev2, kpi)}${dailySuffix}</strong></span>
-                            ${prev2BadgeHtml}
+                            ${prev3BadgeHtml}
                         </span>
                     </div>
                 </div>
