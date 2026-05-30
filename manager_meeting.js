@@ -612,14 +612,20 @@ async function buildKpiPdcaBoards() {
     };
 
     // 増減率のカラーバッジ生成ヘルパー関数
-    const makeBadge = (diffVal, diffPctText, diffValText) => {
+    const makeBadge = (diffVal, diffPctText, diffValText, isLarge = false) => {
         const isPlus = diffVal >= 0;
         const bg = isPlus ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)';
         const color = isPlus ? '#10b981' : '#ef4444';
         const arrow = isPlus ? '▲' : '▼';
+        
+        // サイズ調整 (特大：1.05rem、通常：0.86rem)
+        const fontSize = isLarge ? '1.05rem' : '0.86rem';
+        const padding = isLarge ? '0.35rem 0.85rem' : '0.25rem 0.65rem';
+        const arrowSize = isLarge ? '0.75rem' : '0.62rem';
+        
         return `
-            <span style="font-size:0.76rem; font-weight:850; color:${color}; background:${bg}; padding:0.25rem 0.65rem; border-radius:20px; display:inline-flex; align-items:center; gap:0.15rem; margin-left:0.8rem; letter-spacing:0.2px; border:1px solid rgba(0,0,0,0.01); white-space:nowrap;">
-                <span style="font-size:0.58rem; margin-bottom:1px;">${arrow}</span>${diffPctText} | ${diffValText}
+            <span style="font-size:${fontSize}; font-weight:850; color:${color}; background:${bg}; padding:${padding}; border-radius:30px; display:inline-flex; align-items:center; gap:0.2rem; margin-left:0.8rem; letter-spacing:0.2px; border:1px solid rgba(0,0,0,0.01); white-space:nowrap; vertical-align:middle;">
+                <span style="font-size:${arrowSize}; margin-bottom:1px;">${arrow}</span>${diffPctText} | ${diffValText}
             </span>
         `;
     };
@@ -700,21 +706,21 @@ async function buildKpiPdcaBoards() {
         const diffPct = kpi.prev > 0 ? (diffVal / kpi.prev) * 100 : 0;
         const diffValText = diffVal >= 0 ? `+${formatKpiVal(diffVal, kpi)}` : `-${formatKpiVal(Math.abs(diffVal), kpi)}`;
         const diffPctText = diffPct >= 0 ? `+${Math.round(diffPct * 10) / 10}%` : `${Math.round(diffPct * 10) / 10}%`;
-        const prevBadgeHtml = makeBadge(diffVal, diffPctText, diffValText);
+        const prevBadgeHtml = makeBadge(diffVal, diffPctText, diffValText, true);
 
         // 2. 前月バッジ (前月 - 前々月)
         const diffValPrev = kpi.prev - kpi.prev2;
         const diffPctPrev = kpi.prev2 > 0 ? (diffValPrev / kpi.prev2) * 100 : 0;
         const diffValTextPrev = diffValPrev >= 0 ? `+${formatKpiVal(diffValPrev, kpi)}` : `-${formatKpiVal(Math.abs(diffValPrev), kpi)}`;
         const diffPctTextPrev = diffPctPrev >= 0 ? `+${Math.round(diffPctPrev * 10) / 10}%` : `${Math.round(diffPctPrev * 10) / 10}%`;
-        const prev2BadgeHtml = makeBadge(diffValPrev, diffPctTextPrev, diffValTextPrev);
+        const prev2BadgeHtml = makeBadge(diffValPrev, diffPctTextPrev, diffValTextPrev, false);
 
         // 3. 前々月バッジ (前々月 - 前々々月)
         const diffValPrev2 = kpi.prev2 - kpi.prev3;
         const diffPctPrev2 = kpi.prev3 > 0 ? (diffValPrev2 / kpi.prev3) * 100 : 0;
         const diffValTextPrev2 = diffValPrev2 >= 0 ? `+${formatKpiVal(diffValPrev2, kpi)}` : `-${formatKpiVal(Math.abs(diffValPrev2), kpi)}`;
         const diffPctTextPrev2 = diffPctPrev2 >= 0 ? `+${Math.round(diffPctPrev2 * 10) / 10}%` : `${Math.round(diffPctPrev2 * 10) / 10}%`;
-        const prev3BadgeHtml = makeBadge(diffValPrev2, diffPctTextPrev2, diffValTextPrev2);
+        const prev3BadgeHtml = makeBadge(diffValPrev2, diffPctTextPrev2, diffValTextPrev2, false);
 
         // 3ヶ月平均値
         const avg3 = (val + kpi.prev + kpi.prev2) / 3;
@@ -767,19 +773,19 @@ async function buildKpiPdcaBoards() {
                 <!-- 左列 (幅: 48% / 最小幅 320px)：当月実績 (実名時系列リスト付き - 改行なしの横広レイアウト) -->
                 <div class="metric-box" style="flex: 1; min-width: 320px; display:flex; flex-direction:column; justify-content:space-between; background:rgba(0,0,0,0.02); padding:1.2rem; border-radius:6px; border:1px solid var(--border); box-sizing:border-box;">
                     <div>
-                        <span class="metric-label" style="display:block; font-size:0.75rem; color:var(--text-secondary); font-weight:800; margin-bottom:0.3rem;">${labels.actual}</span>
-                        <div style="display:flex; align-items:baseline; gap:0.8rem; flex-wrap:wrap;">
-                            <strong class="metric-val primary" style="font-size:1.45rem; font-weight:900; color:var(--primary); line-height:1.2;">${formatKpiVal(val, kpi)}${dailySuffix}</strong>
+                        <span class="metric-label" style="display:block; font-size:0.82rem; color:var(--text-secondary); font-weight:800; margin-bottom:0.3rem;">${labels.actual}</span>
+                        <div style="display:flex; align-items:center; gap:1.0rem; flex-wrap:wrap; margin-top:0.4rem;">
+                            <strong class="metric-val primary" style="font-size:1.75rem; font-weight:950; color:var(--primary); line-height:1.1;">${formatKpiVal(val, kpi)}${dailySuffix}</strong>
                             ${prevBadgeHtml}
                         </div>
                     </div>
-                    <div style="margin-top:1.2rem; border-top:1px dashed var(--border); padding-top:0.8rem; display:flex; flex-direction:column; gap:0.7rem; width:100%;">
-                        <span style="font-size:0.82rem; color:var(--text-secondary); font-weight:700; display:flex; justify-content:space-between; align-items:center; width:100%; white-space:nowrap;">
-                            <span>・ ${prevMonthName}実績: <strong style="color:var(--text-primary); font-size:0.88rem; font-weight:800; margin-left:0.2rem;">${formatKpiVal(kpi.prev, kpi)}${dailySuffix}</strong></span>
+                    <div style="margin-top:1.2rem; border-top:1px dashed var(--border); padding-top:1.0rem; display:flex; flex-direction:column; gap:0.9rem; width:100%;">
+                        <span style="font-size:1.05rem; color:var(--text-secondary); font-weight:700; display:flex; justify-content:space-between; align-items:center; width:100%; white-space:nowrap;">
+                            <span>・ ${prevMonthName}実績: <strong style="color:var(--text-primary); font-size:1.15rem; font-weight:900; margin-left:0.2rem;">${formatKpiVal(kpi.prev, kpi)}${dailySuffix}</strong></span>
                             ${prev2BadgeHtml}
                         </span>
-                        <span style="font-size:0.82rem; color:var(--text-secondary); font-weight:700; display:flex; justify-content:space-between; align-items:center; width:100%; white-space:nowrap;">
-                            <span>・ ${prev2MonthName}実績: <strong style="color:var(--text-primary); font-size:0.88rem; font-weight:800; margin-left:0.2rem;">${formatKpiVal(kpi.prev2, kpi)}${dailySuffix}</strong></span>
+                        <span style="font-size:1.05rem; color:var(--text-secondary); font-weight:700; display:flex; justify-content:space-between; align-items:center; width:100%; white-space:nowrap;">
+                            <span>・ ${prev2MonthName}実績: <strong style="color:var(--text-primary); font-size:1.15rem; font-weight:900; margin-left:0.2rem;">${formatKpiVal(kpi.prev2, kpi)}${dailySuffix}</strong></span>
                             ${prev3BadgeHtml}
                         </span>
                     </div>
