@@ -280,21 +280,21 @@ async function renderFormView(container) {
         </div>
 
         <div id="mm-printable-area">
-            <!-- 上部タイトルカード (角丸を6px化、h1文字色を明示的白#ffffff化) -->
-            <div class="glass-panel" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; padding: 2rem; border-radius: 6px; margin-bottom: 2rem; border: none; box-shadow: var(--shadow-md);">
+            <!-- 上部タイトルカード (極薄ホワイトガラスモーフィズム、店名と年月を横並びに統合) -->
+            <div class="glass-panel" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); color: #1e293b; padding: 1.2rem 1.8rem; border-radius: 6px; margin-bottom: 2rem; border: 1px solid var(--border); box-shadow: var(--shadow-sm);">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
-                    <div>
-                        <h1 style="margin: 0; font-size: 1.6rem; font-weight: 900; letter-spacing: -0.5px; color: #ffffff;">
+                    <div style="display:flex; align-items:baseline; flex-wrap:wrap; gap:0.8rem;">
+                        <h1 style="margin: 0; font-size: 1.5rem; font-weight: 900; letter-spacing: -0.5px; color: #1e293b; display:inline-flex; align-items:center;">
                             ${editingMeetingData.store_name}
                         </h1>
-                        <p style="margin: 0.4rem 0 0; color: #94a3b8; font-weight: 600; font-size: 1rem;">
-                            対象月度: <span id="display-target-month">${editingMeetingData.target_month}</span>
-                        </p>
+                        <span style="font-size: 1.25rem; font-weight: 800; color: var(--text-secondary); letter-spacing: -0.2px;">
+                            [ ${editingMeetingData.target_month.split('-')[0]}年${parseInt(editingMeetingData.target_month.split('-')[1])}月度 ]
+                        </span>
                     </div>
-                    <div style="display: flex; gap: 1.5rem; background: rgba(255,255,255,0.05); padding: 0.8rem 1.5rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); font-size:0.85rem;">
-                        <div><span style="color:#64748b; display:block; font-size:0.75rem; font-weight:700;">記入者</span><strong style="color:#f8fafc;" id="display-author">${editingMeetingData.author_name}</strong></div>
-                        <div style="border-left: 1px solid rgba(255,255,255,0.1); padding-left: 1.5rem;"><span style="color:#64748b; display:block; font-size:0.75rem; font-weight:700;">状態</span><strong style="color:var(--primary);" id="display-status">${editingMeetingData.status || '下書き'}</strong></div>
-                        <div style="border-left: 1px solid rgba(255,255,255,0.1); padding-left: 1.5rem;"><span style="color:#64748b; display:block; font-size:0.75rem; font-weight:700;">最終更新</span><strong style="color:#f8fafc;" id="display-date">-</strong></div>
+                    <div style="display: flex; gap: 1.5rem; background: rgba(0,0,0,0.02); padding: 0.6rem 1.2rem; border-radius: 12px; border: 1px solid var(--border); font-size:0.85rem;">
+                        <div><span style="color:#64748b; display:block; font-size:0.75rem; font-weight:700;">記入者</span><strong style="color:#1e293b;" id="display-author">${editingMeetingData.author_name}</strong></div>
+                        <div style="border-left: 1px solid var(--border); padding-left: 1.5rem;"><span style="color:#64748b; display:block; font-size:0.75rem; font-weight:700;">状態</span><strong style="color:var(--primary);" id="display-status">${editingMeetingData.status || '下書き'}</strong></div>
+                        <div style="border-left: 1px solid var(--border); padding-left: 1.5rem;"><span style="color:#64748b; display:block; font-size:0.75rem; font-weight:700;">最終更新</span><strong style="color:#1e293b;" id="display-date">-</strong></div>
                     </div>
                 </div>
             </div>
@@ -753,18 +753,17 @@ async function buildKpiPdcaBoards() {
         card.className = 'glass-panel mm-kpi-card';
         card.innerHTML = `
             <div class="mm-kpi-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; border-bottom:1.5px solid var(--border); padding-bottom:0.8rem; margin-bottom:1.2rem;">
-                <div style="display:flex; align-items:center; flex-wrap:wrap; gap:1.5rem;">
-                    <h3 style="margin:0; font-size:1.25rem; font-weight:900; color:var(--text-primary); display:flex; align-items:center; gap:0.5rem;">
-                        <span class="mm-kpi-dot ${key}"></span>
+                <div style="display:flex; align-items:center; flex-wrap:wrap; gap:1.8rem;">
+                    <h3 style="margin:0; font-size:1.35rem; font-weight:950; color:var(--text-primary); display:flex; align-items:center;">
                         ${shortName}
                     </h3>
-                    <div style="display:flex; align-items:center; gap:1rem; font-size:0.95rem; font-weight:700; color:var(--text-secondary);">
-                        <span>目標: <strong style="color:var(--text-primary); font-size:1.05rem;">${formatKpiVal(headerTgt, kpi)}</strong>${tgtSuffix}</span>
+                    <div style="display:flex; align-items:center; gap:1.2rem; font-size:1.05rem; font-weight:800; color:var(--text-secondary);">
+                        <span>目標: <strong style="color:var(--text-primary); font-size:1.1rem; font-weight:900;">${formatKpiVal(headerTgt, kpi)}</strong>${tgtSuffix}</span>
                         <span style="color:var(--border);">|</span>
-                        <span>実績: <strong style="color:var(--text-primary); font-size:1.05rem;">${formatKpiVal(headerVal, kpi)}</strong>${actSuffix}</span>
+                        <span>実績: <strong style="color:var(--text-primary); font-size:1.1rem; font-weight:900;">${formatKpiVal(headerVal, kpi)}</strong>${actSuffix}</span>
                     </div>
                 </div>
-                <div class="${pctClass}" style="font-size:1.25rem; font-weight:950; display:flex; align-items:center; gap:0.3rem;">
+                <div class="${pctClass}" style="font-size:1.35rem; font-weight:950; display:flex; align-items:center; gap:0.3rem;">
                     達成率: ${pctText}
                 </div>
             </div>
