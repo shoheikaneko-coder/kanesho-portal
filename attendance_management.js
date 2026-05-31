@@ -794,7 +794,10 @@ async function loadStoreList() {
         }
 
         selectors.forEach(sel => {
-            const isMonthly = sel.id === 'attn-mon-store-filter' || sel.id === 'attn-int-store-filter' || sel.id === 'attn-int-csv-store';
+            const isMonthly = sel.id === 'attn-mon-store-filter' || 
+                              sel.id === 'attn-int-store-filter' || 
+                              sel.id === 'attn-int-csv-store' || 
+                              sel.id === 'attn-int-mf-csv-store';
             sel.innerHTML = isMonthly ? '<option value="">全店舗</option>' : '';
             
             cachedStores.forEach(s => {
