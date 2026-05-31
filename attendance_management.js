@@ -293,9 +293,12 @@ export const attendanceManagementPageHtml = `
                         <span id="attn-int-day-label" style="font-weight: 800; font-size: 1.2rem; color: var(--text-primary);">2026/05/23</span>
                         <button id="btn-attn-int-day-next" class="btn" style="padding: 0.45rem 1rem; background: white; border: 1px solid var(--border); border-radius: 6px; font-weight: 700; color: var(--text-secondary);">翌日 <i class="fas fa-chevron-right"></i></button>
                     </div>
-                    <div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
                         <!-- CSVエクスポートを設置 -->
-                        <button onclick="window.openIntCsvModal()" class="btn btn-primary" style="padding: 0.55rem 1.2rem; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; background: #10b981; border: none; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);">
+                        <button onclick="window.openIntMfCsvModal()" class="btn btn-warning" style="padding: 0.55rem 1.2rem; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; background: #f59e0b; border: none; color: white; box-shadow: 0 4px 10px rgba(245, 158, 11, 0.2); border-radius: 8px;">
+                            <i class="fas fa-cloud-upload-alt"></i> MF形式CSV出力
+                        </button>
+                        <button onclick="window.openIntCsvModal()" class="btn btn-primary" style="padding: 0.55rem 1.2rem; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; background: #10b981; border: none; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2); border-radius: 8px;">
                             <i class="fas fa-file-csv"></i> TKC形式CSV出力
                         </button>
                     </div>
@@ -328,9 +331,14 @@ export const attendanceManagementPageHtml = `
             <div id="attn-int-pane-monthly" class="attn-int-pane animate-fade-in" style="display: none;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem;">
                     <span id="attn-int-month-label" style="font-weight: 800; font-size: 1.2rem; color: var(--text-primary);">2026年05月度 集計</span>
-                    <button onclick="window.openIntCsvModal()" class="btn btn-primary" style="padding: 0.55rem 1.2rem; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; background: #10b981; border: none; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);">
-                        <i class="fas fa-file-csv"></i> TKC形式CSV出力
-                    </button>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <button onclick="window.openIntMfCsvModal()" class="btn btn-warning" style="padding: 0.55rem 1.2rem; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; background: #f59e0b; border: none; color: white; box-shadow: 0 4px 10px rgba(245, 158, 11, 0.2); border-radius: 8px;">
+                            <i class="fas fa-cloud-upload-alt"></i> MF形式CSV出力
+                        </button>
+                        <button onclick="window.openIntCsvModal()" class="btn btn-primary" style="padding: 0.55rem 1.2rem; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; background: #10b981; border: none; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2); border-radius: 8px;">
+                            <i class="fas fa-file-csv"></i> TKC形式CSV出力
+                        </button>
+                    </div>
                 </div>
 
                 <div class="glass-panel" style="padding: 0; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.02);">
@@ -449,6 +457,54 @@ export const attendanceManagementPageHtml = `
                         キャンセル
                     </button>
                     <button id="btn-attn-int-csv-download" class="btn btn-primary" style="background: #10b981; border: none; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); font-weight: 700; padding: 0.6rem 1.5rem; border-radius: 8px; display: flex; align-items: center; gap: 0.4rem;">
+                        <i class="fas fa-download"></i> CSVダウンロード
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 8. 【MF用CSVエクスポート設定】専用モーダルポップアップ -->
+    <div id="attn-int-mf-csv-modal" class="attn-int-modal">
+        <div class="attn-int-modal-content" style="background: white; border: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.8rem;">
+                <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #b45309; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-cloud-upload-alt" style="color: #f59e0b;"></i>
+                    MF標準形式CSV出力設定
+                </h3>
+                <button onclick="window.closeIntMfCsvModal()" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-secondary);"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 1.2rem;">
+                <div class="input-group" style="margin-bottom: 0;">
+                    <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">出力対象店舗</label>
+                    <select id="attn-int-mf-csv-store" class="store-selector" style="width: 100%; padding: 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; background: white;">
+                        <option value="">全店舗</option>
+                    </select>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="input-group" style="margin-bottom: 0;">
+                        <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">開始日 <span style="color: var(--danger); font-weight:bold;">*必須</span></label>
+                        <input type="date" id="attn-int-mf-csv-start" style="padding: 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; background: white;">
+                    </div>
+                    <div class="input-group" style="margin-bottom: 0;">
+                        <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">終了日 <span style="color: var(--danger); font-weight:bold;">*必須</span></label>
+                        <input type="date" id="attn-int-mf-csv-end" style="padding: 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; background: white;">
+                    </div>
+                </div>
+                
+                <div style="font-size: 0.78rem; color: #64748b; line-height: 1.5; background: #fffbeb; padding: 0.8rem; border-radius: 8px; border: 1px solid #fde68a;">
+                    <i class="fas fa-info-circle" style="color:#f59e0b;"></i> <b>給与計算時のご注意:</b><br>
+                    マネーフォワード クラウド給与のインポート用（Version 3）として、コロン区切りの勤怠データを出力します。<br>
+                    ※事前に従業員マスタで「給与用の姓・名」が正しく登録されている必要があります。
+                </div>
+                
+                <div style="display: flex; gap: 0.8rem; justify-content: flex-end; margin-top: 0.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                    <button onclick="window.closeIntMfCsvModal()" class="btn" style="background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; font-weight: 700; padding: 0.6rem 1.2rem; border-radius: 8px;">
+                        キャンセル
+                    </button>
+                    <button id="btn-attn-int-mf-csv-download" class="btn btn-primary" style="background: #f59e0b; border: none; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2); font-weight: 700; padding: 0.6rem 1.5rem; border-radius: 8px; display: flex; align-items: center; gap: 0.4rem; color: white;">
                         <i class="fas fa-download"></i> CSVダウンロード
                     </button>
                 </div>
@@ -595,6 +651,8 @@ export async function initAttendanceManagementPage() {
     window.switchToIntegratedDashboardBack = switchToIntegratedDashboardBack;
     window.openIntCsvModal = openIntCsvModal;
     window.closeIntCsvModal = closeIntCsvModal;
+    window.openIntMfCsvModal = openIntMfCsvModal;
+    window.closeIntMfCsvModal = closeIntMfCsvModal;
     window.handleAttnEditCancel = handleAttnEditCancel;
 
     // 権限取得
@@ -635,6 +693,7 @@ export async function initAttendanceManagementPage() {
     if (document.getElementById('btn-attn-int-day-prev')) document.getElementById('btn-attn-int-day-prev').onclick = () => shiftIntDay(-1);
     if (document.getElementById('btn-attn-int-day-next')) document.getElementById('btn-attn-int-day-next').onclick = () => shiftIntDay(1);
     if (document.getElementById('btn-attn-int-csv-download')) document.getElementById('btn-attn-int-csv-download').onclick = () => handleIntTkcExport();
+    if (document.getElementById('btn-attn-int-mf-csv-download')) document.getElementById('btn-attn-int-mf-csv-download').onclick = () => handleIntMfExport();
 
     // タブクリックイベント
     document.querySelectorAll('.attn-int-tab').forEach(btn => {
@@ -2590,5 +2649,381 @@ async function handleIntTkcExport() {
         btn.innerHTML = originalText;
     }
 }
+
+// MF用CSV出力用のモーダル開閉
+function openIntMfCsvModal() {
+    const modal = document.getElementById('attn-int-mf-csv-modal');
+    if (!modal) return;
+    
+    // 対象店舗を新UIの共通フィルターから引き継ぐ
+    const activeStore = document.getElementById('attn-int-store-filter')?.value || '';
+    const modalStore = document.getElementById('attn-int-mf-csv-store');
+    if (modalStore) modalStore.value = activeStore;
+    
+    // 現在選択されている対象月を取得して、前月21日〜当月20日をプリセット
+    const monthVal = document.getElementById('attn-int-month-select')?.value;
+    if (monthVal) {
+        const [yearStr, monthStr] = monthVal.split('-');
+        const year = parseInt(yearStr);
+        const month = parseInt(monthStr);
+        
+        let prevYear = year;
+        let prevMonth = month - 1;
+        if (prevMonth === 0) {
+            prevMonth = 12;
+            prevYear -= 1;
+        }
+        
+        const startYmd = `${prevYear}-${String(prevMonth).padStart(2, '0')}-21`;
+        const endYmd = `${year}-${String(month).padStart(2, '0')}-20`;
+        
+        const startInput = document.getElementById('attn-int-mf-csv-start');
+        const endInput = document.getElementById('attn-int-mf-csv-end');
+        if (startInput) startInput.value = startYmd;
+        if (endInput) endInput.value = endYmd;
+    }
+    
+    modal.classList.add('show');
+}
+
+function closeIntMfCsvModal() {
+    const modal = document.getElementById('attn-int-mf-csv-modal');
+    if (modal) modal.classList.remove('show');
+}
+
+// MF用CSV出力アクション（既存の堅牢な勤怠集計処理をそのまま踏襲）
+async function handleIntMfExport() {
+    // 小数時間をコロン区切り(60進数)に変換するヘルパー (例: 8.5 -> "8:30")
+    function formatToMfTime(decimalHours) {
+        if (!decimalHours || decimalHours <= 0) return "0:00";
+        let hours = Math.floor(decimalHours);
+        let minutes = Math.round((decimalHours - hours) * 60);
+        if (minutes === 60) {
+            hours += 1;
+            minutes = 0;
+        }
+        return `${hours}:${String(minutes).padStart(2, '0')}`;
+    }
+
+    const startDate = document.getElementById('attn-int-mf-csv-start')?.value;
+    const endDate = document.getElementById('attn-int-mf-csv-end')?.value;
+    const storeId = document.getElementById('attn-int-mf-csv-store')?.value || ''; // モーダル内の店舗選択
+    
+    if (!startDate || !endDate) {
+        return showAlert('警告', 'CSV出力期間（開始日・終了日）を入力してください。');
+    }
+
+    const btn = document.getElementById('btn-attn-int-mf-csv-download');
+    if (!btn) return;
+    
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 出力中...';
+
+    try {
+        // 1. スタッフマスターのロード（LastName, FirstNameもあわせて取得）
+        const userSnap = await getDocs(collection(db, 'm_users'));
+        const staffMap = {};
+        userSnap.forEach(d => {
+            const data = d.data();
+            if (data.Role === 'Tablet' || data.Role === '店舗タブレット') return;
+
+            const sid = data.EmployeeCode || data.staff_id || data.staff_code || data.UserId || data.id || d.id;
+            const name = data.Name || data.name || data.staff_name || data.DisplayName || data.name_kanji || '(名前なし)';
+            const sName = data.Store || data.store_name || "";
+            const matchedStore = cachedStores.find(st => 
+                st.store_name === sName || 
+                st.id === data.StoreID || 
+                st.store_id === data.StoreID
+            );
+            
+            const sidStr = String(sid).trim();
+            staffMap[sidStr] = { 
+                code: sidStr, 
+                name: String(name).trim(), 
+                lastName: data.LastName || '', 
+                firstName: data.FirstName || '', 
+                store_id: matchedStore ? (matchedStore.store_id || matchedStore.id) : (data.StoreID || matchedStore?.id || ""),
+                store_name: matchedStore ? matchedStore.store_name : (data.Store || "不明"),
+                status: data.Status || 'active',
+                resignationDate: data.ResignationDate || '',
+                hireDate: data.HireDate || ''
+            };
+        });
+
+        // 2. 打刻データの取得
+        const nextDay = new Date(new Date(endDate).getTime() + 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
+        const q = query(collection(db, 't_attendance'), 
+            where('date', '>=', startDate),
+            where('date', '<=', nextDay)
+        );
+        const punchSnap = await getDocs(q);
+        const punches = [];
+        punchSnap.forEach(d => punches.push({ docId: d.id, ...d.data() }));
+        
+        punches.sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
+
+        // 3. 集計ロジック（エラーチェックも実行）
+        const staffStats = {};
+        Object.keys(staffMap).forEach(sid => {
+            const staff = staffMap[sid];
+            const status = staff.status;
+            const resDate = staff.resignationDate;
+
+            const isRetiredInPast = (status === 'retired' || status === '退職済' || status === 'resigning' || status === '退職手続き中') && 
+                                    resDate && resDate < startDate;
+            const isRetiredWithoutDate = (status === 'retired' || status === '退職済') && !resDate;
+            const isNotHiredYet = staff.hireDate && staff.hireDate > endDate;
+
+            const hasPunchesInPeriod = punches.some(p => {
+                const psid = String(p.staff_id || p.staff_code || p.EmployeeCode || "").trim();
+                return psid === sid && p.date >= startDate && p.date <= endDate;
+            });
+
+            if (isRetiredInPast && !hasPunchesInPeriod) return;
+            if (isRetiredWithoutDate && !hasPunchesInPeriod) return;
+            if (isNotHiredYet && !hasPunchesInPeriod) return;
+
+            staffStats[sid] = {
+                code: staff.code,
+                name: staff.name,
+                lastName: staff.lastName,
+                firstName: staff.firstName,
+                store_id: staff.store_id,
+                store_name: staff.store_name,
+                totalHours: 0,
+                lateHours: 0,
+                days: new Set()
+            };
+        });
+
+        const exportErrors = [];
+        const nowTime = new Date();
+        const todayYmd = nowTime.toLocaleDateString('sv-SE');
+        const yesterdayTime = new Date(nowTime);
+        yesterdayTime.setDate(yesterdayTime.getDate() - 1);
+        const yesterdayYmd = yesterdayTime.toLocaleDateString('sv-SE');
+
+        const isCurrentOrOngoing = (errDate, staffStoreId) => {
+            const storeInfo = cachedStores.find(st => (st.store_id || st.id) === staffStoreId);
+            const dayChangeTime = storeInfo?.day_change_time !== undefined ? parseInt(storeInfo.day_change_time) : 5;
+            
+            const currentHour = nowTime.getHours();
+            if (currentHour < dayChangeTime) {
+                return errDate === todayYmd || errDate === yesterdayYmd;
+            } else {
+                return errDate === todayYmd;
+            }
+        };
+
+        const staffPunches = {};
+        punches.forEach(p => {
+            const sid = String(p.staff_id || p.staff_code || p.EmployeeCode || "").trim();
+            if (!staffPunches[sid]) staffPunches[sid] = [];
+            staffPunches[sid].push(p);
+        });
+
+        for (const [sid, records] of Object.entries(staffPunches)) {
+            if (!staffStats[sid]) continue;
+
+            let lastIn = null;
+            let breakStart = null;
+            let breakSessions = [];
+
+            for (const p of records) {
+                const type = p.type;
+                const time = new Date(p.timestamp);
+
+                if (type === 'check_in' || type === '出勤') {
+                    if (p.date < startDate || p.date > endDate) {
+                        lastIn = null;
+                        continue;
+                    }
+                    if (lastIn) {
+                        const errDate = p.date || p.timestamp.substring(0, 10);
+                        if (!isCurrentOrOngoing(errDate, staffMap[sid].store_id)) {
+                            exportErrors.push({
+                                staffName: staffMap[sid].name,
+                                staffCode: staffMap[sid].code,
+                                storeId: staffMap[sid].store_id,
+                                date: errDate,
+                                message: '退勤打刻がないまま、出勤打刻が連続して行われています。'
+                            });
+                        }
+                    }
+                    lastIn = { timestamp: time, record: p };
+                    breakSessions = [];
+                    staffStats[sid].days.add(p.date);
+                } 
+                else if ((type === 'break_start' || type === '休憩開始') && lastIn) {
+                    breakStart = time;
+                } 
+                else if ((type === 'break_end' || type === '休憩終了') && breakStart) {
+                    breakSessions.push({ start: breakStart, end: time });
+                    breakStart = null;
+                } 
+                else if (type === 'check_out' || type === '退勤') {
+                    if (lastIn) {
+                        const totalBreaks = breakSessions.reduce((sum, s) => sum + (s.end - s.start) / 3600000, 0);
+                        const totalShift = (time - lastIn.timestamp) / 3600000;
+                        const netLabor = totalShift - totalBreaks;
+                        
+                        if (netLabor > 0) {
+                            staffStats[sid].totalHours += netLabor;
+                            
+                            const rawLate = calculateOverlapLateNightHours(lastIn.timestamp, time);
+                            const lateBreaks = breakSessions.reduce((sum, s) => sum + calculateOverlapLateNightHours(s.start, s.end), 0);
+                            
+                            staffStats[sid].lateHours += Math.max(0, rawLate - lateBreaks);
+                        }
+                        lastIn = null;
+                        breakSessions = [];
+                    } else {
+                        const errDate = p.date || p.timestamp.substring(0, 10);
+                        if (errDate >= startDate && errDate <= endDate) {
+                            if (!isCurrentOrOngoing(errDate, staffMap[sid].store_id)) {
+                                exportErrors.push({
+                                    staffName: staffMap[sid].name,
+                                    staffCode: staffMap[sid].code,
+                                    storeId: staffMap[sid].store_id,
+                                    date: errDate,
+                                    message: '出勤打刻がない状態で、退勤打刻が行われています。'
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (lastIn) {
+                const errDate = lastIn.record.date || lastIn.record.timestamp.substring(0, 10);
+                if (!isCurrentOrOngoing(errDate, staffMap[sid].store_id)) {
+                    exportErrors.push({
+                        staffName: staffMap[sid].name,
+                        staffCode: staffMap[sid].code,
+                        storeId: staffMap[sid].store_id,
+                        date: errDate,
+                        message: '出勤打刻はありますが、退勤打刻が行われていません。'
+                    });
+                }
+            }
+        }
+
+        // 4. エラー検証および出力ブロック処理
+        let filteredErrors = exportErrors;
+        if (storeId) {
+            filteredErrors = exportErrors.filter(e => String(e.storeId) === String(storeId));
+        }
+
+        if (filteredErrors.length > 0) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+
+            const errLimit = 3;
+            let errMsg = `指定期間内に打刻エラー（未退勤・未出勤など）が <strong>${filteredErrors.length}件</strong> 検出されたため、CSV出力をブロックしました。<br><br>`;
+            
+            filteredErrors.slice(0, errLimit).forEach(e => {
+                errMsg += `・[${e.date}] <strong>${e.staffName}様</strong>: ${e.message}<br>`;
+            });
+
+            if (filteredErrors.length > errLimit) {
+                errMsg += `・他 ${filteredErrors.length - errLimit} 件のエラー<br>`;
+            }
+
+            errMsg += `<br>ダッシュボードの<strong>「エラーチェック」</strong>タブ、または<strong>「日別データ」</strong>にて不整合を修正してから、再度出力してください。`;
+
+            return showAlert('CSV出力ブロック (未修正エラーあり)', errMsg);
+        }
+
+        // 店舗フィルタリング
+        let filteredStats = Object.values(staffStats);
+        if (storeId) {
+            filteredStats = filteredStats.filter(s => String(s.store_id) === String(storeId));
+        }
+
+        // 5. 姓名未登録（警告バリデーション）のチェック
+        const missingNameStaff = [];
+        filteredStats.forEach(row => {
+            if (row.totalHours > 0 || row.days.size > 0) {
+                if (!row.lastName || !row.firstName) {
+                    missingNameStaff.push(row.name);
+                }
+            }
+        });
+
+        if (missingNameStaff.length > 0) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            
+            let errMsg = `<strong>給与用姓名（姓・名）が未登録のスタッフが検出されました。</strong><br><br>`;
+            missingNameStaff.forEach(name => {
+                errMsg += `・${name} 様<br>`;
+            });
+            errMsg += `<br>給与計算の安全のため、CSV出力を一時中断しました。従業員マスタ画面から「姓」「名」を正しく登録してから、再度出力してください。`;
+            
+            return showAlert('CSV出力ブロック (姓名未登録あり)', errMsg);
+        }
+
+        // 6. CSV生成 (マネーフォワード標準の48項目形式)
+        const headers = [
+            "Version", "従業員識別子", "従業員番号", "姓", "名", "事業所名", "部門名", "職種名", "契約種別",
+            "1日の所定労働時間", "所定労働日数(当月)", "所定労働日数(月平均)", "所定労働時間(当月)", "所定労働時間(月平均)",
+            "総労働時間", "深夜労働時間", "出勤日数", "役員報酬(月給)", "基本給(月給)", "役職手当(月給)",
+            "固定残業手当(月給)", "深夜手当(月給)", "勤続手当(月給)", "職務手当（人事総務）(月給)", "通勤手当/課税(月給)",
+            "通勤手当/非課(月給)", "立替経費(月給)", "基本給(時給)", "深夜手当(時給)", "通勤手当/課税(時給)",
+            "通勤手当/非課(時給)", "職務手当（事務）(時給)", "職務手当（調理）(時給)", "基本給(日給)", "残業手当(日給)",
+            "深夜残業手当(日給)", "法定休日手当(日給)", "所定休日手当(日給)", "通勤手当/課税(日給)", "通勤手当/非課(日給)",
+            "健康保険料", "介護保険料", "子ども・子育て支援金", "厚生年金保険料", "雇用保障料", "所得税", "住民税", "備考欄"
+        ];
+
+        let csvContent = "\uFEFF"; // BOM for Excel
+        csvContent += headers.join(",") + "\n";
+
+        filteredStats.sort((a, b) => a.code.localeCompare(b.code)).forEach(row => {
+            const rowData = Array(headers.length).fill("");
+            
+            rowData[0] = "3"; // Version
+            rowData[1] = "";  // 従業員識別子
+            rowData[2] = row.code; // 従業員番号
+            rowData[3] = row.lastName; // 姓
+            rowData[4] = row.firstName; // 名
+            rowData[14] = formatToMfTime(row.totalHours); // 総労働時間
+            rowData[15] = formatToMfTime(row.lateHours);  // 深夜労働時間
+            rowData[16] = String(row.days.size);          // 出勤日数
+
+            const csvLine = rowData.map(val => {
+                const s = String(val).replace(/"/g, '""');
+                return `"${s}"`;
+            }).join(",");
+
+            csvContent += csvLine + "\n";
+        });
+
+        const storeInfo = cachedStores.find(s => (s.store_id || s.id) === storeId);
+        const storeSuffix = storeInfo ? `_${storeInfo.store_name}` : '_全店舗';
+        const filename = `MF給与連携データ_${startDate.replace(/-/g, '')}_${endDate.replace(/-/g, '')}${storeSuffix}.csv`;
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        closeIntMfCsvModal();
+        showAlert('成功', 'マネーフォワード用CSVの出力が完了しました。');
+
+    } catch (e) {
+        console.error(e);
+        showAlert('エラー', 'CSVの出力に失敗しました: ' + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
 
 
