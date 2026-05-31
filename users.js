@@ -155,6 +155,16 @@ function renderFormView(container) {
                                 </div>
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem;">
                                     <div class="input-group" style="margin: 0;">
+                                        <label style="font-weight: 700; color: #475569;">姓 (給与連携用) <span style="color: #ef4444;">*</span></label>
+                                        <input type="text" id="user-lastname" required placeholder="例: 山田" style="font-size: 1.1rem;">
+                                    </div>
+                                    <div class="input-group" style="margin: 0;">
+                                        <label style="font-weight: 700; color: #475569;">名 (給与連携用) <span style="color: #ef4444;">*</span></label>
+                                        <input type="text" id="user-firstname" required placeholder="例: 太郎" style="font-size: 1.1rem;">
+                                    </div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem;">
+                                    <div class="input-group" style="margin: 0;">
                                         <label style="font-weight: 700; color: #475569;">シフト表示名 (ニックネーム)</label>
                                         <input type="text" id="user-display-name" placeholder="例: 太郎" style="font-size: 1.1rem; background: #fffdf0; border: 1px solid #fde68a;">
                                     </div>
@@ -299,6 +309,8 @@ function renderFormView(container) {
         if (isEdit) {
             document.getElementById('user-code').value = editingUserData.EmployeeCode || '';
             document.getElementById('user-name').value = editingUserData.Name || '';
+            document.getElementById('user-lastname').value = editingUserData.LastName || '';
+            document.getElementById('user-firstname').value = editingUserData.FirstName || '';
             document.getElementById('user-password').value = editingUserData.ClockInPassword || '';
             document.getElementById('user-login-password').value = editingUserData.LoginPassword || '';
             document.getElementById('user-email').value = editingUserData.Email || '';
@@ -350,6 +362,8 @@ function setupFormLogic() {
         const newUser = {
             'EmployeeCode': document.getElementById('user-code').value,
             'Name': document.getElementById('user-name').value,
+            'LastName': document.getElementById('user-lastname').value,
+            'FirstName': document.getElementById('user-firstname').value,
             'ClockInPassword': document.getElementById('user-password').value,
             'LoginPassword': document.getElementById('user-login-password').value,
             'Email': document.getElementById('user-email').value,
@@ -417,6 +431,27 @@ function setupFormLogic() {
                 showAlert('案内文のコピー', msg);
             });
         };
+    }
+
+    // 姓名自動入力アシスト
+    const nameInput = document.getElementById('user-name');
+    const lastNameInput = document.getElementById('user-lastname');
+    const firstNameInput = document.getElementById('user-firstname');
+    
+    if (nameInput && lastNameInput && firstNameInput) {
+        nameInput.addEventListener('input', () => {
+            const val = nameInput.value.trim();
+            if (!val) return;
+            
+            const parts = val.split(/[\s　]+/);
+            if (parts.length >= 2) {
+                lastNameInput.value = parts[0];
+                firstNameInput.value = parts.slice(1).join(' ');
+            } else {
+                lastNameInput.value = val;
+                firstNameInput.value = '';
+            }
+        });
     }
 }
 

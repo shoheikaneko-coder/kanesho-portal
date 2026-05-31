@@ -10,38 +10,54 @@ export const csvExportPageHtml = `
     </div>
 
     <div class="glass-panel" style="padding:2rem;">
-        <h3 style="margin:0 0 1.5rem; font-size:1.1rem; color:var(--text-secondary);">出力データ選択</h3>
+        <h3 style="margin:0 0 1.5rem; font-size:1.1rem; color:var(--text-secondary);">出力期間の設定</h3>
         
-        <div style="display:flex; flex-direction:column; gap:1rem;">
-            <!-- 勤怠データ（TKC形式） -->
-            <div style="border:1px solid var(--border); border-radius:12px; padding:1.5rem; background:white;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                    <div>
-                        <h4 style="margin:0; font-size:1rem;">勤怠データ（TKC形式）</h4>
-                        <p style="margin:0.3rem 0 0; font-size:0.8rem; color:var(--text-secondary);">
-                            従業員コード、名前、総労働時間、深夜労働時間、出勤日数を出力します。
-                        </p>
-                    </div>
-                    <i class="fas fa-table" style="font-size:1.5rem; color:#e2e8f0;"></i>
-                </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:2rem; background: #f8fafc; padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border);">
+            <div class="input-group" style="margin:0;">
+                <label style="font-weight: 700; color: #475569;">開始日</label>
+                <input type="date" id="export-start-date" style="padding:0.7rem; background: white;">
+            </div>
+            <div class="input-group" style="margin:0;">
+                <label style="font-weight: 700; color: #475569;">終了日</label>
+                <input type="date" id="export-end-date" style="padding:0.7rem; background: white;">
+            </div>
+        </div>
 
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem;">
-                    <div class="input-group" style="margin:0;">
-                        <label style="font-size:0.75rem;">開始日</label>
-                        <input type="date" id="export-start-date" style="padding:0.7rem;">
-                    </div>
-                    <div class="input-group" style="margin:0;">
-                        <label style="font-size:0.75rem;">終了日</label>
-                        <input type="date" id="export-end-date" style="padding:0.7rem;">
-                    </div>
+        <h3 style="margin:0 0 1.2rem; font-size:1.1rem; color:var(--text-secondary);">出力フォーマットの選択</h3>
+        
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem;">
+            <!-- TKC形式 -->
+            <div class="glass-panel" style="padding:1.5rem; background:white; display:flex; flex-direction:column; justify-content:space-between; border:1px solid var(--border); border-radius: 12px;">
+                <div>
+                    <h4 style="margin:0; font-size:1rem; display:flex; align-items:center; gap:0.5rem; color: #475569;">
+                        <i class="fas fa-table" style="color:#64748b;"></i>
+                        TKC形式
+                    </h4>
+                    <p style="margin:0.5rem 0 1.5rem; font-size:0.8rem; color:var(--text-secondary); line-height: 1.4;">
+                        従業員コード、名前、総労働時間、深夜労働時間、出勤日数を出力します（TKC給与計算ソフト用）。
+                    </p>
                 </div>
-
-                <button id="btn-export-tkc" class="btn btn-primary" style="width:100%; padding:1rem; font-weight:700;">
-                    <i class="fas fa-download"></i> CSVをダウンロード
+                <button id="btn-export-tkc" class="btn" style="width:100%; padding:0.8rem; font-weight:700; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;">
+                    <i class="fas fa-download"></i> TKC形式で出力
                 </button>
             </div>
-            
-            <!-- 他の形式が必要な場合はここに追加 -->
+
+            <!-- マネーフォワード形式 -->
+            <div class="glass-panel" style="padding:1.5rem; background:white; display:flex; flex-direction:column; justify-content:space-between; border:2px solid #fcd34d; border-radius: 12px; position:relative; overflow:hidden;">
+                <div style="position:absolute; top:0; right:0; background:#f59e0b; color:white; font-size:0.65rem; padding:0.2rem 0.8rem; font-weight:800; border-bottom-left-radius:8px;">RECOMMENDED</div>
+                <div>
+                    <h4 style="margin:0; font-size:1rem; display:flex; align-items:center; gap:0.5rem; color:#b45309;">
+                        <i class="fas fa-cloud-upload-alt" style="color:#f59e0b;"></i>
+                        マネーフォワード標準形式
+                    </h4>
+                    <p style="margin:0.5rem 0 1.5rem; font-size:0.8rem; color:var(--text-secondary); line-height: 1.4;">
+                        マネーフォワード クラウド給与の標準インポート（Version 3）に合わせたコロン区切り時間表記のCSVを出力します。
+                    </p>
+                </div>
+                <button id="btn-export-mf" class="btn btn-primary" style="width:100%; padding:0.8rem; font-weight:700; background:#f59e0b; border:none; color:white;">
+                    <i class="fas fa-download"></i> MF標準形式で出力
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -50,6 +66,7 @@ export const csvExportPageHtml = `
 // ─── 初期化 ──────────────────────────────────────────────────
 export async function initCsvExportPage() {
     const btnTkc = document.getElementById('btn-export-tkc');
+    const btnMf = document.getElementById('btn-export-mf');
     const startInput = document.getElementById('export-start-date');
     const endInput = document.getElementById('export-end-date');
 
@@ -62,7 +79,12 @@ export async function initCsvExportPage() {
     startInput.value = lastMonth;
     endInput.value = today;
 
-    btnTkc.onclick = () => handleTkcExport(startInput.value, endInput.value);
+    if (btnTkc) {
+        btnTkc.onclick = () => handleTkcExport(startInput.value, endInput.value);
+    }
+    if (btnMf) {
+        btnMf.onclick = () => handleMfExport(startInput.value, endInput.value);
+    }
 }
 
 // ─── TKC形式エクスポート ──────────────────────────────────────
@@ -291,6 +313,166 @@ function generateCSV(data, start, end) {
     });
 
     const filename = `勤怠データ${start.replace(/-/g, '')}_${end.replace(/-/g, '')}.csv`;
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// ─── マネーフォワード形式エクスポート ──────────────────────────────────
+async function handleMfExport(startDate, endDate) {
+    if (!startDate || !endDate) return alert('期間を選択してください。');
+    
+    // UI表示
+    const btn = document.getElementById('btn-export-mf');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 計算中...';
+
+    try {
+        // 1. ユーザーリスト取得
+        const userSnap = await getDocs(collection(db, 'm_users'));
+        const users = {};
+        userSnap.forEach(d => {
+            const data = d.data();
+            const sid = data.EmployeeCode || d.id;
+            users[sid] = {
+                code: data.EmployeeCode || '-',
+                name: data.Name || '-',
+                lastName: data.LastName || '',
+                firstName: data.FirstName || '',
+                store: data.Store || '-',
+                status: data.Status || 'active',
+                resignationDate: data.ResignationDate || '',
+                hireDate: data.HireDate || ''
+            };
+        });
+
+        // 2. 打刻データ取得（翌日分まで取得して夜勤に対応）
+        const nextDay = new Date(new Date(endDate).getTime() + 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
+        
+        const q = query(collection(db, 't_attendance'), 
+            where('date', '>=', startDate),
+            where('date', '<=', nextDay)
+        );
+        const punchSnap = await getDocs(q);
+        const allPunches = [];
+        punchSnap.forEach(d => allPunches.push(d.data()));
+        
+        // メモリ内でソート
+        allPunches.sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
+
+        // 3. 集計ロジック（TKCと同じ共通のprocessAttendanceロジックを流用）
+        const results = processAttendance(users, allPunches, startDate, endDate);
+
+        // 4. 姓名未登録（警告バリデーション）のチェック
+        const missingNameStaff = [];
+        results.forEach(row => {
+            // 総労働時間 > 0 または 出勤日数 > 0（＝実際に勤務した）スタッフが対象
+            if (row.totalHours > 0 || row.days.size > 0) {
+                let userObj = null;
+                for (const u of Object.values(users)) {
+                    if (u.code === row.code) {
+                        userObj = u;
+                        break;
+                    }
+                }
+
+                if (!userObj || !userObj.lastName || !userObj.firstName) {
+                    missingNameStaff.push(row.name);
+                }
+            }
+        });
+
+        if (missingNameStaff.length > 0) {
+            // ダウンロードをブロックして警告アラート表示
+            alert(`【出力エラー】\n以下のスタッフの「給与連携用の姓・名」が従業員マスタに登録されていません。\n給与計算の安全のため、ダウンロードを中止しました。\n\n対象スタッフ:\n・${missingNameStaff.join('\n・')}\n\n※従業員管理画面から該当スタッフの「姓」「名」を正しく登録してください。`);
+            return;
+        }
+
+        // 5. マネーフォワード用CSV生成・ダウンロード
+        generateMfCSV(results, users, startDate, endDate);
+
+    } catch (e) {
+        console.error(e);
+        alert('エラーが発生しました: ' + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
+// 小数時間をコロン区切り(60進数)に変換するヘルパー (例: 8.5 -> "8:30")
+function formatToMfTime(decimalHours) {
+    if (!decimalHours || decimalHours <= 0) return "0:00";
+    let hours = Math.floor(decimalHours);
+    let minutes = Math.round((decimalHours - hours) * 60);
+    if (minutes === 60) {
+        hours += 1;
+        minutes = 0;
+    }
+    return `${hours}:${String(minutes).padStart(2, '0')}`;
+}
+
+// ─── マネーフォワード用CSV生成 ──────────────────────────────────
+function generateMfCSV(data, users, start, end) {
+    // 48項目のヘッダー定義
+    const headers = [
+        "Version", "従業員識別子", "従業員番号", "姓", "名", "事業所名", "部門名", "職種名", "契約種別",
+        "1日の所定労働時間", "所定労働日数(当月)", "所定労働日数(月平均)", "所定労働時間(当月)", "所定労働時間(月平均)",
+        "総労働時間", "深夜労働時間", "出勤日数", "役員報酬(月給)", "基本給(月給)", "役職手当(月給)",
+        "固定残業手当(月給)", "深夜手当(月給)", "勤続手当(月給)", "職務手当（人事総務）(月給)", "通勤手当/課税(月給)",
+        "通勤手当/非課(月給)", "立替経費(月給)", "基本給(時給)", "深夜手当(時給)", "通勤手当/課税(時給)",
+        "通勤手当/非課(時給)", "職務手当（事務）(時給)", "職務手当（調理）(時給)", "基本給(日給)", "残業手当(日給)",
+        "深夜残業手当(日給)", "法定休日手当(日給)", "所定休日手当(日給)", "通勤手当/課税(日給)", "通勤手当/非課(日給)",
+        "健康保険料", "介護保険料", "子ども・子育て支援金", "厚生年金保険料", "雇用保険料", "所得税", "住民税", "備考欄"
+    ];
+
+    let csvContent = "\uFEFF"; // Excel用のBOM
+    csvContent += headers.join(",") + "\n";
+
+    data.forEach(row => {
+        // 従業員コードからマスタのユーザー情報を逆引き
+        let userObj = null;
+        for (const u of Object.values(users)) {
+            if (u.code === row.code) {
+                userObj = u;
+                break;
+            }
+        }
+
+        const lastName = userObj ? userObj.lastName : "";
+        const firstName = userObj ? userObj.firstName : "";
+
+        // 各列の値を定義（48列）
+        const rowData = Array(headers.length).fill("");
+        
+        rowData[0] = "3"; // Version
+        rowData[1] = "";  // 従業員識別子 (空でOK)
+        rowData[2] = row.code; // 従業員番号
+        rowData[3] = lastName; // 姓
+        rowData[4] = firstName; // 名
+        // 5〜13列目は空欄
+        rowData[14] = formatToMfTime(row.totalHours); // 総労働時間
+        rowData[15] = formatToMfTime(row.lateHours);  // 深夜労働時間
+        rowData[16] = String(row.days.size);          // 出勤日数
+        // 17〜47列目はすべて空欄
+
+        // CSVの各値をカンマ区切りにし、ダブルクォーテーションで囲む
+        const csvLine = rowData.map(val => {
+            const s = String(val).replace(/"/g, '""');
+            return `"${s}"`;
+        }).join(",");
+
+        csvContent += csvLine + "\n";
+    });
+
+    const filename = `MF給与連携データ_${start.replace(/-/g, '')}_${end.replace(/-/g, '')}.csv`;
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
