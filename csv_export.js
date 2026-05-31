@@ -434,7 +434,7 @@ function generateMfCSV(data, users, start, end) {
     ];
 
     let csvContent = "\uFEFF"; // Excel用のBOM
-    csvContent += headers.join(",") + "\n";
+    csvContent += headers.join(",") + "\r\n";
 
     data.forEach(row => {
         // 従業員コードからマスタのユーザー情報を逆引き
@@ -463,13 +463,16 @@ function generateMfCSV(data, users, start, end) {
         rowData[16] = String(row.days.size);          // 出勤日数
         // 17〜47列目はすべて空欄
 
-        // CSVの各値をカンマ区切りにし、ダブルクォーテーションで囲む
+        // CSVの各値をカンマ区切りにし、必要な場合のみダブルクォーテーションで囲む
         const csvLine = rowData.map(val => {
-            const s = String(val).replace(/"/g, '""');
-            return `"${s}"`;
+            const s = String(val);
+            if (s.includes(",") || s.includes('"') || s.includes("\n") || s.includes("\r")) {
+                return `"${s.replace(/"/g, '""')}"`;
+            }
+            return s;
         }).join(",");
 
-        csvContent += csvLine + "\n";
+        csvContent += csvLine + "\r\n";
     });
 
     const filename = `MF給与連携データ_${start.replace(/-/g, '')}_${end.replace(/-/g, '')}.csv`;

@@ -2980,7 +2980,7 @@ async function handleIntMfExport() {
         ];
 
         let csvContent = "\uFEFF"; // BOM for Excel
-        csvContent += headers.join(",") + "\n";
+        csvContent += headers.join(",") + "\r\n";
 
         filteredStats.sort((a, b) => a.code.localeCompare(b.code)).forEach(row => {
             const rowData = Array(headers.length).fill("");
@@ -2995,11 +2995,14 @@ async function handleIntMfExport() {
             rowData[16] = String(row.days.size);          // 出勤日数
 
             const csvLine = rowData.map(val => {
-                const s = String(val).replace(/"/g, '""');
-                return `"${s}"`;
+                const s = String(val);
+                if (s.includes(",") || s.includes('"') || s.includes("\n") || s.includes("\r")) {
+                    return `"${s.replace(/"/g, '""')}"`;
+                }
+                return s;
             }).join(",");
 
-            csvContent += csvLine + "\n";
+            csvContent += csvLine + "\r\n";
         });
 
         const storeInfo = cachedStores.find(s => (s.store_id || s.id) === storeId);
