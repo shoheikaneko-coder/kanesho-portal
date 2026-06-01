@@ -407,16 +407,10 @@ async function handleMfExport(startDate, endDate) {
     }
 }
 
-// 小数時間をコロン区切り(60進数)に変換するヘルパー (例: 8.5 -> "8:30")
+// 小数時間を10進数(小数)に変換するヘルパー (例: 8.5 -> "8.50")
 function formatToMfTime(decimalHours) {
-    if (!decimalHours || decimalHours <= 0) return "0:00";
-    let hours = Math.floor(decimalHours);
-    let minutes = Math.round((decimalHours - hours) * 60);
-    if (minutes === 60) {
-        hours += 1;
-        minutes = 0;
-    }
-    return `${hours}:${String(minutes).padStart(2, '0')}`;
+    if (!decimalHours || decimalHours <= 0) return "0.00";
+    return Number(Math.round(decimalHours * 100) / 100).toFixed(2);
 }
 
 // ─── マネーフォワード用CSV生成 ──────────────────────────────────

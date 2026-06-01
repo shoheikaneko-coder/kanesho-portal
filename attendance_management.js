@@ -2698,14 +2698,8 @@ function closeIntMfCsvModal() {
 async function handleIntMfExport() {
     // 小数時間をコロン区切り(60進数)に変換するヘルパー (例: 8.5 -> "8:30")
     function formatToMfTime(decimalHours) {
-        if (!decimalHours || decimalHours <= 0) return "0:00";
-        let hours = Math.floor(decimalHours);
-        let minutes = Math.round((decimalHours - hours) * 60);
-        if (minutes === 60) {
-            hours += 1;
-            minutes = 0;
-        }
-        return `${hours}:${String(minutes).padStart(2, '0')}`;
+        if (!decimalHours || decimalHours <= 0) return "0.00";
+        return Number(Math.round(decimalHours * 100) / 100).toFixed(2);
     }
 
     const startDate = document.getElementById('attn-int-mf-csv-start')?.value;
