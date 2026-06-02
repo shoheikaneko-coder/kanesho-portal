@@ -879,7 +879,7 @@ async function buildKpiPdcaBoards() {
         container.appendChild(card);
 
         // canvasにトレンドグラフを描画 (12ヶ月データと月名ラベルを渡す)
-        drawTrendGraph(`canvas-trend-${key}`, trendPoints, trendLabels, tgt);
+        drawTrendGraph(`canvas-trend-${key}`, trendPoints, trendLabels, tgt, kpi, key);
     });
 }
 
@@ -895,7 +895,7 @@ function formatKpiVal(val, kpi) {
 // -------------------------------------------------------------
 // トレンドグラフの描画 (Canvas API を用いた動的レンダリング)
 // -------------------------------------------------------------
-function drawTrendGraph(canvasId, dataPoints, monthLabels, targetVal) {
+function drawTrendGraph(canvasId, dataPoints, monthLabels, targetVal, kpi, key) {
     setTimeout(() => {
         const canvas = document.getElementById(canvasId);
         if (!canvas) return;
@@ -910,15 +910,12 @@ function drawTrendGraph(canvasId, dataPoints, monthLabels, targetVal) {
         
         const w = rect.width;
         const h = rect.height;
-        
-        ctx.clearRect(0, 0, w, h);
 
         const paddingLeft = 14;
         const paddingRight = 14;
         const paddingTop = 6;
         const paddingBottom = 14; // ラベル用の余白
 
-        // すべてが0の場合は直線を描く
         const maxVal = Math.max(...dataPoints, targetVal) || 1;
         const minVal = Math.min(...dataPoints, targetVal) || 0;
         const range = maxVal - minVal || 1;
@@ -926,58 +923,219 @@ function drawTrendGraph(canvasId, dataPoints, monthLabels, targetVal) {
         const getX = (index) => paddingLeft + (index / (dataPoints.length - 1)) * (w - paddingLeft - paddingRight);
         const getY = (value) => h - paddingBottom - ((value - minVal) / range) * (h - paddingTop - paddingBottom);
 
-        // 1. 目標線の描画 (破線)
-        ctx.strokeStyle = 'rgba(230, 57, 70, 0.4)';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([3, 3]);
-        ctx.beginPath();
-        ctx.moveTo(0, getY(targetVal));
-        ctx.lineTo(w, getY(targetVal));
-        ctx.stroke();
-        ctx.setLineDash([]);
+        // トレンドグラフのハイライト色 (KPIのテーマカラーに連動)
+        let themeColor = 'var(--secondary)';
+        if (key === 'customers') themeColor = '#f59e0b';
+        else if (key === 'spend') themeColor = '#10b981';
+        else if (key === 'productivity') themeColor = '#3b82f6';
+        else if (key === 'sales') themeColor = '#64748b'; // KGI（売上）は落ち着いたグレー
 
-        // 2. 推移線の描画
-        ctx.strokeStyle = 'var(--secondary)';
-        ctx.lineWidth = 2;
-        ctx.lineJoin = 'round';
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(getX(0), getY(dataPoints[0]));
-        for (let i = 1; i < dataPoints.length; i++) {
-            ctx.lineTo(getX(i), getY(dataPoints[i]));
-        }
-        ctx.stroke();
+        // チャートのレンダリング本体 (ホバーしたインデックスをハイライト)
+        function renderChart(hoveredIndex = -1) {
+            ctx.clearRect(0, 0, w, h);
 
-        // 3. 各ポイントのドット描画
-        ctx.fillStyle = 'var(--secondary)';
-        for (let i = 0; i < dataPoints.length; i++) {
+            // 1. 目標線の描画 (破線)
+            ctx.strokeStyle = 'rgba(230, 57, 70, 0.35)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 3]);
             ctx.beginPath();
-            ctx.arc(getX(i), getY(dataPoints[i]), 2.5, 0, Math.PI * 2);
-            ctx.fill();
-        }
-        
-        // 最終月のドットを目立たせる
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(getX(dataPoints.length - 1), getY(dataPoints[dataPoints.length - 1]), 3.5, 0, Math.PI * 2);
-        ctx.stroke();
+            ctx.moveTo(0, getY(targetVal));
+            ctx.lineTo(w, getY(targetVal));
+            ctx.stroke();
+            ctx.setLineDash([]);
 
-        // 4. 月名ラベルの描画
-        ctx.fillStyle = 'var(--text-secondary)';
-        ctx.font = '700 8px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'top';
-        
-        // 直近12ヶ月の場合、偶数月のみラベルを描画すると視覚的に最高にすっきりします
-        for (let i = 0; i < dataPoints.length; i++) {
-            // 被りを防ぐため、偶数月（2, 4, 6, 8, 10, 12）のみ、またはインデックスが偶数のもののみ描くのが極上です
-            // ここでは等間隔にすっきり見せるため、1つ飛ばし（インデックスが奇数、つまり2番目、4番目...）で描画します
-            if (i % 2 === 1) {
-                ctx.fillText(monthLabels[i], getX(i), h - 10);
+            // 2. 推移線の描画
+            ctx.strokeStyle = 'var(--secondary)';
+            ctx.lineWidth = 2;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(getX(0), getY(dataPoints[0]));
+            for (let i = 1; i < dataPoints.length; i++) {
+                ctx.lineTo(getX(i), getY(dataPoints[i]));
+            }
+            ctx.stroke();
+
+            // 3. 各ポイントのドット描画
+            for (let i = 0; i < dataPoints.length; i++) {
+                const px = getX(i);
+                const py = getY(dataPoints[i]);
+
+                if (i === hoveredIndex) {
+                    // ホバーされたドット：外側に半透明の波紋を重ね、中心ドットをテーマカラーで大きく描画
+                    ctx.fillStyle = hexToRgba(themeColor, 0.2);
+                    ctx.beginPath();
+                    ctx.arc(px, py, 8.5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = themeColor;
+                    ctx.beginPath();
+                    ctx.arc(px, py, 4.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // 内側に白ドットを描いて目立たせる
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(px, py, 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    // 通常のドット
+                    ctx.fillStyle = 'var(--secondary)';
+                    ctx.beginPath();
+                    ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            
+            // 最終月のドットを目立たせる (ホバーされていない場合)
+            if (hoveredIndex !== dataPoints.length - 1) {
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(getX(dataPoints.length - 1), getY(dataPoints[dataPoints.length - 1]), 3.5, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // 4. 月名ラベルの描画
+            ctx.fillStyle = 'var(--text-secondary)';
+            ctx.font = '700 8px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            
+            for (let i = 0; i < dataPoints.length; i++) {
+                if (i % 2 === 1) {
+                    ctx.fillText(monthLabels[i], getX(i), h - 10);
+                }
             }
         }
+
+        // 共通ツールチップの動的生成/取得
+        let tooltip = document.getElementById('mm-chart-tooltip');
+        let tooltipText;
+        if (!tooltip) {
+            tooltip = document.createElement('div');
+            tooltip.id = 'mm-chart-tooltip';
+            tooltip.style.cssText = `
+                position: absolute;
+                background: rgba(15, 23, 42, 0.95);
+                color: #ffffff;
+                padding: 6px 10px;
+                border-radius: 6px;
+                font-size: 11px;
+                font-weight: 700;
+                pointer-events: none;
+                opacity: 0;
+                transform: translate(-50%, -100%) scale(0.9);
+                transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+                z-index: 9999;
+                white-space: nowrap;
+            `;
+
+            tooltipText = document.createElement('span');
+            tooltip.appendChild(tooltipText);
+
+            // 下向き矢印
+            const arrow = document.createElement('div');
+            arrow.style.cssText = `
+                position: absolute;
+                width: 6px;
+                height: 6px;
+                background: rgba(15, 23, 42, 0.95);
+                transform: rotate(45deg);
+                bottom: -3px;
+                left: 50%;
+                margin-left: -3px;
+            `;
+            tooltip.appendChild(arrow);
+            document.body.appendChild(tooltip);
+        } else {
+            tooltipText = tooltip.querySelector('span');
+        }
+
+        // 初回描画
+        renderChart();
+
+        let lastHoveredIndex = -1;
+
+        const hideTooltip = () => {
+            tooltip.style.opacity = '0';
+            tooltip.style.transform = 'translate(-50%, -100%) scale(0.9)';
+            canvas.style.cursor = 'default';
+            if (lastHoveredIndex !== -1) {
+                lastHoveredIndex = -1;
+                renderChart(-1);
+            }
+        };
+
+        // マウス移動での当たり判定イベント登録
+        canvas.addEventListener('mousemove', (e) => {
+            const rectVal = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rectVal.left;
+            const mouseY = e.clientY - rectVal.top;
+
+            let hoveredIndex = -1;
+            let minDist = 12; // 12px以内の点を探す
+
+            for (let i = 0; i < dataPoints.length; i++) {
+                const px = getX(i);
+                const py = getY(dataPoints[i]);
+                const dist = Math.sqrt((mouseX - px) ** 2 + (mouseY - py) ** 2);
+                if (dist < minDist) {
+                    minDist = dist;
+                    hoveredIndex = i;
+                }
+            }
+
+            if (hoveredIndex !== -1) {
+                const pageX = e.clientX + window.scrollX;
+                const pageY = rectVal.top + getY(dataPoints[hoveredIndex]) + window.scrollY;
+
+                const monthStr = monthLabels[hoveredIndex];
+                const rawVal = dataPoints[hoveredIndex];
+                const formattedVal = formatKpiVal(rawVal, kpi);
+                const dailySuffix = (key === 'sales' || key === 'customers' || key === 'productivity') ? ' /日' : '';
+
+                tooltipText.textContent = `${monthStr}実績: ${formattedVal}${dailySuffix}`;
+
+                // ツールチップ位置更新とフェードイン
+                tooltip.style.left = `${pageX}px`;
+                tooltip.style.top = `${pageY - 10}px`;
+                tooltip.style.opacity = '1';
+                tooltip.style.transform = 'translate(-50%, -100%) scale(1)';
+
+                canvas.style.cursor = 'pointer';
+
+                if (lastHoveredIndex !== hoveredIndex) {
+                    lastHoveredIndex = hoveredIndex;
+                    renderChart(hoveredIndex);
+                }
+            } else {
+                hideTooltip();
+            }
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            hideTooltip();
+        });
     }, 100);
+}
+
+// カラーヘルパー関数
+function hexToRgba(hex, alpha) {
+    if (hex.startsWith('var(')) {
+        // CSS変数の場合の簡易代替フォールバック（secondaryは薄いグレー系）
+        return `rgba(100, 116, 139, ${alpha})`;
+    }
+    // #ffffff や #fff のパース
+    let c = hex.substring(1);
+    if (c.length === 3) {
+        c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2];
+    }
+    const r = parseInt(c.substring(0, 2), 16);
+    const g = parseInt(c.substring(2, 4), 16);
+    const b = parseInt(c.substring(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 // -------------------------------------------------------------
