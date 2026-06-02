@@ -380,6 +380,9 @@ async function renderFormView(container) {
     // VISA期限チェックロジック
     await checkVisaExpirations(editingMeetingData.store_id);
 
+    // オートリサイズ機能の初期化
+    initAutoResizeTextareas();
+
     // KPI集計とPDCAボードの描画
     await buildKpiPdcaBoards();
 }
@@ -1340,6 +1343,29 @@ async function checkVisaExpirations(storeId) {
         console.error("Failed to check visa expirations:", e);
         container.innerHTML = `<span style="font-size:0.72rem; color:#ef4444;">❌ VISAデータの照合に失敗しました。</span>`;
     }
+}
+
+// テキストエリアの自動高さ調整関数
+function initAutoResizeTextareas() {
+    const ids = ['mm-input-rec', 'mm-input-ret', 'mm-input-train', 'mm-input-visa'];
+    ids.forEach(id => {
+        const ta = document.getElementById(id);
+        if (!ta) return;
+
+        // スクロールバーを隠し、リサイズ機能を固定
+        ta.style.overflowY = 'hidden';
+        ta.style.resize = 'none';
+
+        const resize = () => {
+            ta.style.height = 'auto';
+            ta.style.height = (ta.scrollHeight + 4) + 'px';
+        };
+
+        ta.addEventListener('input', resize);
+        
+        // 初期文字流し込み後のタイミングで初回サイズ調整を実行
+        setTimeout(resize, 0);
+    });
 }
 
 async function saveMeetingData() {
