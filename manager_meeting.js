@@ -1018,16 +1018,25 @@ window.addNewActionClick = (kpiKey) => {
         document.body.appendChild(modal);
     }
 
+    const kpiNames = {
+        sales: '売上',
+        customers: '来客数',
+        spend: '客単価',
+        productivity: '営業人時売上'
+    };
+    const kpiName = kpiNames[kpiKey] || 'KPI';
+    const unit = kpiKey === 'customers' ? '人' : '円';
+
     modal.innerHTML = `
-        <div class="glass-panel animate-scale-in" style="background:white; padding:2rem; border-radius:6px; width:90%; max-width:480px; border: 1px solid var(--border); box-shadow: var(--shadow-lg);">
-            <h3 style="margin-top:0; color:var(--text-primary); font-weight:900; font-size:1.15rem; border-bottom:1px solid var(--border); padding-bottom:0.6rem; margin-bottom:1.2rem;">新規実行施策の登録</h3>
+        <div class="glass-panel animate-scale-in" style="background:white; padding:2rem; border-radius:6px; width:90%; max-width:480px; border: 1px solid var(--border); box-shadow: var(--shadow-lg); max-height:85vh; overflow-y:auto;">
+            <h3 style="margin-top:0; color:var(--text-primary); font-weight:900; font-size:1.15rem; border-bottom:1px solid var(--border); padding-bottom:0.6rem; margin-bottom:1.2rem;">新規実行施策の登録 (${kpiName})</h3>
             
             <div class="input-group" style="margin-bottom:1rem;">
-                <label style="display:block; margin-bottom:0.3rem; font-weight:800; font-size:0.75rem; color:#64748b;">施策名 (仮説)</label>
+                <label style="display:block; margin-bottom:0.3rem; font-weight:800; font-size:0.75rem; color:#64748b;">実施する施策のタイトル</label>
                 <input type="text" id="new-act-name" class="mm-input" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border); font-size:0.85rem;" placeholder="例: 日本酒おすすめPOP設置">
             </div>
 
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
+            <div style="display:grid; grid-template-columns:1fr 1.2fr; gap:1rem; margin-bottom:1rem;">
                 <div class="input-group">
                     <label style="display:block; margin-bottom:0.3rem; font-weight:800; font-size:0.75rem; color:#64748b;">施策カテゴリ</label>
                     <select id="new-act-cat" class="mm-input" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border); font-size:0.85rem;">
@@ -1035,8 +1044,11 @@ window.addNewActionClick = (kpiKey) => {
                     </select>
                 </div>
                 <div class="input-group">
-                    <label style="display:block; margin-bottom:0.3rem; font-weight:800; font-size:0.75rem; color:#64748b;">想定される効果 (数値)</label>
-                    <input type="number" id="new-act-expect" class="mm-input" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border); font-size:0.85rem; text-align:right;" placeholder="50">
+                    <label style="display:block; margin-bottom:0.3rem; font-weight:800; font-size:0.75rem; color:#64748b;">施策のKPIに対する想定数値効果</label>
+                    <div style="display:flex; align-items:center; gap:0.4rem;">
+                        <input type="number" id="new-act-expect" class="mm-input" style="flex:1; padding:0.7rem; border-radius:8px; border:1px solid var(--border); font-size:0.85rem; text-align:right;" placeholder="50">
+                        <span style="font-size:0.85rem; font-weight:800; color:var(--text-secondary); width:20px; text-align:left;">${unit}</span>
+                    </div>
                 </div>
             </div>
 
@@ -1053,6 +1065,9 @@ window.addNewActionClick = (kpiKey) => {
     `;
 
     modal.style.display = 'flex';
+    
+    // 施策モーダルの「実施内容」テキストエリアにオートリサイズをバインド
+    initAutoResizeTextareas(['new-act-details']);
 
     document.getElementById('btn-save-new-act').onclick = () => {
         const name = document.getElementById('new-act-name').value.trim();
@@ -1109,19 +1124,31 @@ window.toggleActionStatusClick = (actionId) => {
         document.body.appendChild(modal);
     }
 
+    const kpiNames = {
+        sales: '売上',
+        customers: '来客数',
+        spend: '客単価',
+        productivity: '営業人時売上'
+    };
+    const kpiName = kpiNames[act.kpi_type] || 'KPI';
+    const unit = act.kpi_type === 'customers' ? '人' : '円';
+
     modal.innerHTML = `
-        <div class="glass-panel animate-scale-in" style="background:white; padding:2rem; border-radius:6px; width:90%; max-width:480px; border: 1px solid var(--border); box-shadow: var(--shadow-lg);">
-            <h3 style="margin-top:0; color:var(--text-primary); font-weight:900; font-size:1.15rem; border-bottom:1px solid var(--border); padding-bottom:0.6rem; margin-bottom:1.2rem;">施策の振り返り (Check & Action)</h3>
+        <div class="glass-panel animate-scale-in" style="background:white; padding:2rem; border-radius:6px; width:90%; max-width:480px; border: 1px solid var(--border); box-shadow: var(--shadow-lg); max-height:85vh; overflow-y:auto;">
+            <h3 style="margin-top:0; color:var(--text-primary); font-weight:900; font-size:1.15rem; border-bottom:1px solid var(--border); padding-bottom:0.6rem; margin-bottom:1.2rem;">施策の振り返り (${kpiName})</h3>
             
             <div style="background:#eff6ff; border-radius:8px; padding:0.8rem; border:1px solid rgba(59,130,246,0.1); margin-bottom:1.2rem; font-size:0.82rem;">
                 <span style="display:block; color:#94a3b8; font-weight:700; font-size:0.7rem; margin-bottom:0.2rem;">対象施策</span>
                 <strong style="color:var(--text-primary); font-size:0.9rem;">${act.action_name}</strong>
-                <p style="margin:0.4rem 0 0; color:#475569;">想定効果: <strong>+${act.expected_effect || 0}</strong></p>
+                <p style="margin:0.4rem 0 0; color:#475569;">想定効果: <strong>+${act.expected_effect || 0} ${unit}</strong></p>
             </div>
 
             <div class="input-group" style="margin-bottom:1rem;">
                 <label style="display:block; margin-bottom:0.3rem; font-weight:800; font-size:0.75rem; color:#64748b;">実際の結果・定量効果 (数値)</label>
-                <input type="number" id="reflect-act-actual" class="mm-input" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border); font-size:0.85rem; text-align:right;" value="${act.actual_effect || ''}" placeholder="35">
+                <div style="display:flex; align-items:center; gap:0.4rem;">
+                    <input type="number" id="reflect-act-actual" class="mm-input" style="flex:1; padding:0.7rem; border-radius:8px; border:1px solid var(--border); font-size:0.85rem; text-align:right;" value="${act.actual_effect || ''}" placeholder="35">
+                    <span style="font-size:0.85rem; font-weight:800; color:var(--text-secondary); width:20px; text-align:left;">${unit}</span>
+                </div>
             </div>
 
             <div class="input-group" style="margin-bottom:1rem;">
@@ -1142,6 +1169,9 @@ window.toggleActionStatusClick = (actionId) => {
     `;
 
     modal.style.display = 'flex';
+    
+    // 振り返りモーダルのテキストエリアにオートリサイズをバインド
+    initAutoResizeTextareas(['reflect-act-comment', 'reflect-act-next']);
 
     document.getElementById('btn-save-reflect').onclick = () => {
         const actual = parseInt(document.getElementById('reflect-act-actual').value) || 0;
@@ -1346,8 +1376,8 @@ async function checkVisaExpirations(storeId) {
 }
 
 // テキストエリアの自動高さ調整関数
-function initAutoResizeTextareas() {
-    const ids = ['mm-input-rec', 'mm-input-ret', 'mm-input-train', 'mm-input-visa'];
+function initAutoResizeTextareas(extraIds = []) {
+    const ids = ['mm-input-rec', 'mm-input-ret', 'mm-input-train', 'mm-input-visa', ...extraIds];
     ids.forEach(id => {
         const ta = document.getElementById(id);
         if (!ta) return;
