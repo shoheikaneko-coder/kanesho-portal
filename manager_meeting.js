@@ -314,19 +314,22 @@ async function renderFormView(container) {
                 </div>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
                     <div class="input-group">
-                        <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">採用予定・人員計画</label>
+                        <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">人員計画</label>
                         <textarea id="mm-input-rec" class="mm-input" rows="3" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="今月・来月の採用目標、充足状況、シフト枠の埋まり具合"></textarea>
                     </div>
                     <div class="input-group">
-                        <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">退職懸念・モチベーション</label>
+                        <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">退職懸念</label>
                         <textarea id="mm-input-ret" class="mm-input" rows="3" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="スタッフの不満、モチベーション低下、退職の予兆などの懸念事項"></textarea>
                     </div>
-                    <div class="input-group">
+                    <div class="input-group" style="display:flex; flex-direction:column;">
                         <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">外国人スタッフ VISA期限確認</label>
-                        <textarea id="mm-input-visa" class="mm-input" rows="3" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="期限切れの近い留学生・就労スタッフがいないかのチェック結果"></textarea>
+                        <div id="mm-visa-warnings-container" style="margin-bottom:0.5rem; display:flex; flex-direction:column; gap:0.3rem;">
+                            <span style="font-size:0.72rem; color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> VISA期限データを照合中...</span>
+                        </div>
+                        <textarea id="mm-input-visa" class="mm-input" rows="3" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem; flex-grow:1;" placeholder="期限切れの近い留学生・就労スタッフがいないかのチェック結果"></textarea>
                     </div>
                     <div class="input-group">
-                        <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">教育進捗・昇格候補</label>
+                        <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">スタッフの教育計画</label>
                         <textarea id="mm-input-train" class="mm-input" rows="3" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="サブ店長昇格候補、新人の育成進捗、キーマン育成について"></textarea>
                     </div>
                 </div>
@@ -357,6 +360,9 @@ async function renderFormView(container) {
 
     const today = new Date().toLocaleDateString('ja-JP');
     document.getElementById('display-date').textContent = editingMeetingData.updated_at ? new Date(editingMeetingData.updated_at).toLocaleDateString('ja-JP') : today;
+
+    // VISA期限チェックロジック
+    await checkVisaExpirations(editingMeetingData.store_id);
 
     // KPI集計とPDCAボードの描画
     await buildKpiPdcaBoards();
@@ -1199,6 +1205,87 @@ async function loadArchiveList() {
     } catch (e) {
         console.error("Failed to load archive:", e);
         listContainer.innerHTML = '<p style="text-align:center; color:var(--danger); font-weight:700;">データの読み込みに失敗しました。</p>';
+    }
+}
+
+async function checkVisaExpirations(storeId) {
+    const container = document.getElementById('mm-visa-warnings-container');
+    const textarea = document.getElementById('mm-input-visa');
+    if (!container || !textarea) return;
+
+    try {
+        let storeName = '';
+        const sSnap = await getDoc(doc(db, "m_stores", storeId));
+        if (sSnap.exists()) {
+            storeName = sSnap.data().store_name || sSnap.data().店舗名 || '';
+        }
+
+        const snap = await getDocs(collection(db, "m_users"));
+        const staffList = [];
+        const today = new Date();
+
+        snap.forEach(d => {
+            const data = d.data();
+            const uStoreId = String(data.StoreID || data.StoreId || "").trim();
+            const uStoreName = String(data.Store || "").trim();
+
+            if (uStoreId === storeId || (storeName && uStoreName === storeName)) {
+                if (data.visa_expiry_date) {
+                    staffList.push({
+                        id: d.id,
+                        name: data.DisplayName || data.Name || "名前未設定",
+                        expiry: data.visa_expiry_date
+                    });
+                }
+            }
+        });
+
+        if (staffList.length === 0) {
+            container.innerHTML = `<span style="font-size:0.75rem; color:#10b981; font-weight:800; display:inline-flex; align-items:center; gap:0.2rem;"><i class="fas fa-check-circle"></i> 期限が近い外国人スタッフはいません（全員残り60日以上）</span>`;
+            return;
+        }
+
+        const warnings = [];
+        const autoInputs = [];
+
+        staffList.forEach(s => {
+            const expDate = new Date(s.expiry);
+            if (isNaN(expDate.getTime())) return;
+
+            const diffTime = expDate.getTime() - today.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays <= 45) {
+                warnings.push({
+                    type: 'danger',
+                    html: `<span style="font-size:0.72rem; color:#ef4444; background:rgba(239, 68, 68, 0.08); padding:0.2rem 0.5rem; border-radius:4px; font-weight:800; display:inline-flex; align-items:center; gap:0.2rem; width:fit-content;"><i class="fas fa-exclamation-triangle"></i> 🔴 ${s.name} (期限: ${s.expiry} / 残り ${diffDays}日) [至急更新手続きが必要]</span>`
+                });
+                autoInputs.push(`${s.name}（期限: ${s.expiry} / 残り${diffDays}日）➔ `);
+            } else if (diffDays <= 60) {
+                warnings.push({
+                    type: 'warning',
+                    html: `<span style="font-size:0.72rem; color:#f59e0b; background:rgba(245, 158, 11, 0.08); padding:0.2rem 0.5rem; border-radius:4px; font-weight:800; display:inline-flex; align-items:center; gap:0.2rem; width:fit-content;"><i class="fas fa-info-circle"></i> 🟡 ${s.name} (期限: ${s.expiry} / 残り ${diffDays}日) [更新準備を確認してください]</span>`
+                });
+                autoInputs.push(`${s.name}（期限: ${s.expiry} / 残り${diffDays}日）➔ `);
+            }
+        });
+
+        if (warnings.length === 0) {
+            container.innerHTML = `<span style="font-size:0.75rem; color:#10b981; font-weight:800; display:inline-flex; align-items:center; gap:0.2rem;"><i class="fas fa-check-circle"></i> 🟢 期限が近い外国人スタッフはいません（全員残り60日以上）</span>`;
+        } else {
+            container.innerHTML = warnings.map(w => w.html).join('');
+            
+            const isNewDraft = !editingMeetingData.updated_at || editingMeetingData.status === '下書き';
+            const hasNoSavedData = !editingMeetingData.hr_sharing || !editingMeetingData.hr_sharing.visa_check || editingMeetingData.hr_sharing.visa_check.trim() === '';
+            
+            if (isNewDraft && hasNoSavedData && textarea.value.trim() === '') {
+                textarea.value = `【システム自動検知】\n` + autoInputs.map(line => `・ ${line}`).join('\n') + `\n\n[対応状況・メモ]:\n`;
+            }
+        }
+
+    } catch (e) {
+        console.error("Failed to check visa expirations:", e);
+        container.innerHTML = `<span style="font-size:0.72rem; color:#ef4444;"><i class="fas fa-times-circle"></i> VISAデータの照合に失敗しました。</span>`;
     }
 }
 
