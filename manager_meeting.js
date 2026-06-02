@@ -911,6 +911,11 @@ function drawTrendGraph(canvasId, dataPoints, monthLabels, targetVal, kpi, key) 
         const w = rect.width;
         const h = rect.height;
 
+        // CSS変数から直接色を取得 (Canvas APIは直接var()を使用できないためフォールバックを確保)
+        const computedStyle = window.getComputedStyle(canvas);
+        const secondaryColor = computedStyle.getPropertyValue('--secondary').trim() || '#f4a261';
+        const textSecondaryColor = computedStyle.getPropertyValue('--text-secondary').trim() || '#94a3b8';
+
         const paddingLeft = 14;
         const paddingRight = 14;
         const paddingTop = 6;
@@ -924,11 +929,11 @@ function drawTrendGraph(canvasId, dataPoints, monthLabels, targetVal, kpi, key) 
         const getY = (value) => h - paddingBottom - ((value - minVal) / range) * (h - paddingTop - paddingBottom);
 
         // トレンドグラフのハイライト色 (KPIのテーマカラーに連動)
-        let themeColor = 'var(--secondary)';
+        let themeColor = secondaryColor;
         if (key === 'customers') themeColor = '#f59e0b';
         else if (key === 'spend') themeColor = '#10b981';
         else if (key === 'productivity') themeColor = '#3b82f6';
-        else if (key === 'sales') themeColor = '#64748b'; // KGI（売上）は落ち着いたグレー
+        else if (key === 'sales') themeColor = textSecondaryColor; // KGI（売上）は落ち着いたグレー
 
         // チャートのレンダリング本体 (ホバーしたインデックスをハイライト)
         function renderChart(hoveredIndex = -1) {
@@ -945,7 +950,7 @@ function drawTrendGraph(canvasId, dataPoints, monthLabels, targetVal, kpi, key) 
             ctx.setLineDash([]);
 
             // 2. 推移線の描画
-            ctx.strokeStyle = 'var(--secondary)';
+            ctx.strokeStyle = secondaryColor;
             ctx.lineWidth = 2;
             ctx.lineJoin = 'round';
             ctx.lineCap = 'round';
@@ -980,7 +985,7 @@ function drawTrendGraph(canvasId, dataPoints, monthLabels, targetVal, kpi, key) 
                     ctx.fill();
                 } else {
                     // 通常のドット
-                    ctx.fillStyle = 'var(--secondary)';
+                    ctx.fillStyle = secondaryColor;
                     ctx.beginPath();
                     ctx.arc(px, py, 2.5, 0, Math.PI * 2);
                     ctx.fill();
@@ -997,7 +1002,7 @@ function drawTrendGraph(canvasId, dataPoints, monthLabels, targetVal, kpi, key) 
             }
 
             // 4. 月名ラベルの描画
-            ctx.fillStyle = 'var(--text-secondary)';
+            ctx.fillStyle = textSecondaryColor;
             ctx.font = '700 8px sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
