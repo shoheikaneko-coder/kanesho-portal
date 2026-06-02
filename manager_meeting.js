@@ -307,46 +307,27 @@ async function renderFormView(container) {
                 <p style="text-align:center; padding:3rem; color:var(--text-secondary);"><i class="fas fa-spinner fa-spin"></i> 実績値およびKPIボードの自動構築中...</p>
             </div>
 
-            <!-- 定性・自由目標エリア (丸み 6pxへ) -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem; margin-top: 3rem;">
-                <div class="mm-card" style="border-radius:6px;">
-                    <div class="mm-section-title" style="font-size:1.1rem; font-weight:900; margin-bottom:1.5rem; display:flex; align-items:center; gap:0.5rem; color:var(--text-primary);">
-                        <i class="fas fa-bullseye" style="color:#f59e0b;"></i> 自由目標エリア (文化・教育・接客品質)
-                    </div>
-                    <div class="input-group" style="margin-bottom: 1.2rem;">
-                        <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">教育・チーム作り</label>
-                        <textarea id="mm-input-edu" class="mm-input" rows="3" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="スタッフの教育進捗、チームワーク、帰属意識の醸成について現状と対策"></textarea>
-                    </div>
-                    <div class="input-group" style="margin-bottom: 1.2rem;">
-                        <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">活気・接客品質</label>
-                        <textarea id="mm-input-hos" class="mm-input" rows="3" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="店舗の活気、サービスレベル、常連顧客づくりのための接客向上計画"></textarea>
+            <!-- スタッフ・採用共有エリア (全幅カード ＆ 2x2グリッド配置) -->
+            <div class="mm-card" style="border-radius:6px; margin-top: 3rem; width: 100%;">
+                <div class="mm-section-title" style="font-size:1.1rem; font-weight:900; margin-bottom:1.5rem; display:flex; align-items:center; gap:0.5rem; color:var(--text-primary);">
+                    <i class="fas fa-users" style="color:#3b82f6;"></i> スタッフ・採用共有エリア (人事管理・リスク共有)
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+                    <div class="input-group">
+                        <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">採用予定・人員計画</label>
+                        <textarea id="mm-input-rec" class="mm-input" rows="3" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="今月・来月の採用目標、充足状況、シフト枠の埋まり具合"></textarea>
                     </div>
                     <div class="input-group">
-                        <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">オペレーション改善</label>
-                        <textarea id="mm-input-ope" class="mm-input" rows="3" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="キッチンの回転率、オペレーションの無駄、クリンリネス向上などの改善案"></textarea>
-                    </div>
-                </div>
-
-                <!-- 採用・共有事項エリア (丸み 6pxへ) -->
-                <div class="mm-card" style="border-radius:6px;">
-                    <div class="mm-section-title" style="font-size:1.1rem; font-weight:900; margin-bottom:1.5rem; display:flex; align-items:center; gap:0.5rem; color:var(--text-primary);">
-                        <i class="fas fa-users" style="color:#3b82f6;"></i> スタッフ・採用共有エリア
-                    </div>
-                    <div class="input-group" style="margin-bottom: 1.2rem;">
-                        <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">採用予定・人員計画</label>
-                        <textarea id="mm-input-rec" class="mm-input" rows="2" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="今月・来月の採用目標、充足状況、シフト枠の埋まり具合"></textarea>
-                    </div>
-                    <div class="input-group" style="margin-bottom: 1.2rem;">
                         <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">退職懸念・モチベーション</label>
-                        <textarea id="mm-input-ret" class="mm-input" rows="2" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="スタッフの不満、モチベーション低下、退職の予兆などの懸念事項"></textarea>
+                        <textarea id="mm-input-ret" class="mm-input" rows="3" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="スタッフの不満、モチベーション低下、退職の予兆などの懸念事項"></textarea>
                     </div>
-                    <div class="input-group" style="margin-bottom: 1.2rem;">
+                    <div class="input-group">
                         <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">外国人スタッフ VISA期限確認</label>
-                        <textarea id="mm-input-visa" class="mm-input" rows="2" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="期限切れの近い留学生・就労スタッフがいないかのチェック結果"></textarea>
+                        <textarea id="mm-input-visa" class="mm-input" rows="3" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="期限切れの近い留学生・就労スタッフがいないかのチェック結果"></textarea>
                     </div>
                     <div class="input-group">
                         <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">教育進捗・昇格候補</label>
-                        <textarea id="mm-input-train" class="mm-input" rows="2" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="サブ店長昇格候補、新人の育成進捗、キーマン育成について"></textarea>
+                        <textarea id="mm-input-train" class="mm-input" rows="3" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="サブ店長昇格候補、新人の育成進捗、キーマン育成について"></textarea>
                     </div>
                 </div>
             </div>
@@ -367,11 +348,6 @@ async function renderFormView(container) {
     };
 
     // 定性目標などのフォーム復元
-    if (editingMeetingData.free_targets) {
-        document.getElementById('mm-input-edu').value = editingMeetingData.free_targets.education || '';
-        document.getElementById('mm-input-hos').value = editingMeetingData.free_targets.hospitality || '';
-        document.getElementById('mm-input-ope').value = editingMeetingData.free_targets.operation || '';
-    }
     if (editingMeetingData.hr_sharing) {
         document.getElementById('mm-input-rec').value = editingMeetingData.hr_sharing.recruitment_plan || '';
         document.getElementById('mm-input-ret').value = editingMeetingData.hr_sharing.retirement_concern || '';
@@ -1237,22 +1213,13 @@ async function saveMeetingData() {
     try {
         const user = window.appState ? window.appState.currentUser : null;
         
-        // 定性フォームの取得
-        const eduText = document.getElementById('mm-input-edu').value;
-        const hosText = document.getElementById('mm-input-hos').value;
-        const opeText = document.getElementById('mm-input-ope').value;
-
         const recText = document.getElementById('mm-input-rec').value;
         const retText = document.getElementById('mm-input-ret').value;
         const visaText = document.getElementById('mm-input-visa').value;
         const trainText = document.getElementById('mm-input-train').value;
 
         // メモリ内データをアップデート
-        editingMeetingData.free_targets = {
-            education: eduText,
-            hospitality: hosText,
-            operation: opeText
-        };
+        editingMeetingData.free_targets = {};
         
         editingMeetingData.hr_sharing = {
             recruitment_plan: recText,
