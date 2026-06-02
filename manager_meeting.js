@@ -307,31 +307,47 @@ async function renderFormView(container) {
                 <p style="text-align:center; padding:3rem; color:var(--text-secondary);"><i class="fas fa-spinner fa-spin"></i> 実績値およびKPIボードの自動構築中...</p>
             </div>
 
-            <!-- スタッフ・採用共有エリア (全幅カード ＆ 2x2グリッド配置) -->
+            <!-- スタッフ・採用共有エリア (全幅カード ＆ 3カラム構成へ刷新) -->
             <div class="mm-card" style="border-radius:6px; margin-top: 3rem; width: 100%;">
                 <div class="mm-section-title" style="font-size:1.1rem; font-weight:900; margin-bottom:1.5rem; display:flex; align-items:center; gap:0.5rem; color:var(--text-primary);">
                     <i class="fas fa-users" style="color:#3b82f6;"></i> スタッフ・採用共有エリア (人事管理・リスク共有)
                 </div>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
-                    <div class="input-group">
-                        <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">人員計画</label>
-                        <textarea id="mm-input-rec" class="mm-input" rows="3" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="今月・来月の採用目標、充足状況、シフト枠の埋まり具合"></textarea>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem; align-items: stretch;" id="mm-hr-sharing-grid">
+                    
+                    <!-- 左カラム: 定性報告 (人員計画、退職懸念、スタッフの教育計画を縦積み) -->
+                    <div style="display: flex; flex-direction: column; gap: 1.2rem; justify-content: space-between;">
+                        <div class="input-group" style="margin:0;">
+                            <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">人員計画</label>
+                            <textarea id="mm-input-rec" class="mm-input" rows="2" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.6rem 0.8rem; font-size:0.85rem;" placeholder="今月・来月の採用目標、充足状況など"></textarea>
+                        </div>
+                        <div class="input-group" style="margin:0;">
+                            <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">退職懸念</label>
+                            <textarea id="mm-input-ret" class="mm-input" rows="2" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.6rem 0.8rem; font-size:0.85rem;" placeholder="スタッフの退職懸念・モチベーションなど"></textarea>
+                        </div>
+                        <div class="input-group" style="margin:0;">
+                            <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">スタッフの教育計画</label>
+                            <textarea id="mm-input-train" class="mm-input" rows="2" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.6rem 0.8rem; font-size:0.85rem;" placeholder="サブ店長昇格候補、育成進捗など"></textarea>
+                        </div>
                     </div>
-                    <div class="input-group">
-                        <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">退職懸念</label>
-                        <textarea id="mm-input-ret" class="mm-input" rows="3" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="スタッフの不満、モチベーション低下、退職の予兆などの懸念事項"></textarea>
-                    </div>
-                    <div class="input-group" style="display:flex; flex-direction:column;">
-                        <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">外国人スタッフ VISA期限確認</label>
-                        <div id="mm-visa-warnings-container" style="margin-bottom:0.5rem; display:flex; flex-direction:column; gap:0.3rem;">
+
+                    <!-- 中央カラム: VISA期限確認 (自動警告UI ＆ 店長報告メモ) -->
+                    <div class="input-group" style="display:flex; flex-direction:column; background: rgba(0,0,0,0.01); padding: 1.2rem; border-radius: 6px; border: 1px solid var(--border); margin:0;">
+                        <label style="display:block; margin-bottom:0.6rem; font-weight:800; font-size:0.75rem; color:#64748b;">外国人スタッフ VISA期限確認</label>
+                        <!-- 動的警告表示コンテナ -->
+                        <div id="mm-visa-warnings-container" style="margin-bottom:0.8rem; display:flex; flex-direction:column; gap:0.4rem;">
                             <span style="font-size:0.72rem; color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> VISA期限データを照合中...</span>
                         </div>
-                        <textarea id="mm-input-visa" class="mm-input" rows="3" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem; flex-grow:1;" placeholder="期限切れの近い留学生・就労スタッフがいないかのチェック結果"></textarea>
+                        <textarea id="mm-input-visa" class="mm-input" rows="6" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem; flex-grow:1;" placeholder="期限切れの近いスタッフへの対策を記入してください"></textarea>
                     </div>
-                    <div class="input-group">
-                        <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">スタッフの教育計画</label>
-                        <textarea id="mm-input-train" class="mm-input" rows="3" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem;" placeholder="サブ店長昇格候補、新人の育成進捗、キーマン育成について"></textarea>
+
+                    <!-- 右カラム: 在籍外国人従業員のVISA在留期限一覧 (自動フェッチ＆ソート表示) -->
+                    <div style="display:flex; flex-direction:column; background: rgba(0,0,0,0.01); padding: 1.2rem; border-radius: 6px; border: 1px solid var(--border); margin:0;">
+                        <label style="display:block; margin-bottom:0.6rem; font-weight:800; font-size:0.75rem; color:#64748b;">在籍外国人従業員のVISA期限一覧</label>
+                        <div id="mm-visa-all-list-container" style="display:flex; flex-direction:column; gap:0.6rem; overflow-y:auto; max-height: 290px; padding-right: 0.2rem;">
+                            <span style="font-size:0.72rem; color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> 従業員リストを読み込み中...</span>
+                        </div>
                     </div>
+
                 </div>
             </div>
         </div>
@@ -1211,6 +1227,7 @@ async function loadArchiveList() {
 async function checkVisaExpirations(storeId) {
     const container = document.getElementById('mm-visa-warnings-container');
     const textarea = document.getElementById('mm-input-visa');
+    const listContainer = document.getElementById('mm-visa-all-list-container');
     if (!container || !textarea) return;
 
     try {
@@ -1240,11 +1257,47 @@ async function checkVisaExpirations(storeId) {
             }
         });
 
-        if (staffList.length === 0) {
-            container.innerHTML = `<span style="font-size:0.75rem; color:#10b981; font-weight:800; display:inline-flex; align-items:center; gap:0.2rem;"><i class="fas fa-check-circle"></i> 期限が近い外国人スタッフはいません（全員残り60日以上）</span>`;
-            return;
+        // 期限が近い順にソート (期限日昇順)
+        staffList.sort((a, b) => new Date(a.expiry).getTime() - new Date(b.expiry).getTime());
+
+        // --- 右カラムの全員のVISA在留期限一覧をレンダリング ---
+        if (listContainer) {
+            if (staffList.length === 0) {
+                listContainer.innerHTML = `<span style="font-size:0.75rem; color:#64748b; padding:1rem; text-align:center;">在籍している外国人スタッフはいません。</span>`;
+            } else {
+                let listHtml = '';
+                staffList.forEach(s => {
+                    const expDate = new Date(s.expiry);
+                    let color = '#10b981';
+                    let label = '安全';
+                    let diffDays = '-';
+                    if (!isNaN(expDate.getTime())) {
+                        const diffTime = expDate.getTime() - today.getTime();
+                        diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        if (diffDays <= 45) {
+                            color = '#ef4444';
+                            label = `残り ${diffDays}日 🔴`;
+                        } else if (diffDays <= 60) {
+                            color = '#f59e0b';
+                            label = `残り ${diffDays}日 🟡`;
+                        } else {
+                            label = `残り ${diffDays}日 🟢`;
+                        }
+                    }
+                    listHtml += `
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:#fff; padding:0.5rem 0.8rem; border-radius:6px; border:1px solid var(--border); font-size:0.8rem; box-shadow:0 1px 2px rgba(0,0,0,0.02);">
+                            <strong style="color:var(--text-primary); font-weight:700;">${s.name}</strong>
+                            <span style="font-weight:800; color:${color}; font-size:0.75rem; display:inline-flex; align-items:center; gap:0.2rem;">
+                                ${s.expiry} <span style="font-size:0.7rem; opacity:0.85;">(${label})</span>
+                            </span>
+                        </div>
+                    `;
+                });
+                listContainer.innerHTML = listHtml;
+            }
         }
 
+        // --- 中央カラムの警告インジケータをレンダリング (チェックアイコン等のノイズを排除) ---
         const warnings = [];
         const autoInputs = [];
 
@@ -1258,20 +1311,20 @@ async function checkVisaExpirations(storeId) {
             if (diffDays <= 45) {
                 warnings.push({
                     type: 'danger',
-                    html: `<span style="font-size:0.72rem; color:#ef4444; background:rgba(239, 68, 68, 0.08); padding:0.2rem 0.5rem; border-radius:4px; font-weight:800; display:inline-flex; align-items:center; gap:0.2rem; width:fit-content;"><i class="fas fa-exclamation-triangle"></i> 🔴 ${s.name} (期限: ${s.expiry} / 残り ${diffDays}日) [至急更新手続きが必要]</span>`
+                    html: `<span style="font-size:0.72rem; color:#ef4444; background:rgba(239, 68, 68, 0.08); padding:0.25rem 0.6rem; border-radius:4px; font-weight:800; display:inline-flex; align-items:center; gap:0.2rem; width:fit-content; border:1px solid rgba(239, 68, 68, 0.15);">🔴 ${s.name} (期限: ${s.expiry} / 残り ${diffDays}日) [至急更新手続きが必要]</span>`
                 });
                 autoInputs.push(`${s.name}（期限: ${s.expiry} / 残り${diffDays}日）➔ `);
             } else if (diffDays <= 60) {
                 warnings.push({
                     type: 'warning',
-                    html: `<span style="font-size:0.72rem; color:#f59e0b; background:rgba(245, 158, 11, 0.08); padding:0.2rem 0.5rem; border-radius:4px; font-weight:800; display:inline-flex; align-items:center; gap:0.2rem; width:fit-content;"><i class="fas fa-info-circle"></i> 🟡 ${s.name} (期限: ${s.expiry} / 残り ${diffDays}日) [更新準備を確認してください]</span>`
+                    html: `<span style="font-size:0.72rem; color:#f59e0b; background:rgba(245, 158, 11, 0.08); padding:0.25rem 0.6rem; border-radius:4px; font-weight:800; display:inline-flex; align-items:center; gap:0.2rem; width:fit-content; border:1px solid rgba(245, 158, 11, 0.15);">🟡 ${s.name} (期限: ${s.expiry} / 残り ${diffDays}日) [更新準備を確認してください]</span>`
                 });
                 autoInputs.push(`${s.name}（期限: ${s.expiry} / 残り${diffDays}日）➔ `);
             }
         });
 
         if (warnings.length === 0) {
-            container.innerHTML = `<span style="font-size:0.75rem; color:#10b981; font-weight:800; display:inline-flex; align-items:center; gap:0.2rem;"><i class="fas fa-check-circle"></i> 🟢 期限が近い外国人スタッフはいません（全員残り60日以上）</span>`;
+            container.innerHTML = `<span style="font-size:0.75rem; color:#10b981; font-weight:800; display:inline-flex; align-items:center; gap:0.2rem;">🟢 期限が近い外国人スタッフはいません（全員残り60日以上）</span>`;
         } else {
             container.innerHTML = warnings.map(w => w.html).join('');
             
@@ -1285,7 +1338,7 @@ async function checkVisaExpirations(storeId) {
 
     } catch (e) {
         console.error("Failed to check visa expirations:", e);
-        container.innerHTML = `<span style="font-size:0.72rem; color:#ef4444;"><i class="fas fa-times-circle"></i> VISAデータの照合に失敗しました。</span>`;
+        container.innerHTML = `<span style="font-size:0.72rem; color:#ef4444;">❌ VISAデータの照合に失敗しました。</span>`;
     }
 }
 
