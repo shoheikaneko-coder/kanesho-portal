@@ -750,13 +750,34 @@ async function buildKpiPdcaBoards() {
             actSuffix = ` <span style="font-size:0.75rem; font-weight:600; color:var(--text-secondary); margin-left:0.2rem;">(実働: ${kpi.opDays}日)</span>`;
         }
 
+        let cardStyle = '';
+        let accentColor = '';
+        let isKpi = true;
+        let kpiTagHtml = '';
+
+        if (key === 'sales') {
+            isKpi = false;
+            kpiTagHtml = ` <span style="font-size:0.65rem; font-weight:800; color:#64748b; background:#e2e8f0; padding:0.15rem 0.4rem; border-radius:4px; margin-left:0.5rem; letter-spacing:0.1px; vertical-align:middle; display:inline-block;">KGI (結果)</span>`;
+            cardStyle = 'background: #fbfcfd; border: 1px solid var(--border); box-shadow: none;';
+        } else {
+            if (key === 'customers') {
+                accentColor = '#f59e0b';
+            } else if (key === 'spend') {
+                accentColor = '#10b981';
+            } else if (key === 'productivity') {
+                accentColor = '#3b82f6';
+            }
+            cardStyle = `border-left: 5px solid ${accentColor};`;
+        }
+
         const card = document.createElement('div');
         card.className = 'glass-panel mm-kpi-card';
+        card.style.cssText = cardStyle;
         card.innerHTML = `
             <div class="mm-kpi-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; border-bottom:1.5px solid var(--border); padding-bottom:0.8rem; margin-bottom:1.2rem;">
-                <div style="display:flex; align-items:center; flex-wrap:wrap; gap:1.8rem;">
+                <div style="display:flex; align-items:center; flex-wrap:wrap; gap:1.5rem;">
                     <h3 style="margin:0; font-size:1.35rem; font-weight:950; color:var(--text-primary); display:flex; align-items:center;">
-                        ${shortName}
+                        ${shortName}${kpiTagHtml}
                     </h3>
                     <div style="display:flex; align-items:center; gap:1.2rem; font-size:1.05rem; font-weight:800; color:var(--text-secondary);">
                         <span>目標: <strong style="color:var(--text-primary); font-size:1.1rem; font-weight:900;">${formatKpiVal(headerTgt, kpi)}</strong>${tgtSuffix}</span>
@@ -831,13 +852,16 @@ async function buildKpiPdcaBoards() {
                 </div>
             </div>
 
+            ${isKpi ? `
             <!-- アクションプランエリア -->
-            <div class="mm-actions-area">
+            <div class="mm-actions-area" style="margin-top: 1.5rem;">
                 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed var(--border); padding-bottom:0.8rem; margin-bottom:1rem;">
                     <h4 style="margin:0; font-size:0.9rem; font-weight:800; color:var(--text-secondary); display:flex; align-items:center; gap:0.4rem;">
                         <i class="fas fa-tasks"></i> 改善のための具体的な施策
                     </h4>
-                    <button class="btn btn-secondary no-print" onclick="window.addNewActionClick('${key}')" style="font-size:0.75rem; padding:0.4rem 1rem; border-radius:20px; font-weight:700;">
+                    <button class="btn no-print" onclick="window.addNewActionClick('${key}')" style="font-size:0.75rem; padding:0.4rem 1.2rem; border-radius:20px; font-weight:800; border: 1.5px solid ${accentColor}; color: ${accentColor}; background: transparent; transition: all 0.2s;"
+                            onmouseover="this.style.background='${accentColor}'; this.style.color='#ffffff';"
+                            onmouseout="this.style.background='transparent'; this.style.color='${accentColor}';">
                         <i class="fas fa-plus"></i> 施策を追加
                     </button>
                 </div>
@@ -850,6 +874,7 @@ async function buildKpiPdcaBoards() {
                     ` : kpiActions.map(act => renderActionRow(act)).join('')}
                 </div>
             </div>
+            ` : ''}
         `;
         container.appendChild(card);
 
