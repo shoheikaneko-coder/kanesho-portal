@@ -102,6 +102,11 @@ export const gradesPageHtml = `
             background: #ffffff;
             transition: border-color 0.15s, box-shadow 0.15s;
         }
+        /* スキルレベル、役職、等級のテキスト文字切れ改善 */
+        .grades-table input[type="text"] {
+            font-size: 0.68rem;
+            padding: 0.2rem 0.2rem;
+        }
         
         /* スピンボタン (上下矢印) を完全に非表示化 */
         /* Chrome, Safari, Edge, Opera */
@@ -364,11 +369,11 @@ function renderGradesTable() {
             </td>
             <!-- 時給(基準) -->
             <td>
-                <input type="number" class="input-hourly-wage" value="${grade.hourly_wage || 0}" min="0" onchange="window.handleGradeChange(${index}, 'hourly_wage', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums; font-weight: 700; background: #eff6ff;">
+                <input type="number" class="input-hourly-wage" value="${grade.hourly_wage || 0}" min="0" onchange="window.handleGradeChange(${index}, 'hourly_wage', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums; background: #eff6ff;">
             </td>
             <!-- 時給(残業込) -->
             <td>
-                <input type="number" class="input-hourly-wage-overtime" value="${grade.hourly_wage_overtime || 0}" min="0" onchange="window.handleGradeChange(${index}, 'hourly_wage_overtime', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums; font-weight: 700; background: #eff6ff;">
+                <input type="number" class="input-hourly-wage-overtime" value="${grade.hourly_wage_overtime || 0}" min="0" onchange="window.handleGradeChange(${index}, 'hourly_wage_overtime', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums; background: #eff6ff;">
             </td>
             <!-- 時間外労働 -->
             <td>
