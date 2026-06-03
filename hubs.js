@@ -157,7 +157,8 @@ export function initHubPage(type) {
                         </div>
                         <div class="tile-grid">
                             ${section.items.filter(item => {
-                                return item.id === 'manager_meeting' || permissions.length === 0 || permissions.includes(item.id) || item.isComingSoon;
+                                const isUserAdmin = window.appState && window.appState.currentUser && (window.appState.currentUser.Role === 'Admin' || window.appState.currentUser.Role === '管理者');
+                                return isUserAdmin || item.id === 'manager_meeting' || permissions.length === 0 || permissions.includes(item.id) || item.isComingSoon;
                             }).map(item => `
                                 <div class="business-tile ${item.isComingSoon ? 'tile-coming-soon' : ''}" 
                                      onclick="${item.isComingSoon ? "alert('この機能は現在開発中です。')" : `window.navigateTo('${item.id}')`}">
@@ -178,8 +179,9 @@ export function initHubPage(type) {
         `;
     } else {
         // 従来のカード形式（グリッド）で描画
+        const isUserAdmin = window.appState && window.appState.currentUser && (window.appState.currentUser.Role === 'Admin' || window.appState.currentUser.Role === '管理者');
         const visibleItems = config.items.filter(item => {
-            return item.id === 'manager_meeting' || permissions.length === 0 || permissions.includes(item.id);
+            return isUserAdmin || item.id === 'manager_meeting' || permissions.length === 0 || permissions.includes(item.id);
         });
 
         if (visibleItems.length === 0) {
