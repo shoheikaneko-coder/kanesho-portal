@@ -53,9 +53,9 @@ export const gradesPageHtml = `
                             <th class="col-edit-action" style="width: 60px;">並び順</th>
                             <th style="width: 105px;">スキルレベル</th>
                             <th style="width: 95px;">役職</th>
-                            <th style="width: 60px;">等級</th>
-                            <th style="width: 90px;">基本給</th>
-                            <th style="width: 85px;">役職<br>手当</th>
+                            <th style="width: 75px;">等級</th>
+                            <th style="width: 82px;">基本給</th>
+                            <th style="width: 78px;">役職<br>手当</th>
                             <th style="width: 52px;">総労働<br>時間</th>
                             <th style="width: 52px;">基本<br>時間</th>
                             <th style="width: 75px; background: #1e40af;">時給<br>(基準)</th>
@@ -349,7 +349,7 @@ function renderGradesTable() {
             </td>
             <!-- 等級コード -->
             <td>
-                <input type="text" class="input-grade-code" value="${grade.grade_code || ''}" onchange="window.handleGradeChange(${index}, 'grade_code', this.value)" style="font-family: monospace;">
+                <input type="text" class="input-grade-code" value="${grade.grade_code || ''}" onchange="window.handleGradeChange(${index}, 'grade_code', this.value)">
             </td>
             <!-- 基本給 -->
             <td>
