@@ -54,19 +54,19 @@ export const gradesPageHtml = `
                             <th style="width: 90px;">スキルレベル</th>
                             <th style="width: 90px;">役職</th>
                             <th style="width: 70px;">等級</th>
-                            <th style="width: 85px;">基本給</th>
-                            <th style="width: 80px;">役職<br>手当</th>
-                            <th style="width: 55px;">総労働<br>時間</th>
-                            <th style="width: 55px;">基本<br>時間</th>
-                            <th style="width: 70px; background: #1e40af;">時給<br>(基準)</th>
-                            <th style="width: 75px; background: #1e40af;">時給<br>(残業込)</th>
+                            <th style="width: 95px;">基本給</th>
+                            <th style="width: 85px;">役職<br>手当</th>
+                            <th style="width: 52px;">総労働<br>時間</th>
+                            <th style="width: 52px;">基本<br>時間</th>
+                            <th style="width: 75px; background: #1e40af;">時給<br>(基準)</th>
+                            <th style="width: 80px; background: #1e40af;">時給<br>(残業込)</th>
                             <th style="width: 80px;">時間外<br>労働</th>
                             <th style="width: 80px;">深夜<br>割増</th>
                             <th style="width: 90px; background: #0f172a;">想定<br>月給</th>
                             <th style="width: 90px;">月給<br>(賞与按分)</th>
                             <th style="width: 80px;">社保<br>合計</th>
                             <th style="width: 105px; background: #0f172a;">想定人件費<br>(社保込)</th>
-                            <th style="width: 55px;">賞与<br>割合</th>
+                            <th style="width: 52px;">賞与<br>割合</th>
                             <th style="width: 95px; background: #0f172a;">賞与<br>基準額</th>
                         </tr>
                     </thead>
@@ -86,21 +86,33 @@ export const gradesPageHtml = `
             vertical-align: middle;
         }
         .grades-table td {
-            padding: 0.25rem 0.35rem;
+            padding: 0.2rem 0.25rem;
             border-bottom: 1px solid var(--border);
             vertical-align: middle;
         }
         .grades-table input[type="text"],
         .grades-table input[type="number"] {
             width: 100%;
-            padding: 0.25rem 0.35rem;
+            padding: 0.2rem 0.25rem;
             border: 1px solid #cbd5e1;
             border-radius: 4px;
-            font-size: 0.78rem;
+            font-size: 0.72rem;
             font-family: inherit;
             box-sizing: border-box;
             background: #ffffff;
             transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        
+        /* スピンボタン (上下矢印) を完全に非表示化 */
+        /* Chrome, Safari, Edge, Opera */
+        .grades-table input::-webkit-outer-spin-button,
+        .grades-table input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        /* Firefox */
+        .grades-table input[type="number"] {
+            -moz-appearance: textfield;
         }
         .grades-table input:focus {
             border-color: #f59e0b;
