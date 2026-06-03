@@ -4,66 +4,70 @@ import { showConfirm, showAlert } from './ui_utils.js';
 
 let localGrades = []; // メモリ上の等級リスト
 let originalGradesHash = ''; // 保存時の差分検知用ハッシュ値
+let isEditMode = false; // 整理・削除モードフラグ
 
 export const gradesPageHtml = `
-    <div id="grades-page-container" class="animate-fade-in" style="padding: 1.5rem; max-width: 100%; box-sizing: border-box;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+    <div id="grades-page-container" class="animate-fade-in" style="padding: 1rem 1.5rem; max-width: 100%; box-sizing: border-box;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; flex-wrap: wrap; gap: 1rem;">
             <div>
-                <h2 style="margin: 0; display: flex; align-items: center; gap: 0.8rem; font-size: 1.6rem; font-weight: 900; color: var(--text-primary);">
+                <h2 style="margin: 0; display: flex; align-items: center; gap: 0.8rem; font-size: 1.5rem; font-weight: 900; color: var(--text-primary);">
                     <i class="fas fa-table" style="color: #f59e0b;"></i>
                     等級マスタ (給与テーブル) 設定
                 </h2>
-                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.4rem; font-weight: 600;">
+                <p style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 0.3rem; font-weight: 600;">
                     各等級ごとの基本給、各種手当、想定労働時間、時給基準、社保・人件費・賞与割合を一括管理します
                 </p>
             </div>
-            <div style="display: flex; gap: 0.8rem; align-items: center;" class="no-print">
-                <button class="btn" id="btn-grades-back" style="background: white; border: 1px solid var(--border); color: var(--text-secondary); font-weight: 700; padding: 0.7rem 1.2rem; border-radius: 8px;">
+            <div style="display: flex; gap: 0.6rem; align-items: center;" class="no-print">
+                <button class="btn" id="btn-grades-back" style="background: white; border: 1px solid var(--border); color: var(--text-secondary); font-weight: 700; padding: 0.6rem 1.1rem; border-radius: 8px; font-size: 0.85rem;">
                     <i class="fas fa-arrow-left"></i> 人事総務へ戻る
                 </button>
-                <button class="btn btn-primary" id="btn-add-grade" style="padding: 0.7rem 1.5rem; font-weight: 800; border-radius: 8px; background: #f59e0b; border-color: #f59e0b;">
+                <button class="btn" id="btn-toggle-edit-mode" style="background: white; border: 1px solid var(--border); color: var(--text-secondary); font-weight: 700; padding: 0.6rem 1.1rem; border-radius: 8px; font-size: 0.85rem; transition: all 0.2s;">
+                    <i class="fas fa-cog"></i> 等級の整理・削除
+                </button>
+                <button class="btn btn-primary" id="btn-add-grade" style="padding: 0.6rem 1.3rem; font-weight: 800; border-radius: 8px; background: #f59e0b; border-color: #f59e0b; font-size: 0.85rem;">
                     <i class="fas fa-plus"></i> 新しい等級を追加
                 </button>
-                <button class="btn btn-success" id="btn-save-grades" style="padding: 0.7rem 1.8rem; font-weight: 900; border-radius: 8px; background: #10b981; border-color: #10b981; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);">
+                <button class="btn btn-success" id="btn-save-grades" style="padding: 0.6rem 1.6rem; font-weight: 900; border-radius: 8px; background: #10b981; border-color: #10b981; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2); font-size: 0.85rem;">
                     <i class="fas fa-save"></i> 変更をすべて保存
                 </button>
             </div>
         </div>
 
-        <div class="glass-panel" style="padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);">
-            <div style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); background: #f8fafc; display: flex; justify-content: space-between; align-items: center;">
-                <span id="grades-count" style="color: var(--text-secondary); font-size: 0.85rem; font-weight: 800;">
+        <div class="glass-panel" id="grades-table-panel" style="padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05); transition: border 0.25s, box-shadow 0.25s;">
+            <div style="padding: 0.8rem 1.2rem; border-bottom: 1px solid var(--border); background: #f8fafc; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                <span id="grades-count" style="color: var(--text-secondary); font-size: 0.82rem; font-weight: 800;">
                     読込中...
                 </span>
-                <span style="font-size: 0.75rem; color: #b45309; font-weight: 700; background: #fef3c7; padding: 0.25rem 0.75rem; border-radius: 15px;">
+                <span id="grades-guide-message" style="font-size: 0.75rem; color: #b45309; font-weight: 700; background: #fef3c7; padding: 0.25rem 0.75rem; border-radius: 15px; transition: all 0.2s;">
                     ※ 各セルを直接入力して編集できます。変更後は「変更をすべて保存」を押してください。
                 </span>
             </div>
 
-            <!-- スプレッドシートライクな横スクロールテーブル -->
+            <!-- スプレッドシートライクな一括編集テーブル (PC大画面にてスクロールなしに最適化) -->
             <div style="overflow-x: auto; max-width: 100%; border-radius: 0 0 12px 12px;">
-                <table class="grades-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.82rem; min-width: 1800px;">
+                <table class="grades-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.78rem;">
                     <thead>
                         <tr style="background: #1e3a8a; border-bottom: 2px solid #0f172a; color: white;">
-                            <th style="padding: 0.75rem; font-weight: 800; text-align: center; width: 60px;">操作</th>
-                            <th style="padding: 0.75rem; font-weight: 800; text-align: center; width: 70px;">並び順</th>
-                            <th style="padding: 0.75rem; font-weight: 800; width: 120px;">スキルレベル</th>
-                            <th style="padding: 0.75rem; font-weight: 800; width: 120px;">役職</th>
-                            <th style="padding: 0.75rem; font-weight: 800; width: 100px;">等級</th>
-                            <th style="padding: 0.75rem; font-weight: 800; width: 110px; text-align: right;">基本給 (A)</th>
-                            <th style="padding: 0.75rem; font-weight: 800; width: 110px; text-align: right;">役職手当 (B)</th>
-                            <th style="padding: 0.75rem; font-weight: 800; width: 85px; text-align: right;">総労働 h</th>
-                            <th style="padding: 0.75rem; font-weight: 800; width: 85px; text-align: right;">基本 h</th>
-                            <th style="padding: 0.75rem; font-weight: 800; width: 100px; text-align: right; background: #1e40af;">時給(甲)</th>
-                            <th style="padding: 0.75rem; font-weight: 800; width: 110px; text-align: right; background: #1e40af;">時給残業込</th>
-                            <th style="padding: 0.75rem; font-weight: 800; width: 120px; text-align: right;">時間外労働(C)</th>
-                            <th style="padding: 0.75rem; font-weight: 800; width: 100px; text-align: right;">深夜割増(D)</th>
-                            <th style="padding: 0.75rem; font-weight: 800; width: 120px; text-align: right; background: #0f172a;">月給 (A-D)</th>
-                            <th style="padding: 0.75rem; font-weight: 800; width: 120px; text-align: right;">月給賞与按分</th>
-                            <th style="padding: 0.75rem; font-weight: 800; width: 110px; text-align: right;">社保合計</th>
-                            <th style="padding: 0.75rem; font-weight: 800; width: 130px; text-align: right; background: #0f172a;">人件費(社保込)</th>
-                            <th style="padding: 0.75rem; font-weight: 800; width: 90px; text-align: right;">賞与割合</th>
-                            <th style="padding: 0.75rem; font-weight: 800; width: 120px; text-align: right; background: #0f172a;">賞与基準額</th>
+                            <th class="col-edit-action" style="padding: 0.4rem; font-weight: 800; text-align: center; width: 45px;">操作</th>
+                            <th class="col-edit-action" style="padding: 0.4rem; font-weight: 800; text-align: center; width: 60px;">並び順</th>
+                            <th style="padding: 0.4rem; font-weight: 800; width: 90px;">スキルレベル</th>
+                            <th style="padding: 0.4rem; font-weight: 800; width: 90px;">役職</th>
+                            <th style="padding: 0.4rem; font-weight: 800; width: 70px;">等級</th>
+                            <th style="padding: 0.4rem; font-weight: 800; width: 85px; text-align: right;">基本給</th>
+                            <th style="padding: 0.4rem; font-weight: 800; width: 80px; text-align: right;">役職<br>手当</th>
+                            <th style="padding: 0.4rem; font-weight: 800; width: 55px; text-align: right;">総労働<br>時間</th>
+                            <th style="padding: 0.4rem; font-weight: 800; width: 55px; text-align: right;">基本<br>時間</th>
+                            <th style="padding: 0.4rem; font-weight: 800; width: 70px; text-align: right; background: #1e40af;">時給<br>(基準)</th>
+                            <th style="padding: 0.4rem; font-weight: 800; width: 75px; text-align: right; background: #1e40af;">時給<br>(残業込)</th>
+                            <th style="padding: 0.4rem; font-weight: 800; width: 80px; text-align: right;">時間外<br>労働</th>
+                            <th style="padding: 0.4rem; font-weight: 800; width: 80px; text-align: right;">深夜<br>割増</th>
+                            <th style="padding: 0.4rem; font-weight: 800; width: 90px; text-align: right; background: #0f172a;">想定<br>月給</th>
+                            <th style="padding: 0.4rem; font-weight: 800; width: 90px; text-align: right;">月給<br>(賞与按分)</th>
+                            <th style="padding: 0.4rem; font-weight: 800; width: 80px; text-align: right;">社保<br>合計</th>
+                            <th style="padding: 0.4rem; font-weight: 800; width: 105px; text-align: right; background: #0f172a;">想定人件費<br>(社保込)</th>
+                            <th style="padding: 0.4rem; font-weight: 800; width: 55px; text-align: right;">賞与<br>割合</th>
+                            <th style="padding: 0.4rem; font-weight: 800; width: 95px; text-align: right; background: #0f172a;">賞与<br>基準額</th>
                         </tr>
                     </thead>
                     <tbody id="grades-table-body">
@@ -76,17 +80,17 @@ export const gradesPageHtml = `
     
     <style>
         .grades-table td {
-            padding: 0.35rem 0.5rem;
+            padding: 0.25rem 0.35rem;
             border-bottom: 1px solid var(--border);
             vertical-align: middle;
         }
         .grades-table input[type="text"],
         .grades-table input[type="number"] {
             width: 100%;
-            padding: 0.4rem 0.5rem;
+            padding: 0.25rem 0.35rem;
             border: 1px solid #cbd5e1;
             border-radius: 4px;
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             font-family: inherit;
             box-sizing: border-box;
             background: #ffffff;
@@ -103,20 +107,21 @@ export const gradesPageHtml = `
             font-weight: 800;
             color: #1e293b;
             text-align: right;
-            padding: 0.6rem 0.8rem;
+            padding: 0.3rem 0.4rem;
             border-radius: 4px;
             display: block;
             border: 1px solid #e2e8f0;
             font-family: monospace;
+            font-variant-numeric: tabular-nums;
             box-sizing: border-box;
-            font-size: 0.8rem;
+            font-size: 0.76rem;
         }
         .grades-table tr:hover {
             background: rgba(248, 250, 252, 0.6);
         }
         .grades-btn-sort {
-            padding: 0.2rem 0.4rem;
-            font-size: 0.7rem;
+            padding: 0.15rem 0.3rem;
+            font-size: 0.65rem;
             background: #f1f5f9;
             border: 1px solid #cbd5e1;
             color: #475569;
@@ -132,6 +137,18 @@ export const gradesPageHtml = `
             opacity: 0.3;
             cursor: not-allowed;
         }
+        
+        /* 整理モード切替制御用のCSS */
+        .col-edit-action {
+            display: none !important;
+        }
+        .edit-mode-active .col-edit-action {
+            display: table-cell !important;
+        }
+        #grades-table-panel.edit-mode-active {
+            border: 2px dashed #f59e0b !important;
+            box-shadow: 0 10px 20px -3px rgba(245, 158, 11, 0.12) !important;
+        }
     </style>
 `;
 
@@ -143,6 +160,15 @@ export async function initGradesPage() {
     if (btnBack) {
         btnBack.onclick = () => {
             window.navigateTo('hr_hub');
+        };
+    }
+
+    // 整理・削除トグルボタンの紐付け
+    const btnToggle = document.getElementById('btn-toggle-edit-mode');
+    if (btnToggle) {
+        btnToggle.onclick = () => {
+            isEditMode = !isEditMode;
+            syncEditModeUI();
         };
     }
 
@@ -162,8 +188,45 @@ export async function initGradesPage() {
         };
     }
 
+    // ページロード時は編集モードをデフォルトでOFFにする
+    isEditMode = false;
+
     // 読み込み初期化
     await loadGradesData();
+}
+
+// 整理モードのUI表示同期
+function syncEditModeUI() {
+    const btn = document.getElementById('btn-toggle-edit-mode');
+    const panel = document.getElementById('grades-table-panel');
+    const msg = document.getElementById('grades-guide-message');
+    if (!btn || !panel) return;
+
+    if (isEditMode) {
+        btn.innerHTML = '<i class="fas fa-check"></i> 整理モードを終了';
+        btn.style.background = '#f59e0b';
+        btn.style.borderColor = '#f59e0b';
+        btn.style.color = '#ffffff';
+        btn.style.boxShadow = '0 4px 6px -1px rgba(245, 158, 11, 0.2)';
+        panel.classList.add('edit-mode-active');
+        if (msg) {
+            msg.textContent = '【整理モード実行中】 等級の並び替え (▲/▼) と不要な等級の削除が可能です。';
+            msg.style.background = '#ffedd5';
+            msg.style.color = '#c2410c';
+        }
+    } else {
+        btn.innerHTML = '<i class="fas fa-cog"></i> 等級の整理・削除';
+        btn.style.background = 'white';
+        btn.style.borderColor = 'var(--border)';
+        btn.style.color = 'var(--text-secondary)';
+        btn.style.boxShadow = 'none';
+        panel.classList.remove('edit-mode-active');
+        if (msg) {
+            msg.textContent = '※ 各セルを直接入力して編集できます。変更後は「変更をすべて保存」を押してください。';
+            msg.style.background = '#fef3c7';
+            msg.style.color = '#b45309';
+        }
+    }
 }
 
 // Firestoreから等級マスタデータをロード
@@ -240,15 +303,15 @@ function renderGradesTable() {
         const isLast = index === localGrades.length - 1;
 
         tr.innerHTML = `
-            <!-- 操作 (削除) -->
-            <td style="text-align: center;">
-                <button class="btn" onclick="window.deleteGradeRow(${index})" style="background: transparent; color: var(--danger); padding: 0.4rem; border: none; cursor: pointer;" title="この行を削除">
-                    <i class="fas fa-trash-alt" style="font-size: 0.95rem;"></i>
+            <!-- 操作 (削除) [整理モード時のみ出現] -->
+            <td class="col-edit-action" style="text-align: center;">
+                <button class="btn" onclick="window.deleteGradeRow(${index})" style="background: transparent; color: var(--danger); padding: 0.2rem; border: none; cursor: pointer;" title="この行を削除">
+                    <i class="fas fa-trash-alt" style="font-size: 0.9rem;"></i>
                 </button>
             </td>
-            <!-- 並び順 (上下) -->
-            <td style="text-align: center;">
-                <div style="display: flex; gap: 0.15rem; justify-content: center;">
+            <!-- 並び順 (上下) [整理モード時のみ出現] -->
+            <td class="col-edit-action" style="text-align: center;">
+                <div style="display: flex; gap: 0.1rem; justify-content: center;">
                     <button class="grades-btn-sort" onclick="window.moveGradeRow(${index}, -1)" ${isFirst ? 'disabled' : ''} title="上へ移動">▲</button>
                     <button class="grades-btn-sort" onclick="window.moveGradeRow(${index}, 1)" ${isLast ? 'disabled' : ''} title="下へ移動">▼</button>
                 </div>
@@ -265,57 +328,57 @@ function renderGradesTable() {
             <td>
                 <input type="text" class="input-grade-code" value="${grade.grade_code || ''}" onchange="window.handleGradeChange(${index}, 'grade_code', this.value)" style="font-weight: 800; font-family: monospace;">
             </td>
-            <!-- 基本給 (A) -->
+            <!-- 基本給 -->
             <td>
-                <input type="number" class="input-basic-salary" value="${grade.basic_salary || 0}" min="0" onchange="window.handleGradeChange(${index}, 'basic_salary', this.value)" style="text-align: right; font-family: monospace;">
+                <input type="number" class="input-basic-salary" value="${grade.basic_salary || 0}" min="0" onchange="window.handleGradeChange(${index}, 'basic_salary', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
             </td>
-            <!-- 役職手当 (B) -->
+            <!-- 役職手当 -->
             <td>
-                <input type="number" class="input-role-allowance" value="${grade.role_allowance || 0}" min="0" onchange="window.handleGradeChange(${index}, 'role_allowance', this.value)" style="text-align: right; font-family: monospace;">
+                <input type="number" class="input-role-allowance" value="${grade.role_allowance || 0}" min="0" onchange="window.handleGradeChange(${index}, 'role_allowance', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
             </td>
-            <!-- 総労働 h -->
+            <!-- 総労働時間 -->
             <td>
-                <input type="number" class="input-total-hours" value="${grade.total_hours || 215}" min="0" onchange="window.handleGradeChange(${index}, 'total_hours', this.value)" style="text-align: right; font-family: monospace;">
+                <input type="number" class="input-total-hours" value="${grade.total_hours || 215}" min="0" onchange="window.handleGradeChange(${index}, 'total_hours', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
             </td>
-            <!-- 基本 h -->
+            <!-- 基本時間 -->
             <td>
-                <input type="number" class="input-basic-hours" value="${grade.basic_hours || 173}" min="1" onchange="window.handleGradeChange(${index}, 'basic_hours', this.value)" style="text-align: right; font-family: monospace;">
+                <input type="number" class="input-basic-hours" value="${grade.basic_hours || 173}" min="1" onchange="window.handleGradeChange(${index}, 'basic_hours', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
             </td>
-            <!-- 時給(甲) -->
+            <!-- 時給(基準) -->
             <td>
-                <input type="number" class="input-hourly-wage" value="${grade.hourly_wage || 0}" min="0" onchange="window.handleGradeChange(${index}, 'hourly_wage', this.value)" style="text-align: right; font-family: monospace; font-weight: 700; background: #eff6ff;">
+                <input type="number" class="input-hourly-wage" value="${grade.hourly_wage || 0}" min="0" onchange="window.handleGradeChange(${index}, 'hourly_wage', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums; font-weight: 700; background: #eff6ff;">
             </td>
-            <!-- 時給残業込 -->
+            <!-- 時給(残業込) -->
             <td>
-                <input type="number" class="input-hourly-wage-overtime" value="${grade.hourly_wage_overtime || 0}" min="0" onchange="window.handleGradeChange(${index}, 'hourly_wage_overtime', this.value)" style="text-align: right; font-family: monospace; font-weight: 700; background: #eff6ff;">
+                <input type="number" class="input-hourly-wage-overtime" value="${grade.hourly_wage_overtime || 0}" min="0" onchange="window.handleGradeChange(${index}, 'hourly_wage_overtime', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums; font-weight: 700; background: #eff6ff;">
             </td>
-            <!-- 時間外労働 (C) -->
+            <!-- 時間外労働 -->
             <td>
-                <input type="number" class="input-overtime-allowance" value="${grade.overtime_allowance || 0}" min="0" onchange="window.handleGradeChange(${index}, 'overtime_allowance', this.value)" style="text-align: right; font-family: monospace;">
+                <input type="number" class="input-overtime-allowance" value="${grade.overtime_allowance || 0}" min="0" onchange="window.handleGradeChange(${index}, 'overtime_allowance', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
             </td>
-            <!-- 深夜割増 (D) -->
+            <!-- 深夜割増 -->
             <td>
-                <input type="number" class="input-late-allowance" value="${grade.late_allowance || 0}" min="0" onchange="window.handleGradeChange(${index}, 'late_allowance', this.value)" style="text-align: right; font-family: monospace;">
+                <input type="number" class="input-late-allowance" value="${grade.late_allowance || 0}" min="0" onchange="window.handleGradeChange(${index}, 'late_allowance', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
             </td>
-            <!-- 月給 (A-D) [ReadOnly] -->
+            <!-- 想定月給 [ReadOnly] -->
             <td>
                 <span class="col-readonly readonly-monthly-salary">${formatCurrency(grade.monthly_salary || 0)}</span>
             </td>
-            <!-- 月給賞与按分 -->
+            <!-- 月給(賞与按分) -->
             <td>
-                <input type="number" class="input-monthly-salary-bonus" value="${grade.monthly_salary_bonus || 0}" min="0" onchange="window.handleGradeChange(${index}, 'monthly_salary_bonus', this.value)" style="text-align: right; font-family: monospace;">
+                <input type="number" class="input-monthly-salary-bonus" value="${grade.monthly_salary_bonus || 0}" min="0" onchange="window.handleGradeChange(${index}, 'monthly_salary_bonus', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
             </td>
             <!-- 社保合計 -->
             <td>
-                <input type="number" class="input-social-insurance" value="${grade.social_insurance || 0}" min="0" onchange="window.handleGradeChange(${index}, 'social_insurance', this.value)" style="text-align: right; font-family: monospace;">
+                <input type="number" class="input-social-insurance" value="${grade.social_insurance || 0}" min="0" onchange="window.handleGradeChange(${index}, 'social_insurance', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
             </td>
-            <!-- 人件費社保込 [ReadOnly] -->
+            <!-- 想定人件費(社保込) [ReadOnly] -->
             <td>
                 <span class="col-readonly readonly-total-labor-cost" style="font-weight: 900; color: #1e3a8a;">${formatCurrency(grade.total_labor_cost || 0)}</span>
             </td>
             <!-- 賞与割合 -->
             <td>
-                <input type="number" class="input-bonus-ratio" value="${grade.bonus_ratio || 0}" min="0" step="0.05" onchange="window.handleGradeChange(${index}, 'bonus_ratio', this.value)" style="text-align: right; font-family: monospace;">
+                <input type="number" class="input-bonus-ratio" value="${grade.bonus_ratio || 0}" min="0" step="0.05" onchange="window.handleGradeChange(${index}, 'bonus_ratio', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
             </td>
             <!-- 賞与基準額 [ReadOnly] -->
             <td>
@@ -327,6 +390,9 @@ function renderGradesTable() {
         // 各ReadOnly列の初回計算
         recalculateReadOnlys(index, false);
     });
+
+    // 編集モード状態のDOM同期 (再描画時にも状態を引き継ぎ)
+    syncEditModeUI();
 }
 
 // 金額フォーマットユーティリティ (¥記号付き)
@@ -362,7 +428,6 @@ function addNewGradeRow() {
         const row = document.getElementById(`grade-row-${localGrades.length - 1}`);
         if (row) {
             row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            // 最初に入力してほしい「スキルレベル」の枠にフォーカスをあてる
             row.querySelector('.input-skill-level')?.focus();
         }
     }, 50);
@@ -415,7 +480,7 @@ window.handleGradeChange = function(index, field, value) {
 
     // --- ハイブリッド自動計算ルール ---
     
-    // 1. 基本給(A) / 役職手当(B) / 基本h が変わった場合、時給(甲)を自動計算
+    // 1. 基本給 / 役職手当 / 基本h が変わった場合、時給基準を自動計算
     if (['basic_salary', 'role_allowance', 'basic_hours'].includes(field)) {
         const basicSalary = grade.basic_salary;
         const roleAllowance = grade.role_allowance;
@@ -431,23 +496,23 @@ window.handleGradeChange = function(index, field, value) {
         grade.hourly_wage_overtime = calculatedHourlyOvertime;
         rowEl.querySelector('.input-hourly-wage-overtime').value = calculatedHourlyOvertime;
 
-        // 連鎖：時間外(C)も自動計算
+        // 連鎖：時間外労働も自動計算
         const calculatedOvertime = Math.round(calculatedHourlyOvertime * 42);
         grade.overtime_allowance = calculatedOvertime;
         rowEl.querySelector('.input-overtime-allowance').value = calculatedOvertime;
     }
-    // 2. 時給(甲) が直接変わった場合、残業込時給を自動計算
+    // 2. 時給基準 が直接変わった場合、残業込時給を自動計算
     else if (field === 'hourly_wage') {
         const calculatedHourlyOvertime = Math.round(grade.hourly_wage * 1.0975);
         grade.hourly_wage_overtime = calculatedHourlyOvertime;
         rowEl.querySelector('.input-hourly-wage-overtime').value = calculatedHourlyOvertime;
 
-        // 連鎖：時間外(C)
+        // 連鎖：時間外労働
         const calculatedOvertime = Math.round(calculatedHourlyOvertime * 42);
         grade.overtime_allowance = calculatedOvertime;
         rowEl.querySelector('.input-overtime-allowance').value = calculatedOvertime;
     }
-    // 3. 時給残業込 が直接変わった場合、時間外(C)を自動計算
+    // 3. 時給残業込 が直接変わった場合、時間外労働を自動計算
     else if (field === 'hourly_wage_overtime') {
         const calculatedOvertime = Math.round(grade.hourly_wage_overtime * 42);
         grade.overtime_allowance = calculatedOvertime;
