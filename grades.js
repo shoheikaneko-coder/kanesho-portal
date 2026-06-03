@@ -46,15 +46,15 @@ export const gradesPageHtml = `
 
             <!-- スプレッドシートライクな一括編集テーブル (PC大画面にてスクロールなしに最適化) -->
             <div style="overflow-x: auto; max-width: 100%; border-radius: 0 0 12px 12px;">
-                <table class="grades-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.78rem;">
+                <table class="grades-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.78rem; table-layout: fixed;">
                     <thead>
                         <tr style="background: #1e3a8a; border-bottom: 2px solid #0f172a; color: white;">
                             <th class="col-edit-action" style="width: 45px;">操作</th>
                             <th class="col-edit-action" style="width: 60px;">並び順</th>
-                            <th style="width: 90px;">スキルレベル</th>
-                            <th style="width: 90px;">役職</th>
-                            <th style="width: 70px;">等級</th>
-                            <th style="width: 95px;">基本給</th>
+                            <th style="width: 105px;">スキルレベル</th>
+                            <th style="width: 105px;">役職</th>
+                            <th style="width: 60px;">等級</th>
+                            <th style="width: 90px;">基本給</th>
                             <th style="width: 85px;">役職<br>手当</th>
                             <th style="width: 52px;">総労働<br>時間</th>
                             <th style="width: 52px;">基本<br>時間</th>
@@ -62,12 +62,12 @@ export const gradesPageHtml = `
                             <th style="width: 80px; background: #1e40af;">時給<br>(残業込)</th>
                             <th style="width: 80px;">時間外<br>労働</th>
                             <th style="width: 80px;">深夜<br>割増</th>
-                            <th style="width: 90px; background: #0f172a;">想定<br>月給</th>
-                            <th style="width: 90px;">月給<br>(賞与按分)</th>
+                            <th style="width: 85px; background: #0f172a;">想定<br>月給</th>
+                            <th style="width: 85px;">月給<br>(賞与按分)</th>
                             <th style="width: 80px;">社保<br>合計</th>
-                            <th style="width: 105px; background: #0f172a;">想定人件費<br>(社保込)</th>
+                            <th style="width: 100px; background: #0f172a;">想定人件費<br>(社保込)</th>
                             <th style="width: 52px;">賞与<br>割合</th>
-                            <th style="width: 95px; background: #0f172a;">賞与<br>基準額</th>
+                            <th style="width: 90px; background: #0f172a;">賞与<br>基準額</th>
                         </tr>
                     </thead>
                     <tbody id="grades-table-body">
@@ -96,15 +96,14 @@ export const gradesPageHtml = `
             padding: 0.2rem 0.25rem;
             border: 1px solid #cbd5e1;
             border-radius: 4px;
-            font-size: 0.72rem;
+            font-size: 0.68rem;
             font-family: inherit;
             box-sizing: border-box;
             background: #ffffff;
             transition: border-color 0.15s, box-shadow 0.15s;
         }
-        /* スキルレベル、役職、等級のテキスト文字切れ改善 */
+        /* スキルレベル、役職、等級のテキストパディングのみ個別調整 */
         .grades-table input[type="text"] {
-            font-size: 0.68rem;
             padding: 0.2rem 0.2rem;
         }
         
