@@ -52,7 +52,7 @@ export const gradesPageHtml = `
                             <th class="col-edit-action" style="width: 45px;">操作</th>
                             <th class="col-edit-action" style="width: 60px;">並び順</th>
                             <th style="width: 105px;">スキルレベル</th>
-                            <th style="width: 105px;">役職</th>
+                            <th style="width: 95px;">役職</th>
                             <th style="width: 60px;">等級</th>
                             <th style="width: 90px;">基本給</th>
                             <th style="width: 85px;">役職<br>手当</th>
@@ -102,8 +102,9 @@ export const gradesPageHtml = `
             background: #ffffff;
             transition: border-color 0.15s, box-shadow 0.15s;
         }
-        /* スキルレベル、役職、等級のテキストパディングのみ個別調整 */
+        /* スキルレベル、役職、等級のテキスト文字サイズ統一＆パディング個別調整 */
         .grades-table input[type="text"] {
+            font-size: 0.64rem;
             padding: 0.2rem 0.2rem;
         }
         
@@ -348,7 +349,7 @@ function renderGradesTable() {
             </td>
             <!-- 等級コード -->
             <td>
-                <input type="text" class="input-grade-code" value="${grade.grade_code || ''}" onchange="window.handleGradeChange(${index}, 'grade_code', this.value)" style="font-weight: 800; font-family: monospace;">
+                <input type="text" class="input-grade-code" value="${grade.grade_code || ''}" onchange="window.handleGradeChange(${index}, 'grade_code', this.value)" style="font-family: monospace;">
             </td>
             <!-- 基本給 -->
             <td>
