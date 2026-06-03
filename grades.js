@@ -353,11 +353,11 @@ function renderGradesTable() {
             </td>
             <!-- 基本給 -->
             <td>
-                <input type="number" class="input-basic-salary" value="${grade.basic_salary || 0}" min="0" onchange="window.handleGradeChange(${index}, 'basic_salary', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
+                <input type="text" class="input-basic-salary" value="${(grade.basic_salary || 0).toLocaleString()}" onfocus="this.value = this.value.replace(/,/g, ''); this.select();" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="const val = Number(this.value) || 0; this.value = val.toLocaleString(); window.handleGradeChange(${index}, 'basic_salary', val);" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
             </td>
             <!-- 役職手当 -->
             <td>
-                <input type="number" class="input-role-allowance" value="${grade.role_allowance || 0}" min="0" onchange="window.handleGradeChange(${index}, 'role_allowance', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
+                <input type="text" class="input-role-allowance" value="${(grade.role_allowance || 0).toLocaleString()}" onfocus="this.value = this.value.replace(/,/g, ''); this.select();" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="const val = Number(this.value) || 0; this.value = val.toLocaleString(); window.handleGradeChange(${index}, 'role_allowance', val);" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
             </td>
             <!-- 総労働時間 -->
             <td>
@@ -369,19 +369,19 @@ function renderGradesTable() {
             </td>
             <!-- 時給(基準) -->
             <td>
-                <input type="number" class="input-hourly-wage" value="${grade.hourly_wage || 0}" min="0" onchange="window.handleGradeChange(${index}, 'hourly_wage', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums; background: #eff6ff;">
+                <input type="text" class="input-hourly-wage" value="${(grade.hourly_wage || 0).toLocaleString()}" onfocus="this.value = this.value.replace(/,/g, ''); this.select();" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="const val = Number(this.value) || 0; this.value = val.toLocaleString(); window.handleGradeChange(${index}, 'hourly_wage', val);" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums; background: #eff6ff;">
             </td>
             <!-- 時給(残業込) -->
             <td>
-                <input type="number" class="input-hourly-wage-overtime" value="${grade.hourly_wage_overtime || 0}" min="0" onchange="window.handleGradeChange(${index}, 'hourly_wage_overtime', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums; background: #eff6ff;">
+                <input type="text" class="input-hourly-wage-overtime" value="${(grade.hourly_wage_overtime || 0).toLocaleString()}" onfocus="this.value = this.value.replace(/,/g, ''); this.select();" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="const val = Number(this.value) || 0; this.value = val.toLocaleString(); window.handleGradeChange(${index}, 'hourly_wage_overtime', val);" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums; background: #eff6ff;">
             </td>
             <!-- 時間外労働 -->
             <td>
-                <input type="number" class="input-overtime-allowance" value="${grade.overtime_allowance || 0}" min="0" onchange="window.handleGradeChange(${index}, 'overtime_allowance', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
+                <input type="text" class="input-overtime-allowance" value="${(grade.overtime_allowance || 0).toLocaleString()}" onfocus="this.value = this.value.replace(/,/g, ''); this.select();" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="const val = Number(this.value) || 0; this.value = val.toLocaleString(); window.handleGradeChange(${index}, 'overtime_allowance', val);" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
             </td>
             <!-- 深夜割増 -->
             <td>
-                <input type="number" class="input-late-allowance" value="${grade.late_allowance || 0}" min="0" onchange="window.handleGradeChange(${index}, 'late_allowance', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
+                <input type="text" class="input-late-allowance" value="${(grade.late_allowance || 0).toLocaleString()}" onfocus="this.value = this.value.replace(/,/g, ''); this.select();" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="const val = Number(this.value) || 0; this.value = val.toLocaleString(); window.handleGradeChange(${index}, 'late_allowance', val);" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
             </td>
             <!-- 想定月給 [ReadOnly] -->
             <td>
@@ -389,11 +389,11 @@ function renderGradesTable() {
             </td>
             <!-- 月給(賞与按分) -->
             <td>
-                <input type="number" class="input-monthly-salary-bonus" value="${grade.monthly_salary_bonus || 0}" min="0" onchange="window.handleGradeChange(${index}, 'monthly_salary_bonus', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
+                <input type="text" class="input-monthly-salary-bonus" value="${(grade.monthly_salary_bonus || 0).toLocaleString()}" onfocus="this.value = this.value.replace(/,/g, ''); this.select();" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="const val = Number(this.value) || 0; this.value = val.toLocaleString(); window.handleGradeChange(${index}, 'monthly_salary_bonus', val);" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
             </td>
             <!-- 社保合計 -->
             <td>
-                <input type="number" class="input-social-insurance" value="${grade.social_insurance || 0}" min="0" onchange="window.handleGradeChange(${index}, 'social_insurance', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
+                <input type="text" class="input-social-insurance" value="${(grade.social_insurance || 0).toLocaleString()}" onfocus="this.value = this.value.replace(/,/g, ''); this.select();" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="const val = Number(this.value) || 0; this.value = val.toLocaleString(); window.handleGradeChange(${index}, 'social_insurance', val);" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
             </td>
             <!-- 想定人件費(社保込) [ReadOnly] -->
             <td>
@@ -491,9 +491,10 @@ window.handleGradeChange = function(index, field, value) {
     const grade = localGrades[index];
     if (!grade) return;
 
-    // 値を更新
+    // 値を更新 (カンマがあれば除去してから数値型にパース)
     if (['basic_salary', 'role_allowance', 'total_hours', 'basic_hours', 'hourly_wage', 'hourly_wage_overtime', 'overtime_allowance', 'late_allowance', 'monthly_salary_bonus', 'social_insurance', 'bonus_ratio'].includes(field)) {
-        grade[field] = Number(value) || 0;
+        const cleanVal = typeof value === 'string' ? value.replace(/,/g, '') : value;
+        grade[field] = Number(cleanVal) || 0;
     } else {
         grade[field] = value;
     }
@@ -512,34 +513,34 @@ window.handleGradeChange = function(index, field, value) {
         const calculatedHourly = Math.round((basicSalary + roleAllowance) / basicHours);
         
         grade.hourly_wage = calculatedHourly;
-        rowEl.querySelector('.input-hourly-wage').value = calculatedHourly;
+        rowEl.querySelector('.input-hourly-wage').value = calculatedHourly.toLocaleString();
         
         // 連鎖：残業込時給も自動計算
         const calculatedHourlyOvertime = Math.round(calculatedHourly * 1.0975);
         grade.hourly_wage_overtime = calculatedHourlyOvertime;
-        rowEl.querySelector('.input-hourly-wage-overtime').value = calculatedHourlyOvertime;
+        rowEl.querySelector('.input-hourly-wage-overtime').value = calculatedHourlyOvertime.toLocaleString();
 
         // 連鎖：時間外労働も自動計算
         const calculatedOvertime = Math.round(calculatedHourlyOvertime * 42);
         grade.overtime_allowance = calculatedOvertime;
-        rowEl.querySelector('.input-overtime-allowance').value = calculatedOvertime;
+        rowEl.querySelector('.input-overtime-allowance').value = calculatedOvertime.toLocaleString();
     }
     // 2. 時給基準 が直接変わった場合、残業込時給を自動計算
     else if (field === 'hourly_wage') {
         const calculatedHourlyOvertime = Math.round(grade.hourly_wage * 1.0975);
         grade.hourly_wage_overtime = calculatedHourlyOvertime;
-        rowEl.querySelector('.input-hourly-wage-overtime').value = calculatedHourlyOvertime;
+        rowEl.querySelector('.input-hourly-wage-overtime').value = calculatedHourlyOvertime.toLocaleString();
 
         // 連鎖：時間外労働
         const calculatedOvertime = Math.round(calculatedHourlyOvertime * 42);
         grade.overtime_allowance = calculatedOvertime;
-        rowEl.querySelector('.input-overtime-allowance').value = calculatedOvertime;
+        rowEl.querySelector('.input-overtime-allowance').value = calculatedOvertime.toLocaleString();
     }
     // 3. 時給残業込 が直接変わった場合、時間外労働を自動計算
     else if (field === 'hourly_wage_overtime') {
         const calculatedOvertime = Math.round(grade.hourly_wage_overtime * 42);
         grade.overtime_allowance = calculatedOvertime;
-        rowEl.querySelector('.input-overtime-allowance').value = calculatedOvertime;
+        rowEl.querySelector('.input-overtime-allowance').value = calculatedOvertime.toLocaleString();
     }
 
     // 計算列 (ReadOnly) の再計算とDOM反映
