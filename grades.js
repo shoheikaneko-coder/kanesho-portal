@@ -58,16 +58,52 @@ export const gradesPageHtml = `
                             <th style="width: 78px;">役職<br>手当</th>
                             <th style="width: 52px;">総労働<br>時間</th>
                             <th style="width: 52px;">基本<br>時間</th>
-                            <th style="width: 75px; background: #1e40af;">時給<br>(基準)</th>
-                            <th style="width: 80px; background: #1e40af;">時給<br>(残業込)</th>
-                            <th style="width: 80px;">時間外<br>労働</th>
+                            <th style="width: 75px; background: #1e40af;">
+                                時給<br>(基準)
+                                <span class="tooltip-container">
+                                    <i class="far fa-question-circle"></i>
+                                    <span class="tooltip-text">【時給(基準)の計算式】<br>(基本給 ＋ 役職手当) ÷ 基本時間</span>
+                                </span>
+                            </th>
+                            <th style="width: 80px; background: #1e40af;">
+                                時給<br>(残業込)
+                                <span class="tooltip-container">
+                                    <i class="far fa-question-circle"></i>
+                                    <span class="tooltip-text">【時給(残業込)の計算式】<br>時給(基準) × 1.0975</span>
+                                </span>
+                            </th>
+                            <th style="width: 80px;">
+                                時間外<br>労働
+                                <span class="tooltip-container">
+                                    <i class="far fa-question-circle"></i>
+                                    <span class="tooltip-text">【時間外労働の計算式】<br>時給(残業込) × 42時間</span>
+                                </span>
+                            </th>
                             <th style="width: 80px;">深夜<br>割増</th>
-                            <th style="width: 85px; background: #0f172a;">想定<br>月給</th>
+                            <th style="width: 85px; background: #0f172a;">
+                                想定<br>月給
+                                <span class="tooltip-container">
+                                    <i class="far fa-question-circle"></i>
+                                    <span class="tooltip-text">【想定月給の計算式】<br>基本給 ＋ 役職手当 ＋ 時間外労働 ＋ 深夜割増</span>
+                                </span>
+                            </th>
                             <th style="width: 85px;">月給<br>(賞与按分)</th>
                             <th style="width: 80px;">社保<br>合計</th>
-                            <th style="width: 100px; background: #0f172a;">想定人件費<br>(社保込)</th>
+                            <th style="width: 100px; background: #0f172a;">
+                                想定人件費<br>(社保込)
+                                <span class="tooltip-container">
+                                    <i class="far fa-question-circle"></i>
+                                    <span class="tooltip-text">【想定人件費の計算式】<br>月給(賞与按分) ＋ 社保合計</span>
+                                </span>
+                            </th>
                             <th style="width: 52px;">賞与<br>割合</th>
-                            <th style="width: 90px; background: #0f172a;">賞与<br>基準額</th>
+                            <th style="width: 90px; background: #0f172a;">
+                                賞与<br>基準額
+                                <span class="tooltip-container">
+                                    <i class="far fa-question-circle"></i>
+                                    <span class="tooltip-text">【賞与基準額の計算式】<br>(基本給 ＋ 役職手当) × 賞与割合</span>
+                                </span>
+                            </th>
                         </tr>
                     </thead>
                     <tbody id="grades-table-body">
@@ -124,6 +160,59 @@ export const gradesPageHtml = `
             box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.15);
             outline: none;
             background: #fffdf0;
+        }
+        
+        /* ツールチップ用のスタイル定義 */
+        .tooltip-container {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            margin-left: 4px;
+            color: #93c5fd;
+            font-size: 0.72rem;
+            vertical-align: middle;
+            transition: color 0.15s;
+        }
+        .tooltip-container:hover {
+            color: #ffffff;
+        }
+        .tooltip-container .tooltip-text {
+            visibility: hidden;
+            width: 230px;
+            background-color: #0f172a;
+            color: #ffffff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px 12px;
+            position: absolute;
+            z-index: 100;
+            bottom: 130%;
+            left: 50%;
+            margin-left: -115px;
+            opacity: 0;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+            transform: translateY(5px);
+            font-size: 0.68rem;
+            font-weight: 500;
+            line-height: 1.4;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            border: 1px solid #334155;
+            white-space: normal;
+        }
+        .tooltip-container .tooltip-text::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #0f172a transparent transparent transparent;
+        }
+        .tooltip-container:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+            transform: translateY(0);
         }
         .grades-table .col-readonly {
             background: rgba(241, 245, 249, 0.7) !important;
@@ -555,7 +644,7 @@ function recalculateReadOnlys(index, shouldUpdateDOM = true) {
     // 各論理フィールドの計算
     grade.monthly_salary = (grade.basic_salary || 0) + (grade.role_allowance || 0) + (grade.overtime_allowance || 0) + (grade.late_allowance || 0);
     grade.total_labor_cost = (grade.monthly_salary_bonus || 0) + (grade.social_insurance || 0);
-    grade.bonus_base_amount = Math.round((grade.basic_salary || 0) * (grade.bonus_ratio || 0));
+    grade.bonus_base_amount = Math.round(((grade.basic_salary || 0) + (grade.role_allowance || 0)) * (grade.bonus_ratio || 0));
 
     if (shouldUpdateDOM) {
         const rowEl = document.getElementById(`grade-row-${index}`);
