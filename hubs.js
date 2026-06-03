@@ -49,6 +49,7 @@ const HUB_CONFIG = {
                     { id: 'users', name: 'ユーザー・従業員管理', icon: 'fa-users-cog', color: '#14b8a6' },
                     { id: 'invite_navi', name: '従業員への招待案内', icon: 'fa-paper-plane', color: '#3b82f6' },
                     { id: 'role_permissions', name: '権限振り分け設定', icon: 'fa-user-shield', color: '#ef4444' },
+                    { id: 'grades', name: '等級マスタ (給与テーブル)', icon: 'fa-table', color: '#f59e0b' },
                     { id: 'org_chart', name: '組織図', icon: 'fa-network-wired', color: '#8b5cf6', isComingSoon: true }
                 ]
             },

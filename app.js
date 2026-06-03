@@ -45,6 +45,7 @@ import { competitorListPageHtml, initCompetitorListPage } from './competitor_lis
 import { managerMeetingPageHtml, initManagerMeetingPage } from './manager_meeting.js?v=20260428_01';
 import { PullToRefresh } from './ptr_logic.js';
 import { manualHubPageHtml, initManualHubPage, manualViewerPageHtml, initManualViewerPage } from './manual.js';
+import { gradesPageHtml, initGradesPage } from './grades.js';
 
 
 
@@ -574,6 +575,11 @@ async function showPage(target) {
                 updateHeaderTitle('ユーザー登録/変更');
                 pageContent.innerHTML = usersPageHtml;
                 initUsersPage();
+                break;
+            case 'grades':
+                updateHeaderTitle('等級マスタ (給与テーブル)');
+                pageContent.innerHTML = gradesPageHtml;
+                initGradesPage();
                 break;
             case 'products':
                 pageTitle.textContent = '商品・レシピマスタ';
