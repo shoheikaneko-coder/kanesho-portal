@@ -45,8 +45,8 @@ export const gradesPageHtml = `
                 </span>
             </div>
 
-            <!-- スプレッドシートライクな一括編集テーブル (PC大画面にてスクロールなしに最適化) -->
-            <div style="overflow-x: auto; max-width: 100%; border-radius: 0 0 12px 12px;">
+            <!-- スプレッドシートライクな一括編集テーブル (PC大画面にてスクロールなしに最適化、下方向の見切れ防止に最小高さを250px確保) -->
+            <div style="overflow-x: auto; max-width: 100%; border-radius: 0 0 12px 12px; min-height: 250px;">
                 <table class="grades-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.78rem; table-layout: fixed;">
                     <thead>
                         <tr style="background: #1e3a8a; border-bottom: 2px solid #0f172a; color: white;">
@@ -59,36 +59,50 @@ export const gradesPageHtml = `
                             <th style="width: 78px;">役職<br>手当</th>
                             <th style="width: 52px;">総労働<br>時間</th>
                             <th style="width: 52px;">基本<br>時間</th>
-                            <th class="tooltip-container" style="width: 75px; background: #1e40af;">
-                                時給<br>(基準)
-                                <span class="tooltip-text">時給(基準) ＝<br>(基本給 ＋ 役職手当) ÷ 基本時間</span>
+                            <th style="width: 75px; background: #1e40af; padding: 0;">
+                                <div class="tooltip-container" style="padding: 0.4rem 0;">
+                                    時給<br>(基準)
+                                    <span class="tooltip-text">時給(基準) ＝<br>(基本給 ＋ 役職手当) ÷ 基本時間</span>
+                                </div>
                             </th>
-                            <th class="tooltip-container" style="width: 80px; background: #1e40af;">
-                                時給<br>(残業込)
-                                <span class="tooltip-text">時給(残業込) ＝<br>時給(基準) × 1.0975</span>
+                            <th style="width: 80px; background: #1e40af; padding: 0;">
+                                <div class="tooltip-container" style="padding: 0.4rem 0;">
+                                    時給<br>(残業込)
+                                    <span class="tooltip-text">時給(残業込) ＝<br>時給(基準) × 1.0975</span>
+                                </div>
                             </th>
-                            <th class="tooltip-container" style="width: 80px;">
-                                時間外<br>労働
-                                <span class="tooltip-text">時間外労働 ＝<br>時給(残業込) × 42時間</span>
+                            <th style="width: 80px; padding: 0;">
+                                <div class="tooltip-container" style="padding: 0.4rem 0;">
+                                    時間外<br>労働
+                                    <span class="tooltip-text">時間外労働 ＝<br>時給(残業込) × 42時間</span>
+                                </div>
                             </th>
                             <th style="width: 80px;">深夜<br>割増</th>
-                            <th class="tooltip-container" style="width: 85px; background: #0f172a;">
-                                月給
-                                <span class="tooltip-text">月給 ＝<br>基本給 ＋ 役職手当 ＋ 時間外労働 ＋ 深夜割増</span>
+                            <th style="width: 85px; background: #0f172a; padding: 0;">
+                                <div class="tooltip-container" style="padding: 0.4rem 0;">
+                                    月給
+                                    <span class="tooltip-text">月給 ＝<br>基本給 ＋ 役職手当 ＋ 時間外労働 ＋ 深夜割増</span>
+                                </div>
                             </th>
-                            <th class="tooltip-container" style="width: 85px;">
-                                想定月給<br>賞与按分込
-                                <span class="tooltip-text">想定月給(賞与按分込) ＝<br>月給 ＋ (賞与基準額 × 賞与回数 ÷ 12)</span>
+                            <th style="width: 85px; padding: 0;">
+                                <div class="tooltip-container" style="padding: 0.4rem 0;">
+                                    想定月給<br>賞与按分込
+                                    <span class="tooltip-text">想定月給(賞与按分込) ＝<br>月給 ＋ (賞与基準額 × 賞与回数 ÷ 12)</span>
+                                </div>
                             </th>
                             <th style="width: 80px;">社保<br>合計</th>
-                            <th class="tooltip-container" style="width: 100px; background: #0f172a;">
-                                想定人件費<br>(社保込)
-                                <span class="tooltip-text">想定人件費 ＝<br>想定月給(賞与按分込) ＋ 社保合計</span>
+                            <th style="width: 100px; background: #0f172a; padding: 0;">
+                                <div class="tooltip-container" style="padding: 0.4rem 0;">
+                                    想定人件費<br>(社保込)
+                                    <span class="tooltip-text">想定人件費 ＝<br>想定月給(賞与按分込) ＋ 社保合計</span>
+                                </div>
                             </th>
                             <th style="width: 52px;">賞与<br>割合</th>
-                            <th class="tooltip-container" style="width: 90px; background: #0f172a;">
-                                賞与<br>基準額
-                                <span class="tooltip-text">賞与基準額 ＝<br>(基本給 ＋ 役職手当) × 賞与割合</span>
+                            <th style="width: 90px; background: #0f172a; padding: 0;">
+                                <div class="tooltip-container" style="padding: 0.4rem 0;">
+                                    賞与<br>基準額
+                                    <span class="tooltip-text">賞与基準額 ＝<br>(基本給 ＋ 役職手当) × 賞与割合</span>
+                                </div>
                             </th>
                             <th style="width: 55px;">賞与<br>回数</th>
                         </tr>
@@ -200,27 +214,35 @@ export const gradesPageHtml = `
         .tooltip-container {
             position: relative;
             cursor: help;
+            display: block; /* display: table-cell に対する position: relative のバグを回避 */
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+        }
+        /* ホバー時に前面に引き上げる */
+        .tooltip-container:hover {
+            z-index: 1000;
         }
         .tooltip-container .tooltip-text {
             visibility: hidden;
-            width: 180px;
+            width: 220px; /* 横幅を十分に確保 */
             background-color: #1e293b; /* Slate 800 */
             color: #ffffff;
             text-align: center;
             border-radius: 6px;
-            padding: 6px 8px;
+            padding: 8px 12px;
             position: absolute;
-            z-index: 100;
+            z-index: 1001;
             top: 115%; /* 下方向に出現 */
             left: 50%;
             transform: translateX(-50%);
             opacity: 0;
             transition: opacity 0.2s, visibility 0.2s;
-            font-size: 0.68rem;
-            font-weight: 500;
-            line-height: 1.3;
+            font-size: 0.7rem;
+            font-weight: 600;
+            line-height: 1.4;
             pointer-events: none;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.15);
             white-space: normal;
         }
         /* 上向きの三角矢印 */
