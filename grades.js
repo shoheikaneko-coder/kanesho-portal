@@ -59,28 +59,38 @@ export const gradesPageHtml = `
                             <th style="width: 78px;">役職<br>手当</th>
                             <th style="width: 52px;">総労働<br>時間</th>
                             <th style="width: 52px;">基本<br>時間</th>
-                            <th style="width: 75px; background: #1e40af; cursor: help;" onmouseenter="window.showFormulaGuide('時給(基準)', '(基本給 ＋ 役職手当) ÷ 基本時間')" onmouseleave="window.clearFormulaGuide()">
+                            <th class="tooltip-container" style="width: 75px; background: #1e40af;">
                                 時給<br>(基準)
+                                <span class="tooltip-text">時給(基準) ＝<br>(基本給 ＋ 役職手当) ÷ 基本時間</span>
                             </th>
-                            <th style="width: 80px; background: #1e40af; cursor: help;" onmouseenter="window.showFormulaGuide('時給(残業込)', '時給(基準) × 1.0975')" onmouseleave="window.clearFormulaGuide()">
+                            <th class="tooltip-container" style="width: 80px; background: #1e40af;">
                                 時給<br>(残業込)
+                                <span class="tooltip-text">時給(残業込) ＝<br>時給(基準) × 1.0975</span>
                             </th>
-                            <th style="width: 80px; cursor: help;" onmouseenter="window.showFormulaGuide('時間外労働', '時給(残業込) × 42時間')" onmouseleave="window.clearFormulaGuide()">
+                            <th class="tooltip-container" style="width: 80px;">
                                 時間外<br>労働
+                                <span class="tooltip-text">時間外労働 ＝<br>時給(残業込) × 42時間</span>
                             </th>
                             <th style="width: 80px;">深夜<br>割増</th>
-                            <th style="width: 85px; background: #0f172a; cursor: help;" onmouseenter="window.showFormulaGuide('想定月給', '基本給 ＋ 役職手当 ＋ 時間外労働 ＋ 深夜割増')" onmouseleave="window.clearFormulaGuide()">
-                                想定<br>月給
+                            <th class="tooltip-container" style="width: 85px; background: #0f172a;">
+                                月給
+                                <span class="tooltip-text">月給 ＝<br>基本給 ＋ 役職手当 ＋ 時間外労働 ＋ 深夜割増</span>
                             </th>
-                            <th style="width: 85px;">月給<br>(賞与按分)</th>
+                            <th class="tooltip-container" style="width: 85px;">
+                                想定月給<br>賞与按分込
+                                <span class="tooltip-text">想定月給(賞与按分込) ＝<br>月給 ＋ (賞与基準額 × 賞与回数 ÷ 12)</span>
+                            </th>
                             <th style="width: 80px;">社保<br>合計</th>
-                            <th style="width: 100px; background: #0f172a; cursor: help;" onmouseenter="window.showFormulaGuide('想定人件費(社保込)', '月給(賞与按分) ＋ 社保合計')" onmouseleave="window.clearFormulaGuide()">
+                            <th class="tooltip-container" style="width: 100px; background: #0f172a;">
                                 想定人件費<br>(社保込)
+                                <span class="tooltip-text">想定人件費 ＝<br>想定月給(賞与按分込) ＋ 社保合計</span>
                             </th>
                             <th style="width: 52px;">賞与<br>割合</th>
-                            <th style="width: 90px; background: #0f172a; cursor: help;" onmouseenter="window.showFormulaGuide('賞与基準額', '(基本給 ＋ 役職手当) × 賞与割合')" onmouseleave="window.clearFormulaGuide()">
+                            <th class="tooltip-container" style="width: 90px; background: #0f172a;">
                                 賞与<br>基準額
+                                <span class="tooltip-text">賞与基準額 ＝<br>(基本給 ＋ 役職手当) × 賞与割合</span>
                             </th>
+                            <th style="width: 55px;">賞与<br>回数</th>
                         </tr>
                     </thead>
                     <tbody id="grades-table-body">
@@ -185,6 +195,49 @@ export const gradesPageHtml = `
             border: 2px dashed #f59e0b !important;
             box-shadow: 0 10px 20px -3px rgba(245, 158, 11, 0.12) !important;
         }
+
+        /* ツールチップ用のスタイル（下方向表示、上向き矢印） */
+        .tooltip-container {
+            position: relative;
+            cursor: help;
+        }
+        .tooltip-container .tooltip-text {
+            visibility: hidden;
+            width: 180px;
+            background-color: #1e293b; /* Slate 800 */
+            color: #ffffff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 6px 8px;
+            position: absolute;
+            z-index: 100;
+            top: 115%; /* 下方向に出現 */
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.2s, visibility 0.2s;
+            font-size: 0.68rem;
+            font-weight: 500;
+            line-height: 1.3;
+            pointer-events: none;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            white-space: normal;
+        }
+        /* 上向きの三角矢印 */
+        .tooltip-container .tooltip-text::after {
+            content: "";
+            position: absolute;
+            bottom: 100%; /* ツールチップの上辺 */
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: transparent transparent #1e293b transparent;
+        }
+        .tooltip-container:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
     </style>
 `;
 
@@ -265,31 +318,6 @@ function syncEditModeUI() {
     }
 }
 
-// 計算式ガイド表示用のグローバル関数
-window.showFormulaGuide = function(name, formula) {
-    const msg = document.getElementById('grades-guide-message');
-    if (msg) {
-        msg.innerHTML = `<i class="fas fa-calculator" style="color: #c2410c; margin-right: 5px;"></i> <strong>${name}</strong> の計算式: <span style="font-family: monospace; font-size: 0.72rem; background: #fff7ed; padding: 1px 6px; border-radius: 4px; border: 1px solid #fed7aa; color: #ea580c; display: inline-block; vertical-align: middle;">${formula}</span>`;
-        msg.style.background = '#fff7ed';
-        msg.style.color = '#c2410c';
-    }
-};
-
-window.clearFormulaGuide = function() {
-    const msg = document.getElementById('grades-guide-message');
-    if (msg) {
-        if (isEditMode) {
-            msg.textContent = '【整理モード実行中】 等級の並び替え (▲/▼) と不要な等級の削除が可能です。';
-            msg.style.background = '#ffedd5';
-            msg.style.color = '#c2410c';
-        } else {
-            msg.textContent = defaultGuideText;
-            msg.style.background = '#fef3c7';
-            msg.style.color = '#b45309';
-        }
-    }
-};
-
 // Firestoreから等級マスタデータをロード
 async function loadGradesData() {
     const tbody = document.getElementById('grades-table-body');
@@ -298,7 +326,7 @@ async function loadGradesData() {
 
     tbody.innerHTML = `
         <tr>
-            <td colspan="19" style="text-align: center; padding: 4rem; color: var(--text-secondary);">
+            <td colspan="20" style="text-align: center; padding: 4rem; color: var(--text-secondary);">
                 <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 1rem; color: #f59e0b; display: block; margin-left: auto; margin-right: auto;"></i>
                 等級マスタを読み込んでいます...
             </td>
@@ -323,7 +351,7 @@ async function loadGradesData() {
         console.error("Failed to load grades data:", e);
         tbody.innerHTML = `
             <tr>
-                <td colspan="19" style="text-align: center; padding: 3rem; color: var(--danger); font-weight: 700;">
+                <td colspan="20" style="text-align: center; padding: 3rem; color: var(--danger); font-weight: 700;">
                     <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem; display: block; margin-left: auto; margin-right: auto;"></i>
                     等級データの読み込みに失敗しました。
                 </td>
@@ -347,7 +375,7 @@ function renderGradesTable() {
     if (localGrades.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="19" style="text-align: center; padding: 4rem; color: var(--text-secondary); font-weight: 600;">
+                <td colspan="20" style="text-align: center; padding: 4rem; color: var(--text-secondary); font-weight: 600;">
                     登録されている等級はありません。「新しい等級を追加」ボタンから作成してください。
                 </td>
             </tr>
@@ -362,6 +390,9 @@ function renderGradesTable() {
         // 並び替えボタンの disabled 制御
         const isFirst = index === 0;
         const isLast = index === localGrades.length - 1;
+
+        // 描画前にメモリ上の計算値を確実に同期（$0 バグを解消）
+        recalculateReadOnlys(index, false);
 
         tr.innerHTML = `
             <!-- 操作 (削除) [整理モード時のみ出現] -->
@@ -421,13 +452,13 @@ function renderGradesTable() {
             <td>
                 <input type="text" class="input-late-allowance" value="${(grade.late_allowance || 0).toLocaleString()}" onfocus="this.value = this.value.replace(/,/g, ''); this.select();" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="const val = Number(this.value) || 0; this.value = val.toLocaleString(); window.handleGradeChange(${index}, 'late_allowance', val);" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
             </td>
-            <!-- 想定月給 [ReadOnly] -->
+            <!-- 月給 [ReadOnly] -->
             <td>
                 <span class="col-readonly readonly-monthly-salary">${formatCurrency(grade.monthly_salary || 0)}</span>
             </td>
-            <!-- 月給(賞与按分) -->
+            <!-- 想定月給賞与按分込 [ReadOnly] -->
             <td>
-                <input type="text" class="input-monthly-salary-bonus" value="${(grade.monthly_salary_bonus || 0).toLocaleString()}" onfocus="this.value = this.value.replace(/,/g, ''); this.select();" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="const val = Number(this.value) || 0; this.value = val.toLocaleString(); window.handleGradeChange(${index}, 'monthly_salary_bonus', val);" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
+                <span class="col-readonly readonly-monthly-salary-bonus">${formatCurrency(grade.monthly_salary_bonus || 0)}</span>
             </td>
             <!-- 社保合計 -->
             <td>
@@ -445,11 +476,15 @@ function renderGradesTable() {
             <td>
                 <span class="col-readonly readonly-bonus-base-amount">${formatCurrency(grade.bonus_base_amount || 0)}</span>
             </td>
+            <!-- 賞与回数 -->
+            <td>
+                <input type="number" class="input-bonus-count" value="${grade.bonus_count || 0}" min="0" step="1" onchange="window.handleGradeChange(${index}, 'bonus_count', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
+            </td>
         `;
         tbody.appendChild(tr);
 
-        // 各ReadOnly列の初回計算
-        recalculateReadOnlys(index, false);
+        // 各ReadOnly列の初回計算をDOM反映させる（trueに修正）
+        recalculateReadOnlys(index, true);
     });
 
     // 編集モード状態のDOM同期 (再描画時にも状態を引き継ぎ)
@@ -478,6 +513,7 @@ function addNewGradeRow() {
         monthly_salary_bonus: 0,
         social_insurance: 0,
         bonus_ratio: 0,
+        bonus_count: 0,
         display_order: localGrades.length + 1
     };
 
@@ -530,7 +566,7 @@ window.handleGradeChange = function(index, field, value) {
     if (!grade) return;
 
     // 値を更新 (カンマがあれば除去してから数値型にパース)
-    if (['basic_salary', 'role_allowance', 'total_hours', 'basic_hours', 'hourly_wage', 'hourly_wage_overtime', 'overtime_allowance', 'late_allowance', 'monthly_salary_bonus', 'social_insurance', 'bonus_ratio'].includes(field)) {
+    if (['basic_salary', 'role_allowance', 'total_hours', 'basic_hours', 'hourly_wage', 'hourly_wage_overtime', 'overtime_allowance', 'late_allowance', 'monthly_salary_bonus', 'social_insurance', 'bonus_ratio', 'bonus_count'].includes(field)) {
         const cleanVal = typeof value === 'string' ? value.replace(/,/g, '') : value;
         grade[field] = Number(cleanVal) || 0;
     } else {
@@ -592,13 +628,21 @@ function recalculateReadOnlys(index, shouldUpdateDOM = true) {
 
     // 各論理フィールドの計算
     grade.monthly_salary = (grade.basic_salary || 0) + (grade.role_allowance || 0) + (grade.overtime_allowance || 0) + (grade.late_allowance || 0);
-    grade.total_labor_cost = (grade.monthly_salary_bonus || 0) + (grade.social_insurance || 0);
+    
+    // 賞与基準額 ＝ (基本給 ＋ 役職手当) × 賞与割合
     grade.bonus_base_amount = Math.round(((grade.basic_salary || 0) + (grade.role_allowance || 0)) * (grade.bonus_ratio || 0));
+
+    // 想定月給賞与按分込 ＝ 月給 ＋ (賞与基準額 × 賞与回数 ÷ 12)
+    grade.monthly_salary_bonus = Math.round((grade.monthly_salary || 0) + ((grade.bonus_base_amount || 0) * (grade.bonus_count || 0) / 12));
+
+    // 想定人件費 ＝ 想定月給賞与按分込 ＋ 社保合計
+    grade.total_labor_cost = (grade.monthly_salary_bonus || 0) + (grade.social_insurance || 0);
 
     if (shouldUpdateDOM) {
         const rowEl = document.getElementById(`grade-row-${index}`);
         if (rowEl) {
             rowEl.querySelector('.readonly-monthly-salary').textContent = formatCurrency(grade.monthly_salary);
+            rowEl.querySelector('.readonly-monthly-salary-bonus').textContent = formatCurrency(grade.monthly_salary_bonus);
             rowEl.querySelector('.readonly-total-labor-cost').textContent = formatCurrency(grade.total_labor_cost);
             rowEl.querySelector('.readonly-bonus-base-amount').textContent = formatCurrency(grade.bonus_base_amount);
         }
@@ -652,6 +696,7 @@ async function saveAllGrades() {
                 monthly_salary_bonus: Number(grade.monthly_salary_bonus) || 0,
                 social_insurance: Number(grade.social_insurance) || 0,
                 bonus_ratio: Number(grade.bonus_ratio) || 0,
+                bonus_count: Number(grade.bonus_count) || 0,
                 display_order: idx + 1 // 上から順に 1, 2, 3.. と並び順を付与
             };
             batch.set(docRef, dataToSave);
