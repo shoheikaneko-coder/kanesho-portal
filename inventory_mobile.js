@@ -206,7 +206,48 @@ export const inventoryMobilePageHtml = `
             .mobile-tab-item i { font-size: 1.2rem; }
             .mobile-tab-item.active { color: var(--primary); }
             .inv-row { display: flex; align-items: center; padding: 0.8rem 1rem; border-bottom: 1px solid #f8fafc; gap: 0.8rem; background: white; }
-            .qty-stepper-sm { display: flex; align-items: center; background: #f8fafc; border-radius: 8px; padding: 2px; border: 1px solid #f1f5f9; }
+            .inv-row-content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+            .inv-row-title { font-size: 0.95rem; font-weight: 800; color: #1e293b; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .inv-row-meta { font-size: 0.75rem; color: #64748b; font-weight: 700; }
+            .inv-row-controls { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+            .qty-stepper-sm { display: flex; align-items: center; background: #f1f5f9; border-radius: 8px; padding: 2px; border: 1px solid #e2e8f0; gap: 2px; }
+            .stepper-btn-sm {
+                width: 32px;
+                height: 32px;
+                border: none;
+                background: white;
+                border-radius: 6px;
+                color: #1e293b;
+                font-size: 0.8rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+                cursor: pointer;
+                padding: 0;
+            }
+            .stepper-btn-sm:active {
+                transform: scale(0.95);
+                background: #f1f5f9;
+            }
+            .qty-input-sm {
+                width: 40px;
+                height: 32px;
+                border: none;
+                background: transparent;
+                text-align: center;
+                font-size: 1rem;
+                font-weight: 900;
+                color: var(--primary);
+                outline: none;
+                padding: 0;
+                -moz-appearance: textfield;
+            }
+            .qty-input-sm::-webkit-outer-spin-button,
+            .qty-input-sm::-webkit-inner-spin-button {
+                -webkit-appearance: none;
+                margin: 0;
+            }
             .btn-confirm-sm { width: 38px; height: 38px; border-radius: 10px; border: none; background: #f1f5f9; color: #cbd5e1; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; }
             .btn-confirm-sm.active { background: #10b981; color: white; }
         </style>
