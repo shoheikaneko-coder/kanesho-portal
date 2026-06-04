@@ -74,6 +74,7 @@ function renderListView(container) {
                             <th style="padding: 1rem; font-weight: 600;">従業員コード</th>
                             <th style="padding: 1rem; font-weight: 600;">お名前</th>
                             <th style="padding: 1rem; font-weight: 600;">所属性</th>
+                            <th style="padding: 1rem; font-weight: 600;">等級</th>
                             <th style="padding: 1rem; font-weight: 600;">権限</th>
                             <th style="padding: 1rem; font-weight: 600;">ステータス</th>
                             <th style="padding: 1rem; font-weight: 600;">打刻PW</th>
@@ -215,6 +216,12 @@ function renderFormView(container) {
                                     <label style="font-weight: 700; color: #475569;">表示役職</label>
                                     <input type="text" id="user-job-title" placeholder="副店長等" style="background: #f0fdf4; border: 1px solid #bbf7d0;">
                                 </div>
+                                <div class="input-group" style="margin: 0;">
+                                    <label style="font-weight: 700; color: #475569;">等級</label>
+                                    <select id="user-grade-select" style="background: white; font-weight: 600;">
+                                        <option value="">等級を選択...</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
@@ -305,7 +312,7 @@ function renderFormView(container) {
         renderView();
     };
 
-    fetchStoreOptions().then(() => {
+    Promise.all([fetchStoreOptions(), fetchGradeOptions()]).then(() => {
         if (isEdit) {
             document.getElementById('user-code').value = editingUserData.EmployeeCode || '';
             document.getElementById('user-name').value = editingUserData.Name || '';
@@ -320,6 +327,7 @@ function renderFormView(container) {
             document.getElementById('user-28h-limit').checked = !!editingUserData.Has28hLimit;
             document.getElementById('user-display-name').value = editingUserData.DisplayName || '';
             document.getElementById('user-job-title').value = editingUserData.JobTitle || '';
+            document.getElementById('user-grade-select').value = editingUserData.GradeCode || '';
             document.getElementById('user-visa-expiry').value = editingUserData.visa_expiry_date || '';
             document.getElementById('user-resignation-date').value = editingUserData.ResignationDate || '';
             document.getElementById('user-hire-date').value = editingUserData.HireDate || '';
@@ -373,6 +381,7 @@ function setupFormLogic() {
             'Has28hLimit': document.getElementById('user-28h-limit').checked,
             'DisplayName': document.getElementById('user-display-name').value,
             'JobTitle': document.getElementById('user-job-title').value,
+            'GradeCode': document.getElementById('user-grade-select').value || '',
             'Status': document.getElementById('user-status').value,
             'ResignationDate': document.getElementById('user-resignation-date')?.value || '',
             'visa_expiry_date': document.getElementById('user-visa-expiry').value,
@@ -520,6 +529,30 @@ async function fetchStoreOptions() {
     } catch(e) { console.error(e); }
 }
 
+async function fetchGradeOptions() {
+    const sel = document.getElementById('user-grade-select');
+    if(!sel) return;
+    try {
+        const snap = await getDocs(collection(db, "m_grades"));
+        const grades = [];
+        snap.forEach(d => {
+            grades.push(d.data());
+        });
+        // display_order順にソート (未設定の場合は仮値 999)
+        grades.sort((a, b) => (a.display_order || 999) - (b.display_order || 999));
+        
+        sel.innerHTML = '<option value="">等級を選択...</option>';
+        grades.forEach(g => {
+            if (g.grade_code) {
+                const opt = document.createElement('option');
+                opt.value = g.grade_code;
+                opt.textContent = g.grade_code + (g.job_title ? ` (${g.job_title})` : '');
+                sel.appendChild(opt);
+            }
+        });
+    } catch(e) { console.error(e); }
+}
+
 function renderTable(filter = "") {
     const tbody = document.getElementById('users-table-body');
     const countLabel = document.getElementById('users-count');
@@ -562,7 +595,7 @@ function renderTable(filter = "") {
         renderPagination(totalPages, filter);
 
         if (itemsToShow.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 4rem; color: var(--text-secondary);">該当するユーザーが見つかりません</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 4rem; color: var(--text-secondary);">該当するユーザーが見つかりません</td></tr>';
             return;
         }
 
@@ -584,6 +617,7 @@ function renderTable(filter = "") {
                     ${item['DisplayName'] ? `<br><span style="font-size:0.7rem; color:var(--text-secondary); font-weight:400;">(${item['DisplayName']})</span>` : ''}
                 </td>
                 <td style="padding: 1rem; color: var(--text-secondary); font-size: 0.85rem;">${item['Store'] || '-'}</td>
+                <td style="padding: 1rem; font-family: monospace; font-weight: 700; color: #1e3a8a;">${item['GradeCode'] || '-'}</td>
                 <td style="padding: 1rem;"><span class="badge ${role.toLowerCase()}">${roleNameMap[role] || role}</span></td>
                 <td style="padding: 1rem;"><span class="badge status-${status}">${statusMap[status]}</span></td>
                 <td style="padding: 1rem; font-family: monospace; color: var(--text-secondary);">${item['ClockInPassword'] || '-'}</td>
@@ -611,7 +645,7 @@ function renderTable(filter = "") {
         });
     } catch (e) {
         console.error('Error rendering users:', e);
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 2rem; color: var(--danger);"><i class="fas fa-exclamation-triangle"></i> エラーが発生しました</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 2rem; color: var(--danger);"><i class="fas fa-exclamation-triangle"></i> エラーが発生しました</td></tr>';
     }
 }
 
