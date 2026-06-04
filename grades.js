@@ -5,6 +5,7 @@ import { showConfirm, showAlert } from './ui_utils.js';
 let localGrades = []; // メモリ上の等級リスト
 let originalGradesHash = ''; // 保存時の差分検知用ハッシュ値
 let isEditMode = false; // 整理・削除モードフラグ
+const defaultGuideText = '※ 各セルを直接入力して編集できます。変更後は「変更をすべて保存」を押してください。';
 
 export const gradesPageHtml = `
     <div id="grades-page-container" class="animate-fade-in" style="padding: 1rem 1.5rem; max-width: 100%; box-sizing: border-box;">
@@ -58,51 +59,27 @@ export const gradesPageHtml = `
                             <th style="width: 78px;">役職<br>手当</th>
                             <th style="width: 52px;">総労働<br>時間</th>
                             <th style="width: 52px;">基本<br>時間</th>
-                            <th style="width: 75px; background: #1e40af;">
+                            <th style="width: 75px; background: #1e40af; cursor: help;" onmouseenter="window.showFormulaGuide('時給(基準)', '(基本給 ＋ 役職手当) ÷ 基本時間')" onmouseleave="window.clearFormulaGuide()">
                                 時給<br>(基準)
-                                <span class="tooltip-container">
-                                    <i class="far fa-question-circle"></i>
-                                    <span class="tooltip-text">【時給(基準)の計算式】<br>(基本給 ＋ 役職手当) ÷ 基本時間</span>
-                                </span>
                             </th>
-                            <th style="width: 80px; background: #1e40af;">
+                            <th style="width: 80px; background: #1e40af; cursor: help;" onmouseenter="window.showFormulaGuide('時給(残業込)', '時給(基準) × 1.0975')" onmouseleave="window.clearFormulaGuide()">
                                 時給<br>(残業込)
-                                <span class="tooltip-container">
-                                    <i class="far fa-question-circle"></i>
-                                    <span class="tooltip-text">【時給(残業込)の計算式】<br>時給(基準) × 1.0975</span>
-                                </span>
                             </th>
-                            <th style="width: 80px;">
+                            <th style="width: 80px; cursor: help;" onmouseenter="window.showFormulaGuide('時間外労働', '時給(残業込) × 42時間')" onmouseleave="window.clearFormulaGuide()">
                                 時間外<br>労働
-                                <span class="tooltip-container">
-                                    <i class="far fa-question-circle"></i>
-                                    <span class="tooltip-text">【時間外労働の計算式】<br>時給(残業込) × 42時間</span>
-                                </span>
                             </th>
                             <th style="width: 80px;">深夜<br>割増</th>
-                            <th style="width: 85px; background: #0f172a;">
+                            <th style="width: 85px; background: #0f172a; cursor: help;" onmouseenter="window.showFormulaGuide('想定月給', '基本給 ＋ 役職手当 ＋ 時間外労働 ＋ 深夜割増')" onmouseleave="window.clearFormulaGuide()">
                                 想定<br>月給
-                                <span class="tooltip-container">
-                                    <i class="far fa-question-circle"></i>
-                                    <span class="tooltip-text">【想定月給の計算式】<br>基本給 ＋ 役職手当 ＋ 時間外労働 ＋ 深夜割増</span>
-                                </span>
                             </th>
                             <th style="width: 85px;">月給<br>(賞与按分)</th>
                             <th style="width: 80px;">社保<br>合計</th>
-                            <th style="width: 100px; background: #0f172a;">
+                            <th style="width: 100px; background: #0f172a; cursor: help;" onmouseenter="window.showFormulaGuide('想定人件費(社保込)', '月給(賞与按分) ＋ 社保合計')" onmouseleave="window.clearFormulaGuide()">
                                 想定人件費<br>(社保込)
-                                <span class="tooltip-container">
-                                    <i class="far fa-question-circle"></i>
-                                    <span class="tooltip-text">【想定人件費の計算式】<br>月給(賞与按分) ＋ 社保合計</span>
-                                </span>
                             </th>
                             <th style="width: 52px;">賞与<br>割合</th>
-                            <th style="width: 90px; background: #0f172a;">
+                            <th style="width: 90px; background: #0f172a; cursor: help;" onmouseenter="window.showFormulaGuide('賞与基準額', '(基本給 ＋ 役職手当) × 賞与割合')" onmouseleave="window.clearFormulaGuide()">
                                 賞与<br>基準額
-                                <span class="tooltip-container">
-                                    <i class="far fa-question-circle"></i>
-                                    <span class="tooltip-text">【賞与基準額の計算式】<br>(基本給 ＋ 役職手当) × 賞与割合</span>
-                                </span>
                             </th>
                         </tr>
                     </thead>
@@ -160,59 +137,6 @@ export const gradesPageHtml = `
             box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.15);
             outline: none;
             background: #fffdf0;
-        }
-        
-        /* ツールチップ用のスタイル定義 */
-        .tooltip-container {
-            position: relative;
-            display: inline-block;
-            cursor: pointer;
-            margin-left: 4px;
-            color: #93c5fd;
-            font-size: 0.72rem;
-            vertical-align: middle;
-            transition: color 0.15s;
-        }
-        .tooltip-container:hover {
-            color: #ffffff;
-        }
-        .tooltip-container .tooltip-text {
-            visibility: hidden;
-            width: 230px;
-            background-color: #0f172a;
-            color: #ffffff;
-            text-align: center;
-            border-radius: 6px;
-            padding: 8px 12px;
-            position: absolute;
-            z-index: 100;
-            bottom: 130%;
-            left: 50%;
-            margin-left: -115px;
-            opacity: 0;
-            transition: opacity 0.25s ease, transform 0.25s ease;
-            transform: translateY(5px);
-            font-size: 0.68rem;
-            font-weight: 500;
-            line-height: 1.4;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
-            border: 1px solid #334155;
-            white-space: normal;
-        }
-        .tooltip-container .tooltip-text::after {
-            content: "";
-            position: absolute;
-            top: 100%;
-            left: 50%;
-            margin-left: -5px;
-            border-width: 5px;
-            border-style: solid;
-            border-color: #0f172a transparent transparent transparent;
-        }
-        .tooltip-container:hover .tooltip-text {
-            visibility: visible;
-            opacity: 1;
-            transform: translateY(0);
         }
         .grades-table .col-readonly {
             background: rgba(241, 245, 249, 0.7) !important;
@@ -334,12 +258,37 @@ function syncEditModeUI() {
         btn.style.boxShadow = 'none';
         panel.classList.remove('edit-mode-active');
         if (msg) {
-            msg.textContent = '※ 各セルを直接入力して編集できます。変更後は「変更をすべて保存」を押してください。';
+            msg.textContent = defaultGuideText;
             msg.style.background = '#fef3c7';
             msg.style.color = '#b45309';
         }
     }
 }
+
+// 計算式ガイド表示用のグローバル関数
+window.showFormulaGuide = function(name, formula) {
+    const msg = document.getElementById('grades-guide-message');
+    if (msg) {
+        msg.innerHTML = `<i class="fas fa-calculator" style="color: #c2410c; margin-right: 5px;"></i> <strong>${name}</strong> の計算式: <span style="font-family: monospace; font-size: 0.72rem; background: #fff7ed; padding: 1px 6px; border-radius: 4px; border: 1px solid #fed7aa; color: #ea580c; display: inline-block; vertical-align: middle;">${formula}</span>`;
+        msg.style.background = '#fff7ed';
+        msg.style.color = '#c2410c';
+    }
+};
+
+window.clearFormulaGuide = function() {
+    const msg = document.getElementById('grades-guide-message');
+    if (msg) {
+        if (isEditMode) {
+            msg.textContent = '【整理モード実行中】 等級の並び替え (▲/▼) と不要な等級の削除が可能です。';
+            msg.style.background = '#ffedd5';
+            msg.style.color = '#c2410c';
+        } else {
+            msg.textContent = defaultGuideText;
+            msg.style.background = '#fef3c7';
+            msg.style.color = '#b45309';
+        }
+    }
+};
 
 // Firestoreから等級マスタデータをロード
 async function loadGradesData() {
