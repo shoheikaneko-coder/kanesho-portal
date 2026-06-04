@@ -7,6 +7,7 @@ let editingUserData = null;
 let cachedUsers = [];
 let currentPage = 1;
 const pageSize = 30;
+let activeScrollSpyListener = null;
 
 export const usersPageHtml = `
     <div id="users-page-container" class="animate-fade-in">
@@ -21,10 +22,43 @@ export const usersPageHtml = `
         .badge.status-active { background: rgba(16, 185, 129, 0.1); color: #059669; }
         .badge.status-resigning { background: rgba(245, 158, 11, 0.1); color: #d97706; }
         .badge.status-retired { background: rgba(100, 116, 139, 0.1); color: #64748b; }
+        
+        .user-nav-link {
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+        }
+        .user-nav-link:hover {
+            background: #f1f5f9;
+            color: var(--primary);
+        }
+        .user-nav-link.active {
+            background: #eff6ff;
+            color: var(--primary);
+            font-weight: 800;
+            border-left-color: var(--primary);
+            border-radius: 0 8px 8px 0;
+        }
     </style>
 `;
 
 function renderView() {
+    // 既存のスクロールスパイリスナーがあればクリーンアップ
+    const scrollContainer = document.querySelector('.page-content');
+    if (scrollContainer && activeScrollSpyListener) {
+        scrollContainer.removeEventListener('scroll', activeScrollSpyListener);
+        activeScrollSpyListener = null;
+    }
+
     const container = document.getElementById('users-page-container');
     if (!container) return;
 
@@ -133,13 +167,34 @@ function renderFormView(container) {
             </div>
             
             <div style="padding: 2rem; background: #f8fafc;">
-                <form id="user-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start;">
+                <form id="user-form" style="display: grid; grid-template-columns: 240px 1fr; gap: 2.5rem; align-items: start;">
                     
-                    <!-- 左カラム -->
-                    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                    <!-- 左ナビゲーション (Sticky) -->
+                    <div style="position: sticky; top: 1.5rem; display: flex; flex-direction: column; gap: 0.4rem; border-right: 1px solid var(--border); padding-right: 1.5rem;">
+                        <div class="user-nav-link active" data-target="sec-basic">
+                            <i class="fas fa-id-card" style="width: 18px; text-align: center;"></i>基本情報
+                        </div>
+                        <div class="user-nav-link" data-target="sec-affiliation">
+                            <i class="fas fa-briefcase" style="width: 18px; text-align: center;"></i>所属・権限
+                        </div>
+                        <div class="user-nav-link" data-target="sec-account">
+                            <i class="fas fa-key" style="width: 18px; text-align: center;"></i>アカウント情報
+                        </div>
+                        <div class="user-nav-link" data-target="sec-visa">
+                            <i class="fas fa-globe" style="width: 18px; text-align: center;"></i>外国人スタッフ
+                        </div>
+                        ${isEdit ? `
+                        <div class="user-nav-link" data-target="sec-share">
+                            <i class="fas fa-share-alt" style="width: 18px; text-align: center;"></i>設定情報の共有
+                        </div>
+                        ` : ''}
+                    </div>
+
+                    <!-- 右側フォームコンテンツ (縦並び) -->
+                    <div style="display: flex; flex-direction: column; gap: 2rem;">
                         
                         <!-- 基本情報カード -->
-                        <div class="glass-panel" style="padding: 1.5rem; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                        <div id="sec-basic" class="glass-panel" style="padding: 1.5rem; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                             <h4 style="margin-top: 0; margin-bottom: 1.2rem; color: var(--primary); border-bottom: 2px solid #f1f5f9; padding-bottom: 0.8rem; font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem;">
                                 <i class="fas fa-id-card"></i> 基本情報
                             </h4>
@@ -179,7 +234,7 @@ function renderFormView(container) {
                         </div>
 
                         <!-- 所属・権限カード -->
-                        <div class="glass-panel" style="padding: 1.5rem; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                        <div id="sec-affiliation" class="glass-panel" style="padding: 1.5rem; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                             <h4 style="margin-top: 0; margin-bottom: 1.2rem; color: var(--primary); border-bottom: 2px solid #f1f5f9; padding-bottom: 0.8rem; font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem;">
                                 <i class="fas fa-briefcase"></i> 所属・権限
                             </h4>
@@ -225,13 +280,8 @@ function renderFormView(container) {
                             </div>
                         </div>
 
-                    </div>
-
-                    <!-- 右カラム -->
-                    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
-                        
                         <!-- アカウント・ログイン情報カード -->
-                        <div class="glass-panel" style="padding: 1.5rem; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                        <div id="sec-account" class="glass-panel" style="padding: 1.5rem; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                             <h4 style="margin-top: 0; margin-bottom: 1.2rem; color: var(--primary); border-bottom: 2px solid #f1f5f9; padding-bottom: 0.8rem; font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem;">
                                 <i class="fas fa-key"></i> アカウント・ログイン情報
                             </h4>
@@ -256,7 +306,7 @@ function renderFormView(container) {
                         </div>
 
                         <!-- 外国人スタッフ情報カード -->
-                        <div class="glass-panel" style="padding: 1.5rem; background: #fffcf0; border: 1px solid #fde68a; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                        <div id="sec-visa" class="glass-panel" style="padding: 1.5rem; background: #fffcf0; border: 1px solid #fde68a; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                             <h4 style="margin-top: 0; margin-bottom: 1.2rem; color: #b45309; border-bottom: 1px solid #fde68a; padding-bottom: 0.8rem; font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem;">
                                 <i class="fas fa-globe"></i> 外国人スタッフ情報
                             </h4>
@@ -278,7 +328,7 @@ function renderFormView(container) {
                         </div>
 
                         <!-- 操作案内ツール (編集時のみ) -->
-                        <div id="password-info-section" style="display: ${isEdit ? 'block' : 'none'}; border: 1px dashed #cbd5e1; border-radius: 12px; padding: 1.5rem; background: white;">
+                        <div id="sec-share" style="display: ${isEdit ? 'block' : 'none'}; border: 1px dashed #cbd5e1; border-radius: 12px; padding: 1.5rem; background: white;">
                             <p style="font-size: 0.9rem; font-weight: 700; margin-top: 0; margin-bottom: 1rem; color: #475569; display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-share-alt"></i> 設定情報の共有</p>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                                 <button type="button" id="btn-send-reset-email" class="btn" style="background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; font-size: 0.85rem; padding: 0.8rem;">
@@ -290,17 +340,18 @@ function renderFormView(container) {
                             </div>
                             <p style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.8rem; text-align: center;">※クリックすると各案内文がクリップボードにコピーされます</p>
                         </div>
-                    </div>
 
-                    <!-- アクションボタンエリア -->
-                    <div style="grid-column: 1 / -1; display: flex; gap: 1rem; margin-top: 1rem; padding-top: 1.5rem; border-top: 1px solid #e2e8f0; justify-content: flex-end;">
-                        <button type="button" id="btn-form-cancel" class="btn" style="padding: 1rem 2rem; background: white; border: 1px solid var(--border); color: var(--text-secondary); font-weight: 700;">
-                            キャンセル
-                        </button>
-                        <button type="submit" class="btn btn-primary" style="padding: 1rem 3rem; font-weight: 800; font-size: 1.1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-                            <i class="fas fa-save" style="margin-right: 0.5rem;"></i>
-                            ユーザー情報を保存
-                        </button>
+                        <!-- アクションボタンエリア -->
+                        <div style="display: flex; gap: 1rem; margin-top: 1rem; padding-top: 1.5rem; border-top: 1px solid #e2e8f0; justify-content: flex-end;">
+                            <button type="button" id="btn-form-cancel" class="btn" style="padding: 1rem 2rem; background: white; border: 1px solid var(--border); color: var(--text-secondary); font-weight: 700;">
+                                キャンセル
+                            </button>
+                            <button type="submit" class="btn btn-primary" style="padding: 1rem 3rem; font-weight: 800; font-size: 1.1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                                <i class="fas fa-save" style="margin-right: 0.5rem;"></i>
+                                ユーザー情報を保存
+                            </button>
+                        </div>
+
                     </div>
                 </form>
             </div>
@@ -350,6 +401,61 @@ function renderFormView(container) {
     });
 
     setupFormLogic();
+
+    // スムーズスクロールとスクロールスパイの登録
+    const navLinks = container.querySelectorAll('.user-nav-link');
+    navLinks.forEach(link => {
+        link.onclick = (e) => {
+            e.preventDefault();
+            const targetId = link.getAttribute('data-target');
+            const targetEl = document.getElementById(targetId);
+            const scrollContainer = document.querySelector('.page-content');
+            if (targetEl && scrollContainer) {
+                const containerRect = scrollContainer.getBoundingClientRect();
+                const targetRect = targetEl.getBoundingClientRect();
+                const relativeTop = targetRect.top - containerRect.top + scrollContainer.scrollTop;
+                
+                scrollContainer.scrollTo({
+                    top: relativeTop - 20,
+                    behavior: 'smooth'
+                });
+            }
+        };
+    });
+
+    const scrollContainer = document.querySelector('.page-content');
+    if (scrollContainer) {
+        const sections = ['sec-basic', 'sec-affiliation', 'sec-account', 'sec-visa'];
+        if (isEdit) sections.push('sec-share');
+        
+        const onScroll = () => {
+            let activeSectionId = sections[0];
+            const containerRect = scrollContainer.getBoundingClientRect();
+            
+            for (const id of sections) {
+                const el = document.getElementById(id);
+                if (el) {
+                    const rect = el.getBoundingClientRect();
+                    const relativeTop = rect.top - containerRect.top;
+                    // 要素の頭がスクロールコンテナの上部から100px以内、あるいは少し過ぎた位置にある場合
+                    if (relativeTop <= 100) {
+                        activeSectionId = id;
+                    }
+                }
+            }
+            
+            navLinks.forEach(link => {
+                if (link.getAttribute('data-target') === activeSectionId) {
+                    link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
+                }
+            });
+        };
+        
+        scrollContainer.addEventListener('scroll', onScroll);
+        activeScrollSpyListener = onScroll; // グローバルで保持して破棄可能にする
+    }
 }
 
 function setupFormLogic() {
