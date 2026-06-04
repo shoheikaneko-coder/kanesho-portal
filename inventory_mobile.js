@@ -209,7 +209,35 @@ export const inventoryMobilePageHtml = `
             .inv-row-content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
             .inv-row-title { font-size: 0.95rem; font-weight: 800; color: #1e293b; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
             .inv-row-meta { font-size: 0.75rem; color: #64748b; font-weight: 700; }
-            .inv-row-controls { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+            .inv-row-controls { display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0; }
+            .store-item-row {
+                padding: 1rem;
+                background: white;
+                border-radius: 14px;
+                border: 1.5px solid #f1f5f9;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                font-weight: 800;
+                color: #1e293b;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+                transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+                cursor: pointer;
+            }
+            .store-item-row:hover {
+                background: #f8fafc;
+                border-color: #cbd5e1;
+                transform: translateY(-1px);
+            }
+            .store-item-row:active {
+                transform: scale(0.98);
+                background: #f1f5f9;
+            }
+            .store-item-row.active {
+                border-color: var(--primary);
+                background: #fff5f5;
+                color: var(--primary);
+            }
             .qty-stepper-sm { display: flex; align-items: center; background: #f1f5f9; border-radius: 8px; padding: 2px; border: 1px solid #e2e8f0; gap: 2px; }
             .stepper-btn-sm {
                 width: 32px;
@@ -626,11 +654,11 @@ function renderTimingList(filterText = '') {
 
         return `
             <div class="store-item-row ${isSelected ? 'active' : ''}" data-code="${tCode}" data-name="${tName}">
-                <div style="display: flex; flex-direction: column;">
-                    <span style="font-weight: 800;">${tName}</span>
-                    <span style="font-size: 0.7rem; opacity: 0.6;">${confirmed} / ${total} 品目完了</span>
+                <span style="font-weight: 800; font-size: 0.95rem; color: #1e293b;">${tName}</span>
+                <div style="display: flex; align-items: center; gap: 0.6rem;">
+                    <span style="font-size: 0.75rem; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 0.25rem 0.6rem; border-radius: 20px;">${confirmed} / ${total} 品目</span>
+                    ${isDone ? '<i class="fas fa-check-circle" style="color: #10b981; font-size: 1.1rem;"></i>' : '<i class="fas fa-chevron-right" style="color: #cbd5e1; font-size: 0.8rem;"></i>'}
                 </div>
-                ${isDone ? '<i class="fas fa-check-circle" style="color: #10b981;"></i>' : (isSelected ? '<i class="fas fa-dot-circle"></i>' : '')}
             </div>
         `;
     }).join('');
@@ -816,14 +844,14 @@ function renderInventoryRows(container, items, isGlobalSearch) {
                                     </div>
                                 </div>
                                 <div class="inv-row-controls">
-                                    <button class="btn-confirm-sm ${isConfirmed ? 'active' : ''}" data-id="${item.id}">
-                                        <i class="fas fa-check"></i>
-                                    </button>
                                     <div class="qty-stepper-sm">
                                         <button class="stepper-btn-sm btn-minus" data-id="${item.id}"><i class="fas fa-minus"></i></button>
                                         <input type="number" class="qty-input-sm" value="${currentQty}" placeholder="-" data-id="${item.id}" inputmode="decimal" step="0.5">
                                         <button class="stepper-btn-sm btn-plus" data-id="${item.id}"><i class="fas fa-plus"></i></button>
                                     </div>
+                                    <button class="btn-confirm-sm ${isConfirmed ? 'active' : ''}" data-id="${item.id}">
+                                        <i class="fas fa-check"></i>
+                                    </button>
                                 </div>
                             </div>
                         `;
