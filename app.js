@@ -46,6 +46,7 @@ import { managerMeetingPageHtml, initManagerMeetingPage } from './manager_meetin
 import { PullToRefresh } from './ptr_logic.js';
 import { manualHubPageHtml, initManualHubPage, manualViewerPageHtml, initManualViewerPage } from './manual.js';
 import { gradesPageHtml, initGradesPage } from './grades.js';
+import { skillsPageHtml, initSkillsPage } from './skills.js';
 
 
 
@@ -122,6 +123,7 @@ const pageParentMap = {
     'invite_navi': 'hr_hub',
     'loans': 'hr_hub',
     'notifications': 'hr_hub',
+    'skills': 'hr_hub',
     'role_permissions': 'master_hub',
     'stores': 'master_hub',
     'products': 'master_hub',
@@ -580,6 +582,11 @@ async function showPage(target) {
                 updateHeaderTitle('等級マスタ (給与テーブル)');
                 pageContent.innerHTML = gradesPageHtml;
                 initGradesPage();
+                break;
+            case 'skills':
+                updateHeaderTitle('スキルマスタ設定');
+                pageContent.innerHTML = skillsPageHtml;
+                initSkillsPage();
                 break;
             case 'products':
                 pageTitle.textContent = '商品・レシピマスタ';

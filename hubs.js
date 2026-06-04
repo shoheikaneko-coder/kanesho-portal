@@ -57,6 +57,7 @@ const HUB_CONFIG = {
                 title: '教育・評価',
                 icon: 'fa-graduation-cap',
                 items: [
+                    { id: 'skills', name: 'スキルマスタ設定', icon: 'fa-list-check', color: '#8b5cf6' },
                     { id: 'exams_admin', name: 'テスト受験・管理', icon: 'fa-vials', color: '#f59e0b', isComingSoon: true },
                     { id: 'evaluation', name: 'スタッフ評価システム', icon: 'fa-star', color: '#ec4899', isComingSoon: true },
                     { id: 'training_progress', name: '研修進捗管理', icon: 'fa-chart-line', color: '#10b981', isComingSoon: true }
