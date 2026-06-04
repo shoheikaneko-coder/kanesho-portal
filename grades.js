@@ -74,10 +74,15 @@ export const gradesPageHtml = `
                             <th style="width: 80px; padding: 0;">
                                 <div class="tooltip-container" style="padding: 0.4rem 0;">
                                     時間外<br>労働
-                                    <span class="tooltip-text">時間外労働 ＝<br>時給(残業込) × 42時間</span>
+                                    <span class="tooltip-text">時間外労働 ＝<br>時給(基準) × (総労働時間 － 基本時間) × 1.25</span>
                                 </div>
                             </th>
-                            <th style="width: 80px;">深夜<br>割増</th>
+                            <th style="width: 80px; padding: 0;">
+                                <div class="tooltip-container" style="padding: 0.4rem 0;">
+                                    深夜<br>割増
+                                    <span class="tooltip-text">深夜割増 ＝<br>時給(基準) × (総労働時間 － 基本時間) × 0.25</span>
+                                </div>
+                            </th>
                             <th style="width: 85px; background: #0f172a; padding: 0;">
                                 <div class="tooltip-container" style="padding: 0.4rem 0;">
                                     月給
@@ -466,13 +471,13 @@ function renderGradesTable() {
             <td>
                 <input type="text" class="input-hourly-wage-overtime" value="${(grade.hourly_wage_overtime || 0).toLocaleString()}" onfocus="this.value = this.value.replace(/,/g, ''); this.select();" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="const val = Number(this.value) || 0; this.value = val.toLocaleString(); window.handleGradeChange(${index}, 'hourly_wage_overtime', val);" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums; background: #eff6ff;">
             </td>
-            <!-- 時間外労働 -->
+            <!-- 時間外労働 [ReadOnly] -->
             <td>
-                <input type="text" class="input-overtime-allowance" value="${(grade.overtime_allowance || 0).toLocaleString()}" onfocus="this.value = this.value.replace(/,/g, ''); this.select();" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="const val = Number(this.value) || 0; this.value = val.toLocaleString(); window.handleGradeChange(${index}, 'overtime_allowance', val);" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
+                <span class="col-readonly readonly-overtime-allowance">${formatCurrency(grade.overtime_allowance || 0)}</span>
             </td>
-            <!-- 深夜割増 -->
+            <!-- 深夜割増 [ReadOnly] -->
             <td>
-                <input type="text" class="input-late-allowance" value="${(grade.late_allowance || 0).toLocaleString()}" onfocus="this.value = this.value.replace(/,/g, ''); this.select();" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="const val = Number(this.value) || 0; this.value = val.toLocaleString(); window.handleGradeChange(${index}, 'late_allowance', val);" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
+                <span class="col-readonly readonly-late-allowance">${formatCurrency(grade.late_allowance || 0)}</span>
             </td>
             <!-- 月給 [ReadOnly] -->
             <td>
@@ -615,28 +620,12 @@ window.handleGradeChange = function(index, field, value) {
         const calculatedHourlyOvertime = Math.round(calculatedHourly * 1.0975);
         grade.hourly_wage_overtime = calculatedHourlyOvertime;
         rowEl.querySelector('.input-hourly-wage-overtime').value = calculatedHourlyOvertime.toLocaleString();
-
-        // 連鎖：時間外労働も自動計算
-        const calculatedOvertime = Math.round(calculatedHourlyOvertime * 42);
-        grade.overtime_allowance = calculatedOvertime;
-        rowEl.querySelector('.input-overtime-allowance').value = calculatedOvertime.toLocaleString();
     }
     // 2. 時給基準 が直接変わった場合、残業込時給を自動計算
     else if (field === 'hourly_wage') {
         const calculatedHourlyOvertime = Math.round(grade.hourly_wage * 1.0975);
         grade.hourly_wage_overtime = calculatedHourlyOvertime;
         rowEl.querySelector('.input-hourly-wage-overtime').value = calculatedHourlyOvertime.toLocaleString();
-
-        // 連鎖：時間外労働
-        const calculatedOvertime = Math.round(calculatedHourlyOvertime * 42);
-        grade.overtime_allowance = calculatedOvertime;
-        rowEl.querySelector('.input-overtime-allowance').value = calculatedOvertime.toLocaleString();
-    }
-    // 3. 時給残業込 が直接変わった場合、時間外労働を自動計算
-    else if (field === 'hourly_wage_overtime') {
-        const calculatedOvertime = Math.round(grade.hourly_wage_overtime * 42);
-        grade.overtime_allowance = calculatedOvertime;
-        rowEl.querySelector('.input-overtime-allowance').value = calculatedOvertime.toLocaleString();
     }
 
     // 計算列 (ReadOnly) の再計算とDOM反映
@@ -649,6 +638,17 @@ function recalculateReadOnlys(index, shouldUpdateDOM = true) {
     if (!grade) return;
 
     // 各論理フィールドの計算
+    
+    // 時間外労働時間 ＝ Max(0, 総労働時間 － 基本時間)
+    const overtimeHours = Math.max(0, (grade.total_hours || 0) - (grade.basic_hours || 0));
+    
+    // 時間外労働 ＝ 時給(基準) × 時間外労働時間 × 1.25
+    grade.overtime_allowance = Math.round((grade.hourly_wage || 0) * overtimeHours * 1.25);
+    
+    // 深夜割増 ＝ 時給(基準) × 時間外労働時間 × 0.25
+    grade.late_allowance = Math.round((grade.hourly_wage || 0) * overtimeHours * 0.25);
+
+    // 月給 ＝ 基本給 ＋ 役職手当 ＋ 時間外労働 ＋ 深夜割増
     grade.monthly_salary = (grade.basic_salary || 0) + (grade.role_allowance || 0) + (grade.overtime_allowance || 0) + (grade.late_allowance || 0);
     
     // 賞与基準額 ＝ (基本給 ＋ 役職手当) × 賞与割合
@@ -663,6 +663,8 @@ function recalculateReadOnlys(index, shouldUpdateDOM = true) {
     if (shouldUpdateDOM) {
         const rowEl = document.getElementById(`grade-row-${index}`);
         if (rowEl) {
+            rowEl.querySelector('.readonly-overtime-allowance').textContent = formatCurrency(grade.overtime_allowance);
+            rowEl.querySelector('.readonly-late-allowance').textContent = formatCurrency(grade.late_allowance);
             rowEl.querySelector('.readonly-monthly-salary').textContent = formatCurrency(grade.monthly_salary);
             rowEl.querySelector('.readonly-monthly-salary-bonus').textContent = formatCurrency(grade.monthly_salary_bonus);
             rowEl.querySelector('.readonly-total-labor-cost').textContent = formatCurrency(grade.total_labor_cost);
