@@ -1835,10 +1835,9 @@ async function executeTransfer(destStoreItemId, qty) {
     const destSi = procurementData.find(d => d.id === destStoreItemId);
     if (!destSi) return;
 
-    const sourceStoreSelect = document.querySelector(`.source-store-select[data-si-id="${destStoreItemId}"]`);
-    const sourceStoreId = sourceStoreSelect?.value;
-    if (!sourceStoreId) {
-        showAlert("エラー", "移動元店舗が選択されていません");
+    const sourceStoreId = destSi.default_source_store_id;
+    if (!sourceStoreId || sourceStoreId === 'UNKNOWN') {
+        showAlert("エラー", "移動元店舗が設定されていません");
         return;
     }
 
