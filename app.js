@@ -1,6 +1,7 @@
 import { auth, db } from './firebase.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { collection, getDocs, query, where, getDoc, doc, updateDoc, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { MENU_DEFINITION, getPageParentMap, getAllPermissionIds } from './menu_definition.js';
 
 // 各ページのインポート
 // import { dashboardPageHtml, initDashboardPage } from './dashboard.js?v=118'; // 動的インポートに変更
@@ -62,28 +63,36 @@ const state = {
 window.appState = state;
 
 
-const defaultMenuItems = [
-    { id: 'home', name: 'メインホーム', icon: 'fa-home', category: 'ハブ' },
-    { id: 'ops_hub', name: '店舗業務', icon: 'fa-store', category: 'ハブ' },
-    { id: 'special_hub', name: '店舗個別メニュー', icon: 'fa-cubes', category: 'ハブ' },
-    { id: 'hr_hub', name: '人事総務', icon: 'fa-user-friends', category: 'ハブ' },
-    { id: 'manager_hub', name: 'マネジメント', icon: 'fa-user-tie', category: 'ハブ' },
-    { id: 'utility_hub', name: '便利機能', icon: 'fa-lightbulb', category: 'ハブ' },
-    { id: 'manual_hub', name: 'マニュアル', icon: 'fa-book', category: 'ハブ' },
-    { id: 'master_hub', name: '設定', icon: 'fa-cog', category: 'ハブ' },
-    
-    { id: 'ops_hub_main', name: '在庫・調達', icon: 'fa-boxes-stacked', category: 'サブ機能', hidden: true },
-    { id: 'dashboard', name: '分析ダッシュボード', icon: 'fa-chart-line', category: 'サブ機能', hidden: true },
-    { id: 'shift_submission', name: 'シフト提出・確認', icon: 'fa-calendar-alt', category: 'サブ機能' },
-    { id: 'shift_admin', name: 'シフト作成・調整', icon: 'fa-user-edit', category: 'サブ機能', hidden: true },
-    { id: 'recipe_viewer', name: 'レシピ閲覧', icon: 'fa-book-open', category: 'サブ機能', hidden: true },
-    { id: 'daily_sakes', name: '日本酒管理', icon: 'fa-wine-glass-alt', category: 'サブ機能' },
-    { id: 'bottle_keep', name: 'ボトルキープ', icon: 'fa-wine-bottle', category: 'サブ機能' },
-    { id: 'attendance_management', name: '勤怠管理', icon: 'fa-user-clock', category: 'サブ機能', hidden: true },
-    { id: 'attendance_check', name: '勤怠照会', icon: 'fa-clipboard-check', category: 'サブ機能', hidden: true },
-    { id: 'invite_navi', name: '従業員への招待案内', icon: 'fa-paper-plane', category: 'サブ機能', hidden: true },
-    { id: 'users', name: '従業員管理', icon: 'fa-users-cog', category: 'サブ機能', hidden: true }
-];
+const defaultMenuItems = [];
+MENU_DEFINITION.forEach(hub => {
+    // 仮想ハブ(FABなど)以外の実体ハブを登録
+    if (hub.type === 'hub') {
+        defaultMenuItems.push({
+            id: hub.id,
+            name: hub.name,
+            icon: hub.icon,
+            category: 'ハブ'
+        });
+    }
+
+    // showInSidebar: true のショートカット子機能を追加
+    const addShortcut = (item) => {
+        if (item.showInSidebar) {
+            defaultMenuItems.push({
+                id: item.id,
+                name: item.name,
+                icon: item.icon,
+                category: 'サブ機能'
+            });
+        }
+    };
+
+    if (hub.sections) {
+        hub.sections.forEach(sec => sec.items.forEach(addShortcut));
+    } else if (hub.items) {
+        hub.items.forEach(addShortcut);
+    }
+});
 
 /**
  * ハブの省略名称マッピング (パンくず用)
@@ -102,46 +111,7 @@ const hubLabels = {
 /**
  * ページIDと親ハブの紐付けマッピング
  */
-const pageParentMap = {
-    'stocktake': 'ops_hub',
-    'inventory_history': 'ops_hub',
-    'dashboard': 'manager_hub',
-    'attendance': 'ops_hub',
-    'sales': 'ops_hub',
-    'inventory': 'ops_hub',
-    'procurement': 'ops_hub',
-    'ops_hub_main': 'ops_hub',
-    'recipe_viewer': 'manual_hub',
-    'menu_order': 'ops_hub',
-    'calendar_viewer': 'ops_hub',
-    'daily_sakes': 'ops_hub',
-    'bottle_keep': 'ops_hub',
-    'attendance_management': 'hr_hub',
-    'attendance_check': 'hr_hub',
-    'shift_submission': 'hr_hub',
-    'users': 'hr_hub',
-    'invite_navi': 'hr_hub',
-    'loans': 'hr_hub',
-    'notifications': 'hr_hub',
-    'skills': 'hr_hub',
-    'role_permissions': 'master_hub',
-    'stores': 'master_hub',
-    'products': 'master_hub',
-    'suppliers': 'master_hub',
-    'store_items': 'master_hub',
-    'csv_export': 'master_hub',
-    'csv_import': 'master_hub',
-    'sales_correction': 'master_hub',
-    'product_analysis': 'master_hub',
-    'calendar_admin': 'master_hub',
-    'goals_admin': 'master_hub',
-    'goals_store': 'manager_hub',
-    'manager_meeting': 'manager_hub',
-    'shift_admin': 'manager_hub',
-    'prototype_menu': 'utility_hub',
-    'competitor_list': 'utility_hub',
-    'manual_viewer': 'manual_hub'
-};
+const pageParentMap = getPageParentMap();
 
 /**
  * ユーザーオブジェクトを正規化して、IDや店舗IDの不整合を解消する
@@ -302,46 +272,45 @@ async function renderSidebar(user) {
     const role = user.Role || 'Staff';
     let allowed = [];
 
-    if (role === 'Admin' || role === '管理者') {
-        allowed = defaultMenuItems.map(m => m.id);
-        // 全般的な権限を付与
-        const adminPerms = ['sales','attendance','inventory','procurement','ops_hub_main','stocktake','inventory_history','store_items','product_analysis','home_performance','shift_admin','shift_submission','attendance_check','users','invite_navi','loans','role_permissions','stores','products','suppliers','sales_correction','csv_export','csv_import','calendar_admin','goals_admin','goals_store','line_share','daily_sakes','bottle_keep','manager_hub'];
-        adminPerms.forEach(id => { if (!allowed.includes(id)) allowed.push(id); });
-    } else {
-        try {
-            const docSnap = await getDoc(doc(db, "m_role_permissions", role));
-            if (docSnap.exists()) {
-                allowed = docSnap.data().permissions || [];
+    try {
+        const docSnap = await getDoc(doc(db, "m_role_permissions", role));
+        if (docSnap.exists()) {
+            allowed = docSnap.data().permissions || [];
+        } else {
+            // Firestoreに権限が未設定時の初期フォールバック
+            if (role === 'Admin' || role === '管理者') {
+                allowed = getAllPermissionIds();
             }
-            if (role === 'Tablet' || role === '店舗タブレット') {
-                if (!allowed.includes('bottle_keep')) allowed.push('bottle_keep');
-            }
-        } catch (e) {
-            console.error("Permission check failed:", e);
+        }
+        // 店舗タブレット向けのフォールバック（旧実装の維持）
+        if (role === 'Tablet' || role === '店舗タブレット') {
+            if (!allowed.includes('bottle_keep')) allowed.push('bottle_keep');
+        }
+    } catch (e) {
+        console.error("Permission check failed:", e);
+        if (role === 'Admin' || role === '管理者') {
+            allowed = getAllPermissionIds();
         }
     }
-    
-    // 便利機能Hub & マニュアルHubは全従業員にデフォルト開放
-    const commonPerms = ['utility_hub', 'prototype_menu', 'competitor_list', 'manual_hub', 'manual_viewer', 'special_hub'];
-    commonPerms.forEach(id => {
-        if (!allowed.includes(id)) allowed.push(id);
-    });
 
-    // Admin / Manager (店長) には店長業務ハブを自動開放
-    if (role === 'Admin' || role === '管理者' || role === 'Manager' || role === '店長') {
-        if (!allowed.includes('manager_hub')) allowed.push('manager_hub');
+    // 管理者 (Admin) のセーフガード: ロックアウトを防ぐ最小限の権限を強制付与
+    if (role === 'Admin' || role === '管理者') {
+        const safeguardIds = ['role_permissions', 'hr_hub', 'master_hub', 'home'];
+        safeguardIds.forEach(id => {
+            if (!allowed.includes(id)) allowed.push(id);
+        });
     }
 
     state.permissions = allowed;
 
     const hrNav = document.getElementById('nav-item-hr');
     if (hrNav) {
-        hrNav.style.display = (role === 'Admin' || role === '管理者' || allowed.includes('hr_hub')) ? 'flex' : 'none';
+        hrNav.style.display = (allowed.includes('hr_hub')) ? 'flex' : 'none';
     }
 
     const opsNav = document.getElementById('nav-item-ops');
     if (opsNav) {
-        opsNav.style.display = (role === 'Admin' || role === '管理者' || allowed.includes('ops_hub')) ? 'flex' : 'none';
+        opsNav.style.display = (allowed.includes('ops_hub')) ? 'flex' : 'none';
     }
 
     // クイック操作 (FAB) の制御
@@ -353,7 +322,7 @@ async function renderSidebar(user) {
     fabItems.forEach(item => {
         const el = document.getElementById(item.id);
         if (el) {
-            el.style.display = (role === 'Admin' || role === '管理者' || allowed.includes(item.pid)) ? 'flex' : 'none';
+            el.style.display = (allowed.includes(item.pid)) ? 'flex' : 'none';
         }
     });
 
@@ -361,10 +330,10 @@ async function renderSidebar(user) {
     const categories = [...new Set(defaultMenuItems.map(item => item.category))];
     
     categories.forEach(cat => {
-        const items = defaultMenuItems.filter(item => item.category === cat && !item.hidden);
+        const items = defaultMenuItems.filter(item => item.category === cat);
         const allowedItems = items.filter(item => {
             if (allowed.includes(item.id)) return true;
-            // 勤怠管理の特例: サブ機能の権限（直接編集 or 修正申請）があれば表示を許可する
+            // 勤怠管理の特例: サブ機能の権限（直接編集 or 修正申請）があれば表示を許可
             if (item.id === 'attendance_management') {
                 return allowed.includes('attendance_direct_edit') || allowed.includes('attendance_correction_request');
             }
@@ -375,7 +344,7 @@ async function renderSidebar(user) {
             html += `<div class="menu-category">${cat}</div>`;
             allowedItems.forEach(item => {
                 let displayName = item.name;
-                // 管理者以外で勤怠管理を表示する場合、名称を「勤怠修正申請」に変更する
+                // 管理者以外で勤怠管理を表示する場合、名称を「勤怠修正申請」に変更
                 if (item.id === 'attendance_management' && !(role === 'Admin' || role === '管理者')) {
                     displayName = '勤怠修正申請';
                 }
@@ -471,24 +440,15 @@ async function showPage(target) {
                 initHomePage();
                 break;
             case 'ops_hub':
-                updateHeaderTitle('店舗業務');
-                pageContent.innerHTML = hubPageHtml('店舗業務', '店舗運営に必要な日次業務。');
-                initHubPage('ops_hub');
-                break;
             case 'hr_hub':
-                updateHeaderTitle('人事総務');
-                pageContent.innerHTML = hubPageHtml('人事総務', '従業員管理、貸与物、勤怠チェック。');
-                initHubPage('hr_hub');
-                break;
             case 'manager_hub':
-                updateHeaderTitle('店長業務');
-                pageContent.innerHTML = hubPageHtml('店長業務', '店舗運営計画・シフト管理。');
-                initHubPage('manager_hub');
-                break;
             case 'master_hub':
-                updateHeaderTitle('設定・マスタ');
-                pageContent.innerHTML = hubPageHtml('設定・マスタ', 'システム基盤情報の管理。');
-                initHubPage('master_hub');
+                const hubDef = MENU_DEFINITION.find(h => h.id === target);
+                if (hubDef) {
+                    updateHeaderTitle(hubDef.name);
+                    pageContent.innerHTML = hubPageHtml(hubDef.name, hubDef.desc || '');
+                    initHubPage(target);
+                }
                 break;
             case 'dashboard':
                 updateHeaderTitle('ダッシュボード');
@@ -722,14 +682,13 @@ async function showPage(target) {
                 initBottleKeepPage();
                 break;
             case 'special_hub':
-                updateHeaderTitle('店舗個別メニュー');
-                pageContent.innerHTML = hubPageHtml('店舗個別メニュー', '店舗ごとにカスタマイズ・導入されている個別の独自メニュー。');
-                initHubPage('special_hub');
-                break;
             case 'utility_hub':
-                pageTitle.textContent = '便利機能';
-                pageContent.innerHTML = hubPageHtml('便利機能', '従業員のナレッジ共有・シミュレーションツール。');
-                initHubPage('utility_hub');
+                const dynamicHubDef = MENU_DEFINITION.find(h => h.id === target);
+                if (dynamicHubDef) {
+                    updateHeaderTitle(dynamicHubDef.name);
+                    pageContent.innerHTML = hubPageHtml(dynamicHubDef.name, dynamicHubDef.desc || '');
+                    initHubPage(target);
+                }
                 break;
             case 'prototype_menu':
                 pageTitle.textContent = 'メニュー試作';

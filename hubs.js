@@ -1,5 +1,6 @@
 import { db } from './firebase.js';
 import { collection, getDocs, query, where, orderBy, getDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { MENU_DEFINITION } from './menu_definition.js';
 
 /**
  * HubページのHTMLテンプレートを生成する
@@ -13,132 +14,10 @@ export const hubPageHtml = (title, description) => `
 `;
 
 /**
- * 各Hubの内容を定義
- */
-const HUB_CONFIG = {
-    'ops_hub': {
-        title: '店舗業務',
-        description: '当日の営業・在庫・レシピに関する操作',
-        items: [
-            { id: 'attendance', name: '勤怠入力(打刻)', icon: 'fa-clock', color: '#ff5a5f', desc: '出退勤の打刻を行います' },
-            { id: 'sales', name: '営業実績報告', icon: 'fa-calculator', color: '#f59e0b', desc: '売上・人数・客単価の報告' },
-            { id: 'ops_hub_main', name: '在庫・調達', icon: 'fa-boxes-stacked', color: '#10b981', desc: '在庫チェック、移動、仕入れ、仕込みを一括管理' },
-            { id: 'stocktake', name: '棚卸し履歴', icon: 'fa-history', color: '#8b5cf6', desc: '日次棚卸し額の記録・推移確認' },
-            { id: 'inventory_history', name: '在庫履歴', icon: 'fa-list-alt', color: '#64748b', desc: '在庫増減の全履歴ログ' },
-            { id: 'recipe_viewer', name: 'レシピ閲覧', icon: 'fa-book-open', color: '#ec4899', desc: 'メニュー情報の確認' }
-        ]
-    },
-    'hr_hub': {
-        title: '人事総務',
-        description: '従業員管理・貸与物・権限の管理',
-        sections: [
-            {
-                title: '勤怠・労務管理',
-                icon: 'fa-user-clock',
-                items: [
-                    { id: 'attendance_management', name: '勤怠管理', icon: 'fa-user-clock', color: '#6366f1' },
-                    { id: 'attendance_approval', name: '勤怠修正承認', icon: 'fa-check-double', color: '#10b981', isComingSoon: true },
-                    { id: 'paid_leave_mgmt', name: '有給管理', icon: 'fa-umbrella-beach', color: '#0ea5e9', isComingSoon: true },
-                    { id: 'health_checkup', name: '健康診断受診', icon: 'fa-notes-medical', color: '#ef4444', isComingSoon: true }
-                ]
-            },
-            {
-                title: '従業員・組織管理',
-                icon: 'fa-sitemap',
-                items: [
-                    { id: 'users', name: 'ユーザー・従業員管理', icon: 'fa-users-cog', color: '#14b8a6' },
-                    { id: 'invite_navi', name: '従業員への招待案内', icon: 'fa-paper-plane', color: '#3b82f6' },
-                    { id: 'role_permissions', name: '権限振り分け設定', icon: 'fa-user-shield', color: '#ef4444' },
-                    { id: 'grades', name: '等級マスタ (給与テーブル)', icon: 'fa-table', color: '#f59e0b' },
-                    { id: 'org_chart', name: '組織図', icon: 'fa-network-wired', color: '#8b5cf6', isComingSoon: true }
-                ]
-            },
-            {
-                title: '教育・評価',
-                icon: 'fa-graduation-cap',
-                items: [
-                    { id: 'skills', name: 'スキルマスタ設定', icon: 'fa-list-check', color: '#8b5cf6' },
-                    { id: 'exams_admin', name: 'テスト受験・管理', icon: 'fa-vials', color: '#f59e0b', isComingSoon: true },
-                    { id: 'evaluation', name: 'スタッフ評価システム', icon: 'fa-star', color: '#ec4899', isComingSoon: true },
-                    { id: 'training_progress', name: '研修進捗管理', icon: 'fa-chart-line', color: '#10b981', isComingSoon: true }
-                ]
-            },
-            {
-                title: '書類・資産管理',
-                icon: 'fa-file-signature',
-                items: [
-                    { id: 'loans', name: '貸与物管理(アセット)', icon: 'fa-key', color: '#8b5cf6' },
-                    { id: 'doc_gen', name: '書類作成(雇用契約書等)', icon: 'fa-file-pdf', color: '#ef4444', isComingSoon: true }
-                ]
-            }
-        ]
-    },
-    'manager_hub': {
-        title: 'マネジメント',
-        description: '店舗運営計画・経営分析・シフト管理',
-        sections: [
-            {
-                title: '店舗経営',
-                icon: 'fa-store',
-                items: [
-                    { id: 'dashboard', name: '分析ダッシュボード', icon: 'fa-chart-line', color: '#3b82f6' },
-                    { id: 'manager_meeting', name: '店舗PDCA', icon: 'fa-sync-alt', color: '#14b8a6' }
-                ]
-            },
-            {
-                title: '勤務・シフト管理',
-                icon: 'fa-calendar-alt',
-                items: [
-                    { id: 'shift_admin', name: 'シフト作成・調整', icon: 'fa-user-edit', color: '#ec4899' }
-                ]
-            },
-            {
-                title: '目標・実績管理',
-                icon: 'fa-chart-line',
-                items: [
-                    { id: 'goals_store', name: '月次計画(店長用)', icon: 'fa-tasks', color: '#f97316' }
-                ]
-            }
-        ]
-    },
-    'master_hub': {
-        title: '設定・マスタ',
-        description: 'システム基盤・マスタデータの管理',
-        items: [
-            { id: 'stores', name: '店舗マスタ', icon: 'fa-store-alt', color: '#4b5563', desc: '店舗情報の追加・編集' },
-            { id: 'products', name: '商品・レシピマスタ', icon: 'fa-mortar-pestle', color: '#4b5563', desc: 'アイテム・レシピ登録' },
-            { id: 'suppliers', name: '業者マスタ', icon: 'fa-truck', color: '#4b5563', desc: '取引先情報の管理' },
-            { id: 'store_items', name: '店舗別在庫設定', icon: 'fa-boxes-stacked', color: '#4b5563', desc: '店舗ごとの取扱品指定' },
-            { id: 'sales_correction', name: '営業実績修正', icon: 'fa-edit', color: '#4b5563', desc: '過去の実績データの補正' },
-            { id: 'csv_export', name: 'CSV出力', icon: 'fa-file-csv', color: '#4b5563', desc: '全データの書き出し' },
-            { id: 'csv_import', name: 'CSVインポート', icon: 'fa-file-import', color: '#4b5563', desc: '一括インポート' },
-            { id: 'calendar_admin', name: '営業カレンダー作成', icon: 'fa-calendar-plus', color: '#4b5563', desc: '年間休日・イベント設定' },
-            { id: 'goals_admin', name: '目標設定 (社長用)', icon: 'fa-bullseye', color: '#4b5563', desc: '全社売上ターゲット' }
-        ]
-    },
-    'utility_hub': {
-        title: '便利機能',
-        description: '従業員のナレッジ共有・シミュレーションツール',
-        items: [
-            { id: 'prototype_menu', name: 'メニュー試作', icon: 'fa-flask', color: '#f59e0b', desc: '新メニューの原価計算シミュ' },
-            { id: 'competitor_list', name: '行きたい店リスト', icon: 'fa-map-marked-alt', color: '#3b82f6', desc: '競合店の視察メモ・共有' }
-        ]
-    },
-    'special_hub': {
-        title: '店舗個別メニュー',
-        description: '店舗ごとに導入されている個別のオプション独自メニュー',
-        items: [
-            { id: 'daily_sakes', name: '日本酒管理', icon: 'fa-wine-glass-alt', color: '#10b981', desc: 'その日の日本酒のラインナップ・残量などを管理します。' },
-            { id: 'bottle_keep', name: 'ボトルキープ', icon: 'fa-wine-bottle', color: '#ff5a5f', desc: 'お客様のキープボトル配置・期限管理を行います。' }
-        ]
-    }
-};
-
-/**
  * 指定されたHubを描画する
  */
 export function initHubPage(type) {
-    const config = HUB_CONFIG[type];
+    const config = MENU_DEFINITION.find(hub => hub.id === type);
     if (!config) return;
 
     const container = document.getElementById('hub-content-container');
@@ -150,39 +29,43 @@ export function initHubPage(type) {
     if (config.sections) {
         container.innerHTML = `
             <div class="hub-sections-container">
-                ${config.sections.map(section => `
-                    <div class="hub-section">
-                        <div class="hub-section-header">
-                            <i class="fas ${section.icon}" style="color: var(--primary); font-size: 1.1rem;"></i>
-                            <h2>${section.title}</h2>
-                        </div>
-                        <div class="tile-grid">
-                            ${section.items.filter(item => {
-                                const isUserAdmin = window.appState && window.appState.currentUser && (window.appState.currentUser.Role === 'Admin' || window.appState.currentUser.Role === '管理者');
-                                return isUserAdmin || item.id === 'manager_meeting' || permissions.length === 0 || permissions.includes(item.id) || item.isComingSoon;
-                            }).map(item => `
-                                <div class="business-tile ${item.isComingSoon ? 'tile-coming-soon' : ''}" 
-                                     onclick="${item.isComingSoon ? "alert('この機能は現在開発中です。')" : `window.navigateTo('${item.id}')`}">
-                                    ${item.isComingSoon ? '<span class="tile-badge-soon">開発中</span>' : ''}
-                                    <div class="tile-icon" style="background: ${item.color}10; color: ${item.color};">
-                                        <i class="fas ${item.icon}"></i>
+                ${config.sections.map(section => {
+                    const visibleItems = section.items.filter(item => {
+                        return permissions.includes(item.id) || item.isComingSoon;
+                    });
+
+                    if (visibleItems.length === 0) return ''; // 表示可能なタイルが1つもないセクションは非表示にする
+
+                    return `
+                        <div class="hub-section">
+                            <div class="hub-section-header">
+                                <i class="fas ${section.icon}" style="color: var(--primary); font-size: 1.1rem;"></i>
+                                <h2>${section.title}</h2>
+                            </div>
+                            <div class="tile-grid">
+                                ${visibleItems.map(item => `
+                                    <div class="business-tile ${item.isComingSoon ? 'tile-coming-soon' : ''}" 
+                                         onclick="${item.isComingSoon ? "alert('この機能は現在開発中です。')" : `window.navigateTo('${item.id}')`}">
+                                        ${item.isComingSoon ? '<span class="tile-badge-soon">開発中</span>' : ''}
+                                        <div class="tile-icon" style="background: ${item.color}10; color: ${item.color};">
+                                            <i class="fas ${item.icon}"></i>
+                                        </div>
+                                        <div class="tile-info">
+                                            <span class="tile-name">${item.name}</span>
+                                        </div>
+                                        <i class="fas fa-chevron-right tile-chevron"></i>
                                     </div>
-                                    <div class="tile-info">
-                                        <span class="tile-name">${item.name}</span>
-                                    </div>
-                                    <i class="fas fa-chevron-right tile-chevron"></i>
-                                </div>
-                            `).join('')}
+                                `).join('')}
+                            </div>
                         </div>
-                    </div>
-                `).join('')}
+                    `;
+                }).join('')}
             </div>
         `;
-    } else {
+    } else if (config.items) {
         // 従来のカード形式（グリッド）で描画
-        const isUserAdmin = window.appState && window.appState.currentUser && (window.appState.currentUser.Role === 'Admin' || window.appState.currentUser.Role === '管理者');
         const visibleItems = config.items.filter(item => {
-            return isUserAdmin || item.id === 'manager_meeting' || permissions.length === 0 || permissions.includes(item.id);
+            return permissions.includes(item.id);
         });
 
         if (visibleItems.length === 0) {
@@ -209,7 +92,7 @@ export function initHubPage(type) {
                         </div>
                         <div>
                             <h3 style="margin: 0; font-size: 1.1rem; font-weight: 800; color: var(--text-primary);">${item.name}</h3>
-                            <p style="margin: 0.2rem 0 0; font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4;">${item.desc}</p>
+                            <p style="margin: 0.2rem 0 0; font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4;">${item.desc || ''}</p>
                         </div>
                         <i class="fas fa-chevron-right" style="position: absolute; right: 1.2rem; top: 1.2rem; font-size: 0.8rem; color: #cbd5e1;"></i>
                     </div>
@@ -218,3 +101,4 @@ export function initHubPage(type) {
         `;
     }
 }
+

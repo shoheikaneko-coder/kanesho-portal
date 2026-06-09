@@ -1,5 +1,6 @@
 import { db } from './firebase.js';
 import { collection, getDocs, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { MENU_DEFINITION } from './menu_definition.js';
 
 export const rolePermissionsPageHtml = `
     <div class="animate-fade-in">
@@ -12,7 +13,7 @@ export const rolePermissionsPageHtml = `
 
         <div style="display: grid; grid-template-columns: 250px 1fr; gap: 2rem;">
             <!-- ロール一覧 -->
-            <div class="glass-panel" style="padding: 1.5rem;">
+            <div class="glass-panel" style="padding: 1.5rem; height: fit-content;">
                 <h3 style="font-size: 1rem; margin-bottom: 1.5rem; color: var(--text-secondary);">ロール選択</h3>
                 <div id="role-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
                     <button class="role-item active" data-role="Admin">管理者 (Admin)</button>
@@ -23,20 +24,30 @@ export const rolePermissionsPageHtml = `
                 </div>
             </div>
 
-            <!-- 機能一覧 -->
-            <div class="glass-panel" style="padding: 2.5rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <!-- 機能一覧（2カラム構成） -->
+            <div class="glass-panel" style="padding: 2.5rem; display: flex; flex-direction: column; height: 75vh; max-height: 800px; min-height: 500px;">
+                <!-- 上部ヘッダー -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-shrink: 0;">
                     <div>
-                        <h3 id="current-role-title" style="margin: 0; font-size: 1.2rem;">管理者 の権限設定</h3>
-                        <p style="margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--text-secondary);">このロールに許可する機能を選択してください。</p>
+                        <h3 id="current-role-title" style="margin: 0; font-size: 1.2rem;">管理者 (Admin) の権限設定</h3>
+                        <p style="margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--text-secondary);">このロールに許可するハブメニューと個別の機能を選択してください。</p>
                     </div>
                     <button id="save-permissions-btn" class="btn btn-primary" style="padding: 0.8rem 2rem;">
                         <i class="fas fa-save" style="margin-right: 0.5rem;"></i> 設定を保存
                     </button>
                 </div>
 
-                <div id="permissions-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem;">
-                    <!-- 機能チェックボックス群 -->
+                <!-- 2カラムコンテンツ -->
+                <div class="perm-container-body" style="display: grid; grid-template-columns: 200px 1fr; gap: 2.5rem; flex: 1; min-height: 0;">
+                    <!-- 左: 目次 (TOC) -->
+                    <div id="hub-toc" style="display: flex; flex-direction: column; gap: 0.4rem; border-right: 1px solid var(--border); padding-right: 1rem; overflow-y: auto;">
+                        <!-- JSで動的生成 -->
+                    </div>
+                    
+                    <!-- 右: 縦一列スクロールコンテナ -->
+                    <div id="permissions-scroll-container" style="overflow-y: auto; padding-right: 1rem; display: flex; flex-direction: column; gap: 2rem; scroll-behavior: smooth;">
+                        <!-- JSでハブごとに縦一列のカードを動的生成 -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -57,69 +68,73 @@ export const rolePermissionsPageHtml = `
         .role-item:hover { background: #f8fafc; border-color: var(--primary); }
         .role-item.active { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 4px 12px rgba(230,57,70,0.2); }
         
-        .perm-card {
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1rem;
+        .toc-item {
             display: flex;
             align-items: center;
-            gap: 1rem;
+            gap: 0.6rem;
+            padding: 0.75rem 0.9rem;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.85rem;
             cursor: pointer;
-            transition: all 0.2s;
+            border-radius: 8px;
+            text-align: left;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+            width: 100%;
+            user-select: none;
         }
-        .perm-card:hover { border-color: var(--primary); background: rgba(230,57,70,0.02); }
-        .perm-card input[type="checkbox"] { width: 1.2rem; height: 1.2rem; cursor: pointer; }
-        .perm-card i { font-size: 1.2rem; color: var(--text-secondary); width: 24px; text-align: center; }
-        .perm-card.selected { border-color: var(--primary); background: rgba(230,57,70,0.05); }
-        .perm-card.selected i { color: var(--primary); }
+        .toc-item:hover {
+            background: #f8fafc;
+            color: var(--primary);
+        }
+        .toc-item.active {
+            background: rgba(230,57,70,0.05);
+            color: var(--primary);
+            border-left-color: var(--primary);
+        }
+
+        .perm-hub-card {
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            background: white;
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+        .perm-checkbox {
+            width: 1.15rem;
+            height: 1.15rem;
+            cursor: pointer;
+        }
+        .perm-child-label {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.6rem;
+            cursor: pointer;
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            transition: background 0.15s ease;
+            margin: 0;
+        }
+        .perm-child-label:hover {
+            background: #f8fafc;
+        }
+
+        /* 横幅が狭い場合のレスポンシブ対応 */
+        @media (max-width: 1024px) {
+            .perm-container-body {
+                grid-template-columns: 1fr !important;
+                gap: 1.5rem !important;
+            }
+            #hub-toc {
+                display: none !important; /* タブレット以下では目次を非表示にして縦長スクロールのみにする */
+            }
+        }
     </style>
 `;
-
-const menuItems = [
-    { id: 'dashboard', name: 'ダッシュボード', icon: 'fa-chart-line' },
-    { id: 'attendance', name: '勤怠入力', icon: 'fa-clock' },
-    { id: 'attendance_management', name: '勤怠管理', icon: 'fa-user-clock' },
-    { id: 'attendance_direct_edit', name: '[機能] 勤怠の直接編集(管理者用)', icon: 'fa-check-double' },
-    { id: 'attendance_correction_request', name: '[機能] 勤怠の修正申請(店長用)', icon: 'fa-paper-plane' },
-    { id: 'attendance_check', name: '勤怠状況確認', icon: 'fa-clipboard-check' },
-    { id: 'ops_hub_main', name: '在庫・調達', icon: 'fa-boxes-stacked' },
-    { id: 'sales', name: '営業実績報告', icon: 'fa-calculator' },
-    { id: 'recipe_viewer', name: 'レシピ閲覧', icon: 'fa-book-open' },
-    { id: 'users', name: 'ユーザー登録/変更', icon: 'fa-users-cog' },
-    { id: 'stores', name: '店舗マスタ', icon: 'fa-store-alt' },
-    { id: 'products', name: '商品・レシピマスタ', icon: 'fa-mortar-pestle' },
-    { id: 'suppliers', name: '業者マスタ', icon: 'fa-truck' },
-    { id: 'role_permissions', name: '権限振り分け', icon: 'fa-user-shield' },
-    { id: 'sales_correction', name: '営業実績修正', icon: 'fa-edit' },
-    { id: 'csv_export', name: 'CSV出力', icon: 'fa-file-csv' },
-    { id: 'menu_order', name: 'メニュー並び順', icon: 'fa-sort-amount-down' },
-    { id: 'invite_navi', name: '従業員への招待案内 (Email)', icon: 'fa-paper-plane' },
-    { id: 'home_performance', name: 'ホーム実績サマリー表示', icon: 'fa-eye-slash' },
-    { id: 'shift_submission', name: 'シフト提出・確認', icon: 'fa-calendar-alt' },
-    { id: 'shift_admin', name: 'シフト作成・調整', icon: 'fa-user-edit' },
-    // サイドバーのナビゲーションハブ
-    { id: 'home', name: '[ナビ領域] メインホーム', icon: 'fa-home' },
-    { id: 'ops_hub', name: '[ナビ領域] 店舗業務Hub', icon: 'fa-store' },
-    { id: 'hr_hub', name: '[ナビ領域] 人事総務Hub', icon: 'fa-user-friends' },
-    { id: 'manager_hub', name: '[ナビ領域] マネジメントHub', icon: 'fa-user-tie' },
-    { id: 'master_hub', name: '[ナビ領域] 設定Hub', icon: 'fa-cog' },
-    // クイック操作 (FAB)
-    { id: 'fab_attendance', name: '[クイック操作] 出退勤打刻', icon: 'fa-fingerprint' },
-    { id: 'fab_sales', name: '[クイック操作] 営業実績報告', icon: 'fa-calculator' },
-    { id: 'fab_inventory', name: '[クイック操作] 棚卸・在庫登録', icon: 'fa-warehouse' },
-    // 目標管理
-    { id: 'goals_admin', name: '目標設定 (社長用)', icon: 'fa-bullseye' },
-    { id: 'goals_store', name: '月次計画 (店長用)', icon: 'fa-tasks' },
-    { id: 'manager_meeting', name: '店舗PDCA', icon: 'fa-sync-alt' },
-    { id: 'daily_sakes', name: '日本酒管理', icon: 'fa-wine-glass-alt' },
-    { id: 'bottle_keep', name: 'ボトルキープ', icon: 'fa-wine-bottle' },
-    // 便利機能
-    { id: 'utility_hub', name: '[ナビ領域] 便利機能Hub', icon: 'fa-lightbulb' },
-    { id: 'manual_hub', name: '[ナビ領域] マニュアルHub', icon: 'fa-book' },
-    { id: 'prototype_menu', name: 'メニュー試作', icon: 'fa-flask' },
-    { id: 'competitor_list', name: '行きたい店リスト', icon: 'fa-map-marked-alt' }
-];
-
 
 let selectedRole = 'Admin';
 
@@ -150,13 +165,21 @@ export async function initRolePermissionsPage() {
                 if (cb.checked) checked.push(cb.dataset.id);
             });
 
+            // セーフガード: 管理者ロールが保存される際、最低限の権限が絶対に抜け落ちないように補正
+            if (selectedRole === 'Admin' || selectedRole === '管理者') {
+                if (!checked.includes('role_permissions')) checked.push('role_permissions');
+                if (!checked.includes('hr_hub')) checked.push('hr_hub');
+                if (!checked.includes('home')) checked.push('home');
+                if (!checked.includes('master_hub')) checked.push('master_hub');
+            }
+
             try {
                 await setDoc(doc(db, "m_role_permissions", selectedRole), {
                     permissions: checked,
                     updatedAt: new Date().toISOString()
                 });
                 
-                // 現在ログイン中のユーザー自身の権限を変更した場合は即座にアプリに反映させる
+                // 現在ログイン中のユーザー自身の権限を変更した場合は即座にアプリ状態に反映
                 if (window.state && window.state.currentUser && window.state.currentUser.Role === selectedRole) {
                     if (window.appState) {
                         window.appState.permissions = checked;
@@ -175,22 +198,203 @@ export async function initRolePermissionsPage() {
 }
 
 function renderPermissions() {
-    const grid = document.getElementById('permissions-grid');
-    if (!grid) return;
-    grid.innerHTML = menuItems.map(item => `
-        <label class="perm-card" id="card-${item.id}">
-            <input type="checkbox" class="perm-checkbox" data-id="${item.id}" onchange="this.parentElement.classList.toggle('selected', this.checked)">
-            <i class="fas ${item.icon}"></i>
-            <span style="font-size: 0.95rem; font-weight: 500;">${item.name}</span>
+    const toc = document.getElementById('hub-toc');
+    const scrollContainer = document.getElementById('permissions-scroll-container');
+    if (!toc || !scrollContainer) return;
+
+    let tocHtml = '';
+    let contentHtml = '';
+
+    MENU_DEFINITION.forEach((hub, index) => {
+        // 目次アイテムの生成
+        tocHtml += `
+            <button class="toc-item ${index === 0 ? 'active' : ''}" data-target="hub-section-${hub.id}" style="outline: none;">
+                <i class="fas ${hub.icon}" style="width: 16px; text-align: center;"></i>
+                <span>${hub.name}</span>
+            </button>
+        `;
+
+        // 機能リストの生成
+        let childrenHtml = '';
+        
+        if (hub.sections) {
+            hub.sections.forEach(sec => {
+                childrenHtml += `
+                    <div class="perm-section" style="margin-top: 1.2rem; border-top: 1px dashed var(--border); padding-top: 0.8rem;">
+                        <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 0.6rem; display: flex; align-items: center; gap: 0.4rem;">
+                            <i class="fas ${sec.icon}"></i> ${sec.title}
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 0.4rem; padding-left: 0.2rem;">
+                            ${sec.items.map(item => renderChildItem(item, hub.id)).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+        } else if (hub.items) {
+            childrenHtml += `
+                <div style="display: flex; flex-direction: column; gap: 0.4rem; margin-top: 1rem; border-top: 1px dashed var(--border); padding-top: 0.8rem;">
+                    ${hub.items.map(item => renderChildItem(item, hub.id)).join('')}
+                </div>
+            `;
+        }
+
+        contentHtml += `
+            <div class="perm-hub-card" id="hub-section-${hub.id}">
+                <label style="display: flex; align-items: center; gap: 0.8rem; cursor: pointer; font-weight: 800; font-size: 1.1rem; color: var(--text-primary); margin: 0 0 1rem 0; user-select: none; border-bottom: 1px solid var(--border); padding-bottom: 0.8rem;">
+                    <input type="checkbox" class="perm-checkbox perm-parent" data-id="${hub.id}">
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(230,57,70,0.06); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1rem;">
+                        <i class="fas ${hub.icon}"></i>
+                    </div>
+                    <span>${hub.name}</span>
+                </label>
+                ${childrenHtml}
+            </div>
+        `;
+    });
+
+    toc.innerHTML = tocHtml;
+    scrollContainer.innerHTML = contentHtml;
+
+    bindPermissionEvents();
+    bindTOCEvents();
+    bindScrollSpy();
+}
+
+function renderChildItem(item, parentId) {
+    const badge = item.isComingSoon ? '<span style="font-size: 0.65rem; padding: 0.1rem 0.3rem; background: #e2e8f0; color: #64748b; border-radius: 4px; margin-left: 0.5rem; font-weight: bold;">開発中</span>' : '';
+    const desc = item.desc ? `<p style="margin: 0.1rem 0 0 0; font-size: 0.7rem; color: var(--text-secondary); font-weight: normal; line-height: 1.3;">${item.desc}</p>` : '';
+    
+    return `
+        <label class="perm-child-label" style="display: flex; align-items: flex-start; gap: 0.6rem;">
+            <input type="checkbox" class="perm-checkbox perm-child" data-id="${item.id}" data-parent="${parentId}" style="margin-top: 0.15rem;">
+            <div style="flex: 1;">
+                <div style="display: flex; align-items: center; font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">
+                    <i class="fas ${item.icon}" style="font-size: 0.8rem; color: var(--text-secondary); width: 14px; text-align: center; margin-right: 0.4rem;"></i>
+                    <span>${item.name}</span>
+                    ${badge}
+                </div>
+                ${desc}
+            </div>
         </label>
-    `).join('');
+    `;
+}
+
+function bindPermissionEvents() {
+    // 親（ハブ）の変更イベント: 配下の子すべてを連動
+    document.querySelectorAll('.perm-parent').forEach(parentCb => {
+        parentCb.onchange = () => {
+            const hubId = parentCb.dataset.id;
+            const childCbs = document.querySelectorAll(`.perm-child[data-parent="${hubId}"]`);
+            childCbs.forEach(childCb => {
+                // Adminかつセーフガード対象の場合はオフにさせない
+                if (selectedRole === 'Admin' && childCb.dataset.id === 'role_permissions') {
+                    childCb.checked = true;
+                    return;
+                }
+                childCb.checked = parentCb.checked;
+                updateLabelStyle(childCb);
+            });
+            updateCardStyle(parentCb);
+        };
+    });
+
+    // 子（個別機能）の変更イベント: オンになったら親ハブを自動オンにする
+    document.querySelectorAll('.perm-child').forEach(childCb => {
+        childCb.onchange = () => {
+            const parentId = childCb.dataset.parent;
+            const parentCb = document.querySelector(`.perm-parent[data-id="${parentId}"]`);
+
+            // セーフガード: Adminのrole_permissionsはオフにさせない
+            if (selectedRole === 'Admin' && childCb.dataset.id === 'role_permissions' && !childCb.checked) {
+                childCb.checked = true;
+                alert("管理者の「権限振り分け設定」権限は、システムロックアウト防止のため解除できません。");
+                return;
+            }
+
+            if (childCb.checked && parentCb && !parentCb.checked) {
+                parentCb.checked = true;
+                updateCardStyle(parentCb);
+            }
+            updateLabelStyle(childCb);
+        };
+    });
+}
+
+function bindTOCEvents() {
+    const scrollContainer = document.getElementById('permissions-scroll-container');
+    if (!scrollContainer) return;
+
+    document.querySelectorAll('.toc-item').forEach(btn => {
+        btn.onclick = () => {
+            const targetId = btn.dataset.target;
+            const targetEl = document.getElementById(targetId);
+            if (targetEl) {
+                const topPos = targetEl.offsetTop - scrollContainer.offsetTop;
+                scrollContainer.scrollTo({
+                    top: topPos,
+                    behavior: 'smooth'
+                });
+
+                // 目次のアクティブ状態を即時更新
+                document.querySelectorAll('.toc-item').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            }
+        };
+    });
+}
+
+function bindScrollSpy() {
+    const scrollContainer = document.getElementById('permissions-scroll-container');
+    if (!scrollContainer) return;
+
+    scrollContainer.onscroll = () => {
+        let activeHubId = null;
+        const containerTop = scrollContainer.scrollTop;
+        const cards = document.querySelectorAll('.perm-hub-card');
+
+        cards.forEach(card => {
+            const relativeTop = card.offsetTop - scrollContainer.offsetTop;
+            // 検出ラインをコンテナ上部から50pxに設定
+            if (relativeTop <= containerTop + 50) {
+                activeHubId = card.id.replace('hub-section-', '');
+            }
+        });
+
+        if (activeHubId) {
+            document.querySelectorAll('.toc-item').forEach(btn => {
+                const isActive = btn.dataset.target === `hub-section-${activeHubId}`;
+                btn.classList.toggle('active', isActive);
+            });
+        }
+    };
+}
+
+function updateCardStyle(parentCb) {
+    const card = document.getElementById(`hub-section-${parentCb.dataset.id}`);
+    if (card) {
+        card.style.borderColor = parentCb.checked ? 'var(--primary)' : 'var(--border)';
+        card.style.background = parentCb.checked ? 'rgba(230,57,70,0.01)' : 'white';
+        card.style.boxShadow = parentCb.checked ? '0 4px 20px rgba(230,57,70,0.04)' : 'none';
+    }
+}
+
+function updateLabelStyle(childCb) {
+    const label = childCb.closest('.perm-child-label');
+    if (label) {
+        label.style.background = childCb.checked ? 'rgba(230,57,70,0.03)' : 'transparent';
+    }
 }
 
 async function loadRolePermissions(role) {
-    // リセット
+    // 全リセット
     document.querySelectorAll('.perm-checkbox').forEach(cb => {
         cb.checked = false;
-        cb.parentElement.classList.remove('selected');
+        cb.disabled = false;
+        if (cb.classList.contains('perm-child')) {
+            updateLabelStyle(cb);
+        } else {
+            updateCardStyle(cb);
+        }
     });
 
     try {
@@ -201,11 +405,42 @@ async function loadRolePermissions(role) {
                 const cb = document.querySelector(`.perm-checkbox[data-id="${pid}"]`);
                 if (cb) {
                     cb.checked = true;
-                    cb.parentElement.classList.add('selected');
+                    if (cb.classList.contains('perm-child')) {
+                        updateLabelStyle(cb);
+                    } else {
+                        updateCardStyle(cb);
+                    }
                 }
             });
+        }
+
+        // セーフガードの適用
+        if (role === 'Admin' || role === '管理者') {
+            const rpCb = document.querySelector('.perm-checkbox[data-id="role_permissions"]');
+            if (rpCb) {
+                rpCb.checked = true;
+                rpCb.disabled = true;
+                updateLabelStyle(rpCb);
+            }
+            const hrCb = document.querySelector('.perm-checkbox[data-id="hr_hub"]');
+            if (hrCb) {
+                hrCb.checked = true;
+                updateCardStyle(hrCb);
+            }
+            const homeCb = document.querySelector('.perm-checkbox[data-id="home"]');
+            if (homeCb) {
+                homeCb.checked = true;
+                updateCardStyle(homeCb);
+            }
+            const masterCb = document.querySelector('.perm-checkbox[data-id="master_hub"]');
+            if (masterCb) {
+                masterCb.checked = true;
+                updateCardStyle(masterCb);
+            }
         }
     } catch (err) {
         console.error("Error loading permissions:", err);
     }
 }
+
+
