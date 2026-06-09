@@ -31,7 +31,7 @@ export function initHubPage(type) {
             <div class="hub-sections-container">
                 ${config.sections.map(section => {
                     const visibleItems = section.items.filter(item => {
-                        return permissions.includes(item.id) || item.isComingSoon;
+                        return permissions.includes(item.id);
                     });
 
                     if (visibleItems.length === 0) return ''; // 表示可能なタイルが1つもないセクションは非表示にする
