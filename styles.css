@@ -2986,3 +2986,34 @@ input:checked + .toggle-slider:before {
   padding: 6px 0;
   font-style: italic;
 }
+
+/* PC Global Search Styles */
+#search-modal .glass-panel {
+  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 1), rgba(248, 250, 252, 0.95)) !important;
+}
+
+.search-result-item:hover, .search-result-item.active-result {
+  background: rgba(230, 57, 70, 0.05) !important;
+}
+
+.search-result-item.active-result {
+  border-left: 3px solid var(--primary);
+  padding-left: calc(1.2rem - 3px) !important;
+}
+
+#global-search-input::placeholder {
+  color: #94a3b8;
+  font-weight: normal;
+}
+
+/* SP Global Search Styles (Keyboard Avoidance) */
+@media (max-width: 1024px) {
+  #search-modal {
+    align-items: flex-start !important;
+    padding-top: 8vh !important;
+  }
+  #search-modal .glass-panel {
+    max-height: 70vh !important;
+  }
+}

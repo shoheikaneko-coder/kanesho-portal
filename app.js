@@ -204,6 +204,7 @@ async function loginSuccess(rawData) {
     }
 
     initNotificationBadge();
+    initGlobalSearch();
 }
 
 async function handleLogin(e) {
@@ -1086,6 +1087,194 @@ function initPullToRefresh(pageId) {
                     location.reload();
                 }
             }
+        });
+    }
+}
+
+/**
+ * グローバル機能検索 (Cmd+K) の初期化
+ */
+function initGlobalSearch() {
+    const searchBtn = document.getElementById('btn-header-search');
+    const mobileSearchBtn = document.getElementById('mobile-btn-search');
+    const modal = document.getElementById('search-modal');
+    const closeBtn = document.getElementById('close-search-modal');
+    const searchInput = document.getElementById('global-search-input');
+    const resultsContainer = document.getElementById('search-results');
+
+    // PCかスマホいずれかのボタンと必要なDOMが存在すれば初期化
+    if ((!searchBtn && !mobileSearchBtn) || !modal || !searchInput || !resultsContainer) return;
+
+    let selectedIndex = -1;
+    let currentFilteredItems = [];
+
+    // モーダルを開く
+    const openModal = () => {
+        modal.style.display = 'flex';
+        searchInput.value = '';
+        searchInput.focus();
+        selectedIndex = -1;
+        currentFilteredItems = [];
+        renderResults("");
+    };
+
+    // モーダルを閉じる
+    const closeModal = () => {
+        modal.style.display = 'none';
+    };
+
+    if (searchBtn) searchBtn.onclick = openModal;
+    if (mobileSearchBtn) mobileSearchBtn.onclick = openModal;
+    if (closeBtn) closeBtn.onclick = closeModal;
+
+    // モーダルの背景クリックで閉じる
+    modal.onclick = (e) => {
+        if (e.target === modal) closeModal();
+    };
+
+    // キーボードショートカット (Cmd + K または Ctrl + K)
+    window.removeEventListener('keydown', window.handleGlobalSearchKeydown);
+    window.handleGlobalSearchKeydown = (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+            e.preventDefault();
+            openModal();
+        }
+        if (e.key === 'Escape' && modal.style.display === 'flex') {
+            closeModal();
+        }
+    };
+    window.addEventListener('keydown', window.handleGlobalSearchKeydown);
+
+    // 検索入力の監視
+    searchInput.oninput = () => {
+        renderResults(searchInput.value.trim());
+    };
+
+    // キーボードナビゲーション (上下キー & Enter)
+    searchInput.onkeydown = (e) => {
+        const resultItems = resultsContainer.querySelectorAll('.search-result-item');
+        if (resultItems.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            selectedIndex = (selectedIndex + 1) % resultItems.length;
+            updateSelection(resultItems);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            selectedIndex = (selectedIndex - 1 + resultItems.length) % resultItems.length;
+            updateSelection(resultItems);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (selectedIndex >= 0 && selectedIndex < resultItems.length) {
+                resultItems[selectedIndex].click();
+            } else if (resultItems.length > 0) {
+                resultItems[0].click();
+            }
+        }
+    };
+
+    function updateSelection(elements) {
+        elements.forEach((el, index) => {
+            if (index === selectedIndex) {
+                el.classList.add('active-result');
+                el.scrollIntoView({ block: 'nearest' });
+            } else {
+                el.classList.remove('active-result');
+            }
+        });
+    }
+
+    function renderResults(query) {
+        resultsContainer.innerHTML = '';
+        selectedIndex = -1;
+
+        const permissions = state.permissions || [];
+
+        // 検索クエリがない場合は、おすすめ機能（権限のある機能）をリストする
+        if (!query) {
+            const allAvailable = [];
+            MENU_DEFINITION.forEach(hub => {
+                const addItems = (items) => {
+                    items.forEach(item => {
+                        if (permissions.includes(item.id) && !item.isComingSoon) {
+                            allAvailable.push({
+                                ...item,
+                                hubName: hub.name
+                            });
+                        }
+                    });
+                };
+                if (hub.sections) {
+                    hub.sections.forEach(sec => addItems(sec.items));
+                } else if (hub.items) {
+                    addItems(hub.items);
+                }
+            });
+
+            currentFilteredItems = allAvailable.slice(0, 5); // おすすめとして最初の5個を表示
+        } else {
+            // 部分一致検索
+            const matched = [];
+            const lowerQuery = query.toLowerCase();
+
+            MENU_DEFINITION.forEach(hub => {
+                const searchItems = (items) => {
+                    items.forEach(item => {
+                        if (permissions.includes(item.id) && !item.isComingSoon) {
+                            const nameMatch = item.name.toLowerCase().includes(lowerQuery);
+                            const descMatch = (item.desc || '').toLowerCase().includes(lowerQuery);
+                            if (nameMatch || descMatch) {
+                                matched.push({
+                                    ...item,
+                                    hubName: hub.name
+                                });
+                            }
+                        }
+                    });
+                };
+
+                if (hub.sections) {
+                    hub.sections.forEach(sec => searchItems(sec.items));
+                } else if (hub.items) {
+                    searchItems(hub.items);
+                }
+            });
+
+            currentFilteredItems = matched;
+        }
+
+        if (currentFilteredItems.length === 0) {
+            resultsContainer.innerHTML = `
+                <div style="padding: 2.5rem; text-align: center; color: var(--text-secondary); font-size: 0.9rem;">
+                    <i class="fas fa-search-minus fa-2x" style="margin-bottom: 0.8rem; display: block; color: #cbd5e1;"></i>
+                    一致する機能が見つかりません
+                </div>
+            `;
+            return;
+        }
+
+        resultsContainer.innerHTML = currentFilteredItems.map(item => `
+            <div class="search-result-item" data-id="${item.id}" style="padding: 0.8rem 1.2rem; cursor: pointer; border-radius: 10px; display: flex; align-items: center; gap: 0.8rem; transition: all 0.2s;">
+                <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(230,57,70,0.06); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0;">
+                    <i class="fas ${item.icon}"></i>
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <span style="font-size: 0.9rem; font-weight: 700; color: var(--text-primary);">${item.name}</span>
+                        <span style="font-size: 0.7rem; color: var(--text-secondary); background: #f1f5f9; padding: 0.1rem 0.4rem; border-radius: 4px;">${item.hubName}</span>
+                    </div>
+                    <p style="margin: 0.1rem 0 0 0; font-size: 0.72rem; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.desc || ''}</p>
+                </div>
+            </div>
+        `).join('');
+
+        // イベントバインド
+        resultsContainer.querySelectorAll('.search-result-item').forEach(el => {
+            el.onclick = () => {
+                const pageId = el.dataset.id;
+                closeModal();
+                window.navigateTo(pageId);
+            };
         });
     }
 }
