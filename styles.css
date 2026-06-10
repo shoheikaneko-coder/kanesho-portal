@@ -3017,3 +3017,85 @@ input:checked + .toggle-slider:before {
     max-height: 70vh !important;
   }
 }
+
+/* =========================================
+   日次メモ（Daily Memo）新設スタイル
+   ========================================= */
+.daily-memo-row {
+  background: #f8fafc;
+}
+.daily-memo-row td {
+  border-bottom: 2px solid var(--border) !important;
+}
+.daily-memo-cell {
+  height: 42px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  padding: 4px 6px !important;
+  vertical-align: middle;
+  text-align: center;
+}
+.daily-memo-cell:hover {
+  background: #e2e8f0 !important;
+}
+.daily-memo-preview {
+  font-size: 0.68rem;
+  font-weight: 700;
+  max-width: 75px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  vertical-align: middle;
+}
+.daily-memo-preview.empty {
+  color: #94a3b8;
+  font-weight: 500;
+}
+.daily-memo-preview.has-memo {
+  color: #10b981;
+  border-bottom: 1px dashed #10b981;
+}
+
+/* 閲覧画面・作成画面用 日次メモツールチップ */
+.viewer-memo-tooltip {
+  position: absolute;
+  z-index: 99999 !important;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.15), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
+  padding: 14px 18px;
+  min-width: 240px;
+  max-width: 320px;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(8px) scale(0.95);
+  transition: opacity 0.18s cubic-bezier(0.4, 0, 0.2, 1), transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.viewer-memo-tooltip.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+.viewer-memo-tooltip-title {
+  font-weight: 800;
+  color: #10b981;
+  margin-bottom: 8px;
+  border-bottom: 1.5px solid var(--border);
+  padding-bottom: 6px;
+  font-size: 0.88rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.viewer-memo-tooltip-content {
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: #334155;
+  text-align: left;
+}
+

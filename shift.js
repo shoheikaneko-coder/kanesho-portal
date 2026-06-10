@@ -458,6 +458,26 @@ export const shiftAdminPageHtml = `
         </div>
     </div>
 
+    <!-- 日次メモ入力モーダル -->
+    <div id="daily-memo-modal" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:10000; align-items:center; justify-content:center; backdrop-filter: blur(4px);">
+        <div class="glass-panel animate-scale-in" style="width:100%; max-width:400px; padding:2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+                <h4 id="memo-modal-date-title" style="margin:0; font-weight:800; color:var(--primary);">日次メモ入力</h4>
+                <button onclick="document.getElementById('daily-memo-modal').style.display='none'" class="btn" style="padding:0.2rem; line-height:1;"><i class="fas fa-times" style="font-size:1.2rem;"></i></button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 1.2rem;">
+                <div>
+                    <label class="field-label" style="font-weight:700; margin-bottom: 0.5rem; display:block;">メモ内容（自由入力）</label>
+                    <textarea id="memo-modal-text" class="form-input" placeholder="誰をどこに配置するか、研修予定、早締めの可能性など..." style="width:100%; height:120px; resize:vertical; font-size:0.9rem; line-height:1.4; padding:0.6rem;"></textarea>
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
+                    <button id="btn-memo-modal-delete" class="btn btn-secondary" style="flex:1;">削除</button>
+                    <button id="btn-memo-modal-save" class="btn btn-primary" style="flex:2;">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     ${sharedModalHtml}
 `;
 
@@ -476,6 +496,7 @@ export let adminMode = false;
 export let calendarData = {}; 
 export let viewerActiveSlot = null; 
 export let showRejectedShifts = false; 
+export let dailyMemos = {};
 
 export function setShiftState(key, value) {
     if (key === 'adminMode') adminMode = value;
@@ -1000,7 +1021,8 @@ export async function initShiftAdminPage() {
             
             await Promise.all([
                 loadShiftsBatch(sid),
-                loadShiftMemo(sid)
+                loadShiftMemo(sid),
+                loadDailyMemos(sid, currentSlot.startDate, currentSlot.endDate)
             ]);
             
             // シフト描画の完了（ヘルプスタッフの特定）を待ってからKPI/アラート計算を行う
@@ -1291,6 +1313,55 @@ async function saveShiftsBulk() {
     finally { if(loader) loader.remove(); }
 }
 
+export async function loadDailyMemos(sid, startDate, endDate) {
+    if (!sid || !startDate || !endDate) return;
+    dailyMemos = {};
+    const startStr = formatDateJST(startDate);
+    const endStr = formatDateJST(endDate);
+    try {
+        const q = query(
+            collection(db, "t_shift_daily_memos"),
+            where("storeId", "==", String(sid)),
+            where("date", ">=", startStr),
+            where("date", "<=", endStr)
+        );
+        const snap = await getDocs(q);
+        snap.forEach(docSnap => {
+            const data = docSnap.data();
+            if (data.date) {
+                dailyMemos[data.date] = data;
+            }
+        });
+    } catch (e) {
+        console.error("Error loading daily memos:", e);
+    }
+}
+
+export async function saveDailyMemo(sid, dateStr, memoText, userName) {
+    if (!sid || !dateStr) return;
+    const docId = `${sid}_${dateStr}`;
+    const docRef = doc(db, "t_shift_daily_memos", docId);
+    try {
+        if (!memoText || memoText.trim() === "") {
+            await deleteDoc(docRef);
+            delete dailyMemos[dateStr];
+        } else {
+            const data = {
+                storeId: String(sid),
+                date: dateStr,
+                memo: memoText,
+                updatedAt: new Date().toISOString(),
+                updatedBy: userName || "System"
+            };
+            await setDoc(docRef, data);
+            dailyMemos[dateStr] = data;
+        }
+    } catch (e) {
+        console.error("Error saving daily memo:", e);
+        throw e;
+    }
+}
+
 export async function loadShiftMemo(sid) {
     if (!sid) return;
     const memoId = `${sid}_${currentSlot.year}_${currentSlot.month}_${currentSlot.slot}`;
@@ -1574,6 +1645,39 @@ export function renderAdminGrid() {
         }
 
         body.innerHTML = '';
+
+        // 日次メモ行のレンダリング
+        const memoTr = document.createElement('tr');
+        memoTr.className = 'daily-memo-row';
+        memoTr.innerHTML = `
+            <td class="staff-cell" style="background: #f1f5f9; color: var(--text-primary); vertical-align: middle;">
+                <div style="display:flex; align-items:center; gap:0.4rem; justify-content:flex-start; line-height:1.2;">
+                    <i class="fas fa-sticky-note" style="color: #10b981;"></i>
+                    <span style="font-weight:800; font-size:0.8rem;">日次メモ</span>
+                </div>
+            </td>
+        `;
+        for (let i = 0; i < span; i++) {
+            const d = new Date(currentSlot.startDate); d.setDate(d.getDate() + i);
+            const ymd = formatDateJST(d);
+            const memoData = dailyMemos[ymd] || {};
+            const memoText = memoData.memo || '';
+            const cal = calendarData[ymd] || {};
+            const isOff = cal.type === 'off';
+            
+            const cellContent = memoText 
+                ? `<span class="daily-memo-preview has-memo">📝 ${memoText}</span>` 
+                : `<span class="daily-memo-preview empty">＋入力</span>`;
+                
+            memoTr.innerHTML += `
+                <td class="daily-memo-cell ${isOff ? 'is-off-column' : ''}" 
+                    id="memo-cell-${ymd}" 
+                    onclick="window.openDailyMemoModal('${ymd}')">
+                    ${cellContent}
+                </td>`;
+        }
+        body.appendChild(memoTr);
+
         const roleOrder = { 'Manager': 0, '管理者': 1, 'Admin': 1, '一般社員': 2, 'Staff': 2, 'アルバイト': 3, 'PartTimer': 3 };
         const list = [...allStoreUsers, ...helpUsers].sort((a, b) => {
             const orderA = roleOrder[a.Role] ?? 99;
@@ -1886,6 +1990,109 @@ window.toggleMobileActionHub = (show) => {
         content.classList.remove('show');
         setTimeout(() => overlay.classList.remove('show'), 300);
     }
+};
+
+window.openDailyMemoModal = (ymd) => {
+    const modal = document.getElementById('daily-memo-modal');
+    const titleEl = document.getElementById('memo-modal-date-title');
+    const textarea = document.getElementById('memo-modal-text');
+    const deleteBtn = document.getElementById('btn-memo-modal-delete');
+    const saveBtn = document.getElementById('btn-memo-modal-save');
+    
+    if (!modal || !titleEl || !textarea || !deleteBtn || !saveBtn) return;
+    
+    const d = new Date(ymd);
+    const dow = ['日','月','火','水','木','金','土'][d.getDay()];
+    titleEl.textContent = `${d.getMonth() + 1}/${d.getDate()} (${dow}) の日次メモ`;
+    
+    const existingMemo = dailyMemos[ymd]?.memo || '';
+    textarea.value = existingMemo;
+    
+    deleteBtn.style.display = existingMemo ? 'block' : 'none';
+    
+    modal.style.display = 'flex';
+    
+    deleteBtn.onclick = async () => {
+        showConfirm('メモの削除', 'この日の日次メモを削除しますか？', async () => {
+            const me = JSON.parse(localStorage.getItem('currentUser'));
+            const sid = window.currentAdminStoreId || me.StoreID || me.StoreId;
+            const loader = showLoader();
+            try {
+                await saveDailyMemo(sid, ymd, '', me.Name);
+                modal.style.display = 'none';
+                renderAdminGrid();
+            } catch (e) {
+                showAlert('エラー', 'メモの削除に失敗しました。');
+            } finally {
+                if (loader) loader.remove();
+            }
+        });
+    };
+    
+    saveBtn.onclick = async () => {
+        const text = textarea.value.trim();
+        const me = JSON.parse(localStorage.getItem('currentUser'));
+        const sid = window.currentAdminStoreId || me.StoreID || me.StoreId;
+        const loader = showLoader();
+        try {
+            await saveDailyMemo(sid, ymd, text, me.Name);
+            modal.style.display = 'none';
+            renderAdminGrid();
+        } catch (e) {
+            showAlert('エラー', 'メモの保存に失敗しました。');
+        } finally {
+            if (loader) loader.remove();
+        }
+    };
+};
+
+window.showViewerMemoTooltip = (e, ymd) => {
+    e.stopPropagation();
+    window.hideViewerMemoTooltip();
+
+    const memoData = dailyMemos[ymd];
+    if (!memoData || !memoData.memo) return;
+
+    const tooltip = document.createElement('div');
+    tooltip.id = 'viewer-memo-tooltip';
+    tooltip.className = 'viewer-memo-tooltip';
+
+    const d = new Date(ymd);
+    const dow = ['日','月','火','水','木','金','土'][d.getDay()];
+    
+    tooltip.innerHTML = `
+        <div class="viewer-memo-tooltip-title">
+            <i class="fas fa-comment-dots"></i> ${d.getMonth() + 1}/${d.getDate()} (${dow}) の連絡事項
+        </div>
+        <div class="viewer-memo-tooltip-content">${memoData.memo}</div>
+    `;
+
+    document.body.appendChild(tooltip);
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const top = rect.bottom + window.scrollY + 6;
+    let left = rect.left + window.scrollX + (rect.width - tooltip.offsetWidth) / 2;
+    
+    if (left < 10) left = 10;
+    if (left + tooltip.offsetWidth > window.innerWidth - 10) {
+        left = window.innerWidth - tooltip.offsetWidth - 10;
+    }
+
+    tooltip.style.top = `${top}px`;
+    tooltip.style.left = `${left}px`;
+
+    setTimeout(() => tooltip.classList.add('show'), 10);
+
+    const closeHandler = () => {
+        window.hideViewerMemoTooltip();
+        document.removeEventListener('click', closeHandler);
+    };
+    setTimeout(() => document.addEventListener('click', closeHandler), 100);
+};
+
+window.hideViewerMemoTooltip = () => {
+    const el = document.getElementById('viewer-memo-tooltip');
+    if (el) el.remove();
 };
 
 window.openTimeInput = async (date, uid) => {
@@ -2416,6 +2623,17 @@ window.showHelperTooltip = (e, ymd) => {
 
     const d = new Date(ymd);
     const dow = ['日','月','火','水','木','金','土'][d.getDay()];
+
+    const memoData = dailyMemos[ymd] || {};
+    let memoHtml = '';
+    if (memoData.memo) {
+        memoHtml = `
+            <div style="background: #f0fdf4; border-left: 3px solid #10b981; padding: 6px 10px; margin-bottom: 8px; font-size: 0.78rem; text-align: left; border-radius: 4px; color: #1e293b; font-weight: 600; line-height: 1.4; white-space: pre-wrap;">
+                <div style="color: #059669; font-weight: 800; font-size: 0.7rem; margin-bottom: 2px;"><i class="fas fa-sticky-note"></i> 日次メモ:</div>
+                ${memoData.memo}
+            </div>
+        `;
+    }
     
     let listHtml = '';
     if (candidates.length > 0) {
@@ -2435,8 +2653,9 @@ window.showHelperTooltip = (e, ymd) => {
 
     tooltip.innerHTML = `
         <div class="daily-helper-tooltip-title">
-            <i class="fas fa-user-check"></i> ${d.getMonth() + 1}/${d.getDate()} (${dow}) の代打候補
+            <i class="fas fa-user-check"></i> ${d.getMonth() + 1}/${d.getDate()} (${dow}) の状況・代打候補
         </div>
+        ${memoHtml}
         ${listHtml}
         <div style="margin-top: 8px; text-align: center; border-top: 1px solid var(--border); padding-top: 6px; pointer-events: auto;">
             <button class="btn btn-secondary btn-sm" style="font-size: 0.65rem; padding: 2px 8px; width: 100%;" onclick="window.showHelperTooltipGraph(event, '${ymd}')">
@@ -3399,6 +3618,7 @@ export async function initShiftViewerPage() {
     const loader = showLoader();
     try {
         await fetchCalendarData(sid, viewerActiveSlot.startDate, viewerActiveSlot.endDate);
+        await loadDailyMemos(sid, viewerActiveSlot.startDate, viewerActiveSlot.endDate);
         
         // 店舗リスト
         const storeMap = {};
@@ -3511,10 +3731,19 @@ function renderShiftViewerGrid(slot, users, shifts, storeMap, me, isTablet) {
                 if (isHoliday) color = '#ef4444';
                 else if (isSat) color = '#2563eb';
 
+                const memoData = dailyMemos[ymd] || {};
+                const hasMemo = !!memoData.memo;
+                const memoAttrs = hasMemo 
+                    ? `onmouseenter="window.showViewerMemoTooltip(event, '${ymd}')" onmouseleave="window.hideViewerMemoTooltip()" onclick="window.showViewerMemoTooltip(event, '${ymd}')" style="color: ${color}; cursor: pointer;"`
+                    : `style="color: ${color};"`;
+
                 return `
-                    <th class="viewer-date-hdr ${isToday ? 'is-today' : ''} ${isClosed ? 'viewer-col-closed' : ''}" style="color: ${color};">
-                        <div style="height: 55px; display: flex; flex-direction: column; justify-content: center;">
-                            <div style="font-size: 1.1rem; line-height: 1;">${dayStr}</div>
+                    <th class="viewer-date-hdr ${isToday ? 'is-today' : ''} ${isClosed ? 'viewer-col-closed' : ''}" ${memoAttrs}>
+                        <div style="height: 55px; display: flex; flex-direction: column; justify-content: center; position: relative;">
+                            <div style="font-size: 1.1rem; line-height: 1;">
+                                ${dayStr}
+                                ${hasMemo ? `<i class="fas fa-comment-dots" style="color: #10b981; font-size: 0.75rem; margin-left: 2px; vertical-align: super;" title="日次メモあり"></i>` : ''}
+                            </div>
                             <div style="font-size: 0.7rem; margin-top: 3px;">(${weekStr})</div>
                         </div>
                         <div style="height: 20px; overflow: hidden;">
@@ -3704,6 +3933,7 @@ export async function initShiftViewerMobilePage() {
     try {
         // データの取得
         await fetchCalendarData(sid, viewerActiveSlot.startDate, viewerActiveSlot.endDate);
+        await loadDailyMemos(sid, viewerActiveSlot.startDate, viewerActiveSlot.endDate);
         const storeSnap = await getDocs(collection(db, "m_stores"));
         const storeMap = {};
         storeSnap.forEach(d => {
@@ -3775,9 +4005,18 @@ export async function initShiftViewerMobilePage() {
                     if (isHoliday) color = '#ef4444';
                     else if (isSat) color = '#2563eb';
 
+                    const memoData = dailyMemos[ymd] || {};
+                    const hasMemo = !!memoData.memo;
+                    const memoAttrs = hasMemo 
+                        ? `onclick="window.showViewerMemoTooltip(event, '${ymd}')" style="color: ${color}; cursor: pointer;"`
+                        : `style="color: ${color};"`;
+
                     return `
-                        <th id="col-${ymd}" class="mobile-date-hdr ${isToday ? 'is-today' : ''} ${isClosed ? 'viewer-col-closed' : ''}" style="color: ${color};">
-                            <div style="font-size: 1rem; line-height: 1;">${d.getDate()}</div>
+                        <th id="col-${ymd}" class="mobile-date-hdr ${isToday ? 'is-today' : ''} ${isClosed ? 'viewer-col-closed' : ''}" ${memoAttrs}>
+                            <div style="font-size: 1rem; line-height: 1;">
+                                ${d.getDate()}
+                                ${hasMemo ? `<i class="fas fa-comment-dots" style="color: #10b981; font-size: 0.7rem; margin-left: 2px; vertical-align: super;"></i>` : ''}
+                            </div>
                             <div style="font-size: 0.6rem; margin-top: 2px;">(${['日','月','火','水','木','金','土'][d.getDay()]})</div>
                             ${cal.label ? `<div style="font-size: 0.5rem; color: #ef4444; overflow: hidden; white-space: nowrap;">${cal.label}</div>` : ''}
                         </th>
