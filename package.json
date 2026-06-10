@@ -1,0 +1,9 @@
+{
+  "name": "kanesho-portal-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "dependencies": {
+    "firebase-admin": "^13.10.0"
+  }
+}

@@ -13,7 +13,8 @@ export const MENU_DEFINITION = [
         type: 'hub',
         desc: 'ポータルのメインホーム画面',
         items: [
-            { id: 'home_performance', name: 'ホーム実績サマリー表示', icon: 'fa-eye-slash', desc: 'ホーム画面での営業実績サマリーの表示' }
+            { id: 'home_performance', name: 'ホーム実績サマリー表示', icon: 'fa-eye-slash', desc: 'ホーム画面での営業実績サマリーの表示' },
+            { id: 'my_page', name: 'マイページ', icon: 'fa-user-circle', color: '#3b82f6', desc: '現在の等級、過去の評価シートの確認', showInSidebar: true }
         ]
     },
     {
@@ -80,7 +81,7 @@ export const MENU_DEFINITION = [
                 items: [
                     { id: 'skills', name: 'スキルマスタ設定', icon: 'fa-list-check', color: '#8b5cf6', desc: '業務スキル項目のマスタ設定' },
                     { id: 'exams_admin', name: 'テスト受験・管理', icon: 'fa-vials', color: '#f59e0b', isComingSoon: true, desc: '社内検定テストの実施・結果管理' },
-                    { id: 'evaluation', name: 'スタッフ評価システム', icon: 'fa-star', color: '#ec4899', isComingSoon: true, desc: '従業員人事評価' },
+                    { id: 'evaluation', name: 'スタッフ評価システム', icon: 'fa-star', color: '#ec4899', desc: '従業員人事評価' },
                     { id: 'training_progress', name: '研修進捗管理', icon: 'fa-chart-line', color: '#10b981', isComingSoon: true, desc: '新入社員の研修ステップ進捗' }
                 ]
             },

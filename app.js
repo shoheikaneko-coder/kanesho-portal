@@ -48,6 +48,8 @@ import { PullToRefresh } from './ptr_logic.js';
 import { manualHubPageHtml, initManualHubPage, manualViewerPageHtml, initManualViewerPage } from './manual.js';
 import { gradesPageHtml, initGradesPage } from './grades.js';
 import { skillsPageHtml, initSkillsPage } from './skills.js';
+import { evaluationPageHtml, initEvaluationPage } from './evaluation.js';
+import { myPageHtml, initMyPage } from './my_page.js';
 
 
 
@@ -300,6 +302,10 @@ async function renderSidebar(user) {
         safeguardIds.forEach(id => {
             if (!allowed.includes(id)) allowed.push(id);
         });
+    }
+    // すべてのログインユーザーにマイページへのアクセスを許可する
+    if (!allowed.includes('my_page')) {
+        allowed.push('my_page');
     }
 
     state.permissions = allowed;
@@ -712,6 +718,16 @@ async function showPage(target) {
                 updateHeaderTitle('マニュアル詳細');
                 pageContent.innerHTML = manualViewerPageHtml;
                 initManualViewerPage();
+                break;
+            case 'evaluation':
+                updateHeaderTitle('スタッフ評価システム');
+                pageContent.innerHTML = evaluationPageHtml;
+                initEvaluationPage();
+                break;
+            case 'my_page':
+                updateHeaderTitle('マイページ');
+                pageContent.innerHTML = myPageHtml;
+                initMyPage();
                 break;
         }
 

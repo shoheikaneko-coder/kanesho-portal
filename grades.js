@@ -3,6 +3,7 @@ import { collection, getDocs, doc, writeBatch } from "https://www.gstatic.com/fi
 import { showConfirm, showAlert } from './ui_utils.js';
 
 let localGrades = []; // メモリ上の等級リスト
+let localTemplates = []; // 評価テンプレートマスタ
 let originalGradesHash = ''; // 保存時の差分検知用ハッシュ値
 let isEditMode = false; // 整理・削除モードフラグ
 const defaultGuideText = '※ 各セルを直接入力して編集できます。変更後は「変更をすべて保存」を押してください。';
@@ -110,6 +111,9 @@ export const gradesPageHtml = `
                                 </div>
                             </th>
                             <th style="width: 55px;">賞与<br>回数</th>
+                            <th style="width: 100px;">評価シート</th>
+                            <th style="width: 70px;">査定最低点</th>
+                            <th style="width: 70px;">査定最高点</th>
                         </tr>
                     </thead>
                     <tbody id="grades-table-body">
@@ -361,6 +365,25 @@ async function loadGradesData() {
     `;
 
     try {
+        // 評価テンプレートマスタの読み込み
+        localTemplates = [
+            { id: 'general', name: '一般・研修' },
+            { id: 'chef', name: '調理師' },
+            { id: 'sub_manager', name: '副店長' },
+            { id: 'manager', name: '店長' }
+        ];
+        try {
+            const templatesSnapshot = await getDocs(collection(db, "m_evaluation_templates"));
+            if (!templatesSnapshot.empty) {
+                localTemplates = [];
+                templatesSnapshot.forEach(d => {
+                    localTemplates.push({ id: d.id, name: d.data().template_name || d.id });
+                });
+            }
+        } catch (err) {
+            console.warn("Failed to load evaluation templates, using default:", err);
+        }
+
         const querySnapshot = await getDocs(collection(db, "m_grades"));
         localGrades = [];
         querySnapshot.forEach((doc) => {
@@ -507,6 +530,21 @@ function renderGradesTable() {
             <td>
                 <input type="number" class="input-bonus-count" value="${grade.bonus_count || 0}" min="0" step="1" onchange="window.handleGradeChange(${index}, 'bonus_count', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
             </td>
+            <!-- 評価シート -->
+            <td>
+                <select class="select-evaluation-template" onchange="window.handleGradeChange(${index}, 'evaluation_template_id', this.value)" style="font-size: 0.68rem; padding: 0.2rem 0.25rem; width: 100%; box-sizing: border-box;">
+                    <option value="">未設定</option>
+                    ${localTemplates.map(t => `<option value="${t.id}" ${grade.evaluation_template_id === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}
+                </select>
+            </td>
+            <!-- 査定最低点 -->
+            <td>
+                <input type="number" class="input-evaluation-min-score" value="${grade.evaluation_min_score || 0}" min="0" onchange="window.handleGradeChange(${index}, 'evaluation_min_score', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums; width: 100%; box-sizing: border-box;">
+            </td>
+            <!-- 査定最高点 -->
+            <td>
+                <input type="number" class="input-evaluation-max-score" value="${grade.evaluation_max_score || 0}" min="0" onchange="window.handleGradeChange(${index}, 'evaluation_max_score', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums; width: 100%; box-sizing: border-box;">
+            </td>
         `;
         tbody.appendChild(tr);
 
@@ -541,6 +579,9 @@ function addNewGradeRow() {
         social_insurance: 0,
         bonus_ratio: 0,
         bonus_count: 0,
+        evaluation_template_id: '',
+        evaluation_min_score: 0,
+        evaluation_max_score: 0,
         display_order: localGrades.length + 1
     };
 
@@ -593,7 +634,7 @@ window.handleGradeChange = function(index, field, value) {
     if (!grade) return;
 
     // 値を更新 (カンマがあれば除去してから数値型にパース)
-    if (['basic_salary', 'role_allowance', 'total_hours', 'basic_hours', 'hourly_wage', 'hourly_wage_overtime', 'overtime_allowance', 'late_allowance', 'monthly_salary_bonus', 'social_insurance', 'bonus_ratio', 'bonus_count'].includes(field)) {
+    if (['basic_salary', 'role_allowance', 'total_hours', 'basic_hours', 'hourly_wage', 'hourly_wage_overtime', 'overtime_allowance', 'late_allowance', 'monthly_salary_bonus', 'social_insurance', 'bonus_ratio', 'bonus_count', 'evaluation_min_score', 'evaluation_max_score'].includes(field)) {
         const cleanVal = typeof value === 'string' ? value.replace(/,/g, '') : value;
         grade[field] = Number(cleanVal) || 0;
     } else {
@@ -721,6 +762,9 @@ async function saveAllGrades() {
                 social_insurance: Number(grade.social_insurance) || 0,
                 bonus_ratio: Number(grade.bonus_ratio) || 0,
                 bonus_count: Number(grade.bonus_count) || 0,
+                evaluation_template_id: grade.evaluation_template_id || '',
+                evaluation_min_score: Number(grade.evaluation_min_score) || 0,
+                evaluation_max_score: Number(grade.evaluation_max_score) || 0,
                 display_order: idx + 1 // 上から順に 1, 2, 3.. と並び順を付与
             };
             batch.set(docRef, dataToSave);
