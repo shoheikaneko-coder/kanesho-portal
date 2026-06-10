@@ -182,6 +182,9 @@
                         <button id="btn-header-search" class="btn" style="background: transparent; color: var(--text-primary);" title="機能検索 (Cmd+K)">
                             <i class="fas fa-search"></i>
                         </button>
+                        <button id="btn-header-mypage" class="btn" style="background: transparent; color: var(--text-primary);" title="マイページ">
+                            <i class="fas fa-user"></i>
+                        </button>
                         <button id="btn-header-shift" class="btn" style="background: transparent; color: var(--text-primary);" title="シフト表を表示">
                             <i class="fas fa-users-rectangle"></i>
                         </button>
@@ -205,6 +208,9 @@
                     <div class="mobile-toolbar-right">
                         <button id="mobile-btn-search" class="mobile-header-btn">
                             <i class="fas fa-search"></i>
+                        </button>
+                        <button id="mobile-btn-mypage" class="mobile-header-btn" onclick="window.navigateTo('my_page')" title="マイページ">
+                            <i class="fas fa-user"></i>
                         </button>
                         <button id="mobile-btn-notifications" class="mobile-header-btn" onclick="window.handleMobileNotifyClick(event)">
                             <i class="fas fa-bell"></i>

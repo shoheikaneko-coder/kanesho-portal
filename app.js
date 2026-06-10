@@ -775,6 +775,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnCalendar = document.getElementById('btn-calendar-viewer');
     if (btnCalendar) btnCalendar.onclick = () => window.navigateTo('calendar_viewer');
 
+    const btnHeaderMypage = document.getElementById('btn-header-mypage');
+    if (btnHeaderMypage) btnHeaderMypage.onclick = () => window.navigateTo('my_page');
+
     const btnHeaderShift = document.getElementById('btn-header-shift');
     if (btnHeaderShift) {
         btnHeaderShift.onclick = () => {

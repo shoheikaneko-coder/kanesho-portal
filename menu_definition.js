@@ -14,7 +14,7 @@ export const MENU_DEFINITION = [
         desc: 'ポータルのメインホーム画面',
         items: [
             { id: 'home_performance', name: 'ホーム実績サマリー表示', icon: 'fa-eye-slash', desc: 'ホーム画面での営業実績サマリーの表示' },
-            { id: 'my_page', name: 'マイページ', icon: 'fa-user-circle', color: '#3b82f6', desc: '現在の等級、過去の評価シートの確認', showInSidebar: true }
+            { id: 'my_page', name: 'マイページ', icon: 'fa-user', color: '#3b82f6', desc: '現在の等級、過去の評価シートの確認' }
         ]
     },
     {
