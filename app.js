@@ -673,6 +673,8 @@ async function showPage(target) {
                 initDailySakesPage();
                 break;
             case 'attendance_management':
+            case 'attendance_direct_edit':
+            case 'attendance_correction_request':
                 pageTitle.textContent = '勤怠管理';
                 pageContent.innerHTML = attendanceManagementPageHtml;
                 initAttendanceManagementPage();
