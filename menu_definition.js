@@ -56,7 +56,6 @@ export const MENU_DEFINITION = [
                 items: [
                     { id: 'attendance_management', name: '勤怠管理', icon: 'fa-user-clock', color: '#6366f1', desc: '全従業員の勤怠実績確認・修正・承認' },
                     { id: 'attendance_direct_edit', name: '[機能] 勤怠の直接編集(管理者用)', icon: 'fa-check-double', color: '#6366f1', desc: '勤怠データの直接書き換え権限' },
-                    { id: 'attendance_correction_request', name: '[機能] 勤怠の修正申請(店長用)', icon: 'fa-paper-plane', color: '#6366f1', desc: '店長からの勤怠修正申請の提出権限' },
                     { id: 'attendance_check', name: '勤怠状況確認', icon: 'fa-clipboard-check', color: '#6366f1', desc: '従業員ごとの勤怠打刻ログの照会' },
                     { id: 'shift_submission', name: 'シフト提出・確認', icon: 'fa-calendar-alt', color: '#6366f1', desc: '従業員からのシフト希望の提出・確認', showInSidebar: true },
                     { id: 'attendance_approval', name: '勤怠修正承認', icon: 'fa-check-double', color: '#10b981', isComingSoon: true, desc: '勤怠修正の承認機能' },
@@ -114,7 +113,8 @@ export const MENU_DEFINITION = [
                 title: '勤務・シフト管理',
                 icon: 'fa-calendar-alt',
                 items: [
-                    { id: 'shift_admin', name: 'シフト作成・調整', icon: 'fa-user-edit', color: '#ec4899', desc: '月間・週間の従業員シフト作成・調整' }
+                    { id: 'shift_admin', name: 'シフト作成・調整', icon: 'fa-user-edit', color: '#ec4899', desc: '月間・週間の従業員シフト作成・調整' },
+                    { id: 'attendance_correction_request', name: '勤怠の修正申請', icon: 'fa-paper-plane', color: '#6366f1', desc: '店長からの勤怠修正申請の提出権限' }
                 ]
             },
             {
