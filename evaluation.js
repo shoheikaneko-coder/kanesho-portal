@@ -115,9 +115,9 @@ export const evaluationPageHtml = `
             </div>
             
             <!-- モーダルボディ (スクロール可能) -->
-            <div id="modal-template-body" style="padding: 1.5rem; overflow-y: auto; flex: 1; background: #f8fafc; display: flex; flex-direction: column; gap: 1rem;">
+            <div id="modal-template-body" style="padding: 1.5rem; overflow-y: auto; flex: 1; background: #f8fafc;">
                 <!-- テンプレート選択と操作エリア -->
-                <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; background: white; padding: 1rem; border-radius: 8px; border: 1px solid var(--border);">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; background: white; padding: 1rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1rem;">
                     <div style="display: flex; align-items: center; gap: 0.8rem;">
                         <label style="font-weight: 800; font-size: 0.85rem; color: #475569;">編集対象シート:</label>
                         <select id="select-template-type" style="background: white; padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.9rem; min-width: 250px;">
@@ -132,13 +132,13 @@ export const evaluationPageHtml = `
                 </div>
 
                 <!-- 警告メッセージ表示エリア -->
-                <div id="template-validation-warning" style="display: none; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 0.75rem 1rem; color: #991b1b; font-size: 0.82rem; font-weight: 700; align-items: center; gap: 0.5rem;">
+                <div id="template-validation-warning" style="display: none; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 0.75rem 1rem; color: #991b1b; font-size: 0.82rem; font-weight: 700; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
                     <i class="fas fa-exclamation-triangle" style="color: #dc2626;"></i>
                     <span id="validation-warning-text">現在の項目数は24個ではありません。自動等級判定（120点満点）の整合性が崩れる可能性があります。</span>
                 </div>
 
                 <!-- 項目編集テーブル -->
-                <div class="glass-panel" style="padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: white;">
+                <div class="glass-panel" style="padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: white; margin-bottom: 1rem;">
                     <div style="overflow-x: auto;">
                         <table class="eval-table" style="font-size: 0.82rem;">
                             <thead>
@@ -158,7 +158,7 @@ export const evaluationPageHtml = `
                 </div>
 
                 <!-- 項目追加ボタン -->
-                <div style="display: flex; justify-content: flex-start; padding: 0.5rem 0;">
+                <div style="display: flex; justify-content: flex-start; padding: 0.5rem 0; margin-bottom: 1rem;">
                     <button class="btn btn-secondary" id="btn-template-add-item" style="font-weight: 700; font-size: 0.8rem; background: white; border: 1px solid #cbd5e1; color: var(--text-secondary);">
                         <i class="fas fa-plus-circle"></i> 項目を追加する
                     </button>
