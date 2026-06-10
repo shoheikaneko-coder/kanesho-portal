@@ -3332,6 +3332,11 @@ export async function applyFixedSchedules() {
     }
 }
 
+// --- 確定シフト閲覧用キャッシュ ---
+let viewerMasterDataLoaded = false;
+let viewerCachedStores = [];
+let viewerCachedUsers = [];
+
 /**
  * --- Shift Viewer (Step 4) ---
  */
@@ -3671,27 +3676,34 @@ export async function initShiftViewerPage() {
         await fetchCalendarData(sid, viewerActiveSlot.startDate, viewerActiveSlot.endDate);
         await loadDailyMemos(sid, viewerActiveSlot.startDate, viewerActiveSlot.endDate);
         
-        // 店舗リスト
+        if (!viewerMasterDataLoaded) {
+            // 店舗リスト
+            const storeSnap = await getDocs(collection(db, "m_stores"));
+            viewerCachedStores = storeSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            // 店舗ユーザーリスト（表記揺れと型不一致に対応）
+            let userSnap = await getDocs(query(collection(db, "m_users"), where("StoreId", "==", sid)));
+            if (userSnap.empty) {
+                userSnap = await getDocs(query(collection(db, "m_users"), where("StoreID", "==", sid)));
+            }
+            if (userSnap.empty && typeof sid === 'string' && !isNaN(sid)) {
+                userSnap = await getDocs(query(collection(db, "m_users"), where("StoreId", "==", Number(sid))));
+            }
+
+            viewerCachedUsers = [];
+            userSnap.forEach(d => viewerCachedUsers.push({ id: d.id, ...d.data() }));
+            // 50音順 or 役職順などのソートがあればここで実施
+            viewerCachedUsers.sort((a, b) => (a.Name || "").localeCompare(b.Name || ""));
+
+            viewerMasterDataLoaded = true;
+            console.log("[Shift Viewer] Master data loaded and cached.");
+        }
+
         const storeMap = {};
-        const storeSnap = await getDocs(collection(db, "m_stores"));
-        storeSnap.forEach(doc => {
-            const d = doc.data();
+        viewerCachedStores.forEach(d => {
             storeMap[String(d.store_id || d.id)] = d.store_name || d.name || '不明';
         });
-
-        // 店舗ユーザーリスト（表記揺れと型不一致に対応）
-        let userSnap = await getDocs(query(collection(db, "m_users"), where("StoreId", "==", sid)));
-        if (userSnap.empty) {
-            userSnap = await getDocs(query(collection(db, "m_users"), where("StoreID", "==", sid)));
-        }
-        if (userSnap.empty && typeof sid === 'string' && !isNaN(sid)) {
-            userSnap = await getDocs(query(collection(db, "m_users"), where("StoreId", "==", Number(sid))));
-        }
-
-        let allUsers = [];
-        userSnap.forEach(d => allUsers.push({ id: d.id, ...d.data() }));
-        // 50音順 or 役職順などのソートがあればここで実施
-        allUsers.sort((a, b) => (a.Name || "").localeCompare(b.Name || ""));
+        const allUsers = [...viewerCachedUsers];
 
         // 期間内のシフトを日付のみで取得（インデックスエラー回避のためメモリ内でフィルタ）
         const startYMD = formatDateJST(viewerActiveSlot.startDate);
@@ -3985,19 +3997,28 @@ export async function initShiftViewerMobilePage() {
         // データの取得
         await fetchCalendarData(sid, viewerActiveSlot.startDate, viewerActiveSlot.endDate);
         await loadDailyMemos(sid, viewerActiveSlot.startDate, viewerActiveSlot.endDate);
-        const storeSnap = await getDocs(collection(db, "m_stores"));
-        const storeMap = {};
-        storeSnap.forEach(d => {
-            const data = d.data();
-            storeMap[String(data.store_id || d.id)] = data.store_name || data.name || '不明';
-        });
-
-        let userSnap = await getDocs(query(collection(db, "m_users"), where("StoreId", "==", sid)));
-        if (userSnap.empty) userSnap = await getDocs(query(collection(db, "m_users"), where("StoreID", "==", sid)));
-        if (userSnap.empty && typeof sid === 'string' && !isNaN(sid)) userSnap = await getDocs(query(collection(db, "m_users"), where("StoreId", "==", Number(sid))));
         
-        let users = [];
-        userSnap.forEach(d => users.push({ id: d.id, ...d.data() }));
+        if (!viewerMasterDataLoaded) {
+            const storeSnap = await getDocs(collection(db, "m_stores"));
+            viewerCachedStores = storeSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            let userSnap = await getDocs(query(collection(db, "m_users"), where("StoreId", "==", sid)));
+            if (userSnap.empty) userSnap = await getDocs(query(collection(db, "m_users"), where("StoreID", "==", sid)));
+            if (userSnap.empty && typeof sid === 'string' && !isNaN(sid)) userSnap = await getDocs(query(collection(db, "m_users"), where("StoreId", "==", Number(sid))));
+            
+            viewerCachedUsers = [];
+            userSnap.forEach(d => viewerCachedUsers.push({ id: d.id, ...d.data() }));
+            viewerCachedUsers.sort((a, b) => (a.Name || "").localeCompare(b.Name || ""));
+
+            viewerMasterDataLoaded = true;
+            console.log("[Shift Viewer Mobile] Master data loaded and cached.");
+        }
+
+        const storeMap = {};
+        viewerCachedStores.forEach(d => {
+            storeMap[String(d.store_id || d.id)] = d.store_name || d.name || '不明';
+        });
+        const users = [...viewerCachedUsers];
 
         const startYMD = formatDateJST(viewerActiveSlot.startDate);
         const endYMD = formatDateJST(viewerActiveSlot.endDate);
