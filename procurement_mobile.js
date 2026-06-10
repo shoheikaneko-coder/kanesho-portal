@@ -362,6 +362,12 @@ let cachedSuppliers = [];
 let currentUser = null;
 let procurementUnsubscribe = null;
 
+// --- パフォーマンス最適化フラグ ---
+// マスターデータはセッション中1回だけ取得する
+let masterDataLoaded = false;
+let cachedStores = [];
+
+
 export async function initProcurementMobilePage(user, category = null) {
     currentUser = user;
     selectedVendor = null;
@@ -403,27 +409,34 @@ export async function initProcurementMobilePage(user, category = null) {
 }
 
 async function loadInitialData() {
-    const [storeSnap, itemSnap, ingSnap, supSnap] = await Promise.all([
-        getDocs(collection(db, "m_stores")),
-        getDocs(collection(db, "m_items")),
-        getDocs(collection(db, "m_ingredients")),
-        getDocs(collection(db, "m_suppliers"))
-    ]);
+    if (masterDataLoaded) {
+        console.log("[Procurement Mobile] Master data already cached, skipping fetch.");
+    } else {
+        const [storeSnap, itemSnap, ingSnap, supSnap] = await Promise.all([
+            getDocs(collection(db, "m_stores")),
+            getDocs(collection(db, "m_items")),
+            getDocs(collection(db, "m_ingredients")),
+            getDocs(collection(db, "m_suppliers"))
+        ]);
 
-    const stores = storeSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    cachedItems = itemSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    cachedIngredients = ingSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    cachedSuppliers = supSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        cachedStores = storeSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        cachedItems = itemSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        cachedIngredients = ingSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        cachedSuppliers = supSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        
+        masterDataLoaded = true;
+        console.log(`[Procurement Mobile] Master data loaded & cached. Stores:${cachedStores.length}`);
+    }
     
     // User's store
-    const storeId = currentUser?.StoreID || stores[0]?.id;
-    currentStore = stores.find(s => s.id === storeId || s.store_id === storeId);
+    const storeId = currentUser?.StoreID || cachedStores[0]?.id;
+    currentStore = cachedStores.find(s => s.id === storeId || s.store_id === storeId);
     
     if (!currentStore) throw new Error("所属店舗が見つかりません");
 
     // 2. Get all stores in the same group
     const groupName = currentStore.group_name || currentStore.所属グループ || '未設定';
-    allGroupStores = stores.filter(s => (s.group_name || s.所属グループ || '未設定') === groupName);
+    allGroupStores = cachedStores.filter(s => (s.group_name || s.所属グループ || '未設定') === groupName);
 
     // 3. Load all store items for the group
     await refreshProcurementData();

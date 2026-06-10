@@ -141,6 +141,12 @@ let procurementUnsubscribe = null;
 let prepRequests = [];
 let prepUnsubscribe = null;
 
+// --- パフォーマンス最適化フラグ ---
+// マスターデータはセッション中1回だけ取得する
+let masterDataLoaded = false;
+let cachedStores = [];
+
+
 
 
 export async function initProcurementPage(user, category = null) {
@@ -198,29 +204,35 @@ export async function initProcurementPage(user, category = null) {
 
 async function loadInitialData() {
     console.log("[Debug] loadInitialData starting...");
-    const [storeSnap, itemSnap, ingSnap, supSnap, menuSnap] = await Promise.all([
-        getDocs(collection(db, "m_stores")),
-        getDocs(collection(db, "m_items")),
-        getDocs(collection(db, "m_ingredients")),
-        getDocs(collection(db, "m_suppliers")),
-        getDocs(collection(db, "m_menus"))
-    ]);
+    
+    if (masterDataLoaded) {
+        console.log("[Procurement PC] Master data already cached, skipping fetch.");
+    } else {
+        const [storeSnap, itemSnap, ingSnap, supSnap, menuSnap] = await Promise.all([
+            getDocs(collection(db, "m_stores")),
+            getDocs(collection(db, "m_items")),
+            getDocs(collection(db, "m_ingredients")),
+            getDocs(collection(db, "m_suppliers")),
+            getDocs(collection(db, "m_menus"))
+        ]);
 
-    const stores = storeSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    cachedItems = itemSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    cachedIngredients = ingSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    cachedSuppliers = supSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    cachedMenus = menuSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-    console.log(`[Debug] Data loaded. Stores:${stores.length}, Menus:${cachedMenus.length}`);
+        cachedStores = storeSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        cachedItems = itemSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        cachedIngredients = ingSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        cachedSuppliers = supSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        cachedMenus = menuSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        
+        masterDataLoaded = true;
+        console.log(`[Debug] Data loaded & cached. Stores:${cachedStores.length}, Menus:${cachedMenus.length}`);
+    }
 
     // User's store identification
     const userStoreId = currentUser?.StoreID;
-    currentStore = stores.find(s => s.id === userStoreId || s.store_id === userStoreId || s.code === userStoreId) || stores[0];
+    currentStore = cachedStores.find(s => s.id === userStoreId || s.store_id === userStoreId || s.code === userStoreId) || cachedStores[0];
     
     // Group identification
     const gName = currentStore?.group_name || currentStore?.所属グループ || '未設定';
-    allGroupStores = stores.filter(s => (s.group_name || s.所属グループ || '未設定') === gName);
+    allGroupStores = cachedStores.filter(s => (s.group_name || s.所属グループ || '未設定') === gName);
 
     if (allGroupStores.length === 0 && currentStore) {
         allGroupStores = [currentStore];
