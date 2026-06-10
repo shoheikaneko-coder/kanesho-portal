@@ -1316,22 +1316,24 @@ async function saveShiftsBulk() {
 export async function loadDailyMemos(sid, startDate, endDate) {
     if (!sid || !startDate || !endDate) return;
     dailyMemos = {};
-    const startStr = formatDateJST(startDate);
-    const endStr = formatDateJST(endDate);
+    
+    const dates = [];
+    let curr = new Date(startDate.getTime());
+    const end = endDate.getTime();
+    while (curr.getTime() <= end) {
+        dates.push(formatDateJST(curr));
+        curr.setDate(curr.getDate() + 1);
+    }
+
     try {
-        const q = query(
-            collection(db, "t_shift_daily_memos"),
-            where("storeId", "==", String(sid)),
-            where("date", ">=", startStr),
-            where("date", "<=", endStr)
-        );
-        const snap = await getDocs(q);
-        snap.forEach(docSnap => {
-            const data = docSnap.data();
-            if (data.date) {
-                dailyMemos[data.date] = data;
+        const promises = dates.map(async (ymd) => {
+            const docId = `${sid}_${ymd}`;
+            const snap = await getDoc(doc(db, "t_shift_daily_memos", docId));
+            if (snap.exists()) {
+                dailyMemos[ymd] = snap.data();
             }
         });
+        await Promise.all(promises);
     } catch (e) {
         console.error("Error loading daily memos:", e);
     }
