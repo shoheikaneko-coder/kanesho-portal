@@ -1303,9 +1303,16 @@ async function saveShiftsBulk() {
             batch.push(setDoc(doc(db, "t_shifts", `${cell.date}_${cell.uid}`), shiftData));
             if (!currentShifts[cell.uid]) currentShifts[cell.uid] = {};
             currentShifts[cell.uid][cell.date] = shiftData;
+
+            // globalShiftMapの同期（一括設定時）
+            if (!globalShiftMap[cell.uid]) globalShiftMap[cell.uid] = {};
+            if (!globalShiftMap[cell.uid][cell.date]) globalShiftMap[cell.uid][cell.date] = [];
+            globalShiftMap[cell.uid][cell.date] = globalShiftMap[cell.uid][cell.date].filter(s => s.storeId != sid && s.StoreID != sid);
+            globalShiftMap[cell.uid][cell.date].push(shiftData);
         }
         await Promise.all(batch);
         selectedCells.forEach(cell => renderCellUI(cell.uid, cell.date, currentShifts[cell.uid][cell.date]));
+        if (adminMode) updateOverallKPIs();
         document.getElementById('shift-input-modal').style.display = 'none';
         exitBulkMode();
         showAlert('成功', `${batch.length}件のシフトを一括設定しました。`);
@@ -1493,6 +1500,7 @@ export async function loadShiftsBatch(sid, uid = null) {
                         target.Role = u.Role;
                         target.JobTitle = u.JobTitle;
                         target.Store = u.Store;
+                        target.Has28hLimit = u.Has28hLimit;
                     }
                 }
             });
@@ -2214,6 +2222,14 @@ window.openTimeInput = async (date, uid) => {
                             await setDoc(doc(db, 't_shifts', `${date}_${uid}`), news);
                             if (!currentShifts[uid]) currentShifts[uid] = {};
                             currentShifts[uid][date] = news;
+
+                            // globalShiftMapの同期（モバイル不採用時）
+                            const currentMyStoreID = window.currentAdminStoreId || JSON.parse(localStorage.getItem('currentUser')).StoreID;
+                            if (!globalShiftMap[uid]) globalShiftMap[uid] = {};
+                            if (!globalShiftMap[uid][date]) globalShiftMap[uid][date] = [];
+                            globalShiftMap[uid][date] = globalShiftMap[uid][date].filter(s => s.storeId != currentMyStoreID && s.StoreID != currentMyStoreID);
+                            globalShiftMap[uid][date].push(news);
+
                             renderCellUI(uid, date, news);
                             updateOverallKPIs();
                             sheet.classList.remove('show');
@@ -2308,12 +2324,24 @@ window.openTimeInput = async (date, uid) => {
                     await setDoc(doc(db, 't_shifts', `${date}_${uid}`), news);
                     if (!currentShifts[uid]) currentShifts[uid] = {};
                     currentShifts[uid][date] = news;
+
+                    // globalShiftMapの同期（デスクトップ不採用時）
+                    const currentMyStoreID = window.currentAdminStoreId || JSON.parse(localStorage.getItem('currentUser')).StoreID;
+                    if (!globalShiftMap[uid]) globalShiftMap[uid] = {};
+                    if (!globalShiftMap[uid][date]) globalShiftMap[uid][date] = [];
+                    globalShiftMap[uid][date] = globalShiftMap[uid][date].filter(s => s.storeId != currentMyStoreID && s.StoreID != currentMyStoreID);
+                    globalShiftMap[uid][date].push(news);
+
                     renderCellUI(uid, date, news);
                     updateOverallKPIs();
                 } else {
                     // スタッフ画面：物理削除
                     await deleteDoc(doc(db, 't_shifts', `${date}_${uid}`));
                     if (currentShifts[uid]) delete currentShifts[uid][date];
+                    if (globalShiftMap[uid] && globalShiftMap[uid][date]) {
+                        const currentMyStoreID = window.currentAdminStoreId || JSON.parse(localStorage.getItem('currentUser')).StoreID;
+                        globalShiftMap[uid][date] = globalShiftMap[uid][date].filter(s => s.storeId != currentMyStoreID && s.StoreID != currentMyStoreID);
+                    }
                     renderCellUI(uid, date, null);
                 }
                 document.getElementById('shift-input-modal').style.display = 'none';
@@ -2364,6 +2392,13 @@ async function applyShiftUpdate(uid, date, data) {
 
     if (!currentShifts[uid]) currentShifts[uid] = {};
     currentShifts[uid][date] = news;
+
+    // globalShiftMapの同期（ドラッグドロップ等アップデート時）
+    if (!globalShiftMap[uid]) globalShiftMap[uid] = {};
+    if (!globalShiftMap[uid][date]) globalShiftMap[uid][date] = [];
+    globalShiftMap[uid][date] = globalShiftMap[uid][date].filter(s => s.storeId != sid && s.StoreID != sid);
+    globalShiftMap[uid][date].push(news);
+
     renderCellUI(uid, date, news);
     
     try {
@@ -2430,6 +2465,13 @@ async function saveShift(uid, date, userName) {
 
     if (!currentShifts[uid]) currentShifts[uid] = {};
     currentShifts[uid][date] = news;
+
+    // globalShiftMapの同期（個別編集保存時）
+    if (!globalShiftMap[uid]) globalShiftMap[uid] = {};
+    if (!globalShiftMap[uid][date]) globalShiftMap[uid][date] = [];
+    globalShiftMap[uid][date] = globalShiftMap[uid][date].filter(s => s.storeId != sid && s.StoreID != sid);
+    globalShiftMap[uid][date].push(news);
+
     renderCellUI(uid, date, news);
     document.getElementById('shift-input-modal').style.display = 'none';
     await setDoc(doc(db, "t_shifts", `${date}_${uid}`), news);
@@ -2512,8 +2554,8 @@ export function updateOverallKPIs() {
             
             for (let j = 0; j < 7; j++) {
                 const checkD = new Date(weekStart);
-                checkD.setDate(checkD.getDate() + j);
-                const iso = formatDateJST(checkD);
+                checkD.setUTCDate(checkD.getUTCDate() + j);
+                const iso = checkD.toISOString().split("T")[0];
                 
                 // globalShiftMapから全店舗の勤務を取得 (loadShiftsBatchで同期済み)
                 const dayShifts = globalShiftMap[u.id]?.[iso] || [];
@@ -2528,11 +2570,11 @@ export function updateOverallKPIs() {
             }
             
             if (weekHours > 28) {
-                const weekLabel = `${weekStart.getMonth()+1}/${weekStart.getDate()}週`;
+                const weekLabel = `${weekStart.getUTCMonth()+1}/${weekStart.getUTCDate()}週`;
                 violations.push(`${u.DisplayName || u.Name} (${weekLabel}: ${weekHours.toFixed(1)}h)`);
                 break;
             }
-            tempDate.setDate(tempDate.getDate() + 7);
+            tempDate.setUTCDate(tempDate.getUTCDate() + 7);
         }
     });
 
@@ -3262,6 +3304,13 @@ export async function applyFixedSchedules() {
                     batchOps.push(setDoc(doc(db, "t_shifts", `${ymd}_${u.id}`), shiftData));
                     if (!currentShifts[u.id]) currentShifts[u.id] = {};
                     currentShifts[u.id][ymd] = shiftData;
+
+                    // globalShiftMapの同期（固定スケジュール反映時）
+                    if (!globalShiftMap[u.id]) globalShiftMap[u.id] = {};
+                    if (!globalShiftMap[u.id][ymd]) globalShiftMap[u.id][ymd] = [];
+                    globalShiftMap[u.id][ymd] = globalShiftMap[u.id][ymd].filter(s => s.storeId != sid && s.StoreID != sid);
+                    globalShiftMap[u.id][ymd].push(shiftData);
+
                     count++;
                 }
             });
