@@ -3,7 +3,7 @@ import { showAlert, showConfirm, showLoader } from './ui_utils.js';
 import { 
     currentSlot, currentShifts, currentTargetUser, allStoreUsers, helpUsers, 
     globalShiftMap, isBulkMode, selectedCells, dailyGoalSales, adminMode, 
-    calendarData, injectStyles, loadShiftMemo, saveShiftMemo, loadStoreStaff, 
+    calendarData, loadShiftMemo, saveShiftMemo, loadStoreStaff, 
     loadShiftsBatch, loadDailyGoalData, renderAdminGrid, updateOverallKPIs, 
     publishShifts, shareShiftToLine, formatDateJST, fetchCalendarData, 
     openHelpStaffModal, applyFixedSchedules, calculateSlot, getRollingSlots,
@@ -167,7 +167,7 @@ export const shiftAdminMobilePageHtml = `
 
 export async function initShiftAdminMobilePage() {
     console.log("Initializing Shift Admin Mobile Independent View...");
-    injectStyles();
+    injectStylesMobile();
     setShiftState('adminMode', true);
     
     const user = JSON.parse(localStorage.getItem('currentUser'));

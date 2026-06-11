@@ -434,6 +434,16 @@ async function showPage(target) {
     };
     if (!pageContent || !pageTitle) return;
 
+    // スマホ版シフト管理（コックピット）画面では共通FABボタンを非表示にする
+    const fabContainer = document.querySelector('.fab-container');
+    if (fabContainer) {
+        if (target === 'shift_admin' && window.innerWidth < 768) {
+            fabContainer.style.setProperty('display', 'none', 'important');
+        } else {
+            fabContainer.style.setProperty('display', '', '');
+        }
+    }
+
     // ナビゲーションUIの生成 (パンくず & 戻るボタン)
     renderNavigationUI(target, pageTitle, breadcrumbArea, backBtn, mobileMenuBtn);
 
