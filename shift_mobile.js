@@ -16,11 +16,14 @@ export const shiftAdminMobilePageHtml = `
     <div class="animate-fade-in" id="shift-admin-container-mobile" style="max-width: 100%; margin: 0 auto; padding-bottom: 80px;">
         
         <!-- モバイル専用：ヘッダー・店舗表示 -->
-        <div class="mobile-only" style="padding: 1rem; background: white; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100;">
-            <div id="admin-active-store-mobile" style="font-weight: 800; color: var(--primary); font-size: 0.9rem;">📍 店舗読み込み中...</div>
+        <div class="mobile-only" style="padding: 0.8rem 1rem; background: white; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100;">
+            <div style="display: flex; flex-direction: column; gap: 0.2rem;">
+                <div id="admin-active-store-mobile" style="font-weight: 800; color: var(--primary); font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;">📍 店舗読み込み中...</div>
+                <div id="admin-28h-alerts-mobile" style="display: none; font-size: 0.65rem; color: #ef4444; font-weight: 700; background: #fee2e2; padding: 0.1rem 0.4rem; border-radius: 4px; width: fit-content;" onclick="window.show28hAlertDetailsMobile()">⚠️ 超過あり</div>
+            </div>
             <div style="display: flex; gap: 0.4rem; align-items: center;">
+                <button id="btn-landscape-preview-trigger-mobile" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.6rem; font-size: 0.75rem; font-weight: 700; background: var(--secondary); color: white; border: none; border-radius: 6px;"><i class="fas fa-search-plus"></i> プレビュー</button>
                 <button id="btn-toggle-rejected-mobile" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.6rem; background: transparent; color: var(--text-secondary); border: 1px solid var(--border);"><i class="fas fa-eye-slash"></i></button>
-                <button id="btn-edit-memo-mobile" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.8rem;"><i class="fas fa-edit"></i> メモ</button>
             </div>
         </div>
 
@@ -40,7 +43,7 @@ export const shiftAdminMobilePageHtml = `
                 </div>
                 <div id="hourly-bars-container-mobile" style="display:flex; align-items:flex-end; gap:4px; height:120px; padding-bottom:10px; border-bottom:1px solid var(--border);"></div>
                 <div style="display:flex; gap:4px; margin-top:5px;">
-                    ${Array.from({length:24}).map((_,i) => `<div style="flex:1; text-align:center; font-size:0.6rem; color:var(--text-secondary);">${i}</div>`).join('')}
+                    \${Array.from({length:24}).map((_,i) => `<div style="flex:1; text-align:center; font-size:0.6rem; color:var(--text-secondary);">\${i}</div>`).join('')}
                 </div>
             </div>
             <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
@@ -52,37 +55,63 @@ export const shiftAdminMobilePageHtml = `
             </div>
         </div>
 
-        <!-- 【スマホ専用】管理者用アクション・コックピット -->
-        <div id="admin-mobile-fab-hub" class="fab-container">
-            <div id="admin-fab-overlay" class="admin-fab-overlay"></div>
-            <div id="admin-fab-menu" class="fab-menu">
-                <div class="fab-item" id="btn-publish-mobile">
-                    <span class="fab-label">一括確定・公開</span>
-                    <div class="fab-icon" style="color:var(--primary);"><i class="fas fa-paper-plane"></i></div>
-                </div>
-                <div class="fab-item" id="btn-share-line-mobile">
-                    <span class="fab-label">LINE周知</span>
-                    <div class="fab-icon" style="color:#06C755;"><i class="fab fa-line"></i></div>
-                </div>
-                <div class="fab-item" id="btn-add-help-mobile">
-                    <span class="fab-label">ヘルプスタッフ追加</span>
-                    <div class="fab-icon"><i class="fas fa-user-plus"></i></div>
-                </div>
-                <div class="fab-item" id="btn-apply-fixed-mobile">
-                    <span class="fab-label">いつものパターン反映</span>
-                    <div class="fab-icon"><i class="fas fa-magic"></i></div>
-                </div>
-                <div class="fab-item" id="btn-manage-fixed-mobile">
-                    <span class="fab-label">固定シフト設定</span>
-                    <div class="fab-icon"><i class="fas fa-user-clock"></i></div>
-                </div>
-                <div class="fab-item" id="btn-bulk-mode-mobile">
-                    <span class="fab-label">一括入力モード</span>
-                    <div class="fab-icon"><i class="fas fa-check-double"></i></div>
+        <!-- 【スマホ専用】下部フローティング固定バー -->
+        <div id="admin-mobile-bottom-bar-mobile" class="bottom-bar-fixed-mobile">
+            <!-- 通常モード時のバー表示 -->
+            <div id="bottom-bar-normal-content-mobile" class="bar-content-mobile-row">
+                <button id="btn-open-action-menu-mobile" class="btn btn-secondary btn-sm" style="padding: 0.5rem 0.8rem; font-weight: 800; border-radius: 8px; font-size: 0.8rem;"><i class="fas fa-cog"></i> メニュー</button>
+                <div id="bottom-bar-kpi-info-mobile" style="text-align: right; line-height: 1.3;">
+                    <div style="font-size: 0.65rem; color: var(--text-secondary); font-weight: 700;" id="bottom-bar-active-date-label-mobile">日付選択なし</div>
+                    <div style="font-size: 0.8rem; font-weight: 800; color: var(--primary);" id="bottom-bar-active-kpi-label-mobile">SPH: - / 目標: -</div>
                 </div>
             </div>
-            <div class="fab-main" id="admin-fab-main-btn" onclick="window.toggleAdminFabHub()">
-                <i class="fas fa-plus"></i>
+            <!-- 一括選択モード時のバー表示 -->
+            <div id="bottom-bar-bulk-content-mobile" class="bar-content-mobile-row" style="display: none;">
+                <button id="btn-bulk-cancel-mobile" class="btn btn-secondary btn-sm" style="padding: 0.5rem 0.8rem; font-weight: 800; border-radius: 8px; font-size: 0.8rem; background: white; color: var(--text-primary); border: 1px solid var(--border);"><i class="fas fa-times"></i> 解除</button>
+                <div id="bottom-bar-bulk-count-mobile" style="font-size: 0.85rem; font-weight: 800; color: #854d0e;">0件選択中</div>
+                <button id="btn-bulk-set-mobile" class="btn btn-primary btn-sm" style="padding: 0.5rem 0.8rem; font-weight: 800; border-radius: 8px; font-size: 0.8rem; background: #eab308; border-color: #d4a017; color: #422006;"><i class="fas fa-edit"></i> 一括設定</button>
+            </div>
+        </div>
+
+        <!-- 【スマホ専用】管理機能メニューシート（下からせり上がる） -->
+        <div id="admin-mobile-action-menu-mobile" class="bottom-sheet">
+            <div class="sheet-handle"></div>
+            <div class="sheet-content" style="padding-bottom: 24px;">
+                <div class="sheet-header" style="margin-bottom: 15px;">
+                    <div class="staff-name" style="font-size: 1rem;"><i class="fas fa-cog"></i> 管理メニュー</div>
+                    <div class="date-label" onclick="window.closeAdminActionMenuMobile()" style="cursor: pointer; color: var(--text-secondary);">閉じる</div>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; width: 100%;">
+                    <button id="btn-menu-bulk-mode-mobile" class="btn btn-secondary" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.3rem; padding: 1rem 0.5rem; font-size: 0.8rem; height: auto;"><i class="fas fa-check-double" style="font-size: 1.2rem; color: #eab308;"></i> 一括入力モード</button>
+                    <button id="btn-menu-apply-fixed-mobile" class="btn btn-secondary" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.3rem; padding: 1rem 0.5rem; font-size: 0.8rem; height: auto;"><i class="fas fa-magic" style="font-size: 1.2rem; color: #7c3aed;"></i> 固定反映</button>
+                    <button id="btn-menu-add-help-mobile" class="btn btn-secondary" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.3rem; padding: 1rem 0.5rem; font-size: 0.8rem; height: auto;"><i class="fas fa-user-plus" style="font-size: 1.2rem; color: #3b82f6;"></i> ヘルプ追加</button>
+                    <button id="btn-menu-manage-fixed-mobile" class="btn btn-secondary" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.3rem; padding: 1rem 0.5rem; font-size: 0.8rem; height: auto;"><i class="fas fa-user-clock" style="font-size: 1.2rem; color: #64748b;"></i> 固定設定</button>
+                    <button id="btn-menu-edit-memo-mobile" class="btn btn-secondary" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.3rem; padding: 1rem 0.5rem; font-size: 0.8rem; height: auto;"><i class="fas fa-edit" style="font-size: 1.2rem; color: #10b981;"></i> 店長メモ編集</button>
+                    <button id="btn-menu-share-line-mobile" class="btn btn-secondary" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.3rem; padding: 1rem 0.5rem; font-size: 0.8rem; height: auto;"><i class="fab fa-line" style="font-size: 1.2rem; color: #06C755;"></i> LINE通知</button>
+                </div>
+                <div style="margin-top: 0.75rem; width: 100%;">
+                    <button id="btn-menu-publish-mobile" class="btn btn-primary" style="width: 100%; padding: 0.75rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.85rem;"><i class="fas fa-paper-plane"></i> 一括確定・公開</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 【スマホ専用】横長フルスクリーンプレビューオーバーレイ -->
+        <div id="admin-mobile-landscape-preview-mobile" class="landscape-preview-overlay" style="display: none;">
+            <div class="landscape-preview-header">
+                <button id="btn-close-landscape-preview-mobile" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.8rem; font-weight: 800; font-size: 0.75rem;"><i class="fas fa-times"></i> 閉じる</button>
+                <div style="font-weight: 800; font-size: 0.85rem; color: white;" id="landscape-preview-title-mobile">全体シフトプレビュー (閲覧専用)</div>
+                <div style="display: flex; gap: 0.3rem;">
+                    <button id="btn-zoom-out-preview-mobile" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.6rem; font-weight: 800; font-size: 0.75rem;"><i class="fas fa-search-minus"></i> 縮小</button>
+                    <button id="btn-zoom-in-preview-mobile" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.6rem; font-weight: 800; font-size: 0.75rem;"><i class="fas fa-search-plus"></i> 拡大</button>
+                </div>
+            </div>
+            <div class="landscape-preview-body-container">
+                <div class="landscape-preview-body" id="landscape-preview-scroll-area-mobile">
+                    <table id="landscape-preview-table-mobile" style="border-collapse: collapse; min-width: 1000px; background: white;">
+                        <thead><tr id="landscape-table-header-mobile"><th class="staff-cell">スタッフ</th></tr></thead>
+                        <tbody id="landscape-table-body-mobile"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -196,7 +225,6 @@ export async function initShiftAdminMobilePage() {
             };
         }
     }
-
     async function updateView(sid) {
         if (!sid) return;
         const sSnap = await getDoc(doc(db, "m_stores", sid));
@@ -246,73 +274,135 @@ export async function initShiftAdminMobilePage() {
         };
     }
 
-    const btnPublishMobile = document.getElementById('btn-publish-mobile');
-    if (btnPublishMobile) btnPublishMobile.onclick = () => { window.toggleAdminFabHub(false); publishShifts(); };
-
-    const btnShareLineMobile = document.getElementById('btn-share-line-mobile');
-    if (btnShareLineMobile) {
-        btnShareLineMobile.onclick = () => {
-            window.toggleAdminFabHub(false);
-            shareShiftToLine(window.currentAdminStoreId, window.currentAdminStoreName);
-        };
+    // 横画面プレビュー関連のイベントバインド
+    const btnPreview = document.getElementById('btn-landscape-preview-trigger-mobile');
+    if (btnPreview) {
+        btnPreview.onclick = () => window.openLandscapePreviewMobile();
+    }
+    const btnClosePreview = document.getElementById('btn-close-landscape-preview-mobile');
+    if (btnClosePreview) {
+        btnClosePreview.onclick = () => window.closeLandscapePreviewMobile();
     }
 
-    const btnAddHelpMobile = document.getElementById('btn-add-help-mobile');
-    if (btnAddHelpMobile) btnAddHelpMobile.onclick = () => { window.toggleAdminFabHub(false); openHelpStaffModal(); };
+    let zoomWidth = 60;
+    const updatePreviewZoom = (delta) => {
+        zoomWidth = Math.max(35, Math.min(120, zoomWidth + delta));
+        const table = document.getElementById('landscape-preview-table-mobile');
+        if (table) {
+            table.style.setProperty('--preview-col-width', `${zoomWidth}px`);
+        }
+    };
 
-    const btnApplyFixedMobile = document.getElementById('btn-apply-fixed-mobile');
-    if (btnApplyFixedMobile) {
-        btnApplyFixedMobile.onclick = () => {
-            window.toggleAdminFabHub(false);
-            showConfirm('定例反映', '定例シフトを反映しますか？', async () => {
-                await applyFixedSchedules();
-            });
-        };
+    const btnZoomIn = document.getElementById('btn-zoom-in-preview-mobile');
+    if (btnZoomIn) {
+        btnZoomIn.onclick = () => updatePreviewZoom(10);
+    }
+    const btnZoomOut = document.getElementById('btn-zoom-out-preview-mobile');
+    if (btnZoomOut) {
+        btnZoomOut.onclick = () => updatePreviewZoom(-10);
     }
 
-    const btnManageFixedMobile = document.getElementById('btn-manage-fixed-mobile');
-    if (btnManageFixedMobile) {
-        btnManageFixedMobile.onclick = () => {
-            window.toggleAdminFabHub(false);
-            if(window.renderFixedShiftStaffList) window.renderFixedShiftStaffList();
-            if(window.openSideDrawer) window.openSideDrawer();
-        };
-    }
-
-    const btnEditMemoMobile = document.getElementById('btn-edit-memo-mobile');
-    if (btnEditMemoMobile) {
-        btnEditMemoMobile.onclick = () => {
-            const currentMemo = window.currentMobileMemo || "";
-            const newMemo = prompt("店長メモを編集", currentMemo);
-            if (newMemo !== null) {
-                window.currentMobileMemo = newMemo;
-                saveShiftMemo();
+    const handleOrientationChange = () => {
+        const isLandscape = window.innerWidth > window.innerHeight;
+        const previewEl = document.getElementById('admin-mobile-landscape-preview-mobile');
+        if (isLandscape) {
+            window.openLandscapePreviewMobile();
+        } else {
+            if (previewEl && !previewEl.classList.contains('force-landscape')) {
+                window.closeLandscapePreviewMobile();
             }
-        };
+        }
+    };
+    window.addEventListener('resize', handleOrientationChange);
+
+    // 管理メニューシート関連のイベントバインド
+    window.openAdminActionMenuMobile = () => {
+        const menu = document.getElementById('admin-mobile-action-menu-mobile');
+        if (menu) menu.classList.add('show');
+    };
+    window.closeAdminActionMenuMobile = () => {
+        const menu = document.getElementById('admin-mobile-action-menu-mobile');
+        if (menu) menu.classList.remove('show');
+    };
+    const btnOpenMenu = document.getElementById('btn-open-action-menu-mobile');
+    if (btnOpenMenu) {
+        btnOpenMenu.onclick = () => window.openAdminActionMenuMobile();
     }
 
-    // 一括入力モードボタンのモバイル固有バインド
-    const btnBulkModeMobile = document.getElementById('btn-bulk-mode-mobile');
-    if (btnBulkModeMobile) {
-        btnBulkModeMobile.onclick = () => {
-            window.toggleAdminFabHub(false);
+    const bindMenuBtn = (id, action) => {
+        const btn = document.getElementById(id);
+        if (btn) {
+            btn.onclick = () => {
+                window.closeAdminActionMenuMobile();
+                action();
+            };
+        }
+    };
+
+    bindMenuBtn('btn-menu-publish-mobile', () => publishShifts());
+    bindMenuBtn('btn-menu-share-line-mobile', () => shareShiftToLine(window.currentAdminStoreId, window.currentAdminStoreName));
+    bindMenuBtn('btn-menu-add-help-mobile', () => openHelpStaffModal());
+    bindMenuBtn('btn-menu-apply-fixed-mobile', () => {
+        showConfirm('定例反映', '定例シフトを反映しますか？', async () => {
+            await applyFixedSchedules();
+        });
+    });
+    bindMenuBtn('btn-menu-manage-fixed-mobile', () => {
+        if (window.renderFixedShiftStaffList) window.renderFixedShiftStaffList();
+        if (window.openSideDrawer) window.openSideDrawer();
+    });
+    bindMenuBtn('btn-menu-edit-memo-mobile', () => {
+        const currentMemo = window.currentMobileMemo || "";
+        const newMemo = prompt("店長メモを編集", currentMemo);
+        if (newMemo !== null) {
+            window.currentMobileMemo = newMemo;
+            saveShiftMemo();
+        }
+    });
+
+    const btnMenuBulkMode = document.getElementById('btn-menu-bulk-mode-mobile');
+    if (btnMenuBulkMode) {
+        btnMenuBulkMode.onclick = () => {
+            window.closeAdminActionMenuMobile();
             if (!isBulkMode) {
                 setShiftState('isBulkMode', true);
                 setShiftState('selectedCells', []);
-                const labelSpan = btnBulkModeMobile.querySelector('.fab-label');
-                if (labelSpan) labelSpan.textContent = "選択完了 (0件)";
+                
+                const normalBar = document.getElementById('bottom-bar-normal-content-mobile');
+                const bulkBar = document.getElementById('bottom-bar-bulk-content-mobile');
+                const bottomBar = document.getElementById('admin-mobile-bottom-bar-mobile');
+                
+                if (normalBar) normalBar.style.display = 'none';
+                if (bulkBar) bulkBar.style.display = 'flex';
+                if (bottomBar) bottomBar.classList.add('bulk-active');
+                
+                const bulkCount = document.getElementById('bottom-bar-bulk-count-mobile');
+                if (bulkCount) bulkCount.textContent = "0件選択中";
                 
                 const cont = document.getElementById('shift-admin-container-mobile');
                 if (cont) cont.classList.add('bulk-mode-active');
-            } else {
-                if (selectedCells.length > 0) {
-                    openBulkInputMobile();
-                } else {
-                    exitBulkModeMobile();
-                }
             }
         };
     }
+
+    const btnBulkCancel = document.getElementById('btn-bulk-cancel-mobile');
+    if (btnBulkCancel) {
+        btnBulkCancel.onclick = () => {
+            exitBulkModeMobile();
+        };
+    }
+
+    const btnBulkSet = document.getElementById('btn-bulk-set-mobile');
+    if (btnBulkSet) {
+        btnBulkSet.onclick = () => {
+            if (selectedCells.length > 0) {
+                openBulkInputMobile();
+            }
+        };
+    }
+
+    // スタイルを注入する
+    injectStylesMobile();
 
     // グローバルオーバーライド関数の登録
     window.renderAdminGridMobile = renderAdminGridMobile;
@@ -325,6 +415,12 @@ export async function initShiftAdminMobilePage() {
     window.updateMobileLiveHeaderMobile = updateMobileLiveHeaderMobile;
     window.openDailyMemoModalMobile = openDailyMemoModalMobile;
     window.closeAdminBottomSheetMobile = closeAdminBottomSheetMobile;
+    
+    // モバイル専用新規のグローバル登録
+    window.selectActiveDateMobile = selectActiveDateMobile;
+    window.show28hAlertDetailsMobile = show28hAlertDetailsMobile;
+    window.openLandscapePreviewMobile = openLandscapePreviewMobile;
+    window.closeLandscapePreviewMobile = closeLandscapePreviewMobile;
 }
 
 // ==========================================
@@ -348,7 +444,8 @@ export function renderAdminGridMobile() {
             
             header.innerHTML += `
                 <th class="date-hdr ${isHoliday ? 'is-holiday' : ''} ${isOff ? 'is-off-column' : ''}" 
-                    onclick="window.showHelperTooltipMobile(event, '${ymd}')">
+                    id="hdr-mobile-${ymd}"
+                    onclick="window.selectActiveDateMobile('${ymd}'); window.showHelperTooltipMobile(event, '${ymd}')">
                     <div class="date-num">${d.getDate()}</div>
                     <div class="weekday">${['日','月','火','水','木','金','土'][d.getDay()]}</div>
                     ${isHoliday ? `<div class="holiday-name-hdr">${cal.label || '祝日'}</div>` : ''}
@@ -438,7 +535,7 @@ export function renderAdminGridMobile() {
                 const ymd = formatDateJST(d);
                 const cal = calendarData[ymd] || {};
                 const isOff = cal.type === 'off';
-                tr.innerHTML += `<td class="shift-cell ${isOff ? 'is-off-column' : ''}" id="cell-mobile-${u.id}-${ymd}" onclick="window.openTimeInputMobile('${ymd}', '${u.id}')"></td>`;
+                tr.innerHTML += `<td class="shift-cell ${isOff ? 'is-off-column' : ''}" id="cell-mobile-${u.id}-${ymd}" onclick="window.selectActiveDateMobile('${ymd}'); window.openTimeInputMobile('${ymd}', '${u.id}')"></td>`;
             }
             body.appendChild(tr);
             for(let i=0; i<span; i++){
@@ -447,6 +544,15 @@ export function renderAdminGridMobile() {
                 if(currentShifts[u.id]?.[ymd]) renderCellUIMobile(u.id, ymd, currentShifts[u.id][ymd]);
             }
         });
+
+        // ページロード時に、デフォルト日付を選択する
+        const todayStr = formatDateJST(new Date());
+        const firstDateStr = formatDateJST(currentSlot.startDate);
+        const defaultDate = (todayStr >= firstDateStr && todayStr <= formatDateJST(currentSlot.endDate)) ? todayStr : firstDateStr;
+        setTimeout(() => {
+            if (window.selectActiveDateMobile) window.selectActiveDateMobile(window.currentActiveDateMobile || defaultDate);
+        }, 100);
+
     } catch (e) { console.error("Error in renderAdminGridMobile:", e); }
 }
 
@@ -552,14 +658,20 @@ export function updateOverallKPIsMobile() {
 
     if (alertsContMobile) {
         if (violations.length > 0) {
-            alertsContMobile.textContent = `超過: ${violations.length}名`;
+            alertsContMobile.textContent = `⚠️ 超過: ${violations.length}名`;
             alertsContMobile.style.display = 'block';
         } else {
             alertsContMobile.style.display = 'none';
         }
     }
+    window.current28hViolations = violations;
 
     renderAdminFooterMobile();
+
+    // アクティブな日付の固定バーを再描画
+    if (window.currentActiveDateMobile && window.selectActiveDateMobile) {
+        window.selectActiveDateMobile(window.currentActiveDateMobile);
+    }
 }
 
 export function renderAdminFooterMobile() {
@@ -736,7 +848,7 @@ export async function copyShiftForLineMobile(date) {
         if (list.length === 0) return showAlert('案内', 'この日のシフトはまだ登録されていません。');
 
         const storeName = window.currentAdminStoreName || 'かね将';
-        const text = `📢【${storeName} シフト確定連絡】\n📅 対象日: ${date}(${dow})\n━━━━━━━━━━━━━━\n✨ 本日の出勤メンバー ✨\n━━━━━━━━━━━━━━\n${list.join('\n')}\n━━━━━━━━━━━━━━\n本日も元気に営業しましょう！🔥`;
+        const text = `📢【${storeName} シフト確定連絡】\n📅 対象日: ${date}(${dow})\n━━━━━━━━━━━━━━\n✨ 本日の出勤メンバー ✨\n━━━━━━━━━━━━━━\n\n${list.join('\n')}\n━━━━━━━━━━━━━━\n本日も元気に営業しましょう！🔥`;
         
         await navigator.clipboard.writeText(text);
         showAlert('完了', 'LINE用のメッセージをコピーしました！');
@@ -763,10 +875,9 @@ export async function openTimeInputMobile(date, uid) {
             if (el) el.classList.add('selected-shift-cell');
         }
         
-        const btnBulkModeMobile = document.getElementById('btn-bulk-mode-mobile');
-        if (btnBulkModeMobile) {
-            const labelSpan = btnBulkModeMobile.querySelector('.fab-label');
-            if (labelSpan) labelSpan.textContent = `選択完了 (${selectedCells.length}件)`;
+        const btnBulkCountMobile = document.getElementById('bottom-bar-bulk-count-mobile');
+        if (btnBulkCountMobile) {
+            btnBulkCountMobile.textContent = `${selectedCells.length}件選択中`;
         }
         return;
     }
@@ -1024,11 +1135,13 @@ export function exitBulkModeMobile() {
     const cont = document.getElementById('shift-admin-container-mobile');
     if (cont) cont.classList.remove('bulk-mode-active');
 
-    const btnBulkModeMobile = document.getElementById('btn-bulk-mode-mobile');
-    if (btnBulkModeMobile) {
-        const labelSpan = btnBulkModeMobile.querySelector('.fab-label');
-        if (labelSpan) labelSpan.textContent = "一括入力モード";
-    }
+    const normalBar = document.getElementById('bottom-bar-normal-content-mobile');
+    const bulkBar = document.getElementById('bottom-bar-bulk-content-mobile');
+    const bottomBar = document.getElementById('admin-mobile-bottom-bar-mobile');
+    
+    if (normalBar) normalBar.style.display = 'flex';
+    if (bulkBar) bulkBar.style.display = 'none';
+    if (bottomBar) bottomBar.classList.remove('bulk-active');
 }
 
 export function closeAdminBottomSheetMobile() {
@@ -1053,5 +1166,345 @@ function generateHOptions(selected) {
 
 function generateMOptions(selected) {
     return ['00', '15', '30', '45'].map(v => `<option value="${v}" ${v === String(selected).padStart(2, '0') ? 'selected' : ''}>${v}</option>`).join('');
+}
+
+// ==========================================
+// モバイル専用新規の関数定義
+// ==========================================
+
+export function injectStylesMobile() {
+    if (document.getElementById('shift-mobile-styles')) return;
+    const s = document.createElement('style');
+    s.id = 'shift-mobile-styles';
+    s.innerHTML = `
+        /* --- Mobile Custom Styles --- */
+        .bottom-bar-fixed-mobile {
+            position: fixed;
+            bottom: 15px;
+            left: 15px;
+            right: 15px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+            z-index: 10001;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1.2rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .bottom-bar-fixed-mobile.bulk-active {
+            background: rgba(254, 243, 199, 0.98) !important;
+            border: 1px solid rgba(245, 158, 11, 0.6) !important;
+            box-shadow: 0 10px 30px rgba(245, 158, 11, 0.25) !important;
+        }
+        .bar-content-mobile-row {
+            display: flex;
+            width: 100%;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+        .bottom-sheet {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: white;
+            border-radius: 24px 24px 0 0;
+            box-shadow: 0 -10px 40px rgba(15, 23, 42, 0.15);
+            transform: translateY(100%);
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 10002;
+            padding: 1.5rem;
+            padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+        }
+        .bottom-sheet.show {
+            transform: translateY(0);
+        }
+        .sheet-handle {
+            width: 40px;
+            height: 5px;
+            background: #e2e8f0;
+            border-radius: 10px;
+            margin: -8px auto 15px auto;
+        }
+        .sheet-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.2rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.8rem;
+        }
+        .sheet-header .staff-name {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: var(--primary);
+        }
+        .sheet-header .date-label {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+        }
+        
+        /* Landscape Preview Styles */
+        .landscape-preview-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #0f172a;
+            z-index: 20000;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            color: white;
+        }
+        .landscape-preview-header {
+            height: 50px;
+            background: #1e293b;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 1rem;
+            flex-shrink: 0;
+        }
+        .landscape-preview-body-container {
+            flex: 1;
+            overflow: auto;
+            background: #0f172a;
+            -webkit-overflow-scrolling: touch;
+        }
+        .landscape-preview-body {
+            padding: 0.5rem;
+        }
+        #landscape-preview-table-mobile {
+            --preview-col-width: 60px;
+            border-collapse: collapse;
+            background: white;
+            color: #1e293b;
+            width: 100%;
+        }
+        #landscape-preview-table-mobile th, #landscape-preview-table-mobile td {
+            border: 1px solid #e2e8f0;
+            text-align: center;
+            font-size: 0.75rem;
+            padding: 0.3rem;
+        }
+        #landscape-preview-table-mobile th.date-hdr {
+            min-width: var(--preview-col-width) !important;
+            width: var(--preview-col-width) !important;
+            padding: 0.4rem 0.1rem;
+        }
+        #landscape-preview-table-mobile td.shift-cell {
+            height: 48px;
+            min-width: var(--preview-col-width) !important;
+            width: var(--preview-col-width) !important;
+            padding: 2px;
+        }
+        #landscape-preview-table-mobile .staff-cell {
+            position: sticky;
+            left: 0;
+            z-index: 10;
+            background: #f8fafc;
+            font-weight: 700;
+            border-right: 2px solid #cbd5e1 !important;
+            min-width: 90px;
+            white-space: nowrap;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        }
+        .landscape-preview-overlay.force-landscape {
+            width: 100vh !important;
+            height: 100vw !important;
+            transform: rotate(90deg);
+            transform-origin: top left;
+            position: fixed;
+            top: 0;
+            left: 100vw;
+        }
+        
+        /* Selected Date Highlights */
+        .selected-date-column-mobile {
+            background: rgba(59, 130, 246, 0.08) !important;
+        }
+        th.date-hdr.selected-date-column-mobile {
+            background: rgba(59, 130, 246, 0.15) !important;
+            border-bottom: 3px solid var(--primary) !important;
+        }
+    `;
+    document.head.appendChild(s);
+}
+
+export function selectActiveDateMobile(ymd) {
+    window.currentActiveDateMobile = ymd;
+    
+    // Clear previous selection highlights
+    document.querySelectorAll('.selected-date-column-mobile').forEach(el => {
+        el.classList.remove('selected-date-column-mobile');
+    });
+    
+    // Add highlights to headers and cells for active date
+    const hdr = document.getElementById(`hdr-mobile-${ymd}`);
+    if (hdr) hdr.classList.add('selected-date-column-mobile');
+    
+    const users = [...allStoreUsers, ...helpUsers];
+    users.forEach(u => {
+        const cell = document.getElementById(`cell-mobile-${u.id}-${ymd}`);
+        if (cell) cell.classList.add('selected-date-column-mobile');
+    });
+    
+    const memoCell = document.getElementById(`memo-cell-mobile-${ymd}`);
+    if (memoCell) memoCell.classList.add('selected-date-column-mobile');
+    
+    // Update JST label on fixed bottom bar
+    const d = new Date(ymd);
+    const dow = ['日','月','火','水','木','金','土'][d.getDay()];
+    const dateLabel = document.getElementById('bottom-bar-active-date-label-mobile');
+    if (dateLabel) {
+        dateLabel.textContent = `${ymd.replace(/-/g,'/')} (${dow})`;
+    }
+    
+    // Compute date KPIs
+    let dayH = 0;
+    users.forEach(u => {
+        const s = currentShifts[u.id]?.[ymd];
+        if (s && s.start && s.status !== 'rejected') {
+            const sA = s.start.split(':').map(Number);
+            const eA = s.end.split(':').map(Number);
+            let h = (eA[0] + eA[1]/60) - (sA[0] + sA[1]/60);
+            if (h < 0) h += 24;
+            dayH += Math.max(0, h - (s.breakMin || 0)/60);
+        }
+    });
+    
+    const goalVal = dailyGoalSales[ymd] || 0;
+    const sph = dayH > 0 ? Math.round(goalVal / dayH) : 0;
+    
+    const kpiLabel = document.getElementById('bottom-bar-active-kpi-label-mobile');
+    if (kpiLabel) {
+        kpiLabel.innerHTML = `SPH: <span style="font-size:0.85rem; font-weight:900; color:var(--primary);">¥${sph.toLocaleString()}</span> / 目標: <span style="font-weight:700; color:var(--text-primary);">¥${goalVal.toLocaleString()}</span>`;
+    }
+}
+
+export function show28hAlertDetailsMobile() {
+    const violations = window.current28hViolations || [];
+    if (violations.length === 0) {
+        showAlert("アラート詳細", "28時間制限を超過しているスタッフはいません。");
+        return;
+    }
+    const content = violations.map(v => `・ ${v}`).join("\n");
+    showAlert("⚠️ 28時間制限超過アラート", `以下のスタッフが週28時間を超過しています：\n\n${content}`);
+}
+
+export function openLandscapePreviewMobile() {
+    const previewEl = document.getElementById('admin-mobile-landscape-preview-mobile');
+    if (!previewEl) return;
+    
+    const isPortrait = window.innerHeight > window.innerWidth;
+    if (isPortrait) {
+        previewEl.classList.add('force-landscape');
+    } else {
+        previewEl.classList.remove('force-landscape');
+    }
+    
+    previewEl.style.display = 'flex';
+    renderLandscapeGridMobile();
+}
+
+export function closeLandscapePreviewMobile() {
+    const previewEl = document.getElementById('admin-mobile-landscape-preview-mobile');
+    if (previewEl) {
+        previewEl.style.display = 'none';
+        previewEl.classList.remove('force-landscape');
+    }
+}
+
+export function renderLandscapeGridMobile() {
+    const body = document.getElementById('landscape-table-body-mobile');
+    const header = document.getElementById('landscape-table-header-mobile');
+    if (!header || !body) return;
+    
+    const span = Math.round((currentSlot.endDate - currentSlot.startDate) / (1000 * 60 * 60 * 24)) + 1;
+    header.innerHTML = '<th class="staff-cell">スタッフ</th>';
+    for (let i = 0; i < span; i++) {
+        const d = new Date(currentSlot.startDate); d.setDate(d.getDate() + i);
+        const ymd = formatDateJST(d);
+        const cal = calendarData[ymd] || {};
+        const isHoliday = cal.is_holiday;
+        const isOff = cal.type === 'off';
+        
+        header.innerHTML += `
+            <th class="date-hdr ${isHoliday ? 'is-holiday' : ''} ${isOff ? 'is-off-column' : ''}">
+                <div class="date-num">${d.getDate()}</div>
+                <div class="weekday">${['日','月','火','水','木','金','土'][d.getDay()]}</div>
+                ${isHoliday ? `<div class="holiday-name-hdr">${cal.label || '祝日'}</div>` : ''}
+                ${isOff ? `<div class="holiday-name-hdr">店休</div>` : ''}
+            </th>`;
+    }
+    
+    body.innerHTML = '';
+    
+    const roleOrder = { 'Manager': 0, '管理者': 1, 'Admin': 1, '一般社員': 2, 'Staff': 2, 'アルバイト': 3, 'PartTimer': 3 };
+    const list = [...allStoreUsers, ...helpUsers].sort((a, b) => {
+        const orderA = roleOrder[a.Role] ?? 99;
+        const orderB = roleOrder[b.Role] ?? 99;
+        if (orderA !== orderB) return orderA - orderB;
+        return (a.EmployeeCode || "").localeCompare(b.EmployeeCode || "");
+    });
+    
+    const roleMap = { 'Manager': '店長', 'Admin': '管理者', 'Staff': '一般社員', 'PartTimer': 'アルバイト' };
+    
+    list.forEach(u => {
+        const tr = document.createElement('tr');
+        const roleName = roleMap[u.Role] || u.Role || '';
+        let displayRole = u.JobTitle || roleName;
+        
+        tr.innerHTML = `<td class="staff-cell">
+            <div style="display:flex; flex-direction:column; justify-content:center; text-align:left; line-height:1.2;">
+                <div style="display:flex; align-items:center; gap:0.3rem;">
+                    <span style="font-weight:700; color: ${u.isHelp ? '#7c3aed' : 'inherit'};">${u.DisplayName || u.Name}</span>
+                </div>
+                ${displayRole ? `<div style="font-size:0.6rem; color:var(--text-secondary); font-weight:500; margin-top:0.1rem;">${displayRole}</div>` : ''}
+            </div>
+        </td>`;
+        
+        for (let i = 0; i < span; i++) {
+            const d = new Date(currentSlot.startDate); d.setDate(d.getDate() + i);
+            const ymd = formatDateJST(d);
+            const cal = calendarData[ymd] || {};
+            const isOff = cal.type === 'off';
+            
+            const sData = currentShifts[u.id]?.[ymd];
+            let cellHtml = '';
+            
+            if (sData && sData.start && sData.status !== 'rejected') {
+                const isConfirmed = sData.status === 'confirmed';
+                const stampHtml = isConfirmed ? `<div class="official-stamp"><i class="fas fa-check-circle"></i></div>` : '';
+                cellHtml = `
+                    <div class="shift-box ${isConfirmed ? '' : 'applied'}" style="font-size: 0.65rem; padding: 2px;">
+                        ${stampHtml}
+                        <div>${sData.start}-${sData.end}</div>
+                    </div>
+                `;
+            } else if (sData && sData.status === 'rejected' && showRejectedShifts) {
+                cellHtml = `
+                    <div class="shift-box rejected-hope" style="font-size: 0.6rem; padding: 2px;">
+                        <div style="opacity: 0.8;"><i class="fas fa-eye-slash"></i> 削り</div>
+                        <div>${sData.hopeStart || '17:00'}-${sData.hopeEnd || '22:00'}</div>
+                    </div>
+                `;
+            }
+            
+            tr.innerHTML += `<td class="shift-cell ${isOff ? 'is-off-column' : ''}" style="height: 48px; pointer-events: none;">${cellHtml}</td>`;
+        }
+        body.appendChild(tr);
+    });
 }
 
