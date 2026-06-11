@@ -1,5 +1,4 @@
-import { db } from './firebase.js';
-import { collection, getDocs, query, where, doc, getDoc, setDoc, updateDoc, deleteDoc, writeBatch, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { db, collection, getDocs, query, where, doc, getDoc, setDoc, updateDoc, deleteDoc, writeBatch, orderBy, limit } from './firebase.js';
 import { showAlert, showConfirm, showLoader } from './ui_utils.js';
 import { 
     currentSlot, currentShifts, currentTargetUser, allStoreUsers, helpUsers, 
@@ -43,7 +42,7 @@ export const shiftAdminMobilePageHtml = `
                 </div>
                 <div id="hourly-bars-container-mobile" style="display:flex; align-items:flex-end; gap:4px; height:120px; padding-bottom:10px; border-bottom:1px solid var(--border);"></div>
                 <div style="display:flex; gap:4px; margin-top:5px;">
-                    \${Array.from({length:24}).map((_,i) => `<div style="flex:1; text-align:center; font-size:0.6rem; color:var(--text-secondary);">\${i}</div>`).join('')}
+                    ${Array.from({length:24}).map((_,i) => '<div style="flex:1; text-align:center; font-size:0.6rem; color:var(--text-secondary);">' + i + '</div>').join('')}
                 </div>
             </div>
             <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">

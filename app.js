@@ -1,6 +1,5 @@
-import { auth, db } from './firebase.js';
+import { auth, db, collection, getDocs, query, where, getDoc, doc, updateDoc, serverTimestamp, onSnapshot } from './firebase.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { collection, getDocs, query, where, getDoc, doc, updateDoc, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { MENU_DEFINITION, getPageParentMap, getAllPermissionIds } from './menu_definition.js';
 
 // 各ページのインポート
