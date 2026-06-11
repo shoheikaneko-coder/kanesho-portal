@@ -3,7 +3,7 @@ import { showAlert, showConfirm, showLoader } from './ui_utils.js';
 import { 
     currentSlot, currentShifts, currentTargetUser, allStoreUsers, helpUsers, 
     globalShiftMap, isBulkMode, selectedCells, dailyGoalSales, adminMode, 
-    calendarData, loadShiftMemo, saveShiftMemo, loadStoreStaff, 
+    calendarData, loadShiftMemo, saveShiftMemo, loadStoreStaff, loadDailyMemos, 
     loadShiftsBatch, loadDailyGoalData, renderAdminGrid, updateOverallKPIs, 
     publishShifts, shareShiftToLine, formatDateJST, fetchCalendarData, 
     openHelpStaffModal, applyFixedSchedules, calculateSlot, getRollingSlots,
@@ -14,15 +14,18 @@ import {
 export const shiftAdminMobilePageHtml = `
     <div class="animate-fade-in" id="shift-admin-container-mobile" style="max-width: 100%; margin: 0 auto; padding-bottom: 80px;">
         
-        <!-- モバイル専用：ヘッダー・店舗表示 -->
-        <div class="mobile-only" style="padding: 0.8rem 1rem; background: white; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100;">
-            <div style="display: flex; flex-direction: column; gap: 0.2rem;">
-                <div id="admin-active-store-mobile" style="font-weight: 800; color: var(--primary); font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;">📍 店舗読み込み中...</div>
-                <div id="admin-28h-alerts-mobile" style="display: none; font-size: 0.65rem; color: #ef4444; font-weight: 700; background: #fee2e2; padding: 0.1rem 0.4rem; border-radius: 4px; width: fit-content;" onclick="window.show28hAlertDetailsMobile()">⚠️ 超過あり</div>
-            </div>
+        <!-- モバイル専用：操作バナー (高さを抑え、メニューボタンをここに集約、削り希望を日本語ボタン化) -->
+        <div class="mobile-only" style="padding: 0.4rem 0.8rem; background: white; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; gap: 0.5rem;">
+            <!-- 左側: メニューボタンと警告表示 -->
             <div style="display: flex; gap: 0.4rem; align-items: center;">
-                <button id="btn-landscape-preview-trigger-mobile" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.6rem; font-size: 0.75rem; font-weight: 700; background: var(--secondary); color: white; border: none; border-radius: 6px;"><i class="fas fa-search-plus"></i> プレビュー</button>
-                <button id="btn-toggle-rejected-mobile" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.6rem; background: transparent; color: var(--text-secondary); border: 1px solid var(--border);"><i class="fas fa-eye-slash"></i></button>
+                <button id="btn-open-action-menu-mobile" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.6rem; font-weight: 800; border-radius: 6px; font-size: 0.75rem; background: var(--secondary); color: white; border: none;"><i class="fas fa-cog"></i> メニュー</button>
+                <div id="admin-28h-alerts-mobile" style="display: none; font-size: 0.65rem; color: #ef4444; font-weight: 700; background: #fee2e2; padding: 0.2rem 0.4rem; border-radius: 4px; white-space: nowrap;" onclick="window.show28hAlertDetailsMobile()">⚠️ 超過</div>
+            </div>
+            
+            <!-- 右側: 削り希望確認ボタンとプレビューボタン -->
+            <div style="display: flex; gap: 0.4rem; align-items: center;">
+                <button id="btn-toggle-rejected-mobile" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.6rem; font-size: 0.75rem; font-weight: 700; background: transparent; color: var(--text-secondary); border: 1px solid var(--border); border-radius: 6px;">削った希望を確認</button>
+                <button id="btn-landscape-preview-trigger-mobile" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.6rem; font-size: 0.75rem; font-weight: 700; background: var(--primary); color: white; border: none; border-radius: 6px;"><i class="fas fa-search-plus"></i> プレビュー</button>
             </div>
         </div>
 
@@ -54,14 +57,13 @@ export const shiftAdminMobilePageHtml = `
             </div>
         </div>
 
-        <!-- 【スマホ専用】下部フローティング固定バー -->
+        <!-- 【スマホ専用】下部フローティング固定バー (メニューを削除し、KPI情報を中央寄せ) -->
         <div id="admin-mobile-bottom-bar-mobile" class="bottom-bar-fixed-mobile">
             <!-- 通常モード時のバー表示 -->
-            <div id="bottom-bar-normal-content-mobile" class="bar-content-mobile-row">
-                <button id="btn-open-action-menu-mobile" class="btn btn-secondary btn-sm" style="padding: 0.5rem 0.8rem; font-weight: 800; border-radius: 8px; font-size: 0.8rem;"><i class="fas fa-cog"></i> メニュー</button>
-                <div id="bottom-bar-kpi-info-mobile" style="text-align: right; line-height: 1.3;">
-                    <div style="font-size: 0.65rem; color: var(--text-secondary); font-weight: 700;" id="bottom-bar-active-date-label-mobile">日付選択なし</div>
-                    <div style="font-size: 0.8rem; font-weight: 800; color: var(--primary);" id="bottom-bar-active-kpi-label-mobile">SPH: - / 目標: -</div>
+            <div id="bottom-bar-normal-content-mobile" class="bar-content-mobile-row" style="justify-content: center; text-align: center;">
+                <div id="bottom-bar-kpi-info-mobile" style="line-height: 1.4; display: flex; align-items: center; justify-content: center; gap: 0.75rem;">
+                    <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700;" id="bottom-bar-active-date-label-mobile">日付選択なし</span>
+                    <span style="font-size: 0.8rem; font-weight: 800; color: var(--primary);" id="bottom-bar-active-kpi-label-mobile">SPH: - / 目標: -</span>
                 </div>
             </div>
             <!-- 一括選択モード時のバー表示 -->
@@ -199,9 +201,12 @@ export async function initShiftAdminMobilePage() {
         });
         
         pageTitleMobile.innerHTML = `
-            <select id="admin-slot-select-mobile" style="font-size: 0.9rem; padding: 0.2rem 0.5rem; border-radius: 6px; border: 1px solid var(--border); font-weight: 800; background: white; color: var(--primary);">
-                ${optionsHtml}
-            </select>
+            <div class="mobile-title-container-custom" style="display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 0.1rem 0.5rem; background: white; gap: 0.5rem;">
+                <div id="admin-active-store-mobile" style="font-weight: 800; color: var(--primary); font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px;">📍 店舗読み込み中...</div>
+                <select id="admin-slot-select-mobile" style="font-size: 0.85rem; padding: 0.2rem 0.4rem; border-radius: 6px; border: 1px solid var(--border); font-weight: 800; background: white; color: var(--primary);">
+                    ${optionsHtml}
+                </select>
+            </div>
         `;
 
         const slotSelect = document.getElementById('admin-slot-select-mobile');
@@ -240,7 +245,8 @@ export async function initShiftAdminMobilePage() {
         await loadStoreStaff(sid, storeName);
         await Promise.all([
             loadShiftsBatch(sid),
-            loadShiftMemo(sid)
+            loadShiftMemo(sid),
+            loadDailyMemos(sid, currentSlot.startDate, currentSlot.endDate)
         ]);
         
         await renderAdminGridMobile(); 
@@ -1217,13 +1223,23 @@ export function injectStylesMobile() {
             border-radius: 24px 24px 0 0;
             box-shadow: 0 -10px 40px rgba(15, 23, 42, 0.15);
             transform: translateY(100%);
-            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            visibility: hidden;
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.35s;
             z-index: 10002;
             padding: 1.5rem;
             padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
         }
         .bottom-sheet.show {
             transform: translateY(0);
+            visibility: visible;
+        }
+        #shift-admin-table-mobile {
+            border-collapse: separate !important;
+            border-spacing: 0 !important;
+        }
+        #shift-admin-table-mobile th, #shift-admin-table-mobile td {
+            border: 1px solid #e2e8f0 !important;
+            text-align: center;
         }
         .sheet-handle {
             width: 40px;
