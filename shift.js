@@ -1376,6 +1376,7 @@ export async function loadShiftMemo(sid) {
     const memoId = `${sid}_${currentSlot.year}_${currentSlot.month}_${currentSlot.slot}`;
     const snap = await getDoc(doc(db, "t_shift_memos", memoId));
     const memoText = snap.exists() ? snap.data().memo : "";
+    window.currentMobileMemo = memoText;
     const el = document.getElementById('admin-shift-memo');
     if (el) el.value = memoText;
 }
@@ -1386,12 +1387,14 @@ export async function saveShiftMemo() {
     if (!sid) return;
     
     const el = document.getElementById('admin-shift-memo');
-    const memo = el ? el.value : "";
+    const memo = el ? el.value : (window.currentMobileMemo || "");
     const memoId = `${sid}_${currentSlot.year}_${currentSlot.month}_${currentSlot.slot}`;
     
     const btn = document.getElementById('btn-save-memo');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    }
 
     try {
         await setDoc(doc(db, "t_shift_memos", memoId), {
@@ -1404,8 +1407,10 @@ export async function saveShiftMemo() {
         console.error(e);
         showAlert('エラー', 'メモの保存に失敗しました。');
     } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-save"></i> 保存';
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> 保存';
+        }
     }
 }
 
@@ -1613,6 +1618,10 @@ export async function loadDailyGoalData(sid) {
 }
 
 export function renderAdminGrid() {
+    if (window.innerWidth < 768 && typeof window.renderAdminGridMobile === 'function') {
+        window.renderAdminGridMobile();
+        return;
+    }
     const body = document.getElementById('admin-table-body');
     const header = document.getElementById('admin-table-header');
     if (!header || !body) return;
@@ -1819,7 +1828,11 @@ async function renderSubmissionGrid() {
     }
 }
 
-function renderCellUI(uid, date, data) {
+export function renderCellUI(uid, date, data) {
+    if (window.innerWidth < 768 && typeof window.renderCellUIMobile === 'function') {
+        window.renderCellUIMobile(uid, date, data);
+        return;
+    }
     const cell = document.getElementById(`cell-${uid}-${date}`);
     const mobileCell = document.getElementById(`cell-mobile-${uid}-${date}`);
     
@@ -1898,6 +1911,10 @@ function renderCellUI(uid, date, data) {
  * 【スマホ専用】ライブヘッダーの描画同期 (Cockpit v2)
  */
 window.updateMobileLiveHeader = (ymd) => {
+    if (window.innerWidth < 768 && typeof window.updateMobileLiveHeaderMobile === 'function') {
+        window.updateMobileLiveHeaderMobile(ymd);
+        return;
+    }
     const liveHeader = document.getElementById('admin-mobile-live-header');
     if (!liveHeader || window.innerWidth > 1024) return;
 
@@ -2106,6 +2123,10 @@ window.hideViewerMemoTooltip = () => {
 };
 
 window.openTimeInput = async (date, uid) => {
+    if (window.innerWidth < 768 && typeof window.openTimeInputMobile === 'function') {
+        window.openTimeInputMobile(date, uid);
+        return;
+    }
     const isMobile = window.innerWidth <= 1024;
     window.currentEditingUid = uid;
     window.currentEditingDate = date;
@@ -2361,7 +2382,7 @@ window.closeAdminBottomSheet = () => {
     window.currentEditingDate = null;
 };
 
-async function applyShiftUpdate(uid, date, data) {
+export async function applyShiftUpdate(uid, date, data) {
     const user = [...allStoreUsers, ...helpUsers].find(u => u.id === uid);
     const me = JSON.parse(localStorage.getItem('currentUser'));
     const adminMode = document.getElementById('admin-table-body') ? true : false;
@@ -2486,7 +2507,7 @@ window.quickSetTime = (type, val) => {
     if (mEl) mEl.value = m.padStart(2, '0');
 };
 
-async function checkDoubleBooking(uid, date, s, e) {
+export async function checkDoubleBooking(uid, date, s, e) {
     const q = query(collection(db, "t_shifts"), where("userId", "==", uid), where("date", "==", date), where("status", "==", "confirmed"));
     const snap = await getDocs(q);
     let conflict = null;
@@ -2502,6 +2523,10 @@ async function checkDoubleBooking(uid, date, s, e) {
 }
 
 export function updateOverallKPIs() {
+    if (window.innerWidth < 768 && typeof window.updateOverallKPIsMobile === 'function') {
+        window.updateOverallKPIsMobile();
+        return;
+    }
     let hours = 0, target = 0;
     const users = [...allStoreUsers, ...helpUsers];
     const startDateStr = formatDateJST(currentSlot.startDate);
