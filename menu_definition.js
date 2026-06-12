@@ -128,6 +128,29 @@ export const MENU_DEFINITION = [
         ]
     },
     {
+        id: 'application_hub',
+        name: '各種申請',
+        icon: 'fa-file-signature',
+        type: 'hub',
+        desc: '各種申請の手続き・履歴確認',
+        sections: [
+            {
+                title: '労務・身上関連',
+                icon: 'fa-address-card',
+                items: [
+                    { id: 'address_change', name: '住所変更申請', icon: 'fa-map-marker-alt', color: '#3b82f6', desc: '引越し等に伴う住所・通勤経路の変更申請' }
+                ]
+            },
+            {
+                title: '入退社・契約関連',
+                icon: 'fa-handshake',
+                items: [
+                    { id: 'new_hire_application', name: '新規アルバイト入社申請', icon: 'fa-user-plus', color: '#10b981', desc: '新規スタッフの採用・入社手続き申請' }
+                ]
+            }
+        ]
+    },
+    {
         id: 'utility_hub',
         name: '便利機能',
         icon: 'fa-lightbulb',

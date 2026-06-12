@@ -49,6 +49,7 @@ import { gradesPageHtml, initGradesPage } from './grades.js';
 import { skillsPageHtml, initSkillsPage } from './skills.js';
 import { evaluationPageHtml, initEvaluationPage } from './evaluation.js';
 import { myPageHtml, initMyPage } from './my_page.js';
+import { addressChangePageHtml, initAddressChangePage, newHirePageHtml, initNewHirePage } from './applications.js';
 
 
 
@@ -699,6 +700,7 @@ async function showPage(target) {
                 pageContent.innerHTML = bottleKeepPageHtml;
                 initBottleKeepPage();
                 break;
+            case 'application_hub':
             case 'special_hub':
             case 'utility_hub':
                 const dynamicHubDef = MENU_DEFINITION.find(h => h.id === target);
@@ -737,6 +739,16 @@ async function showPage(target) {
                 updateHeaderTitle('マイページ');
                 pageContent.innerHTML = myPageHtml;
                 initMyPage();
+                break;
+            case 'address_change':
+                updateHeaderTitle('住所変更申請');
+                pageContent.innerHTML = addressChangePageHtml;
+                initAddressChangePage();
+                break;
+            case 'new_hire_application':
+                updateHeaderTitle('新規アルバイト入社申請');
+                pageContent.innerHTML = newHirePageHtml;
+                initNewHirePage();
                 break;
         }
 
