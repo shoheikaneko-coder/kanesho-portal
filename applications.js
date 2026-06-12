@@ -84,8 +84,12 @@ async function loadApplicationHistory(applicationType, containerId) {
    住所変更申請 (Address Change)
    ========================================== */
 export const addressChangePageHtml = `
-<div class="animate-fade-in" style="max-width: 1000px; margin: 0 auto;">
-    <div style="display: grid; grid-template-columns: 1fr; gap: 2rem;">
+<div class="animate-fade-in" style="max-width: 750px; margin: 0 auto; box-sizing: border-box;">
+    <style>
+        #address-change-form * { box-sizing: border-box; }
+        #move-date { max-width: 200px !important; }
+    </style>
+    <div style="display: grid; grid-template-columns: 1fr; gap: 2rem; box-sizing: border-box;">
         
         <!-- 申請フォーム -->
         <div class="glass-panel" style="padding: 2.5rem;">
@@ -202,8 +206,14 @@ export async function initAddressChangePage() {
    新規アルバイト入社申請 (New Hire)
    ========================================== */
 export const newHirePageHtml = `
-<div class="animate-fade-in" style="max-width: 1000px; margin: 0 auto;">
-    <div style="display: grid; grid-template-columns: 1fr; gap: 2rem;">
+<div class="animate-fade-in" style="max-width: 750px; margin: 0 auto; box-sizing: border-box;">
+    <style>
+        #new-hire-form * { box-sizing: border-box; }
+        #nh-clock-pw { max-width: 150px !important; }
+        #nh-wage { max-width: 150px !important; }
+        #nh-date { max-width: 200px !important; }
+    </style>
+    <div style="display: grid; grid-template-columns: 1fr; gap: 2rem; box-sizing: border-box;">
         
         <!-- 申請フォーム -->
         <div class="glass-panel" style="padding: 2.5rem; border-top: 4px solid #10b981;">
