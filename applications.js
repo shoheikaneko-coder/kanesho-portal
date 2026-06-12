@@ -216,14 +216,50 @@ export const newHirePageHtml = `
             </p>
 
             <form id="new-hire-form" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                <!-- 姓名 -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
                     <div>
-                        <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">氏名（漢字） <span style="color: red;">*</span></label>
-                        <input type="text" id="nh-name" required placeholder="例: かね将 太郎" class="form-input" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">姓（漢字） <span style="color: red;">*</span></label>
+                        <input type="text" id="nh-lastname" required placeholder="例: 山田" class="form-input" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
                     </div>
                     <div>
-                        <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">フリガナ <span style="color: red;">*</span></label>
-                        <input type="text" id="nh-kana" required placeholder="例: カネショウ タロウ" class="form-input" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">名（漢字） <span style="color: red;">*</span></label>
+                        <input type="text" id="nh-firstname" required placeholder="例: 太郎" class="form-input" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
+                    </div>
+                </div>
+                <!-- フリガナ -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                    <div>
+                        <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">姓（フリガナ） <span style="color: red;">*</span></label>
+                        <input type="text" id="nh-lastkana" required placeholder="例: ヤマダ" class="form-input" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
+                    </div>
+                    <div>
+                        <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">名（フリガナ） <span style="color: red;">*</span></label>
+                        <input type="text" id="nh-firstkana" required placeholder="例: タロウ" class="form-input" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                    <div>
+                        <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">メールアドレス (ログインID兼用) <span style="color: red;">*</span></label>
+                        <input type="email" id="nh-email" required placeholder="例: example@kaneshow.jp" class="form-input" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
+                    </div>
+                    <div>
+                        <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">電話番号 <span style="color: red;">*</span></label>
+                        <input type="tel" id="nh-phone" required placeholder="例: 090-XXXX-XXXX" class="form-input" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; background: #f8fafc; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border);">
+                    <div>
+                        <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">ログインパスワード <span style="color: red;">*</span></label>
+                        <input type="text" id="nh-login-pw" required placeholder="メールアドレスと同じ" class="form-input" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
+                        <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; margin-bottom: 0;">※デフォルトはメールアドレス</p>
+                    </div>
+                    <div>
+                        <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">打刻パスワード (数字4桁) <span style="color: red;">*</span></label>
+                        <input type="text" id="nh-clock-pw" required value="1111" maxlength="4" class="form-input" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px; font-family: monospace; letter-spacing: 0.2em;">
+                        <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; margin-bottom: 0;">※デフォルトは 1111</p>
                     </div>
                 </div>
 
@@ -240,11 +276,6 @@ export const newHirePageHtml = `
                         <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">入社予定日 <span style="color: red;">*</span></label>
                         <input type="date" id="nh-date" required class="form-input" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
                     </div>
-                </div>
-
-                <div>
-                    <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">連絡先（電話番号またはメールアドレス） <span style="color: red;">*</span></label>
-                    <input type="text" id="nh-contact" required placeholder="例: 090-XXXX-XXXX" class="form-input" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
                 </div>
 
                 <div>
@@ -301,20 +332,36 @@ export async function initNewHirePage() {
         console.warn("Failed to load stores for dropdown", e);
     }
 
+    // メールアドレス入力時にログインパスワードに自動セット
+    const emailInput = document.getElementById('nh-email');
+    const loginPwInput = document.getElementById('nh-login-pw');
+    if (emailInput && loginPwInput) {
+        emailInput.addEventListener('input', () => {
+            loginPwInput.value = emailInput.value;
+        });
+    }
+
     form.onsubmit = async (e) => {
         e.preventDefault();
         const currentUser = window.appState?.currentUser;
         if (!currentUser) return alert("ユーザーエラー");
 
-        const name = document.getElementById('nh-name').value;
-        const kana = document.getElementById('nh-kana').value;
+        const lastName = document.getElementById('nh-lastname').value;
+        const firstName = document.getElementById('nh-firstname').value;
+        const lastKana = document.getElementById('nh-lastkana').value;
+        const firstKana = document.getElementById('nh-firstkana').value;
+        const email = document.getElementById('nh-email').value;
+        const phone = document.getElementById('nh-phone').value;
+        const loginPw = document.getElementById('nh-login-pw').value;
+        const clockPw = document.getElementById('nh-clock-pw').value;
         const store = document.getElementById('nh-store').value;
         const date = document.getElementById('nh-date').value;
-        const contact = document.getElementById('nh-contact').value;
         const wage = document.getElementById('nh-wage').value;
         const notes = document.getElementById('nh-notes').value;
 
-        if(!confirm(`${name} さんの入社申請を送信しますか？`)) return;
+        const fullName = `${lastName} ${firstName}`;
+
+        if(!confirm(`${fullName} さんの入社申請を送信しますか？`)) return;
 
         btnSubmit.disabled = true;
         btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 送信中...';
@@ -327,11 +374,16 @@ export async function initNewHirePage() {
                 status: '承認待ち',
                 createdAt: serverTimestamp(),
                 details: {
-                    '氏名': name,
-                    'フリガナ': kana,
+                    '氏名': fullName,
+                    'フリガナ': `${lastKana} ${firstKana}`,
+                    '姓': lastName,
+                    '名': firstName,
+                    'メールアドレス': email,
+                    '電話番号': phone,
+                    'ログインPW': loginPw,
+                    '打刻PW': clockPw,
                     '所属予定店舗': store,
                     '入社予定日': date,
-                    '連絡先': contact,
                     '初期時給': wage + '円',
                     '備考': notes || '-'
                 }
