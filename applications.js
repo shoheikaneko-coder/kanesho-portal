@@ -1,4 +1,4 @@
-import { db, collection, addDoc, getDocs, query, where, orderBy, serverTimestamp, storage } from './firebase.js';
+import { db, collection, addDoc, getDocs, query, where, orderBy, serverTimestamp, storage, updateDoc, doc, getDoc } from './firebase.js';
 import { ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
 
 /* ==========================================
@@ -79,6 +79,174 @@ async function loadApplicationHistory(applicationType, containerId) {
         }
     }
 }
+
+// ==========================================
+// 管理者用: 承認待ち入社申請の一覧と承認処理
+// ==========================================
+async function loadAdminNewHireApplications() {
+    const currentUser = window.appState?.currentUser;
+    if (!currentUser || (currentUser.Role !== 'Admin' && currentUser.Role !== '管理者')) return;
+
+    // 履歴セクションの親要素を取得
+    const historyContainer = document.getElementById('nh-history-container');
+    if (!historyContainer) return;
+    const parentContainer = historyContainer.parentElement.parentElement;
+
+    // すでに存在する場合は削除
+    const existing = document.getElementById('admin-nh-section');
+    if (existing) existing.remove();
+
+    const adminSection = document.createElement('div');
+    adminSection.id = 'admin-nh-section';
+    adminSection.className = 'glass-panel';
+    adminSection.style.padding = '2.5rem';
+    adminSection.style.marginBottom = '2rem';
+    adminSection.style.background = 'rgba(239, 246, 255, 0.8)';
+    adminSection.style.border = '1px solid #bfdbfe';
+    adminSection.innerHTML = `
+        <h3 style="margin-top: 0; margin-bottom: 1.5rem; font-size: 1.2rem; color: #1e3a8a;">
+            <i class="fas fa-check-double" style="margin-right: 0.5rem; color: #3b82f6;"></i> 【管理者専用】承認待ちの入社申請
+        </h3>
+        <div id="admin-nh-list"><div style="text-align: center; padding: 1rem;"><i class="fas fa-spinner fa-spin"></i> 読み込み中...</div></div>
+    `;
+    
+    // 履歴コンテナ（glass-panel）の直前に挿入
+    parentContainer.insertBefore(adminSection, historyContainer.parentElement);
+
+    const listDiv = document.getElementById('admin-nh-list');
+    
+    try {
+        const q = query(
+            collection(db, "t_applications"),
+            where("type", "==", "new_hire"),
+            where("status", "==", "承認待ち"),
+            orderBy("createdAt", "desc")
+        );
+        const snap = await getDocs(q);
+
+        if (snap.empty) {
+            listDiv.innerHTML = '<p style="color: #64748b; text-align: center; padding: 1rem;">現在、承認待ちの入社申請はありません。</p>';
+            return;
+        }
+
+        let html = '<div style="display: flex; flex-direction: column; gap: 1rem;">';
+        snap.forEach(docSnap => {
+            const data = docSnap.data();
+            const dateStr = data.createdAt ? new Date(data.createdAt.toMillis()).toLocaleString('ja-JP') : '日時不明';
+            const appId = docSnap.id;
+            
+            // 添付書類のリンク生成
+            let docsHtml = '';
+            if (data.documents) {
+                docsHtml += '<div style="margin-top: 1rem; padding: 1rem; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">';
+                docsHtml += '<h4 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: #475569;">📁 添付書類</h4>';
+                docsHtml += '<ul style="margin: 0; padding-left: 1.5rem; font-size: 0.9rem; color: #3b82f6; line-height: 1.8;">';
+                
+                if (data.documents.id_cards && data.documents.id_cards[0]) {
+                    docsHtml += `<li><a href="${data.documents.id_cards[0].url}" target="_blank" style="color: #3b82f6; text-decoration: none; font-weight: bold;"><i class="fas fa-external-link-alt"></i> 身分証 (住所確認用)</a></li>`;
+                }
+                if (data.documents.bank_cards && data.documents.bank_cards[0]) {
+                    docsHtml += `<li><a href="${data.documents.bank_cards[0].url}" target="_blank" style="color: #3b82f6; text-decoration: none; font-weight: bold;"><i class="fas fa-external-link-alt"></i> 通帳/キャッシュカード</a></li>`;
+                }
+                if (data.documents.residence_cards && data.documents.residence_cards[0]) {
+                    const rc = data.documents.residence_cards[0];
+                    if (rc.front_url) docsHtml += `<li><a href="${rc.front_url}" target="_blank" style="color: #3b82f6; text-decoration: none; font-weight: bold;"><i class="fas fa-external-link-alt"></i> 在留カード (表) <span style="color: #ef4444; margin-left: 0.5rem;">[期限: ${rc.expire_date || '未設定'}]</span></a></li>`;
+                    if (rc.back_url) docsHtml += `<li><a href="${rc.back_url}" target="_blank" style="color: #3b82f6; text-decoration: none; font-weight: bold;"><i class="fas fa-external-link-alt"></i> 在留カード (裏)</a></li>`;
+                }
+                if (data.documents.designation_certs && data.documents.designation_certs[0]) {
+                    docsHtml += `<li><a href="${data.documents.designation_certs[0].url}" target="_blank" style="color: #3b82f6; text-decoration: none; font-weight: bold;"><i class="fas fa-external-link-alt"></i> 指定書</a></li>`;
+                }
+                docsHtml += '</ul></div>';
+            }
+
+            const details = Object.entries(data.details || {})
+                .map(([key, val]) => `<div style="margin-bottom: 0.3rem;"><span style="color: #64748b; display: inline-block; width: 120px;">${key}:</span> <strong>${val}</strong></div>`)
+                .join('');
+
+            html += `
+                <div style="background: white; border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                        <div>
+                            <span style="background: #fef08a; color: #854d0e; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: bold; margin-bottom: 0.5rem; display: inline-block;">承認待ち</span>
+                            <div style="font-size: 1.1rem; font-weight: bold;">${data.details['氏名'] || '名称不明'}</div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary);"><i class="fas fa-store"></i> 店舗: ${data.details['所属予定店舗'] || '-'} / <i class="fas fa-user-edit"></i> 申請者: ${data.applicantName} / <i class="far fa-clock"></i> ${dateStr}</div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; font-size: 0.95rem; margin-bottom: 1rem;">
+                        ${details}
+                    </div>
+                    
+                    ${docsHtml}
+
+                    <div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
+                        <button class="btn btn-primary" onclick="window.approveNewHire('${appId}')" style="flex: 1; padding: 0.8rem; background: #10b981; border-color: #10b981; font-weight: bold;">
+                            <i class="fas fa-check-circle"></i> この内容を承認し、従業員マスタに登録する
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        listDiv.innerHTML = html;
+
+    } catch (e) {
+        console.error(e);
+        listDiv.innerHTML = '<p style="color: red;">読み込みに失敗しました。</p>';
+    }
+}
+
+// 承認処理（グローバル関数化してHTMLから呼べるようにする）
+window.approveNewHire = async (appId) => {
+    if (!confirm("この内容を承認し、従業員マスタに新規登録しますか？\\n※添付された書類も同時にマスタへ結合されます。")) return;
+
+    try {
+        const appRef = doc(db, "t_applications", appId);
+        const appSnap = await getDoc(appRef);
+        if (!appSnap.exists()) throw new Error("申請データが見つかりません");
+        const data = appSnap.data();
+
+        // m_users へ登録するデータ構造を作成
+        const newUserData = {
+            EmployeeCode: "", // 手動または別ロジックで採番
+            Name: data.details['氏名'] || "",
+            LastName: data.details['姓'] || "",
+            FirstName: data.details['名'] || "",
+            Nickname: data.details['ニックネーム'] || "",
+            Email: data.details['メールアドレス'] || "",
+            Phone: data.details['電話番号'] || "",
+            Role: "Staff", // デフォルトでアルバイトスタッフ
+            StoreId: data.details['所属予定店舗'] || "",
+            Status: "在職中",
+            HireDate: data.details['入社予定日'] || "",
+            Notes: data.details['備考'] || "",
+            foreign_staff: {
+                is_foreign: data.details['VISA期限'] && data.details['VISA期限'] !== '-',
+                visa_expiry: data.details['VISA期限'] !== '-' ? data.details['VISA期限'] : "",
+                limit_28h: data.details['28時間制限'] === 'あり'
+            },
+            documents: data.documents || {}, // ここで画像を履歴として結合
+            createdAt: serverTimestamp()
+        };
+
+        await addDoc(collection(db, "m_users"), newUserData);
+
+        // 申請のステータスを更新
+        await updateDoc(appRef, {
+            status: "承認済",
+            processedAt: serverTimestamp(),
+            processedBy: window.appState?.currentUser?.id || "system"
+        });
+
+        alert("承認とマスタへの登録が完了しました！");
+        // 一覧を再読み込み
+        loadAdminNewHireApplications();
+        loadApplicationHistory('new_hire', 'nh-history-container');
+    } catch (e) {
+        console.error(e);
+        alert("エラーが発生しました: " + e.message);
+    }
+};
 
 
 /* ==========================================

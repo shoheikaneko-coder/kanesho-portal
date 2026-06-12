@@ -183,6 +183,9 @@ function renderFormView(container) {
                         <div class="user-nav-link" data-target="sec-visa">
                             <i class="fas fa-globe" style="width: 18px; text-align: center;"></i>外国人スタッフ
                         </div>
+                        <div class="user-nav-link" data-target="sec-files">
+                            <i class="fas fa-folder-open" style="width: 18px; text-align: center;"></i>各種ファイル
+                        </div>
                         ${isEdit ? `
                         <div class="user-nav-link" data-target="sec-share">
                             <i class="fas fa-share-alt" style="width: 18px; text-align: center;"></i>設定情報の共有
@@ -327,6 +330,16 @@ function renderFormView(container) {
                             </div>
                         </div>
 
+                        <!-- 各種ファイル（提出書類）カード -->
+                        <div id="sec-files" class="glass-panel" style="padding: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                            <h4 style="margin-top: 0; margin-bottom: 1.2rem; color: #334155; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.8rem; font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-folder-open" style="color: #64748b;"></i> 各種ファイル（提出書類）
+                            </h4>
+                            <div id="user-documents-container" style="display: flex; flex-direction: column; gap: 1rem;">
+                                <p style="color: var(--text-secondary); font-size: 0.9rem; text-align: center; padding: 1rem;">ファイルが存在しません</p>
+                            </div>
+                        </div>
+
                         <!-- 操作案内ツール (編集時のみ) -->
                         <div id="sec-share" style="display: ${isEdit ? 'block' : 'none'}; border: 1px dashed #cbd5e1; border-radius: 12px; padding: 1.5rem; background: white;">
                             <p style="font-size: 0.9rem; font-weight: 700; margin-top: 0; margin-bottom: 1rem; color: #475569; display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-share-alt"></i> 設定情報の共有</p>
@@ -382,6 +395,11 @@ function renderFormView(container) {
             document.getElementById('user-visa-expiry').value = editingUserData.visa_expiry_date || '';
             document.getElementById('user-resignation-date').value = editingUserData.ResignationDate || '';
             document.getElementById('user-hire-date').value = editingUserData.HireDate || '';
+            
+            // 各種ファイルのレンダリング
+            if (editingUserData.documents) {
+                renderUserDocuments(editingUserData.documents);
+            }
         }
 
         const statusSel = document.getElementById('user-status');
@@ -425,7 +443,7 @@ function renderFormView(container) {
 
     const scrollContainer = document.querySelector('.page-content');
     if (scrollContainer) {
-        const sections = ['sec-basic', 'sec-affiliation', 'sec-account', 'sec-visa'];
+        const sections = ['sec-basic', 'sec-affiliation', 'sec-account', 'sec-visa', 'sec-files'];
         if (isEdit) sections.push('sec-share');
         
         const onScroll = () => {
@@ -456,6 +474,82 @@ function renderFormView(container) {
         scrollContainer.addEventListener('scroll', onScroll);
         activeScrollSpyListener = onScroll; // グローバルで保持して破棄可能にする
     }
+}
+
+// ユーザーのドキュメント（各種ファイル）をレンダリングする関数
+function renderUserDocuments(docs) {
+    const container = document.getElementById('user-documents-container');
+    if (!container) return;
+    
+    if (!docs || Object.keys(docs).length === 0) {
+        container.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.9rem; text-align: center; padding: 1rem;">ファイルが存在しません</p>';
+        return;
+    }
+
+    let html = '';
+
+    const renderFileLinks = (files, icon, label) => {
+        if (!files || files.length === 0) return '';
+        let sectionHtml = `<div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem;">`;
+        sectionHtml += `<h5 style="margin: 0 0 0.8rem 0; font-size: 0.95rem; color: #475569; display: flex; align-items: center; gap: 0.5rem;"><i class="${icon}"></i> ${label}</h5>`;
+        sectionHtml += `<div style="display: flex; flex-direction: column; gap: 0.5rem;">`;
+        
+        files.forEach((file, index) => {
+            const dateStr = file.uploaded_at ? new Date(file.uploaded_at).toLocaleDateString('ja-JP') : '';
+            const noteStr = file.note ? ` <span style="font-size: 0.8rem; color: #94a3b8; margin-left: 0.5rem;">(${file.note})</span>` : '';
+            
+            // 在留カード特有の項目
+            let extraInfo = '';
+            if (file.expire_date) {
+                extraInfo = ` <span style="font-size: 0.8rem; font-weight: bold; color: #ef4444; margin-left: 0.5rem;">[期限: ${file.expire_date}]</span>`;
+            }
+
+            const url = file.url || file.front_url || file.back_url;
+            if (!url) return;
+
+            sectionHtml += `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem; background: #f8fafc; border-radius: 6px; border: 1px solid #f1f5f9;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1;">
+                        <i class="far fa-file-image" style="color: #cbd5e1;"></i>
+                        <a href="${url}" target="_blank" style="color: #3b82f6; text-decoration: none; font-weight: 600; font-size: 0.9rem;">
+                            画像を確認 <i class="fas fa-external-link-alt" style="font-size: 0.8rem;"></i>
+                        </a>
+                        ${extraInfo}${noteStr}
+                    </div>
+                    <div style="font-size: 0.8rem; color: #94a3b8;">${dateStr}</div>
+                </div>
+            `;
+            
+            // 裏面がある場合（在留カード等）
+            if (file.back_url) {
+                sectionHtml += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem; background: #f8fafc; border-radius: 6px; border: 1px solid #f1f5f9;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1;">
+                            <i class="far fa-file-image" style="color: #cbd5e1;"></i>
+                            <a href="${file.back_url}" target="_blank" style="color: #3b82f6; text-decoration: none; font-weight: 600; font-size: 0.9rem;">
+                                画像を確認 (裏面) <i class="fas fa-external-link-alt" style="font-size: 0.8rem;"></i>
+                            </a>
+                            ${noteStr}
+                        </div>
+                        <div style="font-size: 0.8rem; color: #94a3b8;">${dateStr}</div>
+                    </div>
+                `;
+            }
+        });
+        sectionHtml += `</div></div>`;
+        return sectionHtml;
+    };
+
+    html += renderFileLinks(docs.id_cards, 'fas fa-id-card', '身分証 (住所確認用)');
+    html += renderFileLinks(docs.bank_cards, 'fas fa-money-check', '通帳 / キャッシュカード');
+    html += renderFileLinks(docs.residence_cards, 'fas fa-passport', '在留カード');
+    html += renderFileLinks(docs.designation_certs, 'fas fa-file-contract', '指定書');
+
+    if (!html) {
+        html = '<p style="color: var(--text-secondary); font-size: 0.9rem; text-align: center; padding: 1rem;">表示できるファイルがありません</p>';
+    }
+
+    container.innerHTML = html;
 }
 
 function setupFormLogic() {
