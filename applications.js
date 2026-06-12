@@ -1,4 +1,5 @@
-import { db, collection, addDoc, getDocs, query, where, orderBy, serverTimestamp } from './firebase.js';
+import { db, collection, addDoc, getDocs, query, where, orderBy, serverTimestamp, storage } from './firebase.js';
+import { ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
 
 /* ==========================================
    共通UI: 申請履歴表示コンポーネント
@@ -327,6 +328,41 @@ export const newHirePageHtml = `
                     <textarea id="nh-notes" rows="3" placeholder="週の希望シフト数や、特記事項があれば記入してください" class="form-input" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px; resize: vertical;"></textarea>
                 </div>
 
+                <!-- 画像アップロード枠 -->
+                <div style="margin-top: 1rem; border-top: 1px dashed var(--border); padding-top: 1.5rem;">
+                    <h3 style="font-size: 1.05rem; color: var(--text-primary); margin-bottom: 1rem;">添付書類（写真アップロード）</h3>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1rem;">スマホ等で撮影した写真をそのまま選択してください。自動で圧縮して安全に送信されます。</p>
+
+                    <div class="grid-2col" style="gap: 1.5rem;">
+                        <div>
+                            <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">1. 住所のわかる身分証 <span style="color: red;">*</span></label>
+                            <input type="file" id="nh-doc-id" accept="image/*" required class="form-input" style="width: 100%; padding: 0.5rem; border: 1px dashed #cbd5e1; border-radius: 8px; background: #f8fafc; font-size: 0.85rem;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">2. 給与振込先の通帳/キャッシュカード <span style="color: red;">*</span></label>
+                            <input type="file" id="nh-doc-bank" accept="image/*" required class="form-input" style="width: 100%; padding: 0.5rem; border: 1px dashed #cbd5e1; border-radius: 8px; background: #f8fafc; font-size: 0.85rem;">
+                        </div>
+                    </div>
+
+                    <div class="grid-2col" style="gap: 1.5rem; margin-top: 1.5rem; background: #fffbeb; padding: 1rem; border-radius: 8px; border: 1px solid #fcd34d;">
+                        <div style="grid-column: span 2;">
+                            <p style="font-size: 0.85rem; color: #b45309; font-weight: bold; margin: 0 0 0.5rem 0;">※外国籍スタッフの場合は以下も必ずアップロード</p>
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">3. 在留カード（表）</label>
+                            <input type="file" id="nh-doc-residence-front" accept="image/*" class="form-input" style="width: 100%; padding: 0.5rem; border: 1px dashed #cbd5e1; border-radius: 8px; background: white; font-size: 0.85rem;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">4. 在留カード（裏）</label>
+                            <input type="file" id="nh-doc-residence-back" accept="image/*" class="form-input" style="width: 100%; padding: 0.5rem; border: 1px dashed #cbd5e1; border-radius: 8px; background: white; font-size: 0.85rem;">
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">5. 指定書（就労許可の記載がない場合）</label>
+                            <input type="file" id="nh-doc-designation" accept="image/*" class="form-input" style="width: 100%; max-width: 300px; padding: 0.5rem; border: 1px dashed #cbd5e1; border-radius: 8px; background: white; font-size: 0.85rem;">
+                        </div>
+                    </div>
+                </div>
+
                 <div style="margin-top: 1rem; border-top: 1px dashed var(--border); padding-top: 1.5rem;">
                     <button type="submit" id="btn-submit-nh" class="btn btn-primary" style="width: 100%; max-width: 300px; padding: 1rem; font-size: 1.1rem; border-radius: 8px; margin: 0 auto; display: block; background: #10b981; border-color: #10b981;">
                         <i class="fas fa-paper-plane" style="margin-right: 0.5rem;"></i> 申請を送信する
@@ -346,6 +382,54 @@ export const newHirePageHtml = `
     </div>
 </div>
 `;
+
+// 画像圧縮ヘルパー（Promise）
+async function compressImage(file, maxWidth = 1200) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = event => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                if (width > maxWidth) {
+                    height = Math.round((height * maxWidth) / width);
+                    width = maxWidth;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                resolve(dataUrl);
+            };
+            img.onerror = error => reject(error);
+        };
+        reader.onerror = error => reject(error);
+    });
+}
+
+// ファイルアップロードヘルパー
+async function uploadCompressedImage(fileInputId, typeName, applicantName) {
+    const fileInput = document.getElementById(fileInputId);
+    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        return null;
+    }
+    const file = fileInput.files[0];
+    const dataUrl = await compressImage(file);
+    const timestamp = Date.now();
+    const safeName = applicantName.replace(/\\s+/g, '_');
+    const path = `applications/new_hire/${safeName}_${timestamp}_${typeName}.jpg`;
+    const storageRef = ref(storage, path);
+    
+    await uploadString(storageRef, dataUrl, 'data_url');
+    return await getDownloadURL(storageRef);
+}
 
 export async function initNewHirePage() {
     await loadApplicationHistory('new_hire', 'nh-history-container');
@@ -392,7 +476,9 @@ export async function initNewHirePage() {
         const clockPw = document.getElementById('nh-clock-pw').value;
         const store = document.getElementById('nh-store').value;
         const date = document.getElementById('nh-date').value;
-        const wage = document.getElementById('nh-wage').value;
+        const nickname = document.getElementById('nh-nickname')?.value || '';
+        const visaDate = document.getElementById('nh-visa-date')?.value || '';
+        const limit28h = document.getElementById('nh-limit-28h')?.checked ? 'あり' : 'なし';
         const notes = document.getElementById('nh-notes').value;
 
         const fullName = `${lastName} ${firstName}`;
@@ -400,18 +486,44 @@ export async function initNewHirePage() {
         if(!confirm(`${fullName} さんの入社申請を送信しますか？`)) return;
 
         btnSubmit.disabled = true;
-        btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 送信中...';
+        btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 送信中（写真圧縮・アップロード中...）';
 
         try {
+            // 画像の圧縮とアップロード
+            const idCardUrl = await uploadCompressedImage('nh-doc-id', 'id_card', fullName);
+            const bankCardUrl = await uploadCompressedImage('nh-doc-bank', 'bank_card', fullName);
+            const residenceFrontUrl = await uploadCompressedImage('nh-doc-residence-front', 'residence_front', fullName);
+            const residenceBackUrl = await uploadCompressedImage('nh-doc-residence-back', 'residence_back', fullName);
+            const designationUrl = await uploadCompressedImage('nh-doc-designation', 'designation', fullName);
+
+            const documents = {};
+            const uploadTime = new Date().toISOString();
+            if (idCardUrl) documents.id_cards = [{ url: idCardUrl, uploaded_at: uploadTime, note: "入社申請時" }];
+            if (bankCardUrl) documents.bank_cards = [{ url: bankCardUrl, uploaded_at: uploadTime, note: "入社申請時" }];
+            
+            // 在留カードは表裏とVISA期限をセットにする
+            if (residenceFrontUrl || residenceBackUrl) {
+                documents.residence_cards = [{
+                    front_url: residenceFrontUrl || "",
+                    back_url: residenceBackUrl || "",
+                    expire_date: visaDate,
+                    uploaded_at: uploadTime,
+                    note: "入社申請時"
+                }];
+            }
+            if (designationUrl) documents.designation_certs = [{ url: designationUrl, uploaded_at: uploadTime, note: "入社申請時" }];
+
             await addDoc(collection(db, "t_applications"), {
                 type: 'new_hire',
                 applicantId: currentUser.id,
                 applicantName: currentUser.Name,
                 status: '承認待ち',
                 createdAt: serverTimestamp(),
+                documents: documents,
                 details: {
                     '氏名': fullName,
                     'フリガナ': `${lastKana} ${firstKana}`,
+                    'ニックネーム': nickname,
                     '姓': lastName,
                     '名': firstName,
                     'メールアドレス': email,
@@ -420,7 +532,8 @@ export async function initNewHirePage() {
                     '打刻PW': clockPw,
                     '所属予定店舗': store,
                     '入社予定日': date,
-                    '初期時給': wage + '円',
+                    'VISA期限': visaDate || '-',
+                    '28時間制限': limit28h,
                     '備考': notes || '-'
                 }
             });
