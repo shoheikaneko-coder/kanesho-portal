@@ -227,6 +227,16 @@ export const newHirePageHtml = `
                 店舗に新しく入社するアルバイトスタッフの情報を本部に申請します。承認後、アカウントが発行可能になります。
             </p>
 
+            <!-- 共有ボタン -->
+            <div style="margin-bottom: 2rem; padding: 1.5rem; background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; text-align: center;">
+                <p style="margin-top: 0; margin-bottom: 1rem; font-weight: bold; color: #166534; font-size: 0.95rem;">
+                    まずは入社予定スタッフへ、必要な情報をヒアリングしましょう
+                </p>
+                <button type="button" id="btn-share-hearing" class="btn" style="background: #06c755; color: white; border: none; padding: 0.8rem 1.5rem; font-size: 1rem; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; font-weight: bold; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                    <i class="fas fa-comment-dots"></i> LINE等でヒアリング文章を送る
+                </button>
+            </div>
+
             <form id="new-hire-form" style="display: flex; flex-direction: column; gap: 1.5rem;">
                 <!-- 姓名 -->
                 <div class="grid-2col">
@@ -425,4 +435,68 @@ export async function initNewHirePage() {
             btnSubmit.innerHTML = '<i class="fas fa-paper-plane" style="margin-right: 0.5rem;"></i> 申請を送信する';
         }
     };
+
+    // ヒアリング文章の共有機能
+    const btnShare = document.getElementById('btn-share-hearing');
+    if (btnShare) {
+        btnShare.addEventListener('click', async () => {
+            const storeSelect = document.getElementById('nh-store');
+            let storeName = "〇〇";
+            if (storeSelect && storeSelect.selectedIndex > 0) {
+                storeName = storeSelect.options[storeSelect.selectedIndex].text;
+            }
+
+            const textToShare = `【かね将 ${storeName}店より入社手続きのお願い】
+
+〇〇さん、お疲れ様です！
+入社手続きと、シフトシステム等のアカウント発行のため、以下の項目にご回答いただきご返信をお願いします。
+
+■ 基本情報
+・氏名（漢字）：
+・氏名（フリガナ）：
+・シフト表に表示する名前（ニックネーム）：
+・電話番号：
+・メールアドレス：
+
+■ 給与振込先の口座情報
+・銀行名：
+・支店名：
+・口座種別：普通or当座
+・口座番号：
+・名義人：
+
+■ 写真で提出してください。
+・住所のわかる身分証
+・給与振込先の口座番号がわかるキャッシュカードや通帳
+
+■ 外国籍の方のみご回答ください
+・VISAの有効期限：
+・週28時間制限の有無（はい・いいえ）：
+
+■ 外国籍の方のみ写真で提出してください。
+・在留カードの裏・表
+・指定書（在留カードに就労許可の記載がない場合）
+
+ご返信いただきましたら、ログイン情報などをお渡しいたします。
+これからよろしくお願いします！`;
+
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: '入社手続きのお願い',
+                        text: textToShare
+                    });
+                } catch (err) {
+                    console.log('共有がキャンセルされたか、失敗しました:', err);
+                }
+            } else {
+                try {
+                    await navigator.clipboard.writeText(textToShare);
+                    alert("ヒアリング文章をクリップボードにコピーしました！\\nお使いのLINE等に貼り付けて送信してください。");
+                } catch (err) {
+                    alert("コピーに失敗しました。端末が対応していない可能性があります。");
+                }
+            }
+        });
+    }
 }
