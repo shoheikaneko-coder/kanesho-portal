@@ -293,7 +293,7 @@ export async function initNewHirePage() {
         if (!storeSnap.empty && storeSelect) {
             let options = '<option value="">選択してください</option>';
             storeSnap.forEach(doc => {
-                options += \`<option value="\${doc.id}">\${doc.data().Name || doc.id}</option>\`;
+                options += `<option value="${doc.id}">${doc.data().Name || doc.id}</option>`;
             });
             storeSelect.innerHTML = options;
         }
@@ -314,7 +314,7 @@ export async function initNewHirePage() {
         const wage = document.getElementById('nh-wage').value;
         const notes = document.getElementById('nh-notes').value;
 
-        if(!confirm(\`\${name} さんの入社申請を送信しますか？\`)) return;
+        if(!confirm(`${name} さんの入社申請を送信しますか？`)) return;
 
         btnSubmit.disabled = true;
         btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 送信中...';
