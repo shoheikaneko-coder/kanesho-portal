@@ -250,6 +250,12 @@ export const newHirePageHtml = `
                         <input type="text" id="nh-firstkana" required placeholder="例: タロウ" class="form-input" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
                     </div>
                 </div>
+                
+                <!-- ニックネーム -->
+                <div>
+                    <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">シフト表示名 (ニックネーム) <span style="color: red;">*</span></label>
+                    <input type="text" id="nh-nickname" required placeholder="例: ヤマダ" class="form-input" style="width: 100%; max-width: 300px; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
+                </div>
 
                 <div class="grid-2col">
                     <div>
@@ -265,7 +271,7 @@ export const newHirePageHtml = `
                 <div class="grid-2col" style="background: #f8fafc; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border);">
                     <div>
                         <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">ログインパスワード <span style="color: red;">*</span></label>
-                        <input type="text" id="nh-login-pw" required placeholder="メールアドレスと同じ" class="form-input" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
+                        <input type="text" id="nh-login-pw" required readonly placeholder="メールアドレスと同じ" class="form-input" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px; background-color: #e2e8f0; cursor: not-allowed; color: #64748b;">
                         <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; margin-bottom: 0;">※デフォルトはメールアドレス</p>
                     </div>
                     <div>
@@ -290,11 +296,19 @@ export const newHirePageHtml = `
                     </div>
                 </div>
 
-                <div>
-                    <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">初期時給（予定） <span style="color: red;">*</span></label>
-                    <div class="grid-2col">
-                        <input type="number" id="nh-wage" required min="1000" step="10" placeholder="1200" class="form-input" style="width: 150px; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
-                        <span>円</span>
+                <!-- 外国人・留学生情報 -->
+                <div class="grid-2col" style="background: #fffbeb; padding: 1.5rem; border-radius: 8px; border: 1px solid #fcd34d;">
+                    <div>
+                        <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">VISA期限 (該当者のみ)</label>
+                        <input type="date" id="nh-visa-date" class="form-input" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
+                        <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; margin-bottom: 0;">※外国籍スタッフの場合は必ず入力</p>
+                    </div>
+                    <div>
+                        <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">週28時間制限 (留学生など)</label>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.8rem 0;">
+                            <input type="checkbox" id="nh-limit-28h" style="width: 1.2rem; height: 1.2rem; cursor: pointer;">
+                            <label for="nh-limit-28h" style="cursor: pointer; font-size: 0.9rem;">制限あり</label>
+                        </div>
                     </div>
                 </div>
 
@@ -336,7 +350,7 @@ export async function initNewHirePage() {
         if (!storeSnap.empty && storeSelect) {
             let options = '<option value="">選択してください</option>';
             storeSnap.forEach(doc => {
-                options += `<option value="${doc.id}">${doc.data().Name || doc.id}</option>`;
+                options += `<option value="${doc.id}">${doc.data().store_name || doc.id}</option>`;
             });
             storeSelect.innerHTML = options;
         }
