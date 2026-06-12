@@ -84,12 +84,13 @@ async function loadApplicationHistory(applicationType, containerId) {
    住所変更申請 (Address Change)
    ========================================== */
 export const addressChangePageHtml = `
-<div class="animate-fade-in" style="max-width: 750px; margin: 0 auto; box-sizing: border-box;">
+<div class="animate-fade-in" style="width: 100%; max-width: 750px; margin: 0 auto; box-sizing: border-box; overflow-x: hidden;">
     <style>
         #address-change-form * { box-sizing: border-box; }
+        .grid-2col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.5rem; }
         #move-date { max-width: 200px !important; }
     </style>
-    <div style="display: grid; grid-template-columns: 1fr; gap: 2rem; box-sizing: border-box;">
+    <div style="display: flex; flex-direction: column; gap: 2rem; box-sizing: border-box; width: 100%;">
         
         <!-- 申請フォーム -->
         <div class="glass-panel" style="padding: 2.5rem;">
@@ -98,7 +99,7 @@ export const addressChangePageHtml = `
                 新しい住所情報の入力
             </h2>
             <form id="address-change-form" style="display: flex; flex-direction: column; gap: 1.5rem;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div class="grid-2col">
                     <div>
                         <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">郵便番号 <span style="color: red;">*</span></label>
                         <input type="text" id="postal-code" required placeholder="例: 123-4567" class="form-input" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
@@ -206,14 +207,15 @@ export async function initAddressChangePage() {
    新規アルバイト入社申請 (New Hire)
    ========================================== */
 export const newHirePageHtml = `
-<div class="animate-fade-in" style="max-width: 750px; margin: 0 auto; box-sizing: border-box;">
+<div class="animate-fade-in" style="width: 100%; max-width: 750px; margin: 0 auto; box-sizing: border-box; overflow-x: hidden;">
     <style>
         #new-hire-form * { box-sizing: border-box; }
+        .grid-2col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.5rem; }
         #nh-clock-pw { max-width: 150px !important; }
         #nh-wage { max-width: 150px !important; }
         #nh-date { max-width: 200px !important; }
     </style>
-    <div style="display: grid; grid-template-columns: 1fr; gap: 2rem; box-sizing: border-box;">
+    <div style="display: flex; flex-direction: column; gap: 2rem; box-sizing: border-box; width: 100%;">
         
         <!-- 申請フォーム -->
         <div class="glass-panel" style="padding: 2.5rem; border-top: 4px solid #10b981;">
@@ -227,7 +229,7 @@ export const newHirePageHtml = `
 
             <form id="new-hire-form" style="display: flex; flex-direction: column; gap: 1.5rem;">
                 <!-- 姓名 -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div class="grid-2col">
                     <div>
                         <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">姓（漢字） <span style="color: red;">*</span></label>
                         <input type="text" id="nh-lastname" required placeholder="例: 山田" class="form-input" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
@@ -238,7 +240,7 @@ export const newHirePageHtml = `
                     </div>
                 </div>
                 <!-- フリガナ -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div class="grid-2col">
                     <div>
                         <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">姓（フリガナ） <span style="color: red;">*</span></label>
                         <input type="text" id="nh-lastkana" required placeholder="例: ヤマダ" class="form-input" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
@@ -249,7 +251,7 @@ export const newHirePageHtml = `
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div class="grid-2col">
                     <div>
                         <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">メールアドレス (ログインID兼用) <span style="color: red;">*</span></label>
                         <input type="email" id="nh-email" required placeholder="例: example@kaneshow.jp" class="form-input" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
@@ -260,7 +262,7 @@ export const newHirePageHtml = `
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; background: #f8fafc; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border);">
+                <div class="grid-2col" style="background: #f8fafc; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border);">
                     <div>
                         <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">ログインパスワード <span style="color: red;">*</span></label>
                         <input type="text" id="nh-login-pw" required placeholder="メールアドレスと同じ" class="form-input" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
@@ -273,7 +275,7 @@ export const newHirePageHtml = `
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div class="grid-2col">
                     <div>
                         <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">所属予定店舗 <span style="color: red;">*</span></label>
                         <select id="nh-store" required class="form-input" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
@@ -290,7 +292,7 @@ export const newHirePageHtml = `
 
                 <div>
                     <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">初期時給（予定） <span style="color: red;">*</span></label>
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <div class="grid-2col">
                         <input type="number" id="nh-wage" required min="1000" step="10" placeholder="1200" class="form-input" style="width: 150px; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
                         <span>円</span>
                     </div>
