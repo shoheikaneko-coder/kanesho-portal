@@ -446,9 +446,9 @@ export async function initNewHirePage() {
                 storeName = storeSelect.options[storeSelect.selectedIndex].text;
             }
 
-            const textToShare = `【かね将 ${storeName}店より入社手続きのお願い】
+            const textToShare = `【株式会社かね将より入社手続きのお願い】
 
-〇〇さん、お疲れ様です！
+お疲れ様です！
 入社手続きと、シフトシステム等のアカウント発行のため、以下の項目にご回答いただきご返信をお願いします。
 
 ■ 基本情報
