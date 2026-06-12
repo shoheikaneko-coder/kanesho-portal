@@ -780,4 +780,9 @@ export async function initNewHirePage() {
             }
         });
     }
+
+    // 最後に管理者用の一覧を読み込む
+    if (typeof loadAdminNewHireApplications === 'function') {
+        loadAdminNewHireApplications();
+    }
 }
