@@ -1,0 +1,19 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "t_applications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "applicantId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

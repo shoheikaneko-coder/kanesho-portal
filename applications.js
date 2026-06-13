@@ -763,20 +763,17 @@ window.approveNewHireFromDetail = async (appId) => {
             FirstName: data.details['名'] || "",
             LastNameKana: data.details['フリガナ'] ? data.details['フリガナ'].split(' ')[0] : "",
             FirstNameKana: data.details['フリガナ'] ? data.details['フリガナ'].split(' ')[1] : "",
-            Nickname: data.details['ニックネーム'] || "",
+            DisplayName: data.details['ニックネーム'] || "",
             Email: data.details['メールアドレス'] || "",
             LoginPassword: data.details['ログインPW'] || "",
             ClockInPassword: data.details['打刻PW'] || "",
             Role: "Staff", 
-            StoreId: data.details['所属予定店舗'] || "",
+            StoreID: data.details['所属予定店舗'] || "",
             Status: "在職中",
             HireDate: data.details['入社予定日'] || "",
             Notes: data.details['備考'] || "",
-            foreign_staff: {
-                is_foreign: data.details['VISA期限'] && data.details['VISA期限'] !== '-',
-                visa_expiry: data.details['VISA期限'] !== '-' ? data.details['VISA期限'] : "",
-                limit_28h: data.details['28時間制限'] === 'あり'
-            },
+            visa_expiry_date: data.details['VISA期限'] !== '-' ? data.details['VISA期限'] : "",
+            Has28hLimit: data.details['28時間制限'] === 'あり',
             documents: data.documents || {}, 
             createdAt: serverTimestamp()
         };
