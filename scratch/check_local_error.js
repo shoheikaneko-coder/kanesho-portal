@@ -15,14 +15,12 @@ async function run() {
     });
 
     page.on('console', (msg) => {
-        if (msg.type() === 'error') {
-            console.error(`CONSOLE ERROR: ${msg.text()}`);
-        }
+        console.log(`CONSOLE [${msg.type()}]: ${msg.text()}`);
     });
 
-    console.log("Navigating to https://kaneshow-portal.web.app/ ...");
+    console.log("Navigating to http://127.0.0.1:8083/ ...");
     try {
-        await page.goto('https://kaneshow-portal.web.app/', { waitUntil: 'domcontentloaded', timeout: 15000 });
+        await page.goto('http://127.0.0.1:8083/', { waitUntil: 'load', timeout: 30000 });
         console.log("Waiting 3 seconds...");
         await new Promise(r => setTimeout(r, 3000));
         console.log("Check complete.");

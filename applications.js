@@ -918,7 +918,7 @@ export async function initMyApplicationsPage() {
         } catch (err) {
             console.error(err);
             if (err.message.includes("index")) {
-                 container.innerHTML = \`<div style="color: orange; padding: 1rem; border: 1px solid orange; border-radius: 8px;">データベースのインデックス構築中です。しばらくお待ちください。（\${err.message}）</div>\`;
+                 container.innerHTML = `<div style="color: orange; padding: 1rem; border: 1px solid orange; border-radius: 8px;">データベースのインデックス構築中です。しばらくお待ちください。（${err.message}）</div>`;
             } else {
                  container.innerHTML = '<div style="color: red; text-align: center;">データの取得に失敗しました。</div>';
             }
@@ -935,12 +935,12 @@ export async function initMyApplicationsPage() {
         }
 
         if (filtered.length === 0) {
-            container.innerHTML = \`
+            container.innerHTML = `
                 <div style="text-align: center; padding: 4rem 2rem; background: #f8fafc; border-radius: 12px; border: 1px dashed #cbd5e1;">
                     <i class="fas fa-folder-open fa-3x" style="color: #cbd5e1; margin-bottom: 1rem;"></i>
                     <p style="color: #64748b; margin: 0;">該当する申請データはありません。</p>
                 </div>
-            \`;
+            `;
             return;
         }
 
@@ -960,34 +960,34 @@ export async function initMyApplicationsPage() {
             
             // 申請内容の要約を作成 (最初の2項目程度)
             const details = Object.entries(app.details || {}).slice(0, 2)
-                .map(([k, v]) => \`<span style="margin-right: 1rem; color: #475569; font-size: 0.9rem;"><strong>\${k}:</strong> \${v}</span>\`)
+                .map(([k, v]) => `<span style="margin-right: 1rem; color: #475569; font-size: 0.9rem;"><strong>${k}:</strong> ${v}</span>`)
                 .join('');
 
             // クリック時の挙動: ステータスが「差戻し」なら編集モード、それ以外なら閲覧モード(ReadOnly)
             const onClickAttr = app.status === '差戻し' 
-                ? \`onclick="window.editApplication('\${app.id}', '\${app.type}')"\`
-                : \`onclick="window.viewApplicationReadOnly('\${app.id}')"\`;
+                ? `onclick="window.editApplication('${app.id}', '${app.type}')"`
+                : `onclick="window.viewApplicationReadOnly('${app.id}')"`;
 
             const actionLabel = app.status === '差戻し' 
                 ? '<span style="color: #ef4444; font-size: 0.85rem; font-weight: bold;"><i class="fas fa-pencil-alt"></i> 修正して再申請</span>'
                 : '<span style="color: #94a3b8; font-size: 0.85rem;"><i class="fas fa-chevron-right"></i> 詳細を見る</span>';
 
-            html += \`
-                <div class="my-app-card" \${onClickAttr} style="background: white; border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem 1.5rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: all 0.2s;">
+            html += `
+                <div class="my-app-card" ${onClickAttr} style="background: white; border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem 1.5rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: all 0.2s;">
                     <div style="display: flex; align-items: center; gap: 1.5rem;">
-                        <div style="background: \${typeInfo.bg}; color: \${typeInfo.color}; padding: 0.5rem 1rem; border-radius: 8px; font-weight: bold; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; min-width: 120px; justify-content: center;">
-                            <i class="fas \${typeInfo.icon}"></i> \${typeInfo.label}
+                        <div style="background: ${typeInfo.bg}; color: ${typeInfo.color}; padding: 0.5rem 1rem; border-radius: 8px; font-weight: bold; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; min-width: 120px; justify-content: center;">
+                            <i class="fas ${typeInfo.icon}"></i> ${typeInfo.label}
                         </div>
                         <div>
-                            <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.3rem;"><i class="far fa-clock"></i> 申請日時: \${dateStr}</div>
-                            <div>\${details}</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.3rem;"><i class="far fa-clock"></i> 申請日時: ${dateStr}</div>
+                            <div>${details}</div>
                         </div>
                     </div>
                     <div>
-                        \${actionLabel}
+                        ${actionLabel}
                     </div>
                 </div>
-            \`;
+            `;
         });
         container.innerHTML = html;
     };
