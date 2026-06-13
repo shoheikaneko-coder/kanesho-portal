@@ -666,18 +666,18 @@ export async function initApplicationDetailPage() {
             docsHtml += '<h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; color: #334155;"><i class="fas fa-folder-open" style="color: #3b82f6;"></i> 添付書類一覧</h3>';
             docsHtml += '<div style="display: flex; flex-direction: column; gap: 1rem;">';
             
-            const createDocBtn = (url, label, icon) => \`
-                <a href="\${url}" target="_blank" style="display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; background: white; border: 1px solid #e2e8f0; border-radius: 8px; text-decoration: none; color: #1e293b; font-weight: bold; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-                    <span><i class="\${icon}" style="color: #3b82f6; margin-right: 0.8rem; font-size: 1.2rem;"></i> \${label}</span>
+            const createDocBtn = (url, label, icon) => `
+                <a href="${url}" target="_blank" style="display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; background: white; border: 1px solid #e2e8f0; border-radius: 8px; text-decoration: none; color: #1e293b; font-weight: bold; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                    <span><i class="${icon}" style="color: #3b82f6; margin-right: 0.8rem; font-size: 1.2rem;"></i> ${label}</span>
                     <i class="fas fa-external-link-alt" style="color: #94a3b8;"></i>
                 </a>
-            \`;
+            `;
 
             if (docs.id_cards && docs.id_cards[0]) docsHtml += createDocBtn(docs.id_cards[0].url, '身分証 (住所確認用)', 'far fa-id-badge');
             if (docs.bank_cards && docs.bank_cards[0]) docsHtml += createDocBtn(docs.bank_cards[0].url, '通帳 / キャッシュカード', 'fas fa-money-check');
             if (docs.residence_cards && docs.residence_cards[0]) {
                 const rc = docs.residence_cards[0];
-                if (rc.front_url) docsHtml += createDocBtn(rc.front_url, \`在留カード (表) <span style="color: #ef4444; font-size: 0.9rem; margin-left: 0.5rem;">[期限: \${rc.expire_date || '未設定'}]</span>\`, 'far fa-id-card');
+                if (rc.front_url) docsHtml += createDocBtn(rc.front_url, `在留カード (表) <span style="color: #ef4444; font-size: 0.9rem; margin-left: 0.5rem;">[期限: ${rc.expire_date || '未設定'}]</span>`, 'far fa-id-card');
                 if (rc.back_url) docsHtml += createDocBtn(rc.back_url, '在留カード (裏)', 'far fa-id-card');
             }
             if (docs.designation_certs && docs.designation_certs[0]) docsHtml += createDocBtn(docs.designation_certs[0].url, '指定書', 'fas fa-file-contract');
@@ -689,40 +689,40 @@ export async function initApplicationDetailPage() {
         let detailsHtml = '<div style="background: white; border: 1px solid var(--border); border-radius: 12px; overflow: hidden;"><table style="width: 100%; border-collapse: collapse;">';
         Object.entries(details).forEach(([key, val], index) => {
             const bg = index % 2 === 0 ? '#ffffff' : '#f8fafc';
-            detailsHtml += \`
-                <tr style="background: \${bg}; border-bottom: 1px solid var(--border);">
-                    <th style="padding: 1.2rem; text-align: left; width: 30%; color: #64748b; font-weight: 600;">\${key}</th>
-                    <td style="padding: 1.2rem; font-weight: bold; color: #1e293b; font-size: 1.1rem;">\${val}</td>
+            detailsHtml += `
+                <tr style="background: ${bg}; border-bottom: 1px solid var(--border);">
+                    <th style="padding: 1.2rem; text-align: left; width: 30%; color: #64748b; font-weight: 600;">${key}</th>
+                    <td style="padding: 1.2rem; font-weight: bold; color: #1e293b; font-size: 1.1rem;">${val}</td>
                 </tr>
-            \`;
+            `;
         });
         detailsHtml += '</table></div>';
 
-        container.innerHTML = \`
+        container.innerHTML = `
             <div style="border-bottom: 2px solid #e2e8f0; padding-bottom: 1.5rem; margin-bottom: 2rem;">
                 <span style="background: #fef08a; color: #854d0e; padding: 0.4rem 1rem; border-radius: 999px; font-size: 0.9rem; font-weight: bold; margin-bottom: 1rem; display: inline-block;">新規アルバイト入社申請</span>
-                <h2 style="font-size: 2rem; margin: 0; color: #0f172a;">\${details['氏名'] || '名称不明'}</h2>
+                <h2 style="font-size: 2rem; margin: 0; color: #0f172a;">${details['氏名'] || '名称不明'}</h2>
                 <div style="margin-top: 1rem; color: #64748b; font-size: 0.95rem; display: flex; gap: 1.5rem;">
-                    <span><i class="fas fa-store"></i> 配属予定店舗: <strong>\${details['所属予定店舗'] || '-'}</strong></span>
-                    <span><i class="fas fa-user-edit"></i> 申請者: <strong>\${data.applicantName || '不明'}</strong></span>
-                    <span><i class="far fa-clock"></i> 申請日時: \${dateStr}</span>
+                    <span><i class="fas fa-store"></i> 配属予定店舗: <strong>${details['所属予定店舗'] || '-'}</strong></span>
+                    <span><i class="fas fa-user-edit"></i> 申請者: <strong>${data.applicantName || '不明'}</strong></span>
+                    <span><i class="far fa-clock"></i> 申請日時: ${dateStr}</span>
                 </div>
             </div>
 
-            \${detailsHtml}
-            \${docsHtml}
+            ${detailsHtml}
+            ${docsHtml}
 
             <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px dashed #cbd5e1;">
-                <button class="btn btn-primary" onclick="window.approveNewHireFromDetail('\${appId}')" style="width: 100%; padding: 1.5rem; background: #10b981; border-color: #10b981; font-size: 1.25rem; font-weight: bold; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.4);">
+                <button class="btn btn-primary" onclick="window.approveNewHireFromDetail('${appId}')" style="width: 100%; padding: 1.5rem; background: #10b981; border-color: #10b981; font-size: 1.25rem; font-weight: bold; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.4);">
                     <i class="fas fa-check-circle" style="margin-right: 0.8rem;"></i> この内容を承認し、従業員マスタに登録する
                 </button>
                 <p style="text-align: center; color: #94a3b8; font-size: 0.85rem; margin-top: 1rem;">※ 承認後、自動的に通知センターへ戻ります。</p>
             </div>
-        \`;
+        `;
 
     } catch (e) {
         console.error(e);
-        container.innerHTML = \`<div style="color: red; text-align: center;">読み込みエラーが発生しました: \${e.message}</div>\`;
+        container.innerHTML = `<div style="color: red; text-align: center;">読み込みエラーが発生しました: ${e.message}</div>`;
     }
 }
 

@@ -49,7 +49,7 @@ import { gradesPageHtml, initGradesPage } from './grades.js';
 import { skillsPageHtml, initSkillsPage } from './skills.js';
 import { evaluationPageHtml, initEvaluationPage } from './evaluation.js';
 import { myPageHtml, initMyPage } from './my_page.js';
-import { addressChangePageHtml, initAddressChangePage, newHirePageHtml, initNewHirePage, applicationDetailPageHtml, initApplicationDetailPage } from './applications.js?v=1.3';
+import { addressChangePageHtml, initAddressChangePage, newHirePageHtml, initNewHirePage, applicationDetailPageHtml, initApplicationDetailPage } from './applications.js?v=1.4';
 
 
 
