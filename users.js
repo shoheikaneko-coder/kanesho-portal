@@ -1,5 +1,6 @@
-import { db } from './firebase.js';
+import { db, storage, arrayUnion } from './firebase.js';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
 import { showConfirm, showAlert } from './ui_utils.js';
 
 let currentView = 'list';
@@ -49,6 +50,53 @@ export const usersPageHtml = `
             border-radius: 0 8px 8px 0;
         }
     </style>
+
+    <!-- ファイル追加モーダル -->
+    <div id="file-upload-modal" class="modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+        <div class="modal-content" style="background: white; border-radius: 16px; width: 90%; max-width: 500px; padding: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 style="margin: 0; color: #1e293b; font-size: 1.25rem;"><i class="fas fa-file-upload"></i> ファイルを追加</h3>
+                <button type="button" class="btn" id="btn-close-file-modal" style="background: none; border: none; font-size: 1.5rem; color: #94a3b8; cursor: pointer; padding: 0;">&times;</button>
+            </div>
+            
+            <div class="input-group">
+                <label>書類種別</label>
+                <select id="upload-doc-type" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
+                    <option value="id_cards">身分証 (住所確認用)</option>
+                    <option value="bank_cards">通帳 / キャッシュカード</option>
+                    <option value="residence_cards">在留カード</option>
+                    <option value="designation_certs">指定書</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label>画像ファイル (表面)</label>
+                <input type="file" id="upload-doc-file" accept="image/*" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 8px;">
+            </div>
+
+            <div id="upload-doc-extra-fields" style="display: none; background: #f8fafc; padding: 1rem; border-radius: 8px; margin-bottom: 1.2rem; border: 1px solid #e2e8f0;">
+                <p style="font-size: 0.85rem; color: #64748b; margin: 0 0 0.8rem 0; font-weight: bold;"><i class="fas fa-info-circle"></i> 在留カード用の追加情報</p>
+                <div class="input-group" style="margin-bottom: 1rem;">
+                    <label style="font-size: 0.85rem;">画像ファイル (裏面)</label>
+                    <input type="file" id="upload-doc-file-back" accept="image/*" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 8px;">
+                </div>
+                <div class="input-group" style="margin-bottom: 0;">
+                    <label style="font-size: 0.85rem;">VISA期限</label>
+                    <input type="date" id="upload-doc-expire" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>備考 (任意)</label>
+                <input type="text" id="upload-doc-note" placeholder="例: 2026年更新分" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
+            </div>
+
+            <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <button type="button" class="btn" id="btn-cancel-file-modal" style="flex: 1; padding: 0.8rem; background: white; border: 1px solid var(--border); border-radius: 8px; font-weight: 700; color: #64748b;">キャンセル</button>
+                <button type="button" class="btn" id="btn-execute-upload" style="flex: 1; padding: 0.8rem; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 700;">アップロードを実行</button>
+            </div>
+        </div>
+    </div>
 `;
 
 function renderView() {
@@ -332,9 +380,16 @@ function renderFormView(container) {
 
                         <!-- 各種ファイル（提出書類）カード -->
                         <div id="sec-files" class="glass-panel" style="padding: 1.5rem; background: #f8fafc; border: 1px solid #cbd5e1; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                            <h4 style="margin-top: 0; margin-bottom: 1.2rem; color: #334155; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.8rem; font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem;">
-                                <i class="fas fa-folder-open" style="color: #64748b;"></i> 各種ファイル（提出書類）
-                            </h4>
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.8rem; margin-bottom: 1.2rem;">
+                                <h4 style="margin: 0; color: #334155; font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem;">
+                                    <i class="fas fa-folder-open" style="color: #64748b;"></i> 各種ファイル（提出書類）
+                                </h4>
+                                ${isEdit ? `
+                                <button type="button" class="btn" id="btn-open-file-modal" style="background: white; border: 1px solid #cbd5e1; color: #475569; padding: 0.4rem 0.8rem; font-size: 0.85rem; font-weight: 700;">
+                                    <i class="fas fa-plus-circle" style="color: var(--primary);"></i> 追加する
+                                </button>
+                                ` : ''}
+                            </div>
                             <div id="user-documents-container" style="display: flex; flex-direction: column; gap: 1rem;">
                                 <p style="color: var(--text-secondary); font-size: 0.9rem; text-align: center; padding: 1rem;">ファイルが存在しません</p>
                             </div>
@@ -562,6 +617,7 @@ function renderUserDocuments(docs) {
 }
 
 function setupFormLogic() {
+    setupUploadModalLogic();
     const form = document.getElementById('user-form');
     if (!form) return;
 
@@ -955,3 +1011,137 @@ window.openUserEditForm = async (userId) => {
         showAlert('エラー', 'ユーザー情報の取得に失敗しました');
     }
 };
+
+async function compressImage(file, maxWidth = 1200) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                let w = img.width;
+                let h = img.height;
+                if (w > maxWidth) {
+                    h = Math.round((h * maxWidth) / w);
+                    w = maxWidth;
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = w;
+                canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, w, h);
+                resolve(canvas.toDataURL('image/jpeg', 0.8));
+            };
+            img.onerror = reject;
+            img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+function setupUploadModalLogic() {
+    const btnOpen = document.getElementById('btn-open-file-modal');
+    const modal = document.getElementById('file-upload-modal');
+    const btnClose = document.getElementById('btn-close-file-modal');
+    const btnCancel = document.getElementById('btn-cancel-file-modal');
+    const typeSelect = document.getElementById('upload-doc-type');
+    const extraFields = document.getElementById('upload-doc-extra-fields');
+    const btnExecute = document.getElementById('btn-execute-upload');
+    
+    if (!btnOpen || !modal) return;
+
+    btnOpen.onclick = () => {
+        document.getElementById('upload-doc-file').value = '';
+        document.getElementById('upload-doc-file-back').value = '';
+        document.getElementById('upload-doc-expire').value = '';
+        document.getElementById('upload-doc-note').value = '';
+        typeSelect.value = 'id_cards';
+        extraFields.style.display = 'none';
+        modal.style.display = 'flex';
+    };
+
+    const closeModal = () => modal.style.display = 'none';
+    btnClose.onclick = closeModal;
+    btnCancel.onclick = closeModal;
+
+    typeSelect.onchange = (e) => {
+        if (e.target.value === 'residence_cards') {
+            extraFields.style.display = 'block';
+        } else {
+            extraFields.style.display = 'none';
+        }
+    };
+
+    btnExecute.onclick = async () => {
+        const fileInput = document.getElementById('upload-doc-file');
+        if (!fileInput.files || fileInput.files.length === 0) {
+            showAlert('エラー', '画像ファイルを選択してください');
+            return;
+        }
+
+        const type = typeSelect.value;
+        const note = document.getElementById('upload-doc-note').value;
+        const docId = editingUserData?.id;
+        
+        if (!docId) {
+            showAlert('エラー', 'ユーザー情報が保存されていません。先に全体の保存を行ってください。');
+            return;
+        }
+
+        btnExecute.innerHTML = '<i class="fas fa-spinner fa-spin"></i> アップロード中...';
+        btnExecute.disabled = true;
+
+        try {
+            const timestamp = Date.now();
+            const safeName = (editingUserData.Name || 'unknown').replace(/\s+/g, '_');
+            
+            const fileFront = fileInput.files[0];
+            const dataUrlFront = await compressImage(fileFront);
+            const pathFront = `users/${docId}/${safeName}_${timestamp}_${type}_front.jpg`;
+            const refFront = ref(storage, pathFront);
+            await uploadString(refFront, dataUrlFront, 'data_url');
+            const urlFront = await getDownloadURL(refFront);
+
+            let newFileObj = {
+                uploaded_at: new Date().toISOString(),
+                note: note
+            };
+
+            if (type === 'residence_cards') {
+                newFileObj.front_url = urlFront;
+                newFileObj.expire_date = document.getElementById('upload-doc-expire').value;
+                
+                const fileInputBack = document.getElementById('upload-doc-file-back');
+                if (fileInputBack.files && fileInputBack.files.length > 0) {
+                    const dataUrlBack = await compressImage(fileInputBack.files[0]);
+                    const pathBack = `users/${docId}/${safeName}_${timestamp}_${type}_back.jpg`;
+                    const refBack = ref(storage, pathBack);
+                    await uploadString(refBack, dataUrlBack, 'data_url');
+                    newFileObj.back_url = await getDownloadURL(refBack);
+                }
+            } else {
+                newFileObj.url = urlFront;
+            }
+
+            await updateDoc(doc(db, "m_users", docId), {
+                [`documents.${type}`]: arrayUnion(newFileObj)
+            });
+
+            if (!editingUserData.documents) editingUserData.documents = {};
+            if (!editingUserData.documents[type]) editingUserData.documents[type] = [];
+            editingUserData.documents[type].push(newFileObj);
+            
+            renderUserDocuments(editingUserData.documents);
+            
+            showAlert('成功', 'ファイルをアップロードしました');
+            closeModal();
+            
+        } catch (e) {
+            console.error("Upload failed", e);
+            showAlert('エラー', 'アップロードに失敗しました');
+        } finally {
+            btnExecute.innerHTML = 'アップロードを実行';
+            btnExecute.disabled = false;
+        }
+    };
+}
