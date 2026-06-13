@@ -861,7 +861,6 @@ function renderTable(filter = "") {
                 <td style="padding: 1rem; font-family: monospace; color: var(--text-secondary);">${item['LoginPassword'] ? '********' : '-'}</td>
                 <td style="padding: 1rem; text-align: right;">
                     <button class="btn btn-edit-user" style="padding: 0.5rem; background: transparent; color: var(--text-secondary);" title="編集"><i class="fas fa-edit"></i></button>
-                    <button class="btn btn-delete-user" style="padding: 0.5rem; background: transparent; color: var(--danger);" title="削除"><i class="fas fa-trash-alt"></i></button>
                 </td>
             `;
 
@@ -869,14 +868,6 @@ function renderTable(filter = "") {
                 editingUserData = item;
                 currentView = 'form';
                 renderView();
-            };
-
-            tr.querySelector('.btn-delete-user').onclick = async () => {
-                showConfirm('ユーザー削除', `${item['Name']} 様を削除しますか？`, async () => {
-                    await deleteDoc(doc(db, "m_users", item.id));
-                    await fetchUsersData();
-                    renderTable(filter);
-                });
             };
             tbody.appendChild(tr);
         });
