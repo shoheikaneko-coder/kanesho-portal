@@ -355,14 +355,23 @@ function renderFormView(container) {
                         </div>
 
                         <!-- アクションボタンエリア -->
-                        <div style="display: flex; gap: 1rem; margin-top: 1rem; padding-top: 1.5rem; border-top: 1px solid #e2e8f0; justify-content: flex-end;">
-                            <button type="button" id="btn-form-cancel" class="btn" style="padding: 1rem 2rem; background: white; border: 1px solid var(--border); color: var(--text-secondary); font-weight: 700;">
-                                キャンセル
-                            </button>
-                            <button type="submit" class="btn btn-primary" style="padding: 1rem 3rem; font-weight: 800; font-size: 1.1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-                                <i class="fas fa-save" style="margin-right: 0.5rem;"></i>
-                                ユーザー情報を保存
-                            </button>
+                        <div style="display: flex; gap: 1rem; margin-top: 1rem; padding-top: 1.5rem; border-top: 1px solid #e2e8f0; justify-content: space-between; align-items: center;">
+                            <div>
+                                ${isEdit && window.appState?.currentUser?.Email === 'shohei.kaneko@kaneshow.jp' ? `
+                                    <button type="button" id="btn-form-delete" class="btn" style="padding: 1rem 1.5rem; background: #fee2e2; border: 1px solid #fca5a5; color: #ef4444; font-weight: 700;">
+                                        <i class="fas fa-trash-alt" style="margin-right: 0.5rem;"></i> この従業員を削除する
+                                    </button>
+                                ` : ''}
+                            </div>
+                            <div style="display: flex; gap: 1rem;">
+                                <button type="button" id="btn-form-cancel" class="btn" style="padding: 1rem 2rem; background: white; border: 1px solid var(--border); color: var(--text-secondary); font-weight: 700;">
+                                    キャンセル
+                                </button>
+                                <button type="submit" class="btn btn-primary" style="padding: 1rem 3rem; font-weight: 800; font-size: 1.1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                                    <i class="fas fa-save" style="margin-right: 0.5rem;"></i>
+                                    ユーザー情報を保存
+                                </button>
+                            </div>
                         </div>
 
                     </div>
@@ -609,6 +618,34 @@ function setupFormLogic() {
             btnSubmit.disabled = false;
         }
     };
+
+    // 削除ボタンのロジック
+    const btnDelete = document.getElementById('btn-form-delete');
+    if (btnDelete) {
+        btnDelete.onclick = async () => {
+            if (!confirm("本当にこの従業員データを削除しますか？")) return;
+            if (!confirm("※警告※\nこの操作は取り消せません。本当によろしいですか？")) return;
+
+            btnDelete.disabled = true;
+            btnDelete.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 削除中...';
+
+            const docId = editingUserData?.id;
+            if (!docId) return;
+
+            try {
+                await deleteDoc(doc(db, "m_users", docId));
+                showAlert('成功', '従業員データを完全に削除しました。');
+                await fetchUsersData();
+                currentView = 'list';
+                renderView();
+            } catch (err) {
+                console.error(err);
+                showAlert('エラー', '削除に失敗しました。');
+                btnDelete.disabled = false;
+                btnDelete.innerHTML = '<i class="fas fa-trash-alt" style="margin-right: 0.5rem;"></i> この従業員を削除する';
+            }
+        };
+    }
 
     // Password info buttons
     const btnCopyLogin = document.getElementById('btn-send-reset-email');
