@@ -271,7 +271,7 @@ window.approveNewHire = async (appId) => {
     }
 };
 
-export function setupNotificationListeners() {
+export function initNotificationsPage() {
     const catRecipe = document.getElementById('cat-recipe-missing');
     const catShift = document.getElementById('cat-shift-published');
     const btnBack = document.getElementById('btn-notif-back');
