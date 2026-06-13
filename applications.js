@@ -762,7 +762,7 @@ window.approveNewHireFromDetail = async (appId) => {
             createdAt: serverTimestamp()
         };
 
-        const newUserId = \`user_\${Date.now()}\`;
+        const newUserId = `user_${Date.now()}`;
         await setDoc(doc(db, "m_users", newUserId), newUserData);
 
         // 申請のステータスを更新
