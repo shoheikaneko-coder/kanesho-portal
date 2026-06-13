@@ -29,7 +29,7 @@ import { menuOrderPageHtml, initMenuOrderPage } from './menu_order.js?v=7';
 import { dailySakesPageHtml, initDailySakesPage } from './daily_sakes.js?v=116';
 import { csvImportPageHtml, initCsvImportPage } from './csv_import.js?v=7';
 import { productAnalysisPageHtml, initProductAnalysisPage } from './product_analysis.js?v=31';
-import { notificationsPageHtml, initNotificationsPage } from './notifications.js?v=116';
+import { notificationsPageHtml, initNotificationsPage } from './notifications.js?v=117';
 import { calendarAdminPageHtml, initCalendarAdminPage, calendarViewerPageHtml, initCalendarViewerPage } from './calendar.js?v=63';
 import { goalsAdminPageHtml, initGoalsAdminPage, goalsStorePageHtml, initGoalsStorePage } from './goals.js?v=7';
 import { homePageHtml, initHomePage } from './home.js?v=120';
@@ -49,7 +49,7 @@ import { gradesPageHtml, initGradesPage } from './grades.js';
 import { skillsPageHtml, initSkillsPage } from './skills.js';
 import { evaluationPageHtml, initEvaluationPage } from './evaluation.js';
 import { myPageHtml, initMyPage } from './my_page.js';
-import { addressChangePageHtml, initAddressChangePage, newHirePageHtml, initNewHirePage, applicationDetailPageHtml, initApplicationDetailPage } from './applications.js?v=1.2';
+import { addressChangePageHtml, initAddressChangePage, newHirePageHtml, initNewHirePage, applicationDetailPageHtml, initApplicationDetailPage } from './applications.js?v=1.3';
 
 
 
