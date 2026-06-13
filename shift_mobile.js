@@ -14,18 +14,16 @@ import {
 export const shiftAdminMobilePageHtml = `
     <div class="animate-fade-in" id="shift-admin-container-mobile" style="max-width: 100%; margin: 0 auto; padding-bottom: 80px;">
         
-        <!-- モバイル専用：操作バナー (高さを抑え、メニューボタンをここに集約、削り希望を日本語ボタン化) -->
-        <div class="mobile-only" style="padding: 0.4rem 0.8rem; background: white; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; gap: 0.5rem;">
-            <!-- 左側: メニューボタンと警告表示 -->
-            <div style="display: flex; gap: 0.4rem; align-items: center;">
-                <button id="btn-open-action-menu-mobile" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.6rem; font-weight: 800; border-radius: 6px; font-size: 0.75rem; background: var(--secondary); color: white; border: none;"><i class="fas fa-cog"></i> メニュー</button>
-                <div id="admin-28h-alerts-mobile" style="display: none; font-size: 0.65rem; color: #ef4444; font-weight: 700; background: #fee2e2; padding: 0.2rem 0.4rem; border-radius: 4px; white-space: nowrap;" onclick="window.show28hAlertDetailsMobile()">⚠️ 超過</div>
+        <!-- モバイル専用：操作バナー (3ボタン横並び、確定/超過を右端に) -->
+        <div class="mobile-only" style="padding: 0.3rem 0.6rem; background: white; border-bottom: 1px solid var(--border); display: flex !important; flex-flow: row nowrap !important; align-items: center !important; justify-content: space-between !important; position: sticky; top: 0; z-index: 100; gap: 0.4rem; box-sizing: border-box; width: 100%;">
+            <div style="display: flex !important; flex-flow: row nowrap !important; gap: 0.3rem !important; align-items: center !important; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap;">
+                <button id="btn-open-action-menu-mobile" class="btn btn-secondary btn-sm" style="padding: 0.3rem 0.5rem; font-weight: 800; border-radius: 6px; font-size: 0.7rem; background: #e67e22 !important; color: white !important; border: none; height: 30px; display: inline-flex; align-items: center; gap: 0.2rem; cursor: pointer;"><i class="fas fa-cog"></i> メニュー</button>
+                <button id="btn-landscape-preview-trigger-mobile" class="btn btn-secondary btn-sm" style="padding: 0.3rem 0.5rem; font-size: 0.7rem; font-weight: 800; background: #e74c3c !important; color: white !important; border: none; border-radius: 6px; height: 30px; display: inline-flex; align-items: center; gap: 0.2rem; cursor: pointer;"><i class="fas fa-search-plus"></i> プレビュー</button>
+                <button id="btn-toggle-rejected-mobile" class="btn btn-secondary btn-sm" style="padding: 0.3rem 0.5rem; font-size: 0.7rem; font-weight: 800; background: white !important; color: #475569 !important; border: 1px solid #cbd5e1 !important; border-radius: 6px; height: 30px; display: inline-flex; align-items: center; gap: 0.2rem; cursor: pointer;"><i class="fas fa-eye-slash"></i> 削った希望を確認</button>
             </div>
-            
-            <!-- 右側: 削り希望確認ボタンとプレビューボタン -->
-            <div style="display: flex; gap: 0.4rem; align-items: center;">
-                <button id="btn-toggle-rejected-mobile" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.6rem; font-size: 0.75rem; font-weight: 700; background: transparent; color: var(--text-secondary); border: 1px solid var(--border); border-radius: 6px;">削った希望を確認</button>
-                <button id="btn-landscape-preview-trigger-mobile" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.6rem; font-size: 0.75rem; font-weight: 700; background: var(--primary); color: white; border: none; border-radius: 6px;"><i class="fas fa-search-plus"></i> プレビュー</button>
+            <div style="flex-shrink: 0; display: flex; align-items: center;">
+                <button id="btn-publish-mobile" class="btn btn-primary btn-sm" style="padding: 0.35rem 0.6rem; font-size: 0.7rem; font-weight: 800; background: #10b981 !important; color: white !important; border: none; border-radius: 6px; height: 30px; display: inline-flex; align-items: center; gap: 0.2rem; cursor: pointer;"><i class="fas fa-check"></i> 確定</button>
+                <div id="admin-28h-alerts-mobile" style="display: none; font-size: 0.65rem; color: #ef4444; font-weight: 700; background: #fee2e2; padding: 0.15rem 0.35rem; border-radius: 4px; cursor: pointer; white-space: nowrap;" onclick="window.show28hAlertDetailsMobile()">⚠️ 超過</div>
             </div>
         </div>
 
@@ -58,7 +56,7 @@ export const shiftAdminMobilePageHtml = `
         </div>
 
         <!-- 【スマホ専用】下部フローティング固定バー (メニューを削除し、KPI情報を中央寄せ) -->
-        <div id="admin-mobile-bottom-bar-mobile" class="bottom-bar-fixed-mobile">
+        <div id="admin-mobile-bottom-bar-mobile" class="bottom-bar-fixed-mobile" style="display: none;">
             <!-- 通常モード時のバー表示 -->
             <div id="bottom-bar-normal-content-mobile" class="bar-content-mobile-row" style="justify-content: center; text-align: center;">
                 <div id="bottom-bar-kpi-info-mobile" style="line-height: 1.4; display: flex; align-items: center; justify-content: center; gap: 0.75rem;">
@@ -96,18 +94,15 @@ export const shiftAdminMobilePageHtml = `
             </div>
         </div>
 
-        <!-- 【スマホ専用】横長フルスクリーンプレビューオーバーレイ -->
+        <!-- 【スマホ専用】イマーシブ全画面プレビューオーバーレイ (タップで閉じる) -->
         <div id="admin-mobile-landscape-preview-mobile" class="landscape-preview-overlay" style="display: none;">
-            <div class="landscape-preview-header">
-                <button id="btn-close-landscape-preview-mobile" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.8rem; font-weight: 800; font-size: 0.75rem;"><i class="fas fa-times"></i> 閉じる</button>
-                <div style="font-weight: 800; font-size: 0.85rem; color: white;" id="landscape-preview-title-mobile">全体シフトプレビュー (閲覧専用)</div>
-                <div style="display: flex; gap: 0.3rem;">
-                    <button id="btn-zoom-out-preview-mobile" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.6rem; font-weight: 800; font-size: 0.75rem;"><i class="fas fa-search-minus"></i> 縮小</button>
-                    <button id="btn-zoom-in-preview-mobile" class="btn btn-secondary btn-sm" style="padding: 0.4rem 0.6rem; font-weight: 800; font-size: 0.75rem;"><i class="fas fa-search-plus"></i> 拡大</button>
-                </div>
+            <!-- タップで閉じるヒント (自動フェードアウト) -->
+            <div id="landscape-preview-tap-hint" class="landscape-preview-tap-hint">
+                <i class="fas fa-hand-pointer"></i> タップして閉じる
             </div>
-            <div class="landscape-preview-body-container">
-                <div class="landscape-preview-body" id="landscape-preview-scroll-area-mobile">
+            <!-- スクロール可能なテーブルエリア (タップで閉じる) -->
+            <div class="landscape-preview-body-container" id="landscape-preview-scroll-area-mobile">
+                <div class="landscape-preview-body">
                     <table id="landscape-preview-table-mobile" style="border-collapse: collapse; min-width: 1000px; background: white;">
                         <thead><tr id="landscape-table-header-mobile"><th class="staff-cell">スタッフ</th></tr></thead>
                         <tbody id="landscape-table-body-mobile"></tbody>
@@ -116,54 +111,91 @@ export const shiftAdminMobilePageHtml = `
             </div>
         </div>
 
-        <!-- 【スマホ専用】クイック・ボトムシート・エディター -->
-        <div id="admin-mobile-bottom-sheet-mobile" class="bottom-sheet">
-            <div class="sheet-handle"></div>
+        <!-- 【スマホ専用】クイック・エディター・モーダル -->
+        <div id="admin-mobile-bottom-sheet-mobile" class="centered-modal" style="padding: 1.1rem 1rem;">
             <div class="sheet-content">
-                <div class="sheet-header">
-                    <div id="sheet-staff-name-mobile" class="staff-name">スタッフ名</div>
-                    <div id="sheet-date-label-mobile" class="date-label">04/01 (月)</div>
+                <div class="sheet-header" style="border-bottom: 1px solid #cbd5e1; padding-bottom: 0.6rem; margin-bottom: 0.8rem;">
+                    <div id="sheet-staff-name-mobile" class="staff-name" style="color: #ef4444; font-size: 1.15rem; font-weight: 800;">スタッフ名</div>
+                    <div id="sheet-date-label-mobile" class="date-label" style="font-size: 0.95rem; font-weight: 700; color: #64748b;">04/01 (月)</div>
                 </div>
-                <div class="time-adjust-section">
-                    <div class="time-input-row">
-                        <div class="time-group">
-                            <label>開始</label>
-                            <div class="select-pair">
-                                <select id="sheet-start-h-mobile" class="time-select"></select>
-                                <span>:</span>
-                                <select id="sheet-start-m-mobile" class="time-select"></select>
+                
+                <div class="time-adjust-section" style="background: #f8fafc; padding: 0.9rem 0.6rem; border-radius: 14px; margin-top: 0.8rem; border: 1px solid #e2e8f0;">
+                    <div class="time-input-row" style="display: flex; align-items: center; justify-content: space-around; gap: 0.4rem;">
+                        <div class="time-group" style="text-align: center;">
+                            <label style="font-size: 0.72rem; font-weight: 800; color: #64748b; display: block; margin-bottom: 0.35rem;">開始時間</label>
+                            <div class="select-pair" style="display: flex; align-items: center; gap: 0.25rem;">
+                                <select id="sheet-start-h-mobile" class="time-select" style="font-size: 16px !important;"></select>
+                                <span style="font-weight: 800; color: #64748b;">:</span>
+                                <select id="sheet-start-m-mobile" class="time-select" style="font-size: 16px !important;"></select>
                             </div>
                         </div>
-                        <div class="time-arrow"><i class="fas fa-arrow-right"></i></div>
-                        <div class="time-group">
-                            <label>終了</label>
-                            <div class="select-pair">
-                                <select id="sheet-end-h-mobile" class="time-select"></select>
-                                <span>:</span>
-                                <select id="sheet-end-m-mobile" class="time-select"></select>
+                        <div class="time-arrow" style="font-size: 1rem; color: #cbd5e1; margin-top: 1.1rem;"><i class="fas fa-arrow-right"></i></div>
+                        <div class="time-group" style="text-align: center;">
+                            <label style="font-size: 0.72rem; font-weight: 800; color: #64748b; display: block; margin-bottom: 0.35rem;">終了時間</label>
+                            <div class="select-pair" style="display: flex; align-items: center; gap: 0.25rem;">
+                                <select id="sheet-end-h-mobile" class="time-select" style="font-size: 16px !important;"></select>
+                                <span style="font-weight: 800; color: #64748b;">:</span>
+                                <select id="sheet-end-m-mobile" class="time-select" style="font-size: 16px !important;"></select>
                             </div>
                         </div>
                     </div>
-                    <div class="extra-input-row">
-                        <div class="input-item">
-                            <label>休憩 (分)</label>
-                            <input type="number" id="sheet-break-mobile" class="sheet-input" value="0">
+                    
+                    <div class="extra-input-row" style="display: flex; gap: 0.6rem; margin-top: 0.9rem; border-top: 1px solid #cbd5e1; padding-top: 0.9rem;">
+                        <div class="input-item" style="flex: 1;">
+                            <label style="font-size: 0.72rem; font-weight: 800; color: #64748b; display: block; margin-bottom: 0.35rem;">休憩 (分)</label>
+                            <input type="number" id="sheet-break-mobile" class="sheet-input" style="width: 100%; height: 40px; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.4rem; font-size: 16px !important; font-weight: 700; text-align: center; color: #1e293b; box-sizing: border-box;" value="0">
                         </div>
-                        <div class="input-item" style="flex:2;">
-                            <label>メモ</label>
-                            <input type="text" id="sheet-note-mobile" class="sheet-input" placeholder="特記事項...">
+                        <div class="input-item" style="flex: 2.2;">
+                            <label style="font-size: 0.72rem; font-weight: 800; color: #64748b; display: block; margin-bottom: 0.35rem;">メモ</label>
+                            <input type="text" id="sheet-note-mobile" class="sheet-input" style="width: 100%; height: 40px; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.4rem 0.6rem; font-size: 16px !important; font-weight: 600; color: #1e293b; box-sizing: border-box;" placeholder="特記事項...">
                         </div>
                     </div>
                 </div>
-                <div class="sheet-actions" style="display: flex; justify-content: space-between; gap: 0.5rem; width: 100%;">
-                    <button id="btn-delete-sheet-mobile" class="btn btn-secondary" style="background: var(--danger); color: white; border: none; padding: 0.75rem 0.8rem; font-size: 0.85rem;"><i class="fas fa-trash-alt"></i> 不採用</button>
-                    <div style="display: flex; gap: 0.4rem;">
-                        <button class="btn btn-cancel-sheet" onclick="window.closeAdminBottomSheetMobile()" style="font-size: 0.85rem; padding: 0.75rem 0.8rem;">キャンセル</button>
-                        <button id="btn-save-sheet-mobile" class="btn btn-save-sheet" style="font-size: 0.85rem; padding: 0.75rem 0.8rem;">保存する</button>
+
+                <div class="sheet-actions" style="display: flex; flex-direction: column; gap: 0.5rem; width: 100%; margin-top: 1rem; box-sizing: border-box;">
+                    <!-- 保存ボタン (最上段フル幅) -->
+                    <button id="btn-save-sheet-mobile" class="btn btn-save-sheet" style="width: 100%; height: 44px; font-weight: 800; font-size: 0.95rem; border-radius: 10px; background: #10b981 !important; color: white !important; border: none; display: flex; align-items: center; justify-content: center; gap: 0.4rem; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.15);"><i class="fas fa-save"></i> 保存する</button>
+                    
+                    <div style="display: flex; gap: 0.5rem; width: 100%;">
+                        <!-- キャンセルボタン -->
+                        <button class="btn btn-cancel-sheet" onclick="window.closeAdminBottomSheetMobile()" style="flex: 1; height: 40px; font-weight: 700; font-size: 0.85rem; border-radius: 8px; background: white; color: #475569; border: 1px solid #cbd5e1; cursor: pointer; display: flex; align-items: center; justify-content: center;">キャンセル</button>
+                        
+                        <!-- 不採用ボタン (希望がある場合のみ表示) -->
+                        <button id="btn-reject-sheet-mobile" class="btn" style="flex: 1; height: 40px; font-weight: 700; font-size: 0.85rem; border-radius: 8px; background: #fffbeb !important; color: #d97706 !important; border: 1px solid #fde68a !important; display: none; align-items: center; justify-content: center; gap: 0.25rem; cursor: pointer;"><i class="fas fa-user-slash"></i> 不採用</button>
+                        
+                        <!-- シフト削除ボタン (希望がない場合の通常削除) -->
+                        <button id="btn-delete-sheet-mobile" class="btn" style="flex: 1; height: 40px; font-weight: 700; font-size: 0.85rem; border-radius: 8px; background: #fee2e2 !important; color: #ef4444 !important; border: 1px solid #fca5a5 !important; display: none; align-items: center; justify-content: center; gap: 0.25rem; cursor: pointer;"><i class="fas fa-trash-alt"></i> 削除する</button>
                     </div>
+
+                    <!-- 完全に削除するボタン (希望があるが、希望ごと完全消去したい場合の下部フル幅ボタン) -->
+                    <button id="btn-force-delete-sheet-mobile" class="btn" style="width: 100%; height: 34px; font-weight: 700; font-size: 0.75rem; border-radius: 6px; background: #f8fafc !important; color: #ef4444 !important; border: 1px solid #f1f5f9 !important; display: none; align-items: center; justify-content: center; gap: 0.25rem; cursor: pointer; margin-top: 0.2rem;"><i class="fas fa-times-circle"></i> 希望・シフトデータを完全に削除</button>
                 </div>
             </div>
         </div>
+
+        <!-- 【スマホ専用】日次メモ・カスタムモーダル -->
+        <div id="admin-mobile-memo-modal-mobile" class="top-sheet">
+            <div class="sheet-content">
+                <div class="sheet-header">
+                    <div id="memo-sheet-title-mobile" class="staff-name">04/01 (月) のメモ</div>
+                    <div onclick="window.closeDailyMemoModalMobile()" style="cursor: pointer; color: var(--text-secondary); font-weight: 700; font-size: 0.9rem;">閉じる</div>
+                </div>
+                <div style="margin-bottom: 1.2rem;">
+                    <textarea id="memo-sheet-textarea-mobile" class="sheet-input" placeholder="この日の連絡・注意事項、店長メモを入力..." style="width: 100%; height: 120px; resize: none; padding: 0.75rem; border-radius: 12px; border: 1px solid var(--border); font-size: 0.9rem; line-height: 1.5; font-family: inherit; box-sizing: border-box;"></textarea>
+                </div>
+                <div class="sheet-actions" style="display: flex; justify-content: space-between; gap: 0.5rem; width: 100%;">
+                    <button id="btn-delete-memo-mobile" class="btn btn-secondary" style="background: var(--danger); color: white; border: none; padding: 0.75rem 0.8rem; font-size: 0.85rem;"><i class="fas fa-trash-alt"></i> 削除</button>
+                    <div style="display: flex; gap: 0.4rem;">
+                        <button class="btn btn-cancel-sheet" onclick="window.closeDailyMemoModalMobile()" style="font-size: 0.85rem; padding: 0.75rem 0.8rem;">キャンセル</button>
+                        <button id="btn-save-memo-mobile" class="btn btn-save-sheet" style="font-size: 0.85rem; padding: 0.75rem 0.8rem;">保存する</button>
+                    </div>
+                </div>
+                <div class="sheet-handle" style="margin: 15px auto -8px auto;"></div>
+            </div>
+        </div>
+
+        <!-- ボトムシート・プレミアムバックドロップ (薄いダーク調のぼかし背景) -->
+        <div id="bottom-sheet-backdrop-mobile" class="bottom-sheet-backdrop" onclick="window.closeAllBottomSheetsMobile()"></div>
     </div>
 `;
 
@@ -265,46 +297,89 @@ export async function initShiftAdminMobilePage() {
             setShiftState('showRejectedShifts', nextState);
             
             if (nextState) {
-                btnToggleRejectedMobile.innerHTML = '<i class="fas fa-eye"></i>';
-                btnToggleRejectedMobile.style.color = 'var(--primary)';
-                btnToggleRejectedMobile.style.borderColor = 'var(--primary)';
-                btnToggleRejectedMobile.style.background = 'rgba(230, 57, 70, 0.08)';
+                btnToggleRejectedMobile.innerHTML = '<i class="fas fa-eye"></i> 削った希望を確認';
+                btnToggleRejectedMobile.style.color = '#e74c3c';
+                btnToggleRejectedMobile.style.borderColor = '#e74c3c';
+                btnToggleRejectedMobile.style.background = 'rgba(231, 76, 60, 0.08)';
             } else {
-                btnToggleRejectedMobile.innerHTML = '<i class="fas fa-eye-slash"></i>';
-                btnToggleRejectedMobile.style.color = 'var(--text-secondary)';
-                btnToggleRejectedMobile.style.borderColor = 'var(--border)';
-                btnToggleRejectedMobile.style.background = 'transparent';
+                btnToggleRejectedMobile.innerHTML = '<i class="fas fa-eye-slash"></i> 削った希望を確認';
+                btnToggleRejectedMobile.style.color = '#475569';
+                btnToggleRejectedMobile.style.borderColor = '#cbd5e1';
+                btnToggleRejectedMobile.style.background = 'white';
             }
             renderAdminGridMobile(); // スマホ用グリッドの再描画
         };
     }
 
-    // 横画面プレビュー関連のイベントバインド
+    // 新設のモバイル確定ボタン
+    const btnPublishMobile = document.getElementById('btn-publish-mobile');
+    if (btnPublishMobile) {
+        btnPublishMobile.onclick = () => publishShifts();
+    }
+
+    // 横画面プレビュー関連のイベントバインド (イマーシブ全画面・タップで閉じる・ピンチズーム)
     const btnPreview = document.getElementById('btn-landscape-preview-trigger-mobile');
     if (btnPreview) {
         btnPreview.onclick = () => window.openLandscapePreviewMobile();
     }
-    const btnClosePreview = document.getElementById('btn-close-landscape-preview-mobile');
-    if (btnClosePreview) {
-        btnClosePreview.onclick = () => window.closeLandscapePreviewMobile();
-    }
 
-    let zoomWidth = 60;
-    const updatePreviewZoom = (delta) => {
-        zoomWidth = Math.max(35, Math.min(120, zoomWidth + delta));
-        const table = document.getElementById('landscape-preview-table-mobile');
-        if (table) {
-            table.style.setProperty('--preview-col-width', `${zoomWidth}px`);
-        }
-    };
+    // オーバーレイ自体：タップで閉じる + ピンチズーム
+    const previewOverlay = document.getElementById('admin-mobile-landscape-preview-mobile');
+    const previewScrollArea = document.getElementById('landscape-preview-scroll-area-mobile');
+    if (previewOverlay && previewScrollArea) {
+        // --- タップで閉じる (pointerup でスクロールと区別) ---
+        let pointerStartX = 0, pointerStartY = 0;
+        previewOverlay.addEventListener('pointerdown', (e) => {
+            pointerStartX = e.clientX;
+            pointerStartY = e.clientY;
+        });
+        previewOverlay.addEventListener('pointerup', (e) => {
+            const dx = Math.abs(e.clientX - pointerStartX);
+            const dy = Math.abs(e.clientY - pointerStartY);
+            if (dx < 5 && dy < 5) {
+                window.closeLandscapePreviewMobile();
+            }
+        });
 
-    const btnZoomIn = document.getElementById('btn-zoom-in-preview-mobile');
-    if (btnZoomIn) {
-        btnZoomIn.onclick = () => updatePreviewZoom(10);
-    }
-    const btnZoomOut = document.getElementById('btn-zoom-out-preview-mobile');
-    if (btnZoomOut) {
-        btnZoomOut.onclick = () => updatePreviewZoom(-10);
+        // --- ピンチズーム (touch events でスケール変換) ---
+        let currentScale = 1;
+        let lastTouchDist = 0;
+        let isPinching = false;
+
+        const getTouchDist = (t1, t2) => {
+            const dx = t2.clientX - t1.clientX;
+            const dy = t2.clientY - t1.clientY;
+            return Math.sqrt(dx * dx + dy * dy);
+        };
+
+        previewScrollArea.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                isPinching = true;
+                lastTouchDist = getTouchDist(e.touches[0], e.touches[1]);
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        previewScrollArea.addEventListener('touchmove', (e) => {
+            if (isPinching && e.touches.length === 2) {
+                const dist = getTouchDist(e.touches[0], e.touches[1]);
+                const delta = dist / lastTouchDist;
+                lastTouchDist = dist;
+                currentScale = Math.min(4.0, Math.max(0.4, currentScale * delta));
+                const table = document.getElementById('landscape-preview-table-mobile');
+                if (table) {
+                    table.style.transformOrigin = 'top left';
+                    table.style.transform = `scale(${currentScale})`;
+                }
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        previewScrollArea.addEventListener('touchend', (e) => {
+            if (e.touches.length < 2) {
+                isPinching = false;
+            }
+        });
     }
 
     const handleOrientationChange = () => {
@@ -324,10 +399,14 @@ export async function initShiftAdminMobilePage() {
     window.openAdminActionMenuMobile = () => {
         const menu = document.getElementById('admin-mobile-action-menu-mobile');
         if (menu) menu.classList.add('show');
+        const backdrop = document.getElementById('bottom-sheet-backdrop-mobile');
+        if (backdrop) backdrop.classList.add('show');
     };
     window.closeAdminActionMenuMobile = () => {
         const menu = document.getElementById('admin-mobile-action-menu-mobile');
         if (menu) menu.classList.remove('show');
+        const backdrop = document.getElementById('bottom-sheet-backdrop-mobile');
+        if (backdrop) backdrop.classList.remove('show');
     };
     const btnOpenMenu = document.getElementById('btn-open-action-menu-mobile');
     if (btnOpenMenu) {
@@ -379,7 +458,10 @@ export async function initShiftAdminMobilePage() {
                 
                 if (normalBar) normalBar.style.display = 'none';
                 if (bulkBar) bulkBar.style.display = 'flex';
-                if (bottomBar) bottomBar.classList.add('bulk-active');
+                if (bottomBar) {
+                    bottomBar.style.display = 'flex';
+                    bottomBar.classList.add('bulk-active');
+                }
                 
                 const bulkCount = document.getElementById('bottom-bar-bulk-count-mobile');
                 if (bulkCount) bulkCount.textContent = "0件選択中";
@@ -419,7 +501,9 @@ export async function initShiftAdminMobilePage() {
     window.openTimeInputMobile = openTimeInputMobile;
     window.updateMobileLiveHeaderMobile = updateMobileLiveHeaderMobile;
     window.openDailyMemoModalMobile = openDailyMemoModalMobile;
+    window.closeDailyMemoModalMobile = closeDailyMemoModalMobile;
     window.closeAdminBottomSheetMobile = closeAdminBottomSheetMobile;
+    window.closeAllBottomSheetsMobile = closeAllBottomSheetsMobile;
     
     // モバイル専用新規のグローバル登録
     window.selectActiveDateMobile = selectActiveDateMobile;
@@ -454,7 +538,6 @@ export function renderAdminGridMobile() {
                     <div class="date-num">${d.getDate()}</div>
                     <div class="weekday">${['日','月','火','水','木','金','土'][d.getDay()]}</div>
                     ${isHoliday ? `<div class="holiday-name-hdr">${cal.label || '祝日'}</div>` : ''}
-                    ${isOff ? `<div class="holiday-name-hdr">店休</div>` : ''}
                     ${cal.is_market_off ? `<div class="market-badge-hdr">市</div>` : ''}
                 </th>`;
         }
@@ -482,7 +565,7 @@ export function renderAdminGridMobile() {
             <td class="staff-cell" style="background: #f1f5f9; color: var(--text-primary); vertical-align: middle;">
                 <div style="display:flex; align-items:center; gap:0.4rem; justify-content:flex-start; line-height:1.2;">
                     <i class="fas fa-sticky-note" style="color: #10b981;"></i>
-                    <span style="font-weight:800; font-size:0.8rem;">日次メモ</span>
+                    <span style="font-weight:800; font-size:0.8rem;">メモ</span>
                 </div>
             </td>
         `;
@@ -495,8 +578,8 @@ export function renderAdminGridMobile() {
             const isOff = cal.type === 'off';
             
             const cellContent = memoText 
-                ? `<span class="daily-memo-preview has-memo">📝 ${memoText}</span>` 
-                : `<span class="daily-memo-preview empty">＋入力</span>`;
+                ? `<i class="fas fa-comment-dots" style="color: #10b981; font-size: 1.1rem; display: block; margin: 0 auto;" title="${memoText}"></i>` 
+                : `<span class="daily-memo-preview empty" style="font-size: 0.85rem; color: #94a3b8; font-weight: 500; display: block; text-align: center;">＋</span>`;
                 
             memoTr.innerHTML += `
                 <td class="daily-memo-cell ${isOff ? 'is-off-column' : ''}" 
@@ -661,12 +744,28 @@ export function updateOverallKPIsMobile() {
         }
     });
 
+    const btnPublishMobile = document.getElementById('btn-publish-mobile');
+    const btnMenuPublishMobile = document.getElementById('btn-menu-publish-mobile');
     if (alertsContMobile) {
         if (violations.length > 0) {
-            alertsContMobile.textContent = `⚠️ 超過: ${violations.length}名`;
+            alertsContMobile.textContent = `⚠️ 超過`;
             alertsContMobile.style.display = 'block';
+            if (btnPublishMobile) btnPublishMobile.style.display = 'none';
+            if (btnMenuPublishMobile) {
+                btnMenuPublishMobile.disabled = true;
+                btnMenuPublishMobile.style.opacity = '0.5';
+                btnMenuPublishMobile.style.cursor = 'not-allowed';
+                btnMenuPublishMobile.innerHTML = '<i class="fas fa-ban"></i> 28h超過のため公開不可';
+            }
         } else {
             alertsContMobile.style.display = 'none';
+            if (btnPublishMobile) btnPublishMobile.style.display = 'inline-flex';
+            if (btnMenuPublishMobile) {
+                btnMenuPublishMobile.disabled = false;
+                btnMenuPublishMobile.style.opacity = '1';
+                btnMenuPublishMobile.style.cursor = 'pointer';
+                btnMenuPublishMobile.innerHTML = '<i class="fas fa-paper-plane"></i> 一括確定・公開';
+            }
         }
     }
     window.current28hViolations = violations;
@@ -895,7 +994,10 @@ export async function openTimeInputMobile(date, uid) {
     const sheet = document.getElementById('admin-mobile-bottom-sheet-mobile');
     if (sheet) {
         document.getElementById('sheet-staff-name-mobile').textContent = user.DisplayName || user.Name;
-        document.getElementById('sheet-date-label-mobile').textContent = date.replace(/-/g, '/');
+        const parts = date.split('-').map(Number);
+        const editD = new Date(parts[0], parts[1] - 1, parts[2]);
+        const editDow = ['日','月','火','水','木','金','土'][editD.getDay()];
+        document.getElementById('sheet-date-label-mobile').textContent = `${date.replace(/-/g, '/')} (${editDow})`;
         
         const [sH, sM] = (sData.start || '17:00').split(':');
         const [eH, eM] = (sData.end || '22:00').split(':');
@@ -918,6 +1020,8 @@ export async function openTimeInputMobile(date, uid) {
         });
 
         sheet.classList.add('show');
+        const backdrop = document.getElementById('bottom-sheet-backdrop-mobile');
+        if (backdrop) backdrop.classList.add('show');
         window.updateMobileLiveHeaderMobile(date);
 
         document.getElementById('btn-save-sheet-mobile').onclick = async () => {
@@ -932,62 +1036,121 @@ export async function openTimeInputMobile(date, uid) {
                 note: document.getElementById('sheet-note-mobile').value
             };
             const ok = await applyShiftUpdate(uid, date, news);
-            if (ok) sheet.classList.remove('show');
+            if (ok) window.closeAdminBottomSheetMobile();
             
             btnSave.disabled = false;
             btnSave.innerHTML = '保存する';
         };
 
-        const btnDeleteSheet = document.getElementById('btn-delete-sheet-mobile');
-        if (btnDeleteSheet) {
-            if (!sData.start && !sData.hopeStart) {
-                btnDeleteSheet.style.display = 'none';
-            } else {
-                btnDeleteSheet.style.display = 'block';
-                btnDeleteSheet.onclick = async () => {
+        const btnDelete = document.getElementById('btn-delete-sheet-mobile');
+        const btnReject = document.getElementById('btn-reject-sheet-mobile');
+        const btnForceDelete = document.getElementById('btn-force-delete-sheet-mobile');
+
+        if (btnDelete) btnDelete.style.display = 'none';
+        if (btnReject) btnReject.style.display = 'none';
+        if (btnForceDelete) btnForceDelete.style.display = 'none';
+
+        const hasHope = !!(sData.hopeStart || sData.hopeEnd);
+        const hasShift = !!sData.start;
+
+        const rejectAction = async (btn) => {
+            btn.disabled = true;
+            const origHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            const loader = showLoader();
+            
+            const news = {
+                userId: uid,
+                userName: user.Name || user.DisplayName,
+                date,
+                start: '',
+                end: '',
+                breakMin: 0,
+                note: document.getElementById('sheet-note-mobile')?.value || sData.note || '',
+                status: 'rejected',
+                hopeStart: sData.hopeStart || sData.start || '17:00',
+                hopeEnd: sData.hopeEnd || sData.end || '22:00',
+                storeId: String(window.currentAdminStoreId || sData.storeId || ''),
+                storeName: String(window.currentAdminStoreName || sData.storeName || ''),
+                updatedAt: new Date().toISOString()
+            };
+            
+            try {
+                await setDoc(doc(db, 't_shifts', `${date}_${uid}`), news);
+                if (!currentShifts[uid]) currentShifts[uid] = {};
+                currentShifts[uid][date] = news;
+
+                const currentMyStoreID = window.currentAdminStoreId || JSON.parse(localStorage.getItem('currentUser')).StoreID;
+                if (!globalShiftMap[uid]) globalShiftMap[uid] = {};
+                if (!globalShiftMap[uid][date]) globalShiftMap[uid][date] = [];
+                globalShiftMap[uid][date] = globalShiftMap[uid][date].filter(s => s.storeId != currentMyStoreID && s.StoreID != currentMyStoreID);
+                globalShiftMap[uid][date].push(news);
+
+                renderCellUIMobile(uid, date, news);
+                updateOverallKPIsMobile();
+                window.closeAdminBottomSheetMobile();
+            } catch (err) {
+                console.error(err);
+                showAlert('エラー', '不採用処理に失敗しました。');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = origHTML;
+                if (loader) loader.remove();
+            }
+        };
+
+        const deleteAction = async (btn) => {
+            btn.disabled = true;
+            const origHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            const loader = showLoader();
+            
+            try {
+                await deleteDoc(doc(db, 't_shifts', `${date}_${uid}`));
+                
+                if (currentShifts[uid]) {
+                    delete currentShifts[uid][date];
+                }
+
+                const currentMyStoreID = window.currentAdminStoreId || JSON.parse(localStorage.getItem('currentUser')).StoreID;
+                if (globalShiftMap[uid] && globalShiftMap[uid][date]) {
+                    globalShiftMap[uid][date] = globalShiftMap[uid][date].filter(s => s.storeId != currentMyStoreID && s.StoreID != currentMyStoreID);
+                }
+
+                renderCellUIMobile(uid, date, null);
+                updateOverallKPIsMobile();
+                window.closeAdminBottomSheetMobile();
+            } catch (err) {
+                console.error(err);
+                showAlert('エラー', 'シフト削除に失敗しました。');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = origHTML;
+                if (loader) loader.remove();
+            }
+        };
+
+        if (hasHope) {
+            if (btnReject) {
+                btnReject.style.display = 'flex';
+                btnReject.onclick = async () => {
                     const ok = await showConfirm('不採用確認', 'このシフト希望を不採用（削り）にしますか？');
-                    if (!ok) return;
-                    
-                    btnDeleteSheet.disabled = true;
-                    btnDeleteSheet.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 処理中...';
-                    
-                    const news = {
-                        userId: uid,
-                        userName: user.Name || user.DisplayName,
-                        date,
-                        start: '',
-                        end: '',
-                        breakMin: 0,
-                        note: document.getElementById('sheet-note-mobile')?.value || sData.note || '',
-                        status: 'rejected',
-                        hopeStart: sData.hopeStart || sData.start || '17:00',
-                        hopeEnd: sData.hopeEnd || sData.end || '22:00',
-                        storeId: String(window.currentAdminStoreId || sData.storeId || ''),
-                        storeName: String(window.currentAdminStoreName || sData.storeName || ''),
-                        updatedAt: new Date().toISOString()
-                    };
-                    
-                    try {
-                        await setDoc(doc(db, 't_shifts', `${date}_${uid}`), news);
-                        if (!currentShifts[uid]) currentShifts[uid] = {};
-                        currentShifts[uid][date] = news;
-
-                        const currentMyStoreID = window.currentAdminStoreId || JSON.parse(localStorage.getItem('currentUser')).StoreID;
-                        if (!globalShiftMap[uid]) globalShiftMap[uid] = {};
-                        if (!globalShiftMap[uid][date]) globalShiftMap[uid][date] = [];
-                        globalShiftMap[uid][date] = globalShiftMap[uid][date].filter(s => s.storeId != currentMyStoreID && s.StoreID != currentMyStoreID);
-                        globalShiftMap[uid][date].push(news);
-
-                        renderCellUIMobile(uid, date, news);
-                        updateOverallKPIsMobile();
-                        sheet.classList.remove('show');
-                    } catch (err) {
-                        console.error(err);
-                        showAlert('エラー', '不採用処理に失敗しました。');
-                    } finally {
-                        btnDeleteSheet.disabled = false;
-                        btnDeleteSheet.innerHTML = '<i class="fas fa-trash-alt"></i> 不採用';
-                    }
+                    if (ok) await rejectAction(btnReject);
+                };
+            }
+            if (btnForceDelete) {
+                btnForceDelete.style.display = 'flex';
+                btnForceDelete.onclick = async () => {
+                    const ok = await showConfirm('完全削除確認', 'このセルの希望およびシフトデータを完全に削除しますか？\n(削除すると空白のセルに戻ります)');
+                    if (ok) await deleteAction(btnForceDelete);
+                };
+            }
+        } else {
+            if (hasShift && btnDelete) {
+                btnDelete.style.display = 'flex';
+                btnDelete.onclick = async () => {
+                    const ok = await showConfirm('削除確認', 'この日のシフト設定を削除しますか？');
+                    if (ok) await deleteAction(btnDelete);
                 };
             }
         }
@@ -1056,22 +1219,79 @@ export function updateMobileLiveHeaderMobile(ymd) {
     }
 }
 
-export async function openDailyMemoModalMobile(ymd) {
-    const existingMemo = dailyMemos[ymd]?.memo || '';
-    const text = prompt(`${ymd} の日次メモを入力してください（空にすると削除されます）：`, existingMemo);
-    if (text === null) return;
+export function openDailyMemoModalMobile(ymd) {
+    const sheet = document.getElementById('admin-mobile-memo-modal-mobile');
+    const textarea = document.getElementById('memo-sheet-textarea-mobile');
+    const title = document.getElementById('memo-sheet-title-mobile');
+    const saveBtn = document.getElementById('btn-save-memo-mobile');
+    const deleteBtn = document.getElementById('btn-delete-memo-mobile');
     
-    const me = JSON.parse(localStorage.getItem('currentUser'));
-    const sid = window.currentAdminStoreId || me.StoreID || me.StoreId;
-    const loader = showLoader();
-    try {
-        await saveDailyMemo(sid, ymd, text.trim(), me.Name);
-        renderAdminGridMobile();
-    } catch (e) {
-        showAlert('エラー', 'メモの保存に失敗しました。');
-    } finally {
-        if (loader) loader.remove();
+    if (!sheet || !textarea || !title) return;
+    
+    const d = new Date(ymd);
+    const dow = ['日','月','火','水','木','金','土'][d.getDay()];
+    title.textContent = `${d.getMonth() + 1}/${d.getDate()} (${dow}) のメモ`;
+    
+    const existingMemo = dailyMemos[ymd]?.memo || '';
+    textarea.value = existingMemo;
+    
+    // 自動高さ調整の初期化
+    textarea.style.height = '120px';
+    if (textarea.scrollHeight > 120) {
+        textarea.style.height = textarea.scrollHeight + 'px';
     }
+    
+    // 文字入力に連動した高さ自動拡張
+    textarea.oninput = () => {
+        textarea.style.height = 'auto';
+        textarea.style.height = textarea.scrollHeight + 'px';
+    };
+    
+    deleteBtn.style.display = existingMemo ? 'block' : 'none';
+    
+    saveBtn.onclick = async () => {
+        const text = textarea.value.trim();
+        const me = JSON.parse(localStorage.getItem('currentUser'));
+        const sid = window.currentAdminStoreId || me.StoreID || me.StoreId;
+        const loader = showLoader();
+        try {
+            await saveDailyMemo(sid, ymd, text, me.Name);
+            closeDailyMemoModalMobile();
+            renderAdminGridMobile();
+        } catch (e) {
+            showAlert('エラー', 'メモの保存に失敗しました。');
+        } finally {
+            if (loader) loader.remove();
+        }
+    };
+    
+    deleteBtn.onclick = async () => {
+        showConfirm('メモの削除', 'この日のメモを削除しますか？', async () => {
+            const me = JSON.parse(localStorage.getItem('currentUser'));
+            const sid = window.currentAdminStoreId || me.StoreID || me.StoreId;
+            const loader = showLoader();
+            try {
+                await saveDailyMemo(sid, ymd, '', me.Name);
+                closeDailyMemoModalMobile();
+                renderAdminGridMobile();
+            } catch (e) {
+                showAlert('エラー', 'メモの削除に失敗しました。');
+            } finally {
+                if (loader) loader.remove();
+            }
+        });
+    };
+    
+    sheet.classList.add('show');
+    const backdrop = document.getElementById('bottom-sheet-backdrop-mobile');
+    if (backdrop) backdrop.classList.add('show');
+}
+
+export function closeDailyMemoModalMobile() {
+    const sheet = document.getElementById('admin-mobile-memo-modal-mobile');
+    if (sheet) sheet.classList.remove('show');
+    const backdrop = document.getElementById('bottom-sheet-backdrop-mobile');
+    if (backdrop) backdrop.classList.remove('show');
 }
 
 export function openBulkInputMobile() {
@@ -1144,16 +1364,27 @@ export function exitBulkModeMobile() {
     const bulkBar = document.getElementById('bottom-bar-bulk-content-mobile');
     const bottomBar = document.getElementById('admin-mobile-bottom-bar-mobile');
     
-    if (normalBar) normalBar.style.display = 'flex';
+    if (normalBar) normalBar.style.display = 'none';
     if (bulkBar) bulkBar.style.display = 'none';
-    if (bottomBar) bottomBar.classList.remove('bulk-active');
+    if (bottomBar) {
+        bottomBar.style.display = 'none';
+        bottomBar.classList.remove('bulk-active');
+    }
 }
 
 export function closeAdminBottomSheetMobile() {
     const sheet = document.getElementById('admin-mobile-bottom-sheet-mobile');
     if (sheet) sheet.classList.remove('show');
+    const backdrop = document.getElementById('bottom-sheet-backdrop-mobile');
+    if (backdrop) backdrop.classList.remove('show');
     window.currentEditingUid = null;
     window.currentEditingDate = null;
+}
+
+export function closeAllBottomSheetsMobile() {
+    window.closeAdminBottomSheetMobile();
+    window.closeDailyMemoModalMobile();
+    window.closeAdminActionMenuMobile();
 }
 
 // 時刻選択ヘルパー
@@ -1196,16 +1427,60 @@ export function injectStylesMobile() {
             border-radius: 16px;
             box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
             z-index: 10001;
-            display: flex;
+            display: none;
             align-items: center;
             justify-content: space-between;
             padding: 0 1.2rem;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .bottom-bar-fixed-mobile.bulk-active {
+            display: flex !important;
             background: rgba(254, 243, 199, 0.98) !important;
             border: 1px solid rgba(245, 158, 11, 0.6) !important;
             box-shadow: 0 10px 30px rgba(245, 158, 11, 0.25) !important;
+        }
+        .bottom-sheet-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.25s ease, visibility 0.25s;
+            z-index: 10000;
+        }
+        .bottom-sheet-backdrop.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .is-off-column { 
+            background-color: #fef2f2 !important; 
+            background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(239, 68, 68, 0.08) 5px, rgba(239, 68, 68, 0.08) 10px) !important;
+            cursor: not-allowed;
+        }
+        .time-select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background: #f1f5f9 !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 8px !important;
+            padding: 0.4rem 0.2rem !important;
+            font-size: 16px !important;
+            font-weight: 700 !important;
+            color: #1e293b !important;
+            text-align: center !important;
+            width: 52px !important;
+            height: 40px !important;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02) !important;
+            cursor: pointer !important;
+            outline: none !important;
+            transition: border-color 0.2s, background-color 0.2s !important;
+        }
+        .time-select:focus {
+            border-color: #10b981 !important;
+            background-color: white !important;
         }
         .bar-content-mobile-row {
             display: flex;
@@ -1232,6 +1507,46 @@ export function injectStylesMobile() {
         .bottom-sheet.show {
             transform: translateY(0);
             visibility: visible;
+        }
+        .top-sheet {
+            position: fixed;
+            left: 0;
+            right: 0;
+            top: 0;
+            background: white;
+            border-radius: 0 0 24px 24px;
+            box-shadow: 0 10px 40px rgba(15, 23, 42, 0.15);
+            transform: translateY(-100%);
+            visibility: hidden;
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.35s;
+            z-index: 10002;
+            padding: 1.5rem;
+            padding-top: calc(1.5rem + env(safe-area-inset-top));
+        }
+        .top-sheet.show {
+            transform: translateY(0);
+            visibility: visible;
+        }
+        .centered-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            z-index: 10002;
+            width: calc(100% - 30px);
+            max-width: 360px;
+            padding: 1.5rem;
+            visibility: hidden;
+            opacity: 0;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s, visibility 0.3s;
+        }
+        .centered-modal.show {
+            transform: translate(-50%, -50%) scale(1);
+            visibility: visible;
+            opacity: 1;
         }
         #shift-admin-table-mobile {
             border-collapse: separate !important;
@@ -1267,7 +1582,7 @@ export function injectStylesMobile() {
             color: var(--text-secondary);
         }
         
-        /* Landscape Preview Styles */
+        /* Landscape Preview Styles (イマーシブ全画面・タップで閉じる) */
         .landscape-preview-overlay {
             position: fixed;
             top: 0;
@@ -1275,27 +1590,45 @@ export function injectStylesMobile() {
             width: 100vw;
             height: 100vh;
             background: #0f172a;
-            z-index: 20000;
+            z-index: 2147483647; /* CSS最大値: ヘッダー含む全要素の上に被せる */
             display: flex;
             flex-direction: column;
             overflow: hidden;
             color: white;
+            cursor: pointer; /* タップで閉じることを示す */
         }
-        .landscape-preview-header {
-            height: 50px;
-            background: #1e293b;
-            border-bottom: 1px solid #334155;
+        /* タップで閉じるヒント */
+        .landscape-preview-tap-hint {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 20010;
+            text-align: center;
+            padding: 0.6rem 1rem;
+            background: rgba(15, 23, 42, 0.85);
+            color: rgba(255,255,255,0.9);
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            pointer-events: none;
+            transition: opacity 0.6s ease;
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            padding: 0 1rem;
-            flex-shrink: 0;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        .landscape-preview-tap-hint.hidden {
+            opacity: 0;
         }
         .landscape-preview-body-container {
             flex: 1;
             overflow: auto;
             background: #0f172a;
             -webkit-overflow-scrolling: touch;
+            cursor: pointer;
+            /* ヒント分のパディング */
+            padding-top: 38px;
         }
         .landscape-preview-body {
             padding: 0.5rem;
@@ -1306,6 +1639,7 @@ export function injectStylesMobile() {
             background: white;
             color: #1e293b;
             width: 100%;
+            cursor: default; /* テーブル上はデフォルトカーソル */
         }
         #landscape-preview-table-mobile th, #landscape-preview-table-mobile td {
             border: 1px solid #e2e8f0;
@@ -1431,6 +1765,26 @@ export function openLandscapePreviewMobile() {
     
     previewEl.style.display = 'flex';
     renderLandscapeGridMobile();
+
+    // ヘッダーを非表示にして真の全画面を実現
+    const mobileHeader = document.querySelector('.mobile-app-header');
+    if (mobileHeader) {
+        mobileHeader.style.display = 'none';
+    }
+    // body のスクロールをロック
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
+
+    // 「タップして閉じる」ヒントを表示し、2.5秒後にフェードアウト
+    const hint = document.getElementById('landscape-preview-tap-hint');
+    if (hint) {
+        hint.classList.remove('hidden');
+        clearTimeout(window._previewHintTimer);
+        window._previewHintTimer = setTimeout(() => {
+            hint.classList.add('hidden');
+        }, 2500);
+    }
 }
 
 export function closeLandscapePreviewMobile() {
@@ -1439,6 +1793,17 @@ export function closeLandscapePreviewMobile() {
         previewEl.style.display = 'none';
         previewEl.classList.remove('force-landscape');
     }
+    // ヘッダーを元に戻す
+    const mobileHeader = document.querySelector('.mobile-app-header');
+    if (mobileHeader) {
+        mobileHeader.style.display = '';
+    }
+    // body スクロールを解除
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.width = '';
+    // ヒントタイマーをクリア
+    clearTimeout(window._previewHintTimer);
 }
 
 export function renderLandscapeGridMobile() {
@@ -1460,7 +1825,6 @@ export function renderLandscapeGridMobile() {
                 <div class="date-num">${d.getDate()}</div>
                 <div class="weekday">${['日','月','火','水','木','金','土'][d.getDay()]}</div>
                 ${isHoliday ? `<div class="holiday-name-hdr">${cal.label || '祝日'}</div>` : ''}
-                ${isOff ? `<div class="holiday-name-hdr">店休</div>` : ''}
             </th>`;
     }
     
@@ -1521,5 +1885,33 @@ export function renderLandscapeGridMobile() {
         }
         body.appendChild(tr);
     });
-}
 
+    // 【プレビュー用KPI行】人時売上・売上目標を追加（プレビューでは表示する）
+    const trSPH = document.createElement('tr');
+    trSPH.innerHTML = `<td class="staff-cell" style="background:#f1f5f9; font-size:0.7rem; font-weight:800; color:#1e293b;">人時売上</td>`;
+
+    const trGoal = document.createElement('tr');
+    trGoal.innerHTML = `<td class="staff-cell" style="background:#f8fafc; font-size:0.65rem; font-weight:700; color:#64748b;">売上目標</td>`;
+
+    for (let i = 0; i < span; i++) {
+        const d = new Date(currentSlot.startDate); d.setDate(d.getDate() + i);
+        const ymd = formatDateJST(d);
+        let dayH = 0;
+        [...allStoreUsers, ...helpUsers].forEach(u => {
+            const s = currentShifts[u.id]?.[ymd];
+            if (s && s.start && s.status !== 'rejected') {
+                const sA = s.start.split(':').map(Number); const eA = s.end.split(':').map(Number);
+                let h = (eA[0]+eA[1]/60) - (sA[0]+sA[1]/60); if(h<0) h+=24;
+                dayH += Math.max(0, h - (s.breakMin||0)/60);
+            }
+        });
+        const sph = dayH > 0 ? (dailyGoalSales[ymd] / dayH) : 0;
+        let bg = '#10b981'; if(sph < 4000) bg = '#ef4444'; else if(sph < 5000) bg = '#f59e0b';
+        trSPH.innerHTML += `<td style="background:#f1f5f9; text-align:center; padding:2px;"><span style="background:${bg}; color:white; padding:1px 3px; border-radius:3px; font-size:0.6rem; font-weight:700;">¥${Math.round(sph).toLocaleString()}</span></td>`;
+
+        const goalVal = dailyGoalSales[ymd] || 0;
+        trGoal.innerHTML += `<td style="background:#f8fafc; font-size:0.6rem; color:#64748b; font-weight:700; text-align:center;">¥${Math.round(goalVal).toLocaleString()}</td>`;
+    }
+    body.appendChild(trSPH);
+    body.appendChild(trGoal);
+}

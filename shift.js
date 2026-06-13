@@ -2953,13 +2953,18 @@ export async function shareShiftToLine(sid, sName) {
             });
         }
 
-        const table = document.getElementById('shift-admin-table');
+        const table = document.getElementById('shift-admin-table') || document.getElementById('shift-admin-table-mobile');
         if (!table) throw new Error("シフト表が見つかりません。");
 
         // キャプチャ用に一時的にスタイルを調整（スクロールで見切れないようにする）
         const originalStyle = table.style.cssText;
         table.style.width = 'auto'; // 全幅を確保
         table.style.minWidth = '1200px';
+
+        // 【LINE共有用】人時売上・売上目標の行をキャプチャ前に一時的に非表示（スタッフへの共有画像には不要な情報のため）
+        const kpiRows = table.querySelectorAll('.foot-kpi-row');
+        const kpiOriginalDisplays = Array.from(kpiRows).map(r => r.style.display);
+        kpiRows.forEach(r => { r.style.display = 'none'; });
 
         // 画像化の実行 (背景透過設定やスケールを調整)
         const canvas = await html2canvas(table, {
@@ -2970,7 +2975,8 @@ export async function shareShiftToLine(sid, sName) {
             allowTaint: true
         });
 
-        // スタイルを元に戻す
+        // スタイルを元に戻す（KPI行の表示を復元）
+        kpiRows.forEach((r, i) => { r.style.display = kpiOriginalDisplays[i]; });
         table.style.cssText = originalStyle;
 
         const dataUrl = canvas.toDataURL("image/png");

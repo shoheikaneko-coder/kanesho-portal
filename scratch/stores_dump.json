@@ -1,0 +1,91 @@
+{
+  "documents": [
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_stores/ID001",
+      "fields": {
+        "store_name": {
+          "stringValue": "焼きとん酒場かね将"
+        },
+        "seat_count": {
+          "integerValue": "56"
+        },
+        "store_type": {
+          "stringValue": "Store"
+        },
+        "group_name": {
+          "stringValue": "五反田グループ"
+        },
+        "reset_time": {
+          "stringValue": "05:00"
+        },
+        "store_id": {
+          "stringValue": "ID001"
+        },
+        "dinii_store_id": {
+          "stringValue": "40ea8827-b10d-4a73-a9f4-361d1ff2bbe2"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.783948Z",
+      "updateTime": "2026-03-30T16:57:15.313963Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_stores/ID002",
+      "fields": {
+        "store_name": {
+          "stringValue": "酒場かね将地下一階"
+        },
+        "seat_count": {
+          "integerValue": "61"
+        },
+        "store_type": {
+          "stringValue": "Store"
+        },
+        "group_name": {
+          "stringValue": "五反田グループ"
+        },
+        "reset_time": {
+          "stringValue": "05:00"
+        },
+        "store_id": {
+          "stringValue": "ID002"
+        },
+        "dinii_store_id": {
+          "stringValue": "defb1ba1-bbc9-4096-8c05-9c68251011e7"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.783948Z",
+      "updateTime": "2026-03-30T16:57:44.630169Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_stores/ID003",
+      "fields": {
+        "seat_count": {
+          "integerValue": "0"
+        },
+        "store_name": {
+          "stringValue": "五反田CK"
+        },
+        "store_type": {
+          "stringValue": "CK"
+        },
+        "phone": {
+          "stringValue": ""
+        },
+        "dinee_store_id": {
+          "stringValue": ""
+        },
+        "store_id": {
+          "stringValue": "ID003"
+        },
+        "address": {
+          "stringValue": ""
+        },
+        "group_name": {
+          "stringValue": "五反田グループ"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.783948Z",
+      "updateTime": "2026-03-24T15:40:03.783948Z"
+    }
+  ]
+}

@@ -1,0 +1,3187 @@
+{
+  "documents": [
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/49VewuvrgSCj6onxjTLS",
+      "fields": {
+        "Has28hLimit": {
+          "booleanValue": false
+        },
+        "EmployeeCode": {
+          "stringValue": "0000162"
+        },
+        "DisplayName": {
+          "stringValue": "山田"
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "Status": {
+          "stringValue": "active"
+        },
+        "JobTitle": {
+          "stringValue": ""
+        },
+        "Email": {
+          "stringValue": "likeald@gmail.com"
+        },
+        "Role": {
+          "stringValue": "PartTimer"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-04-09T02:28:46.611Z"
+        },
+        "Name": {
+          "stringValue": "山田芽生"
+        },
+        "StoreID": {
+          "stringValue": "ID001"
+        },
+        "LoginPassword": {
+          "stringValue": "likeald@gmail.com"
+        },
+        "Store": {
+          "stringValue": "焼きとん酒場かね将"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-09T02:28:46.961784Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/4RW1IoWk12JuuVU13iH1",
+      "fields": {
+        "Role": {
+          "stringValue": "PartTimer"
+        },
+        "Email": {
+          "stringValue": "kim230657@gmail.com"
+        },
+        "JobTitle": {
+          "stringValue": ""
+        },
+        "Name": {
+          "stringValue": "金恩龍"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-04-08T16:33:24.136Z"
+        },
+        "Store": {
+          "stringValue": "焼きとん酒場かね将"
+        },
+        "StoreID": {
+          "stringValue": "ID001"
+        },
+        "LoginPassword": {
+          "stringValue": "kim230657@gmail.com"
+        },
+        "FixedSchedule": {
+          "mapValue": {
+            "fields": {
+              "Sun": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "16:00"
+                    },
+                    "end": {
+                      "stringValue": "20:30"
+                    }
+                  }
+                }
+              },
+              "Wed": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:45"
+                    },
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "start": {
+                      "stringValue": "16:30"
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    }
+                  }
+                }
+              },
+              "Fri": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:45"
+                    },
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "16:30"
+                    }
+                  }
+                }
+              },
+              "Sat": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "start": {
+                      "stringValue": "16:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "end": {
+                      "stringValue": "23:45"
+                    }
+                  }
+                }
+              },
+              "Tue": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "start": {
+                      "stringValue": "16:30"
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "end": {
+                      "stringValue": "23:45"
+                    }
+                  }
+                }
+              },
+              "Mon": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "end": {
+                      "stringValue": "23:00"
+                    }
+                  }
+                }
+              },
+              "Thu": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:00"
+                    },
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "EmployeeCode": {
+          "stringValue": "0000160"
+        },
+        "Has28hLimit": {
+          "booleanValue": true
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "DisplayName": {
+          "stringValue": "金"
+        },
+        "Status": {
+          "stringValue": "active"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-23T07:49:16.064756Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/6QVaNsCIfPzpQMYAfBEh",
+      "fields": {
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "DisplayName": {
+          "stringValue": "カン"
+        },
+        "EmployeeCode": {
+          "stringValue": "0000136"
+        },
+        "FixedSchedule": {
+          "mapValue": {
+            "fields": {
+              "Sat": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:45"
+                    },
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "breakMin": {
+                      "integerValue": "60"
+                    },
+                    "start": {
+                      "stringValue": "13:00"
+                    }
+                  }
+                }
+              },
+              "Fri": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:45"
+                    },
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "breakMin": {
+                      "integerValue": "60"
+                    },
+                    "start": {
+                      "stringValue": "13:00"
+                    }
+                  }
+                }
+              },
+              "Wed": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:45"
+                    },
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "breakMin": {
+                      "integerValue": "60"
+                    },
+                    "start": {
+                      "stringValue": "13:00"
+                    }
+                  }
+                }
+              },
+              "Sun": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "breakMin": {
+                      "integerValue": "60"
+                    },
+                    "start": {
+                      "stringValue": "13:00"
+                    },
+                    "end": {
+                      "stringValue": "23:45"
+                    }
+                  }
+                }
+              },
+              "Mon": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "start": {
+                      "stringValue": "13:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "60"
+                    },
+                    "end": {
+                      "stringValue": "23:45"
+                    }
+                  }
+                }
+              },
+              "Thu": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "breakMin": {
+                      "integerValue": "60"
+                    },
+                    "start": {
+                      "stringValue": "13:00"
+                    },
+                    "end": {
+                      "stringValue": "23:45"
+                    }
+                  }
+                }
+              },
+              "Tue": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "breakMin": {
+                      "integerValue": "60"
+                    },
+                    "start": {
+                      "stringValue": "13:00"
+                    },
+                    "end": {
+                      "stringValue": "23:45"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "Has28hLimit": {
+          "booleanValue": false
+        },
+        "Store": {
+          "stringValue": "酒場かね将地下一階"
+        },
+        "StoreID": {
+          "stringValue": "ID002"
+        },
+        "LoginPassword": {
+          "stringValue": "khantko266524@gmail.com"
+        },
+        "Role": {
+          "stringValue": "Manager"
+        },
+        "Email": {
+          "stringValue": "khantko266524@gmail.com"
+        },
+        "JobTitle": {
+          "stringValue": "社員"
+        },
+        "Name": {
+          "stringValue": "カン　コ　コ"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-04-06T04:58:56.790Z"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-06T08:08:12.488362Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/ANjpy41BwuJwvKgR0kUU",
+      "fields": {
+        "Status": {
+          "stringValue": "active"
+        },
+        "DisplayName": {
+          "stringValue": "杉山"
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "Has28hLimit": {
+          "booleanValue": false
+        },
+        "EmployeeCode": {
+          "stringValue": "0000166"
+        },
+        "StoreID": {
+          "stringValue": "ID001"
+        },
+        "LoginPassword": {
+          "stringValue": "ria.0318.richa@gmail.com"
+        },
+        "Store": {
+          "stringValue": "焼きとん酒場かね将"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-04-08T16:33:37.104Z"
+        },
+        "Name": {
+          "stringValue": "杉山莉愛"
+        },
+        "JobTitle": {
+          "stringValue": ""
+        },
+        "Email": {
+          "stringValue": "ria.0318.richa@gmail.com"
+        },
+        "Role": {
+          "stringValue": "PartTimer"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-08T16:33:37.382358Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/BTRdtyCHxuInVmeszMJv",
+      "fields": {
+        "Store": {
+          "stringValue": "酒場かね将地下一階"
+        },
+        "LoginPassword": {
+          "stringValue": "chithanh1899@gmail.com"
+        },
+        "StoreID": {
+          "stringValue": "ID002"
+        },
+        "Role": {
+          "stringValue": "Staff"
+        },
+        "JobTitle": {
+          "stringValue": ""
+        },
+        "Email": {
+          "stringValue": "chithanh1899@gmail.com"
+        },
+        "Name": {
+          "stringValue": "グエン　チ　タイン"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-05-01T04:14:07.963Z"
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "DisplayName": {
+          "stringValue": "タイン"
+        },
+        "ResignationDate": {
+          "stringValue": ""
+        },
+        "Status": {
+          "stringValue": "active"
+        },
+        "FixedSchedule": {
+          "mapValue": {
+            "fields": {
+              "Wed": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "start": {
+                      "stringValue": "13:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "30"
+                    },
+                    "end": {
+                      "stringValue": "23:45"
+                    }
+                  }
+                }
+              },
+              "Fri": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:45"
+                    },
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "start": {
+                      "stringValue": "13:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "30"
+                    }
+                  }
+                }
+              },
+              "Sat": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "start": {
+                      "stringValue": "13:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "30"
+                    },
+                    "end": {
+                      "stringValue": "23:45"
+                    }
+                  }
+                }
+              },
+              "Sun": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:45"
+                    },
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "start": {
+                      "stringValue": "13:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "30"
+                    }
+                  }
+                }
+              },
+              "Thu": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "breakMin": {
+                      "integerValue": "30"
+                    },
+                    "start": {
+                      "stringValue": "13:00"
+                    },
+                    "end": {
+                      "stringValue": "23:45"
+                    }
+                  }
+                }
+              },
+              "Mon": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "end": {
+                      "stringValue": "23:00"
+                    }
+                  }
+                }
+              },
+              "Tue": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "end": {
+                      "stringValue": "23:00"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "EmployeeCode": {
+          "stringValue": "0000170"
+        },
+        "Has28hLimit": {
+          "booleanValue": false
+        },
+        "visa_expiry_date": {
+          "stringValue": "2028-04-29"
+        }
+      },
+      "createTime": "2026-04-30T06:58:34.984043Z",
+      "updateTime": "2026-05-01T04:23:25.307523Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/DfGoX7xZTyG7oNz0fx1C",
+      "fields": {
+        "Has28hLimit": {
+          "booleanValue": false
+        },
+        "FixedSchedule": {
+          "mapValue": {
+            "fields": {
+              "Sat": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "start": {
+                      "stringValue": "13:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "60"
+                    },
+                    "end": {
+                      "stringValue": "23:45"
+                    }
+                  }
+                }
+              },
+              "Fri": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "breakMin": {
+                      "integerValue": "60"
+                    },
+                    "start": {
+                      "stringValue": "13:00"
+                    },
+                    "end": {
+                      "stringValue": "23:45"
+                    }
+                  }
+                }
+              },
+              "Wed": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:45"
+                    },
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "breakMin": {
+                      "integerValue": "60"
+                    },
+                    "start": {
+                      "stringValue": "13:00"
+                    }
+                  }
+                }
+              },
+              "Sun": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:45"
+                    },
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "breakMin": {
+                      "integerValue": "60"
+                    },
+                    "start": {
+                      "stringValue": "13:00"
+                    }
+                  }
+                }
+              },
+              "Mon": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:45"
+                    },
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "start": {
+                      "stringValue": "13:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "60"
+                    }
+                  }
+                }
+              },
+              "Thu": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:45"
+                    },
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "breakMin": {
+                      "integerValue": "60"
+                    },
+                    "start": {
+                      "stringValue": "13:00"
+                    }
+                  }
+                }
+              },
+              "Tue": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "start": {
+                      "stringValue": "13:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "60"
+                    },
+                    "end": {
+                      "stringValue": "23:45"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "EmployeeCode": {
+          "stringValue": "0000169"
+        },
+        "DisplayName": {
+          "stringValue": "カマル"
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-04-06T04:59:46.783Z"
+        },
+        "Name": {
+          "stringValue": "バツタライ　カマル　プラサド"
+        },
+        "Email": {
+          "stringValue": "bhattaraikamal138@gmail.com"
+        },
+        "JobTitle": {
+          "stringValue": "社員"
+        },
+        "Role": {
+          "stringValue": "Staff"
+        },
+        "StoreID": {
+          "stringValue": "ID002"
+        },
+        "LoginPassword": {
+          "stringValue": "bhattaraikamal138@gmail.com"
+        },
+        "Store": {
+          "stringValue": "酒場かね将地下一階"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-06T08:09:01.477246Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/ECLSS0Dgqt2PFFrmuVaq",
+      "fields": {
+        "Has28hLimit": {
+          "booleanValue": true
+        },
+        "FixedSchedule": {
+          "mapValue": {
+            "fields": {
+              "Sun": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:00"
+                    },
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "16:00"
+                    }
+                  }
+                }
+              },
+              "Wed": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "end": {
+                      "stringValue": "23:00"
+                    }
+                  }
+                }
+              },
+              "Fri": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:00"
+                    },
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    }
+                  }
+                }
+              },
+              "Sat": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "21:00"
+                    },
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "16:00"
+                    }
+                  }
+                }
+              },
+              "Tue": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:00"
+                    },
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    }
+                  }
+                }
+              },
+              "Mon": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:00"
+                    },
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    }
+                  }
+                }
+              },
+              "Thu": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "end": {
+                      "stringValue": "23:00"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "EmployeeCode": {
+          "stringValue": "0000132"
+        },
+        "visa_expiry_date": {
+          "stringValue": ""
+        },
+        "DisplayName": {
+          "stringValue": "ニシャルカ"
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "Status": {
+          "stringValue": "retired"
+        },
+        "ResignationDate": {
+          "stringValue": "2026-04-20"
+        },
+        "Email": {
+          "stringValue": "vinindunisalka99@gmail.com"
+        },
+        "JobTitle": {
+          "stringValue": ""
+        },
+        "Role": {
+          "stringValue": "PartTimer"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-04-29T09:10:55.006Z"
+        },
+        "Name": {
+          "stringValue": "ニシャルカエヂィリ"
+        },
+        "LoginPassword": {
+          "stringValue": "vinindunisalka99@gmail.com"
+        },
+        "StoreID": {
+          "stringValue": "ID001"
+        },
+        "Store": {
+          "stringValue": "焼きとん酒場かね将"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-29T09:10:55.134508Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/EFa6nXg6SeJauEn1D8hx",
+      "fields": {
+        "Status": {
+          "stringValue": "active"
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "DisplayName": {
+          "stringValue": "ふじなわ"
+        },
+        "EmployeeCode": {
+          "stringValue": "0000122"
+        },
+        "Has28hLimit": {
+          "booleanValue": false
+        },
+        "Store": {
+          "stringValue": "五反田CK"
+        },
+        "StoreID": {
+          "stringValue": "ID003"
+        },
+        "LoginPassword": {
+          "stringValue": "ricco.biscuit@gmail.com"
+        },
+        "Name": {
+          "stringValue": "藤縄里慧子"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-04-09T00:40:27.435Z"
+        },
+        "Role": {
+          "stringValue": "Manager"
+        },
+        "Email": {
+          "stringValue": "ricco.biscuit@gmail.com"
+        },
+        "JobTitle": {
+          "stringValue": ""
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-09T00:40:27.604295Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/Gnh5Z981Nal7XyO8yFzG",
+      "fields": {
+        "EmployeeCode": {
+          "stringValue": "0000128"
+        },
+        "FixedSchedule": {
+          "mapValue": {
+            "fields": {
+              "Sun": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:00"
+                    },
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    }
+                  }
+                }
+              },
+              "Fri": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "16:30"
+                    },
+                    "end": {
+                      "stringValue": "23:45"
+                    }
+                  }
+                }
+              },
+              "Sat": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "end": {
+                      "stringValue": "23:00"
+                    }
+                  }
+                }
+              },
+              "Wed": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:45"
+                    },
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "start": {
+                      "stringValue": "16:30"
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    }
+                  }
+                }
+              },
+              "Tue": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "16:30"
+                    },
+                    "end": {
+                      "stringValue": "23:45"
+                    }
+                  }
+                }
+              },
+              "Mon": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "end": {
+                      "stringValue": "23:00"
+                    }
+                  }
+                }
+              },
+              "Thu": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:45"
+                    },
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "16:30"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "Has28hLimit": {
+          "booleanValue": true
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "DisplayName": {
+          "stringValue": "マヌ"
+        },
+        "Role": {
+          "stringValue": "PartTimer"
+        },
+        "Email": {
+          "stringValue": "manuradha2002k@gmail.com"
+        },
+        "JobTitle": {
+          "stringValue": ""
+        },
+        "Name": {
+          "stringValue": "カラナマヌラーダ"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-04-07T04:56:12.843Z"
+        },
+        "Store": {
+          "stringValue": "焼きとん酒場かね将"
+        },
+        "StoreID": {
+          "stringValue": "ID001"
+        },
+        "LoginPassword": {
+          "stringValue": "manuradha2002k@gmail.com"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-23T07:49:25.387043Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/HSPZ5uHt35XDMvvmpYtc",
+      "fields": {
+        "LoginPassword": {
+          "stringValue": "sakabakaneshow@kaneshow.jp"
+        },
+        "StoreID": {
+          "stringValue": "ID002"
+        },
+        "Store": {
+          "stringValue": "酒場かね将地下一階"
+        },
+        "ClockInPassword": {
+          "stringValue": ""
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-03-26T10:32:41.618Z"
+        },
+        "Name": {
+          "stringValue": "店舗タブレット（地下）"
+        },
+        "Email": {
+          "stringValue": "sakabakaneshow@kaneshow.jp"
+        },
+        "Role": {
+          "stringValue": "Tablet"
+        },
+        "EmployeeCode": {
+          "stringValue": "9999998"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-03-26T10:32:41.798138Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/QZdrWDtr9NVY2niYpO1M",
+      "fields": {
+        "Status": {
+          "stringValue": "active"
+        },
+        "DisplayName": {
+          "stringValue": "星"
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "Has28hLimit": {
+          "booleanValue": false
+        },
+        "EmployeeCode": {
+          "stringValue": "0000108"
+        },
+        "StoreID": {
+          "stringValue": "ID001"
+        },
+        "LoginPassword": {
+          "stringValue": "h.takeru1022@docomo.ne.jp"
+        },
+        "Store": {
+          "stringValue": "焼きとん酒場かね将"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-04-09T11:34:20.403Z"
+        },
+        "Name": {
+          "stringValue": "星丈瑛"
+        },
+        "Email": {
+          "stringValue": "h.takeru1022@docomo.ne.jp"
+        },
+        "JobTitle": {
+          "stringValue": ""
+        },
+        "Role": {
+          "stringValue": "PartTimer"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-09T11:34:22.477013Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/RCoH7ACEDJl6VpCtZWyy",
+      "fields": {
+        "Status": {
+          "stringValue": "active"
+        },
+        "DisplayName": {
+          "stringValue": "クン"
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "Has28hLimit": {
+          "booleanValue": true
+        },
+        "EmployeeCode": {
+          "stringValue": "0000153"
+        },
+        "FixedSchedule": {
+          "mapValue": {
+            "fields": {
+              "Tue": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "end": {
+                      "stringValue": "23:30"
+                    }
+                  }
+                }
+              },
+              "Mon": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:00"
+                    },
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    }
+                  }
+                }
+              },
+              "Thu": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:30"
+                    },
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    }
+                  }
+                }
+              },
+              "Sun": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "end": {
+                      "stringValue": "23:00"
+                    }
+                  }
+                }
+              },
+              "Sat": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "end": {
+                      "stringValue": "23:00"
+                    }
+                  }
+                }
+              },
+              "Fri": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "end": {
+                      "stringValue": "23:30"
+                    }
+                  }
+                }
+              },
+              "Wed": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:30"
+                    },
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "StoreID": {
+          "stringValue": "ID002"
+        },
+        "LoginPassword": {
+          "stringValue": "cuing1087@gmail.com"
+        },
+        "Store": {
+          "stringValue": "酒場かね将地下一階"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-04-12T09:57:33.882Z"
+        },
+        "Name": {
+          "stringValue": "グエンテ　クオン"
+        },
+        "JobTitle": {
+          "stringValue": ""
+        },
+        "Email": {
+          "stringValue": "cuing1087@gmail.com"
+        },
+        "Role": {
+          "stringValue": "PartTimer"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-12T09:57:34.052578Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/SGSWxdF8RUFqILOYhDQI",
+      "fields": {
+        "StoreID": {
+          "stringValue": "ID001"
+        },
+        "LoginPassword": {
+          "stringValue": "wk.0728___@docomo.ne.jp"
+        },
+        "Store": {
+          "stringValue": "焼きとん酒場かね将"
+        },
+        "DisplayName": {
+          "stringValue": "ながみ"
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-04-09T11:35:04.562Z"
+        },
+        "Name": {
+          "stringValue": "長見和夏"
+        },
+        "JobTitle": {
+          "stringValue": ""
+        },
+        "Email": {
+          "stringValue": "wk.0728___@docomo.ne.jp"
+        },
+        "Has28hLimit": {
+          "booleanValue": false
+        },
+        "EmployeeCode": {
+          "stringValue": "0000119"
+        },
+        "Role": {
+          "stringValue": "PartTimer"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-09T11:35:06.642445Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/U6zicOYny61YVNPOftb2",
+      "fields": {
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "DisplayName": {
+          "stringValue": "ケシュ"
+        },
+        "ResignationDate": {
+          "stringValue": ""
+        },
+        "Status": {
+          "stringValue": "active"
+        },
+        "EmployeeCode": {
+          "stringValue": "x001"
+        },
+        "Has28hLimit": {
+          "booleanValue": false
+        },
+        "visa_expiry_date": {
+          "stringValue": ""
+        },
+        "Store": {
+          "stringValue": "酒場かね将地下一階"
+        },
+        "StoreID": {
+          "stringValue": "ID002"
+        },
+        "LoginPassword": {
+          "stringValue": ""
+        },
+        "Role": {
+          "stringValue": "Staff"
+        },
+        "Email": {
+          "stringValue": ""
+        },
+        "JobTitle": {
+          "stringValue": ""
+        },
+        "Name": {
+          "stringValue": "ケシュ"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-05-22T07:01:39.084Z"
+        }
+      },
+      "createTime": "2026-05-22T07:01:39.219686Z",
+      "updateTime": "2026-05-22T07:01:39.219686Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/WsdBMOcsEs2gYIk8pnwc",
+      "fields": {
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "DisplayName": {
+          "stringValue": "池田"
+        },
+        "Status": {
+          "stringValue": "active"
+        },
+        "EmployeeCode": {
+          "stringValue": "0000167"
+        },
+        "Has28hLimit": {
+          "booleanValue": false
+        },
+        "Store": {
+          "stringValue": "焼きとん酒場かね将"
+        },
+        "LoginPassword": {
+          "stringValue": "abe98977@gmail.com"
+        },
+        "StoreID": {
+          "stringValue": "ID001"
+        },
+        "Role": {
+          "stringValue": "PartTimer"
+        },
+        "JobTitle": {
+          "stringValue": ""
+        },
+        "Email": {
+          "stringValue": "abe98977@gmail.com"
+        },
+        "Name": {
+          "stringValue": "池田新"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-04-09T11:38:26.697Z"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-09T11:38:28.760410Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/XMU2ofuYwuR2XtN6C3VL",
+      "fields": {
+        "Status": {
+          "stringValue": "active"
+        },
+        "ClockInPassword": {
+          "stringValue": ""
+        },
+        "ID": {
+          "stringValue": "ID003"
+        },
+        "DisplayName": {
+          "stringValue": ""
+        },
+        "EmployeeCode": {
+          "stringValue": "9999999"
+        },
+        "権限区分": {
+          "stringValue": "R02"
+        },
+        "Has28hLimit": {
+          "booleanValue": false
+        },
+        "パスワード": {
+          "stringValue": "1111"
+        },
+        "氏名": {
+          "stringValue": "五反田本店"
+        },
+        "Store": {
+          "stringValue": "焼きとん酒場かね将"
+        },
+        "UserEmail": {
+          "stringValue": "kaneshow_honten@kaneshow.jp"
+        },
+        "LoginPassword": {
+          "stringValue": "kaneshow_honten@kaneshow.jp"
+        },
+        "StoreID": {
+          "stringValue": "ID001"
+        },
+        "Name": {
+          "stringValue": "店舗タブレット（本店）"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-04-18T15:11:15.931Z"
+        },
+        "Role": {
+          "stringValue": "Tablet"
+        },
+        "Email": {
+          "stringValue": "kaneshow_honten@kaneshow.jp"
+        },
+        "JobTitle": {
+          "stringValue": ""
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-18T15:11:16.129960Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/XTCb3BTOdtuyUrzh5TCp",
+      "fields": {
+        "ResignationDate": {
+          "stringValue": "2026-03-31"
+        },
+        "Status": {
+          "stringValue": "retired"
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "DisplayName": {
+          "stringValue": "ハン"
+        },
+        "visa_expiry_date": {
+          "stringValue": ""
+        },
+        "EmployeeCode": {
+          "stringValue": "0000118"
+        },
+        "Has28hLimit": {
+          "booleanValue": true
+        },
+        "Store": {
+          "stringValue": "焼きとん酒場かね将"
+        },
+        "StoreID": {
+          "stringValue": "ID001"
+        },
+        "LoginPassword": {
+          "stringValue": ""
+        },
+        "Name": {
+          "stringValue": "ハングエン"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-04-29T09:13:01.714Z"
+        },
+        "Role": {
+          "stringValue": "PartTimer"
+        },
+        "Email": {
+          "stringValue": ""
+        },
+        "JobTitle": {
+          "stringValue": ""
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-29T09:13:01.786715Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/YPJEHhBW5PhHOqcxs8Yw",
+      "fields": {
+        "EmployeeCode": {
+          "stringValue": "0000161"
+        },
+        "FixedSchedule": {
+          "mapValue": {
+            "fields": {
+              "Mon": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "end": {
+                      "stringValue": "23:00"
+                    }
+                  }
+                }
+              },
+              "Thu": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "end": {
+                      "stringValue": "23:00"
+                    }
+                  }
+                }
+              },
+              "Tue": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:00"
+                    },
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    }
+                  }
+                }
+              },
+              "Fri": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "end": {
+                      "stringValue": "23:00"
+                    }
+                  }
+                }
+              },
+              "Sat": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:45"
+                    },
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "start": {
+                      "stringValue": "16:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    }
+                  }
+                }
+              },
+              "Wed": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "end": {
+                      "stringValue": "23:00"
+                    }
+                  }
+                }
+              },
+              "Sun": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:45"
+                    },
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "start": {
+                      "stringValue": "16:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "Has28hLimit": {
+          "booleanValue": true
+        },
+        "Status": {
+          "stringValue": "active"
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "DisplayName": {
+          "stringValue": "ユン"
+        },
+        "Name": {
+          "stringValue": "ユンポーエイン"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-04-10T15:13:36.334Z"
+        },
+        "Role": {
+          "stringValue": "PartTimer"
+        },
+        "JobTitle": {
+          "stringValue": ""
+        },
+        "Email": {
+          "stringValue": "yoonpoeeain885@gmail.com"
+        },
+        "Store": {
+          "stringValue": "焼きとん酒場かね将"
+        },
+        "StoreID": {
+          "stringValue": "ID001"
+        },
+        "LoginPassword": {
+          "stringValue": "yoonpoeeain885@gmail.com"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-13T07:39:27.915535Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/YXO7w82X6Q4ItGSMrZkG",
+      "fields": {
+        "Has28hLimit": {
+          "booleanValue": false
+        },
+        "EmployeeCode": {
+          "stringValue": "0000005"
+        },
+        "権限区分": {
+          "stringValue": "R02"
+        },
+        "Status": {
+          "stringValue": "active"
+        },
+        "DisplayName": {
+          "stringValue": "マスター"
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "ID": {
+          "stringValue": "ID004"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-04-26T11:46:11.623Z"
+        },
+        "Name": {
+          "stringValue": "金子　章治"
+        },
+        "JobTitle": {
+          "stringValue": ""
+        },
+        "Email": {
+          "stringValue": "kaneshou1230@gmail.com"
+        },
+        "Role": {
+          "stringValue": "Staff"
+        },
+        "LoginPassword": {
+          "stringValue": "kaneshou1230@gmail.com"
+        },
+        "StoreID": {
+          "stringValue": "ID003"
+        },
+        "UserEmail": {
+          "stringValue": "kaneshou1230@gmail.com"
+        },
+        "パスワード": {
+          "stringValue": "0119"
+        },
+        "Store": {
+          "stringValue": "五反田CK"
+        },
+        "氏名": {
+          "stringValue": "金子　章治"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-26T11:46:11.810206Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/ZSUVc2HrPDZMLIuhLQi0",
+      "fields": {
+        "パスワード": {
+          "stringValue": "1111"
+        },
+        "Store": {
+          "stringValue": "焼きとん酒場かね将"
+        },
+        "氏名": {
+          "stringValue": "神田　光一"
+        },
+        "UserEmail": {
+          "stringValue": "motuyakiya1972@gmail.com"
+        },
+        "StoreID": {
+          "stringValue": "ID001"
+        },
+        "LoginPassword": {
+          "stringValue": "motuyakiya1972@gmail.com"
+        },
+        "Role": {
+          "stringValue": "Manager"
+        },
+        "JobTitle": {
+          "stringValue": "店長"
+        },
+        "Email": {
+          "stringValue": "motuyakiya1972@gmail.com"
+        },
+        "Name": {
+          "stringValue": "神田　光一"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-04-06T05:01:01.769Z"
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "ID": {
+          "stringValue": "ID007"
+        },
+        "DisplayName": {
+          "stringValue": "神田"
+        },
+        "EmployeeCode": {
+          "stringValue": "0000002"
+        },
+        "権限区分": {
+          "stringValue": "R02"
+        },
+        "Has28hLimit": {
+          "booleanValue": false
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-06T05:01:01.944593Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/bg3XBfHrjbwVlJz2W1qv",
+      "fields": {
+        "StoreID": {
+          "stringValue": "ID001"
+        },
+        "LoginPassword": {
+          "stringValue": "nelelele564@gmail.com"
+        },
+        "Store": {
+          "stringValue": "焼きとん酒場かね将"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-04-29T09:13:15.110Z"
+        },
+        "Name": {
+          "stringValue": "レホン　バン"
+        },
+        "Email": {
+          "stringValue": "nelelele564@gmail.com"
+        },
+        "JobTitle": {
+          "stringValue": ""
+        },
+        "Role": {
+          "stringValue": "PartTimer"
+        },
+        "Status": {
+          "stringValue": "retired"
+        },
+        "ResignationDate": {
+          "stringValue": "2026-03-31"
+        },
+        "DisplayName": {
+          "stringValue": "バン"
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "visa_expiry_date": {
+          "stringValue": ""
+        },
+        "Has28hLimit": {
+          "booleanValue": true
+        },
+        "EmployeeCode": {
+          "stringValue": "0000140"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-29T09:13:15.295662Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/dAQn8PIamGoS6WTPUbln",
+      "fields": {
+        "Store": {
+          "stringValue": "焼きとん酒場かね将"
+        },
+        "LoginPassword": {
+          "stringValue": "kai.kato@kaneshow.jp"
+        },
+        "StoreID": {
+          "stringValue": "ID001"
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "DisplayName": {
+          "stringValue": "カイ"
+        },
+        "Name": {
+          "stringValue": "加藤　凱"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-04-07T04:57:18.899Z"
+        },
+        "Role": {
+          "stringValue": "Manager"
+        },
+        "EmployeeCode": {
+          "stringValue": "0000004"
+        },
+        "Email": {
+          "stringValue": "kai.kato@kaneshow.jp"
+        },
+        "Has28hLimit": {
+          "booleanValue": false
+        },
+        "JobTitle": {
+          "stringValue": "副店長"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-07T04:57:19.090015Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/dJ2RcDfzHPKrleeWw5GL",
+      "fields": {
+        "Role": {
+          "stringValue": "PartTimer"
+        },
+        "Email": {
+          "stringValue": "thuylieu25012001@gmail.com"
+        },
+        "JobTitle": {
+          "stringValue": ""
+        },
+        "Name": {
+          "stringValue": "チャンリエウ"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-04-29T09:12:14.119Z"
+        },
+        "Store": {
+          "stringValue": "焼きとん酒場かね将"
+        },
+        "StoreID": {
+          "stringValue": "ID001"
+        },
+        "LoginPassword": {
+          "stringValue": "thuylieu25012001@gmail.com"
+        },
+        "EmployeeCode": {
+          "stringValue": "0000117"
+        },
+        "Has28hLimit": {
+          "booleanValue": true
+        },
+        "visa_expiry_date": {
+          "stringValue": ""
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "DisplayName": {
+          "stringValue": "チャン"
+        },
+        "ResignationDate": {
+          "stringValue": "2026-03-31"
+        },
+        "Status": {
+          "stringValue": "retired"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-29T09:12:14.186564Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/ecxTQuH6AQJ8z9LftQNf",
+      "fields": {
+        "Role": {
+          "stringValue": "PartTimer"
+        },
+        "EmployeeCode": {
+          "stringValue": "0000168"
+        },
+        "Has28hLimit": {
+          "booleanValue": true
+        },
+        "Email": {
+          "stringValue": "nomitamang14@icloud.com"
+        },
+        "Name": {
+          "stringValue": "タマンノミ"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-04-09T11:38:49.147Z"
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "DisplayName": {
+          "stringValue": "ノミ"
+        },
+        "Store": {
+          "stringValue": "酒場かね将地下一階"
+        },
+        "LoginPassword": {
+          "stringValue": "nomitamang14@icloud.com"
+        },
+        "StoreID": {
+          "stringValue": "ID002"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-09T11:38:51.214345Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/eubF7jkDHDnUGEgvTGy7",
+      "fields": {
+        "Role": {
+          "stringValue": "PartTimer"
+        },
+        "JobTitle": {
+          "stringValue": ""
+        },
+        "Email": {
+          "stringValue": "tamayaakito@gmail.com"
+        },
+        "Name": {
+          "stringValue": "玉舎亮人"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-04-09T11:36:00.329Z"
+        },
+        "Store": {
+          "stringValue": "焼きとん酒場かね将"
+        },
+        "LoginPassword": {
+          "stringValue": "tamayaakito@gmail.com"
+        },
+        "StoreID": {
+          "stringValue": "ID001"
+        },
+        "EmployeeCode": {
+          "stringValue": "0000137"
+        },
+        "Has28hLimit": {
+          "booleanValue": false
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "DisplayName": {
+          "stringValue": "玉舎"
+        },
+        "Status": {
+          "stringValue": "active"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-09T11:36:02.411559Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/f7d9y3lCGPEa0F2kpc8c",
+      "fields": {
+        "UpdatedAt": {
+          "stringValue": "2026-04-06T04:59:34.977Z"
+        },
+        "Name": {
+          "stringValue": "金子　昌平"
+        },
+        "JobTitle": {
+          "stringValue": "店長"
+        },
+        "Email": {
+          "stringValue": "shohei.kaneko@kaneshow.jp"
+        },
+        "Role": {
+          "stringValue": "Admin"
+        },
+        "UserEmail": {
+          "stringValue": "shohei.kaneko@kaneshow.jp"
+        },
+        "StoreID": {
+          "stringValue": "ID002"
+        },
+        "LoginPassword": {
+          "stringValue": "69914073"
+        },
+        "Store": {
+          "stringValue": "酒場かね将地下一階"
+        },
+        "氏名": {
+          "stringValue": "金子　昌平"
+        },
+        "パスワード": {
+          "stringValue": "6991"
+        },
+        "Has28hLimit": {
+          "booleanValue": false
+        },
+        "権限区分": {
+          "stringValue": "R01"
+        },
+        "EmployeeCode": {
+          "stringValue": "0000001"
+        },
+        "DisplayName": {
+          "stringValue": "昌平"
+        },
+        "ID": {
+          "stringValue": "ID001"
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-06T04:59:35.150807Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/hLWgZYAlfk7AfeqMisx3",
+      "fields": {
+        "Name": {
+          "stringValue": "小山内泰人"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-05-02T02:49:19.077Z"
+        },
+        "Role": {
+          "stringValue": "Staff"
+        },
+        "JobTitle": {
+          "stringValue": ""
+        },
+        "Email": {
+          "stringValue": "yasu03714351@yahoo.co.jp"
+        },
+        "Store": {
+          "stringValue": "五反田CK"
+        },
+        "LoginPassword": {
+          "stringValue": "yasu03714351@yahoo.co.jp"
+        },
+        "StoreID": {
+          "stringValue": "ID003"
+        },
+        "visa_expiry_date": {
+          "stringValue": ""
+        },
+        "EmployeeCode": {
+          "stringValue": "0000149"
+        },
+        "Has28hLimit": {
+          "booleanValue": false
+        },
+        "ResignationDate": {
+          "stringValue": ""
+        },
+        "Status": {
+          "stringValue": "active"
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "DisplayName": {
+          "stringValue": "小山内"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-05-02T02:49:21.417650Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/huUOo7ALYNmvwQSHEmeo",
+      "fields": {
+        "visa_expiry_date": {
+          "stringValue": ""
+        },
+        "EmployeeCode": {
+          "stringValue": "0000156"
+        },
+        "Has28hLimit": {
+          "booleanValue": true
+        },
+        "ResignationDate": {
+          "stringValue": "2026-03-20"
+        },
+        "Status": {
+          "stringValue": "retired"
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "DisplayName": {
+          "stringValue": "ドン"
+        },
+        "Name": {
+          "stringValue": "ゴコンドン"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-04-29T09:05:11.470Z"
+        },
+        "Role": {
+          "stringValue": "PartTimer"
+        },
+        "JobTitle": {
+          "stringValue": ""
+        },
+        "Email": {
+          "stringValue": ""
+        },
+        "Store": {
+          "stringValue": "酒場かね将地下一階"
+        },
+        "StoreID": {
+          "stringValue": "ID002"
+        },
+        "LoginPassword": {
+          "stringValue": ""
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-29T09:05:11.607208Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/k5fOak1Bf6t1ivNSi93G",
+      "fields": {
+        "UpdatedAt": {
+          "stringValue": "2026-04-08T16:35:12.776Z"
+        },
+        "Name": {
+          "stringValue": "金子　アリシア"
+        },
+        "JobTitle": {
+          "stringValue": ""
+        },
+        "Email": {
+          "stringValue": ""
+        },
+        "Role": {
+          "stringValue": "Staff"
+        },
+        "StoreID": {
+          "stringValue": "ID003"
+        },
+        "LoginPassword": {
+          "stringValue": ""
+        },
+        "Store": {
+          "stringValue": "五反田CK"
+        },
+        "Has28hLimit": {
+          "booleanValue": false
+        },
+        "EmployeeCode": {
+          "stringValue": "0000003"
+        },
+        "Status": {
+          "stringValue": "active"
+        },
+        "DisplayName": {
+          "stringValue": "アリス"
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-08T16:35:13.012877Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/nxkBYYCTYEOY5SZhoOGO",
+      "fields": {
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "DisplayName": {
+          "stringValue": "カウン"
+        },
+        "Store": {
+          "stringValue": "焼きとん酒場かね将"
+        },
+        "StoreID": {
+          "stringValue": "ID001"
+        },
+        "LoginPassword": {
+          "stringValue": "kaungkyaw682@gmail.com"
+        },
+        "FixedSchedule": {
+          "mapValue": {
+            "fields": {
+              "Mon": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "end": {
+                      "stringValue": "23:00"
+                    }
+                  }
+                }
+              },
+              "Thu": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "17:30"
+                    },
+                    "end": {
+                      "stringValue": "23:45"
+                    }
+                  }
+                }
+              },
+              "Tue": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "17:30"
+                    },
+                    "end": {
+                      "stringValue": "23:45"
+                    }
+                  }
+                }
+              },
+              "Fri": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "end": {
+                      "stringValue": "23:00"
+                    }
+                  }
+                }
+              },
+              "Sat": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:00"
+                    },
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    }
+                  }
+                }
+              },
+              "Wed": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "17:30"
+                    },
+                    "end": {
+                      "stringValue": "23:45"
+                    }
+                  }
+                }
+              },
+              "Sun": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:00"
+                    },
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "start": {
+                      "stringValue": "16:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "Role": {
+          "stringValue": "PartTimer"
+        },
+        "EmployeeCode": {
+          "stringValue": "0000159"
+        },
+        "Email": {
+          "stringValue": "kaungkyaw682@gmail.com"
+        },
+        "Has28hLimit": {
+          "booleanValue": true
+        },
+        "Name": {
+          "stringValue": "カウンカッチョー"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-04-09T11:37:45.832Z"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-23T07:50:05.777158Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/pD4h3igcOvQQs9iv1bBP",
+      "fields": {
+        "LoginPassword": {
+          "stringValue": "anupannipitiya01@gmail.com"
+        },
+        "StoreID": {
+          "stringValue": "ID001"
+        },
+        "Store": {
+          "stringValue": "焼きとん酒場かね将"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-04-09T11:33:37.229Z"
+        },
+        "Name": {
+          "stringValue": "ブッディアヌラーダ"
+        },
+        "JobTitle": {
+          "stringValue": ""
+        },
+        "Email": {
+          "stringValue": "anupannipitiya01@gmail.com"
+        },
+        "Role": {
+          "stringValue": "PartTimer"
+        },
+        "Status": {
+          "stringValue": "active"
+        },
+        "DisplayName": {
+          "stringValue": "アヌ"
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "Has28hLimit": {
+          "booleanValue": true
+        },
+        "FixedSchedule": {
+          "mapValue": {
+            "fields": {
+              "Sun": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "end": {
+                      "stringValue": "23:00"
+                    }
+                  }
+                }
+              },
+              "Wed": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "end": {
+                      "stringValue": "23:00"
+                    }
+                  }
+                }
+              },
+              "Fri": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "start": {
+                      "stringValue": "18:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "end": {
+                      "stringValue": "23:45"
+                    }
+                  }
+                }
+              },
+              "Sat": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "end": {
+                      "stringValue": "23:00"
+                    }
+                  }
+                }
+              },
+              "Tue": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "end": {
+                      "stringValue": "23:00"
+                    }
+                  }
+                }
+              },
+              "Mon": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:00"
+                    },
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    }
+                  }
+                }
+              },
+              "Thu": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:00"
+                    },
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "EmployeeCode": {
+          "stringValue": "0000103"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-13T07:32:53.100298Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/pgsz4eUSjoLMaBNny6A7",
+      "fields": {
+        "Role": {
+          "stringValue": "Staff"
+        },
+        "JobTitle": {
+          "stringValue": "社員"
+        },
+        "Email": {
+          "stringValue": "naingthura1323@gmail.com"
+        },
+        "Name": {
+          "stringValue": "ナイン　トウラ"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-04-06T04:59:55.259Z"
+        },
+        "パスワード": {
+          "stringValue": "1111"
+        },
+        "Store": {
+          "stringValue": "焼きとん酒場かね将"
+        },
+        "氏名": {
+          "stringValue": "ナイン　トウラ"
+        },
+        "UserEmail": {
+          "stringValue": "naingthura1323@gmail.com"
+        },
+        "StoreID": {
+          "stringValue": "ID001"
+        },
+        "LoginPassword": {
+          "stringValue": "naingthura1323@gmail.com"
+        },
+        "EmployeeCode": {
+          "stringValue": "0000135"
+        },
+        "権限区分": {
+          "stringValue": "R02"
+        },
+        "Has28hLimit": {
+          "booleanValue": false
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "ID": {
+          "stringValue": "ID006"
+        },
+        "DisplayName": {
+          "stringValue": "ナイン"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-06T04:59:55.433554Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/pzn9aHoyObhAUI2mhhTB",
+      "fields": {
+        "Store": {
+          "stringValue": "焼きとん酒場かね将"
+        },
+        "LoginPassword": {
+          "stringValue": ""
+        },
+        "StoreID": {
+          "stringValue": "ID001"
+        },
+        "Name": {
+          "stringValue": "プラティック"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-05-22T07:02:15.289Z"
+        },
+        "Role": {
+          "stringValue": "Staff"
+        },
+        "JobTitle": {
+          "stringValue": ""
+        },
+        "Email": {
+          "stringValue": ""
+        },
+        "ResignationDate": {
+          "stringValue": ""
+        },
+        "Status": {
+          "stringValue": "active"
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "DisplayName": {
+          "stringValue": "プラ"
+        },
+        "visa_expiry_date": {
+          "stringValue": ""
+        },
+        "EmployeeCode": {
+          "stringValue": "x002"
+        },
+        "Has28hLimit": {
+          "booleanValue": false
+        }
+      },
+      "createTime": "2026-05-22T07:02:15.364717Z",
+      "updateTime": "2026-05-22T07:02:15.364717Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/wIJvv4yXWjfMxb3hnUYh",
+      "fields": {
+        "LoginPassword": {
+          "stringValue": "aungsoepyae692@gmail.com"
+        },
+        "StoreID": {
+          "stringValue": "ID001"
+        },
+        "Store": {
+          "stringValue": "焼きとん酒場かね将"
+        },
+        "DisplayName": {
+          "stringValue": "アウン"
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-04-09T11:35:21.728Z"
+        },
+        "Name": {
+          "stringValue": "アゥン　ソーピイェ"
+        },
+        "Has28hLimit": {
+          "booleanValue": true
+        },
+        "Email": {
+          "stringValue": "aungsoepyae692@gmail.com"
+        },
+        "FixedSchedule": {
+          "mapValue": {
+            "fields": {
+              "Tue": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "end": {
+                      "stringValue": "23:45"
+                    }
+                  }
+                }
+              },
+              "Mon": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "end": {
+                      "stringValue": "23:00"
+                    }
+                  }
+                }
+              },
+              "Thu": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "end": {
+                      "stringValue": "23:45"
+                    }
+                  }
+                }
+              },
+              "Sun": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "end": {
+                      "stringValue": "23:00"
+                    }
+                  }
+                }
+              },
+              "Sat": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "end": {
+                      "stringValue": "23:00"
+                    }
+                  }
+                }
+              },
+              "Fri": {
+                "mapValue": {
+                  "fields": {
+                    "active": {
+                      "booleanValue": true
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "end": {
+                      "stringValue": "23:45"
+                    }
+                  }
+                }
+              },
+              "Wed": {
+                "mapValue": {
+                  "fields": {
+                    "end": {
+                      "stringValue": "23:00"
+                    },
+                    "active": {
+                      "booleanValue": false
+                    },
+                    "breakMin": {
+                      "integerValue": "0"
+                    },
+                    "start": {
+                      "stringValue": "17:00"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "EmployeeCode": {
+          "stringValue": "0000121"
+        },
+        "Role": {
+          "stringValue": "PartTimer"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-13T07:33:30.401730Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/xrTgcPayXZSCIm03utMf",
+      "fields": {
+        "Role": {
+          "stringValue": "PartTimer"
+        },
+        "JobTitle": {
+          "stringValue": ""
+        },
+        "Email": {
+          "stringValue": ""
+        },
+        "Name": {
+          "stringValue": "グエンヴァンバック"
+        },
+        "UpdatedAt": {
+          "stringValue": "2026-04-29T09:11:43.001Z"
+        },
+        "Store": {
+          "stringValue": "酒場かね将地下一階"
+        },
+        "StoreID": {
+          "stringValue": "ID002"
+        },
+        "LoginPassword": {
+          "stringValue": ""
+        },
+        "EmployeeCode": {
+          "stringValue": "0000142"
+        },
+        "Has28hLimit": {
+          "booleanValue": true
+        },
+        "visa_expiry_date": {
+          "stringValue": ""
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        },
+        "DisplayName": {
+          "stringValue": "バック"
+        },
+        "ResignationDate": {
+          "stringValue": "2026-04-20"
+        },
+        "Status": {
+          "stringValue": "retired"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-29T09:11:43.108376Z"
+    },
+    {
+      "name": "projects/kaneshow-portal/databases/(default)/documents/m_users/yokqPVwc3xhkCBtTSKkF",
+      "fields": {
+        "UpdatedAt": {
+          "stringValue": "2026-04-09T11:36:40.193Z"
+        },
+        "Name": {
+          "stringValue": "大塚且樹"
+        },
+        "Has28hLimit": {
+          "booleanValue": false
+        },
+        "Email": {
+          "stringValue": "sakura_6.k0729o@icloud.com"
+        },
+        "EmployeeCode": {
+          "stringValue": "0000145"
+        },
+        "Role": {
+          "stringValue": "PartTimer"
+        },
+        "StoreID": {
+          "stringValue": "ID002"
+        },
+        "LoginPassword": {
+          "stringValue": "sakura_6.k0729o@icloud.com"
+        },
+        "Store": {
+          "stringValue": "酒場かね将地下一階"
+        },
+        "DisplayName": {
+          "stringValue": "かつき"
+        },
+        "ClockInPassword": {
+          "stringValue": "1111"
+        }
+      },
+      "createTime": "2026-03-24T15:40:03.618075Z",
+      "updateTime": "2026-04-09T11:36:42.269717Z"
+    }
+  ]
+}

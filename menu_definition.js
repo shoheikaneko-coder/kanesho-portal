@@ -135,6 +135,13 @@ export const MENU_DEFINITION = [
         desc: '各種申請の手続き・履歴確認',
         sections: [
             {
+                title: 'マイ申請・履歴',
+                icon: 'fa-folder-open',
+                items: [
+                    { id: 'my_applications', name: 'マイ申請', icon: 'fa-history', color: '#8b5cf6', desc: '過去に行ったすべての申請履歴の確認と再申請' }
+                ]
+            },
+            {
                 title: '労務・身上関連',
                 icon: 'fa-address-card',
                 items: [

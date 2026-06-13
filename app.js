@@ -49,7 +49,7 @@ import { gradesPageHtml, initGradesPage } from './grades.js';
 import { skillsPageHtml, initSkillsPage } from './skills.js';
 import { evaluationPageHtml, initEvaluationPage } from './evaluation.js';
 import { myPageHtml, initMyPage } from './my_page.js';
-import { addressChangePageHtml, initAddressChangePage, newHirePageHtml, initNewHirePage, applicationDetailPageHtml, initApplicationDetailPage } from './applications.js?v=1.5';
+import { addressChangePageHtml, initAddressChangePage, newHirePageHtml, initNewHirePage, applicationDetailPageHtml, initApplicationDetailPage, myApplicationsPageHtml, initMyApplicationsPage } from './applications.js?v=1.6';
 
 
 
@@ -694,6 +694,11 @@ async function showPage(target) {
                 pageTitle.textContent = '勤怠管理';
                 pageContent.innerHTML = attendanceManagementPageHtml;
                 initAttendanceManagementPage();
+                break;
+            case 'my_applications':
+                updateHeaderTitle('マイ申請一覧');
+                pageContent.innerHTML = myApplicationsPageHtml;
+                initMyApplicationsPage();
                 break;
             case 'bottle_keep':
                 pageTitle.textContent = 'ボトルキープ管理';

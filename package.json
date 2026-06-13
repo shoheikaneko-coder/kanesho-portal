@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
-    "firebase-admin": "^13.10.0"
+    "firebase-admin": "^13.10.0",
+    "puppeteer-core": "^25.1.0"
   }
 }

@@ -1,5 +1,5 @@
 rules_version = '2';
-service cloud.storage {
+service firebase.storage {
   match /b/{bucket}/o {
     match /{allPaths=**} {
       // 応急処置：期限なしで全公開。

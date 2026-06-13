@@ -1,87 +1,6 @@
 import { db, collection, addDoc, getDocs, query, where, orderBy, serverTimestamp, storage, updateDoc, doc, getDoc, setDoc } from './firebase.js';
 import { ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
 
-/* ==========================================
-   共通UI: 申請履歴表示コンポーネント
-   ========================================== */
-async function loadApplicationHistory(applicationType, containerId) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    
-    container.innerHTML = '<div style="text-align: center; padding: 2rem;"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i><p>履歴を読み込み中...</p></div>';
-
-    const currentUser = window.appState?.currentUser;
-    if (!currentUser || !currentUser.id) {
-        container.innerHTML = '<p style="color: red;">ユーザー情報が取得できません。再ログインしてください。</p>';
-        return;
-    }
-
-    try {
-        // コンプライアンス要件: 自分自身の申請のみを取得する
-        const q = query(
-            collection(db, "t_applications"),
-            where("applicantId", "==", currentUser.id),
-            where("type", "==", applicationType),
-            orderBy("createdAt", "desc")
-        );
-
-        const snap = await getDocs(q);
-        if (snap.empty) {
-            container.innerHTML = `
-                <div style="text-align: center; padding: 2rem; background: #f8fafc; border-radius: 12px; color: var(--text-secondary);">
-                    <i class="fas fa-inbox fa-2x" style="margin-bottom: 1rem; opacity: 0.5;"></i>
-                    <p>過去の申請履歴はありません。</p>
-                </div>
-            `;
-            return;
-        }
-
-        let html = '<div style="display: flex; flex-direction: column; gap: 1rem;">';
-        snap.forEach(doc => {
-            const data = doc.data();
-            const dateStr = data.createdAt ? new Date(data.createdAt.toMillis()).toLocaleString('ja-JP') : '日時不明';
-            
-            let statusBadge = '';
-            switch(data.status) {
-                case '承認待ち': statusBadge = '<span style="background: #fef08a; color: #854d0e; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: bold;">承認待ち</span>'; break;
-                case '承認済': statusBadge = '<span style="background: #bbf7d0; color: #166534; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: bold;">承認済</span>'; break;
-                case '差戻し': statusBadge = '<span style="background: #fecaca; color: #991b1b; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: bold;">差戻し</span>'; break;
-                default: statusBadge = `<span style="background: #e2e8f0; color: #475569; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: bold;">${data.status}</span>`;
-            }
-
-            // 申請内容のプレビュー文字列を生成
-            const details = Object.entries(data.details || {})
-                .map(([key, val]) => `<span style="display: inline-block; margin-right: 1rem;"><strong>${key}:</strong> ${val}</span>`)
-                .join('');
-
-            html += `
-                <div style="background: white; border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem; display: flex; flex-direction: column; gap: 0.5rem; transition: all 0.2s;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div style="font-size: 0.85rem; color: var(--text-secondary);"><i class="far fa-clock"></i> 申請日時: ${dateStr}</div>
-                        ${statusBadge}
-                    </div>
-                    <div style="font-size: 0.95rem; color: var(--text-primary); padding-top: 0.5rem; border-top: 1px dashed var(--border);">
-                        ${details}
-                    </div>
-                </div>
-            `;
-        });
-        html += '</div>';
-        container.innerHTML = html;
-
-    } catch (err) {
-        console.error("Failed to load application history:", err);
-        // Firestoreのインデックス不足エラーのキャッチ
-        if (err.message.includes("index")) {
-             container.innerHTML = `<div style="color: orange; padding: 1rem; border: 1px solid orange; border-radius: 8px;">データベースのインデックス構築中です。しばらくお待ちください。（${err.message}）</div>`;
-        } else {
-             container.innerHTML = '<div style="color: red;">履歴の読み込みに失敗しました。</div>';
-        }
-    }
-}
-
-
-
 
 /* ==========================================
    住所変更申請 (Address Change)
@@ -143,23 +62,41 @@ export const addressChangePageHtml = `
             </form>
         </div>
 
-        <!-- 履歴表示 -->
-        <div class="glass-panel" style="padding: 2.5rem; background: rgba(255,255,255,0.6);">
-            <h3 style="margin-top: 0; margin-bottom: 1.5rem; font-size: 1.1rem; color: var(--text-secondary);">
-                <i class="fas fa-history" style="margin-right: 0.5rem;"></i> 過去の住所変更申請
-            </h3>
-            <div id="address-history-container"></div>
-        </div>
-
     </div>
 </div>
 `;
 
 export async function initAddressChangePage() {
-    await loadApplicationHistory('address_change', 'address-history-container');
 
     const form = document.getElementById('address-change-form');
     const btnSubmit = document.getElementById('btn-submit-address');
+
+    // ===== 編集モード（差し戻しの再申請）のデータ流し込み =====
+    const editId = window.currentEditApplicationId;
+    if (editId) {
+        try {
+            const docSnap = await getDoc(doc(db, "t_applications", editId));
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                document.getElementById('postal-code').value = data.details['郵便番号'] || '';
+                document.getElementById('pref').value = data.details['都道府県'] || '';
+                document.getElementById('address-line1').value = data.details['市区町村・番地'] || '';
+                document.getElementById('address-line2').value = data.details['建物名'] !== '-' ? data.details['建物名'] : '';
+                document.getElementById('move-date').value = data.details['変更日'] || '';
+                
+                btnSubmit.innerHTML = '<i class="fas fa-pencil-alt" style="margin-right: 0.5rem;"></i> 修正内容で再申請する';
+                btnSubmit.style.background = '#ef4444';
+                btnSubmit.style.borderColor = '#ef4444';
+                
+                const titleEl = document.querySelector('#address-change-form').previousElementSibling;
+                if(titleEl) {
+                    titleEl.innerHTML = '<i class="fas fa-exclamation-circle" style="color: #ef4444;"></i> 住所変更（差し戻しの再申請）';
+                }
+            }
+        } catch(e) {
+            console.error("Failed to load edit data", e);
+        }
+    }
 
     form.onsubmit = async (e) => {
         e.preventDefault();
@@ -178,23 +115,37 @@ export async function initAddressChangePage() {
         btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 送信中...';
 
         try {
-            await addDoc(collection(db, "t_applications"), {
-                type: 'address_change',
-                applicantId: currentUser.id,
-                applicantName: currentUser.Name,
-                status: '承認待ち',
-                createdAt: serverTimestamp(),
-                details: {
-                    '郵便番号': postal,
-                    '都道府県': pref,
-                    '市区町村・番地': line1,
-                    '建物名': line2 || '-',
-                    '変更日': moveDate
-                }
-            });
-            alert("住所変更申請を送信しました。");
-            form.reset();
-            await loadApplicationHistory('address_change', 'address-history-container');
+            const newDetails = {
+                '郵便番号': postal,
+                '都道府県': pref,
+                '市区町村・番地': line1,
+                '建物名': line2 || '-',
+                '変更日': moveDate
+            };
+
+            if (editId) {
+                // 再申請（上書き更新）
+                await updateDoc(doc(db, "t_applications", editId), {
+                    status: '承認待ち',
+                    updatedAt: serverTimestamp(),
+                    details: newDetails
+                });
+                alert("修正内容で再申請を送信しました。");
+                window.currentEditApplicationId = null;
+                window.navigateTo('my_applications');
+            } else {
+                // 新規申請
+                await addDoc(collection(db, "t_applications"), {
+                    type: 'address_change',
+                    applicantId: currentUser.id,
+                    applicantName: currentUser.Name,
+                    status: '承認待ち',
+                    createdAt: serverTimestamp(),
+                    details: newDetails
+                });
+                alert("住所変更申請を送信しました。");
+                form.reset();
+            }
         } catch (err) {
             console.error(err);
             alert("送信に失敗しました: " + err.message);
@@ -373,14 +324,6 @@ export const newHirePageHtml = `
             </form>
         </div>
 
-        <!-- 履歴表示 -->
-        <div class="glass-panel" style="padding: 2.5rem; background: rgba(255,255,255,0.6);">
-            <h3 style="margin-top: 0; margin-bottom: 1.5rem; font-size: 1.1rem; color: var(--text-secondary);">
-                <i class="fas fa-history" style="margin-right: 0.5rem;"></i> 過去の入社申請
-            </h3>
-            <div id="nh-history-container"></div>
-        </div>
-
     </div>
 </div>
 `;
@@ -434,7 +377,6 @@ async function uploadCompressedImage(fileInputId, typeName, applicantName) {
 }
 
 export async function initNewHirePage() {
-    await loadApplicationHistory('new_hire', 'nh-history-container');
 
     const form = document.getElementById('new-hire-form');
     const btnSubmit = document.getElementById('btn-submit-nh');
@@ -452,6 +394,59 @@ export async function initNewHirePage() {
         }
     } catch(e) {
         console.warn("Failed to load stores for dropdown", e);
+    }
+
+    // ===== 編集モード（差し戻しの再申請）のデータ流し込み =====
+    const editId = window.currentEditApplicationId;
+    if (editId) {
+        try {
+            const docSnap = await getDoc(doc(db, "t_applications", editId));
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                document.getElementById('nh-lastname').value = data.details['姓'] || '';
+                document.getElementById('nh-firstname').value = data.details['名'] || '';
+                
+                if (data.details['フリガナ']) {
+                    const kanaParts = data.details['フリガナ'].split(' ');
+                    document.getElementById('nh-lastkana').value = kanaParts[0] || '';
+                    document.getElementById('nh-firstkana').value = kanaParts[1] || '';
+                }
+
+                document.getElementById('nh-nickname').value = data.details['ニックネーム'] || '';
+                document.getElementById('nh-email').value = data.details['メールアドレス'] || '';
+                document.getElementById('nh-phone').value = data.details['電話番号'] || '';
+                document.getElementById('nh-login-pw').value = data.details['ログインPW'] || '';
+                document.getElementById('nh-clock-pw').value = data.details['打刻PW'] || '1111';
+                
+                if (data.details['所属予定店舗']) {
+                    const storeSelect = document.getElementById('nh-store');
+                    // optionが存在するか確認して選択
+                    for (let i = 0; i < storeSelect.options.length; i++) {
+                        if (storeSelect.options[i].text === data.details['所属予定店舗'] || storeSelect.options[i].value === data.details['所属予定店舗']) {
+                            storeSelect.selectedIndex = i;
+                            break;
+                        }
+                    }
+                }
+                
+                document.getElementById('nh-date').value = data.details['入社予定日'] || '';
+                document.getElementById('nh-visa-date').value = data.details['VISA期限'] !== '-' ? data.details['VISA期限'] : '';
+                document.getElementById('nh-limit-28h').checked = data.details['28時間制限'] === 'あり';
+                document.getElementById('nh-notes').value = data.details['備考'] !== '-' ? data.details['備考'] : '';
+                
+                btnSubmit.innerHTML = '<i class="fas fa-pencil-alt" style="margin-right: 0.5rem;"></i> 修正内容で再申請する';
+                btnSubmit.style.background = '#ef4444';
+                btnSubmit.style.borderColor = '#ef4444';
+                
+                const titleEl = document.querySelector('#new-hire-form').previousElementSibling;
+                if(titleEl && titleEl.tagName === 'P') {
+                    const h2El = titleEl.previousElementSibling;
+                    if (h2El) h2El.innerHTML = '<i class="fas fa-exclamation-circle" style="color: #ef4444;"></i> 新規アルバイト入社（差し戻しの再申請）';
+                }
+            }
+        } catch(e) {
+            console.error("Failed to load edit data", e);
+        }
     }
 
     // メールアドレス入力時にログインパスワードに自動セット
@@ -515,33 +510,57 @@ export async function initNewHirePage() {
             }
             if (designationUrl) documents.designation_certs = [{ url: designationUrl, uploaded_at: uploadTime, note: "入社申請時" }];
 
-            await addDoc(collection(db, "t_applications"), {
-                type: 'new_hire',
-                applicantId: currentUser.id,
-                applicantName: currentUser.Name,
-                status: '承認待ち',
-                createdAt: serverTimestamp(),
-                documents: documents,
-                details: {
-                    '氏名': fullName,
-                    'フリガナ': `${lastKana} ${firstKana}`,
-                    'ニックネーム': nickname,
-                    '姓': lastName,
-                    '名': firstName,
-                    'メールアドレス': email,
-                    '電話番号': phone,
-                    'ログインPW': loginPw,
-                    '打刻PW': clockPw,
-                    '所属予定店舗': store,
-                    '入社予定日': date,
-                    'VISA期限': visaDate || '-',
-                    '28時間制限': limit28h,
-                    '備考': notes || '-'
+            const newDetails = {
+                '氏名': fullName,
+                'フリガナ': `${lastKana} ${firstKana}`,
+                'ニックネーム': nickname,
+                '姓': lastName,
+                '名': firstName,
+                'メールアドレス': email,
+                '電話番号': phone,
+                'ログインPW': loginPw,
+                '打刻PW': clockPw,
+                '所属予定店舗': store,
+                '入社予定日': date,
+                'VISA期限': visaDate || '-',
+                '28時間制限': limit28h,
+                '備考': notes || '-'
+            };
+
+            if (editId) {
+                // 編集モードの場合（再申請）
+                // ※新しい書類がアップロードされた場合のみ上書き・マージする（簡易対応：既存のドキュメントに新しいものを追加するが、今回は完全上書きとしておく）
+                // 既存のdocumentsを保持しつつ、新しく追加されたものだけをマージする処理が必要
+                const appSnap = await getDoc(doc(db, "t_applications", editId));
+                let mergedDocs = documents;
+                if (appSnap.exists() && appSnap.data().documents) {
+                    mergedDocs = { ...appSnap.data().documents, ...documents }; // 新しいキーで上書き
                 }
-            });
-            alert("入社申請を送信しました。");
-            form.reset();
-            await loadApplicationHistory('new_hire', 'nh-history-container');
+
+                await updateDoc(doc(db, "t_applications", editId), {
+                    status: '承認待ち',
+                    updatedAt: serverTimestamp(),
+                    documents: mergedDocs,
+                    details: newDetails
+                });
+                alert("修正内容で再申請を送信しました。");
+                window.currentEditApplicationId = null;
+                window.navigateTo('my_applications');
+
+            } else {
+                // 新規申請
+                await addDoc(collection(db, "t_applications"), {
+                    type: 'new_hire',
+                    applicantId: currentUser.id,
+                    applicantName: currentUser.Name,
+                    status: '承認待ち',
+                    createdAt: serverTimestamp(),
+                    documents: documents,
+                    details: newDetails
+                });
+                alert("入社申請を送信しました。");
+                form.reset();
+            }
         } catch (err) {
             console.error(err);
             alert("送信に失敗しました: " + err.message);
@@ -780,3 +799,215 @@ window.approveNewHireFromDetail = async (appId) => {
         alert("エラーが発生しました: " + e.message);
     }
 };
+
+/* ==========================================
+   マイ申請 (My Applications)
+   ========================================== */
+export const myApplicationsPageHtml = `
+<div class="animate-fade-in" style="width: 100%; max-width: 900px; margin: 0 auto; box-sizing: border-box; padding-bottom: 5rem;">
+    
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h2 style="margin: 0 0 0.5rem 0; color: var(--text-primary); display: flex; align-items: center; gap: 0.8rem;">
+                <i class="fas fa-history" style="color: #8b5cf6;"></i> マイ申請
+            </h2>
+            <p style="margin: 0; color: var(--text-secondary); font-size: 0.9rem;">過去に行ったすべての申請履歴の確認と再申請ができます。</p>
+        </div>
+        
+        <!-- 種別フィルター -->
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fas fa-filter" style="color: #94a3b8;"></i>
+            <select id="my-apps-type-filter" class="form-input" style="padding: 0.5rem 1rem; border-radius: 999px; border: 1px solid var(--border); outline: none;">
+                <option value="all">すべての申請種別</option>
+                <option value="address_change">住所変更申請</option>
+                <option value="new_hire">新規入社申請</option>
+                <option value="attendance_correction_request">勤怠の修正申請</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- タブ -->
+    <div style="display: flex; border-bottom: 1px solid var(--border); margin-bottom: 2rem;">
+        <button class="my-apps-tab active" data-status="申請中" style="flex: 1; padding: 1rem; border: none; background: none; font-weight: bold; font-size: 1rem; color: #10b981; border-bottom: 3px solid #10b981; cursor: pointer; transition: all 0.2s;">
+            申請中
+        </button>
+        <button class="my-apps-tab" data-status="差戻し" style="flex: 1; padding: 1rem; border: none; background: none; font-weight: bold; font-size: 1rem; color: #64748b; border-bottom: 3px solid transparent; cursor: pointer; transition: all 0.2s;">
+            差し戻し (要対応)
+        </button>
+        <button class="my-apps-tab" data-status="承認済" style="flex: 1; padding: 1rem; border: none; background: none; font-weight: bold; font-size: 1rem; color: #64748b; border-bottom: 3px solid transparent; cursor: pointer; transition: all 0.2s;">
+            承認済み
+        </button>
+    </div>
+
+    <div id="my-apps-container" style="display: flex; flex-direction: column; gap: 1rem;">
+        <div style="text-align: center; padding: 3rem;">
+            <i class="fas fa-spinner fa-spin fa-2x" style="color: #8b5cf6;"></i>
+            <p style="margin-top: 1rem; color: var(--text-secondary);">データを読み込んでいます...</p>
+        </div>
+    </div>
+
+</div>
+<style>
+    .my-apps-tab:hover { background: #f8fafc; }
+    .my-app-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border-color: #cbd5e1 !important; }
+</style>
+`;
+
+export async function initMyApplicationsPage() {
+    const container = document.getElementById('my-apps-container');
+    const typeFilter = document.getElementById('my-apps-type-filter');
+    const tabs = document.querySelectorAll('.my-apps-tab');
+    if (!container || !typeFilter) return;
+
+    let currentStatus = '申請中';
+    let currentType = 'all';
+    let allApplications = [];
+
+    // ステータスのマッピング（DB上の値とタブの値を合わせる）
+    // DB: "承認待ち", "承認済", "差戻し"
+    const getDbStatusList = (tabStatus) => {
+        if (tabStatus === '申請中') return ['承認待ち'];
+        if (tabStatus === '承認済') return ['承認済'];
+        if (tabStatus === '差戻し') return ['差戻し'];
+        return [];
+    };
+
+    // タブ切り替えイベント
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => {
+                t.style.color = '#64748b';
+                t.style.borderBottomColor = 'transparent';
+                t.classList.remove('active');
+            });
+            tab.style.color = '#10b981';
+            tab.style.borderBottomColor = '#10b981';
+            tab.classList.add('active');
+            
+            currentStatus = tab.dataset.status;
+            renderList();
+        });
+    });
+
+    // プルダウン変更イベント
+    typeFilter.addEventListener('change', (e) => {
+        currentType = e.target.value;
+        renderList();
+    });
+
+    // データフェッチ
+    const fetchApplications = async () => {
+        const currentUser = window.appState?.currentUser;
+        if (!currentUser) {
+            container.innerHTML = '<div style="color: red; text-align: center;">ログイン情報がありません。</div>';
+            return;
+        }
+
+        try {
+            // FirestoreではOR検索や複数inが制限されるため、シンプルに自分の全申請を取ってJS側でフィルタリングする
+            const q = query(
+                collection(db, "t_applications"),
+                where("applicantId", "==", currentUser.id),
+                orderBy("createdAt", "desc")
+            );
+            const snap = await getDocs(q);
+            
+            allApplications = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderList();
+
+        } catch (err) {
+            console.error(err);
+            if (err.message.includes("index")) {
+                 container.innerHTML = \`<div style="color: orange; padding: 1rem; border: 1px solid orange; border-radius: 8px;">データベースのインデックス構築中です。しばらくお待ちください。（\${err.message}）</div>\`;
+            } else {
+                 container.innerHTML = '<div style="color: red; text-align: center;">データの取得に失敗しました。</div>';
+            }
+        }
+    };
+
+    // 描画ロジック
+    const renderList = () => {
+        const dbStatuses = getDbStatusList(currentStatus);
+        
+        let filtered = allApplications.filter(app => dbStatuses.includes(app.status));
+        if (currentType !== 'all') {
+            filtered = filtered.filter(app => app.type === currentType);
+        }
+
+        if (filtered.length === 0) {
+            container.innerHTML = \`
+                <div style="text-align: center; padding: 4rem 2rem; background: #f8fafc; border-radius: 12px; border: 1px dashed #cbd5e1;">
+                    <i class="fas fa-folder-open fa-3x" style="color: #cbd5e1; margin-bottom: 1rem;"></i>
+                    <p style="color: #64748b; margin: 0;">該当する申請データはありません。</p>
+                </div>
+            \`;
+            return;
+        }
+
+        const getTypeInfo = (type) => {
+            switch(type) {
+                case 'address_change': return { label: '住所変更', color: '#3b82f6', bg: '#eff6ff', icon: 'fa-map-marker-alt' };
+                case 'new_hire': return { label: '入社申請', color: '#10b981', bg: '#f0fdf4', icon: 'fa-user-plus' };
+                case 'attendance_correction_request': return { label: '勤怠修正', color: '#f59e0b', bg: '#fffbeb', icon: 'fa-clock' };
+                default: return { label: 'その他', color: '#64748b', bg: '#f8fafc', icon: 'fa-file-alt' };
+            }
+        };
+
+        let html = '';
+        filtered.forEach(app => {
+            const dateStr = app.createdAt ? new Date(app.createdAt.toMillis ? app.createdAt.toMillis() : app.createdAt.seconds * 1000).toLocaleString('ja-JP') : '日時不明';
+            const typeInfo = getTypeInfo(app.type);
+            
+            // 申請内容の要約を作成 (最初の2項目程度)
+            const details = Object.entries(app.details || {}).slice(0, 2)
+                .map(([k, v]) => \`<span style="margin-right: 1rem; color: #475569; font-size: 0.9rem;"><strong>\${k}:</strong> \${v}</span>\`)
+                .join('');
+
+            // クリック時の挙動: ステータスが「差戻し」なら編集モード、それ以外なら閲覧モード(ReadOnly)
+            const onClickAttr = app.status === '差戻し' 
+                ? \`onclick="window.editApplication('\${app.id}', '\${app.type}')"\`
+                : \`onclick="window.viewApplicationReadOnly('\${app.id}')"\`;
+
+            const actionLabel = app.status === '差戻し' 
+                ? '<span style="color: #ef4444; font-size: 0.85rem; font-weight: bold;"><i class="fas fa-pencil-alt"></i> 修正して再申請</span>'
+                : '<span style="color: #94a3b8; font-size: 0.85rem;"><i class="fas fa-chevron-right"></i> 詳細を見る</span>';
+
+            html += \`
+                <div class="my-app-card" \${onClickAttr} style="background: white; border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem 1.5rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: all 0.2s;">
+                    <div style="display: flex; align-items: center; gap: 1.5rem;">
+                        <div style="background: \${typeInfo.bg}; color: \${typeInfo.color}; padding: 0.5rem 1rem; border-radius: 8px; font-weight: bold; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem; min-width: 120px; justify-content: center;">
+                            <i class="fas \${typeInfo.icon}"></i> \${typeInfo.label}
+                        </div>
+                        <div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.3rem;"><i class="far fa-clock"></i> 申請日時: \${dateStr}</div>
+                            <div>\${details}</div>
+                        </div>
+                    </div>
+                    <div>
+                        \${actionLabel}
+                    </div>
+                </div>
+            \`;
+        });
+        container.innerHTML = html;
+    };
+
+    // グローバルに画面遷移関数を露出
+    window.viewApplicationReadOnly = (appId) => {
+        // スタッフ用閲覧モードのフラグを立てて詳細画面へ遷移
+        window.currentApplicationId = appId;
+        window.applicationViewMode = 'readonly';
+        window.navigateTo('application_detail');
+    };
+
+    window.editApplication = (appId, type) => {
+        // 差戻しデータの編集モード
+        window.currentEditApplicationId = appId;
+        if (type === 'address_change') window.navigateTo('address_change');
+        if (type === 'new_hire') window.navigateTo('new_hire_application');
+        // 他のタイプも必要に応じて追加
+    };
+
+    // 初期ロード実行
+    await fetchApplications();
+}

@@ -1,0 +1,129 @@
+0 verbose cli /usr/local/bin/node /usr/local/bin/npm
+1 info using npm@11.9.0
+2 info using node@v24.14.0
+3 silly config load:file:/usr/local/lib/node_modules/npm/npmrc
+4 silly config load:file:/Users/shoheikaneko/Desktop/antigravity_かね将ポータル/.npmrc
+5 silly config load:file:/Users/shoheikaneko/.npmrc
+6 silly config load:file:/usr/local/etc/npmrc
+7 verbose title npm install puppeteer-core
+8 verbose argv "install" "puppeteer-core" "--cache" "./npm-cache" "--no-audit" "--no-fund"
+9 verbose logfile logs-max:10 dir:/Users/shoheikaneko/Desktop/antigravity_かね将ポータル/npm-cache/_logs/2026-06-11T07_59_44_058Z-
+10 verbose logfile /Users/shoheikaneko/Desktop/antigravity_かね将ポータル/npm-cache/_logs/2026-06-11T07_59_44_058Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:4496293888 maxSize:1124073472 maxEntrySize:562036736
+13 silly idealTree buildDeps
+14 silly fetch manifest puppeteer-core@*
+15 silly packumentCache full:https://registry.npmjs.org/puppeteer-core cache-miss
+16 http fetch GET 200 https://registry.npmjs.org/npm 268ms
+17 http fetch GET 200 https://registry.npmjs.org/puppeteer-core 207ms (cache miss)
+18 silly packumentCache full:https://registry.npmjs.org/puppeteer-core set size:undefined disposed:false
+19 silly placeDep ROOT puppeteer-core@25.1.0 OK for: kanesho-portal-backend@1.0.0 want: *
+20 silly fetch manifest @puppeteer/browsers@3.0.4
+21 silly packumentCache full:https://registry.npmjs.org/@puppeteer%2fbrowsers cache-miss
+22 silly fetch manifest chromium-bidi@16.0.1
+23 silly packumentCache full:https://registry.npmjs.org/chromium-bidi cache-miss
+24 silly fetch manifest devtools-protocol@0.0.1624250
+25 silly packumentCache full:https://registry.npmjs.org/devtools-protocol cache-miss
+26 silly fetch manifest typed-query-selector@^2.12.2
+27 silly packumentCache full:https://registry.npmjs.org/typed-query-selector cache-miss
+28 silly fetch manifest webdriver-bidi-protocol@0.4.2
+29 silly packumentCache full:https://registry.npmjs.org/webdriver-bidi-protocol cache-miss
+30 silly fetch manifest ws@^8.21.0
+31 silly packumentCache full:https://registry.npmjs.org/ws cache-miss
+32 http fetch GET 200 https://registry.npmjs.org/@puppeteer%2fbrowsers 66ms (cache miss)
+33 silly packumentCache full:https://registry.npmjs.org/@puppeteer%2fbrowsers set size:undefined disposed:false
+34 http fetch GET 200 https://registry.npmjs.org/chromium-bidi 75ms (cache miss)
+35 silly packumentCache full:https://registry.npmjs.org/chromium-bidi set size:undefined disposed:false
+36 http fetch GET 200 https://registry.npmjs.org/webdriver-bidi-protocol 104ms (cache miss)
+37 silly packumentCache full:https://registry.npmjs.org/webdriver-bidi-protocol set size:undefined disposed:false
+38 http fetch GET 200 https://registry.npmjs.org/typed-query-selector 111ms (cache miss)
+39 silly packumentCache full:https://registry.npmjs.org/typed-query-selector set size:undefined disposed:false
+40 http fetch GET 200 https://registry.npmjs.org/ws 129ms (cache miss)
+41 silly packumentCache full:https://registry.npmjs.org/ws set size:undefined disposed:false
+42 http fetch GET 200 https://registry.npmjs.org/devtools-protocol 168ms (cache miss)
+43 silly packumentCache full:https://registry.npmjs.org/devtools-protocol set size:undefined disposed:false
+44 silly fetch manifest proxy-agent@>=8.0.1
+45 silly packumentCache full:https://registry.npmjs.org/proxy-agent cache-miss
+46 http fetch GET 200 https://registry.npmjs.org/proxy-agent 36ms (cache miss)
+47 silly packumentCache full:https://registry.npmjs.org/proxy-agent set size:undefined disposed:false
+48 silly fetch manifest bufferutil@^4.0.1
+49 silly packumentCache full:https://registry.npmjs.org/bufferutil cache-miss
+50 http fetch GET 200 https://registry.npmjs.org/bufferutil 43ms (cache miss)
+51 silly packumentCache full:https://registry.npmjs.org/bufferutil set size:undefined disposed:false
+52 silly fetch manifest utf-8-validate@>=5.0.2
+53 silly packumentCache full:https://registry.npmjs.org/utf-8-validate cache-miss
+54 http fetch GET 200 https://registry.npmjs.org/utf-8-validate 39ms (cache miss)
+55 silly packumentCache full:https://registry.npmjs.org/utf-8-validate set size:undefined disposed:false
+56 silly placeDep ROOT @puppeteer/browsers@3.0.4 OK for: puppeteer-core@25.1.0 want: 3.0.4
+57 silly placeDep ROOT chromium-bidi@16.0.1 OK for: puppeteer-core@25.1.0 want: 16.0.1
+58 silly placeDep ROOT devtools-protocol@0.0.1624250 OK for: chromium-bidi@16.0.1 want: *
+59 silly placeDep ROOT typed-query-selector@2.12.2 OK for: puppeteer-core@25.1.0 want: ^2.12.2
+60 silly placeDep ROOT webdriver-bidi-protocol@0.4.2 OK for: puppeteer-core@25.1.0 want: 0.4.2
+61 silly placeDep ROOT ws@8.21.0 OK for: puppeteer-core@25.1.0 want: ^8.21.0
+62 silly fetch manifest modern-tar@^0.7.6
+63 silly packumentCache full:https://registry.npmjs.org/modern-tar cache-miss
+64 silly fetch manifest mitt@^3.0.1
+65 silly packumentCache full:https://registry.npmjs.org/mitt cache-miss
+66 silly fetch manifest zod@^3.24.1
+67 silly packumentCache full:https://registry.npmjs.org/zod cache-miss
+68 http fetch GET 200 https://registry.npmjs.org/mitt 34ms (cache miss)
+69 silly packumentCache full:https://registry.npmjs.org/mitt set size:undefined disposed:false
+70 http fetch GET 200 https://registry.npmjs.org/modern-tar 48ms (cache miss)
+71 silly packumentCache full:https://registry.npmjs.org/modern-tar set size:undefined disposed:false
+72 http fetch GET 200 https://registry.npmjs.org/zod 119ms (cache miss)
+73 silly packumentCache full:https://registry.npmjs.org/zod set size:undefined disposed:false
+74 silly placeDep ROOT modern-tar@0.7.6 OK for: @puppeteer/browsers@3.0.4 want: ^0.7.6
+75 silly placeDep ROOT mitt@3.0.1 OK for: chromium-bidi@16.0.1 want: ^3.0.1
+76 silly placeDep ROOT zod@3.25.76 OK for: chromium-bidi@16.0.1 want: ^3.24.1
+77 silly reify moves {}
+78 http cache zod@https://registry.npmjs.org/zod/-/zod-3.25.76.tgz 0ms (cache hit)
+79 http cache modern-tar@https://registry.npmjs.org/modern-tar/-/modern-tar-0.7.6.tgz 0ms (cache hit)
+80 http cache webdriver-bidi-protocol@https://registry.npmjs.org/webdriver-bidi-protocol/-/webdriver-bidi-protocol-0.4.2.tgz 0ms (cache hit)
+81 http cache typed-query-selector@https://registry.npmjs.org/typed-query-selector/-/typed-query-selector-2.12.2.tgz 0ms (cache hit)
+82 http cache ws@https://registry.npmjs.org/ws/-/ws-8.21.0.tgz 0ms (cache hit)
+83 http cache devtools-protocol@https://registry.npmjs.org/devtools-protocol/-/devtools-protocol-0.0.1624250.tgz 0ms (cache hit)
+84 http cache mitt@https://registry.npmjs.org/mitt/-/mitt-3.0.1.tgz 0ms (cache hit)
+85 http cache chromium-bidi@https://registry.npmjs.org/chromium-bidi/-/chromium-bidi-16.0.1.tgz 0ms (cache hit)
+86 http cache @puppeteer/browsers@https://registry.npmjs.org/@puppeteer/browsers/-/browsers-3.0.4.tgz 0ms (cache hit)
+87 http cache puppeteer-core@https://registry.npmjs.org/puppeteer-core/-/puppeteer-core-25.1.0.tgz 0ms (cache hit)
+88 silly tarball no local data for zod@https://registry.npmjs.org/zod/-/zod-3.25.76.tgz. Extracting by manifest.
+89 silly tarball no local data for modern-tar@https://registry.npmjs.org/modern-tar/-/modern-tar-0.7.6.tgz. Extracting by manifest.
+90 silly tarball no local data for webdriver-bidi-protocol@https://registry.npmjs.org/webdriver-bidi-protocol/-/webdriver-bidi-protocol-0.4.2.tgz. Extracting by manifest.
+91 silly tarball no local data for typed-query-selector@https://registry.npmjs.org/typed-query-selector/-/typed-query-selector-2.12.2.tgz. Extracting by manifest.
+92 silly tarball no local data for ws@https://registry.npmjs.org/ws/-/ws-8.21.0.tgz. Extracting by manifest.
+93 silly tarball no local data for devtools-protocol@https://registry.npmjs.org/devtools-protocol/-/devtools-protocol-0.0.1624250.tgz. Extracting by manifest.
+94 silly tarball no local data for mitt@https://registry.npmjs.org/mitt/-/mitt-3.0.1.tgz. Extracting by manifest.
+95 silly tarball no local data for chromium-bidi@https://registry.npmjs.org/chromium-bidi/-/chromium-bidi-16.0.1.tgz. Extracting by manifest.
+96 silly tarball no local data for @puppeteer/browsers@https://registry.npmjs.org/@puppeteer/browsers/-/browsers-3.0.4.tgz. Extracting by manifest.
+97 silly tarball no local data for puppeteer-core@https://registry.npmjs.org/puppeteer-core/-/puppeteer-core-25.1.0.tgz. Extracting by manifest.
+98 http fetch GET 200 https://registry.npmjs.org/typed-query-selector/-/typed-query-selector-2.12.2.tgz 98ms (cache miss)
+99 http fetch GET 200 https://registry.npmjs.org/modern-tar/-/modern-tar-0.7.6.tgz 108ms (cache miss)
+100 http fetch GET 200 https://registry.npmjs.org/mitt/-/mitt-3.0.1.tgz 143ms (cache miss)
+101 http fetch GET 200 https://registry.npmjs.org/ws/-/ws-8.21.0.tgz 202ms (cache miss)
+102 http fetch GET 200 https://registry.npmjs.org/webdriver-bidi-protocol/-/webdriver-bidi-protocol-0.4.2.tgz 264ms (cache miss)
+103 http fetch GET 200 https://registry.npmjs.org/@puppeteer/browsers/-/browsers-3.0.4.tgz 421ms (cache miss)
+104 http fetch GET 200 https://registry.npmjs.org/devtools-protocol/-/devtools-protocol-0.0.1624250.tgz 447ms (cache miss)
+105 http fetch GET 200 https://registry.npmjs.org/chromium-bidi/-/chromium-bidi-16.0.1.tgz 901ms (cache miss)
+106 http fetch GET 200 https://registry.npmjs.org/zod/-/zod-3.25.76.tgz 1014ms (cache miss)
+107 http fetch GET 200 https://registry.npmjs.org/puppeteer-core/-/puppeteer-core-25.1.0.tgz 1269ms (cache miss)
+108 silly ADD node_modules/zod
+109 silly ADD node_modules/mitt
+110 silly ADD node_modules/modern-tar
+111 silly ADD node_modules/ws
+112 silly ADD node_modules/webdriver-bidi-protocol
+113 silly ADD node_modules/typed-query-selector
+114 silly ADD node_modules/devtools-protocol
+115 silly ADD node_modules/chromium-bidi
+116 silly ADD node_modules/@puppeteer/browsers
+117 silly ADD node_modules/puppeteer-core
+118 verbose cwd /Users/shoheikaneko/Desktop/antigravity_かね将ポータル
+119 verbose os Darwin 24.6.0
+120 verbose node v24.14.0
+121 verbose npm  v11.9.0
+122 notice
+122 notice New minor version of npm available! 11.9.0 -> 11.16.0
+122 notice Changelog: https://github.com/npm/cli/releases/tag/v11.16.0
+122 notice To update run: npm install -g npm@11.16.0
+122 notice  { force: true, Symbol(proc-log.meta): true }
+123 verbose exit 0
+124 info ok
