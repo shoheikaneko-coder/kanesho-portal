@@ -75,6 +75,20 @@ export const notificationsPageHtml = `
                     </div>
                 </div>
             </div>
+
+            <div class="notification-category-card info-card" id="cat-missing-emp-code" style="display: none;">
+                <div class="category-icon" style="background: #e0e7ff; color: #4f46e5;">
+                    <i class="fas fa-id-badge"></i>
+                </div>
+                <div class="category-info">
+                    <h3>社員登録（MF）</h3>
+                    <p>従業員コードが未設定のスタッフです。給与システムと連携するためコードを登録してください。</p>
+                    <div class="category-status">
+                        <span class="count-badge" id="count-missing-emp-code" style="background: #4f46e5;">0件</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Detailed List View (Hidden by default) -->
@@ -265,8 +279,10 @@ export function initNotificationsPage() {
     }
 
     const catApproval = document.getElementById('cat-request-approvals');
-    if (catApproval) {
-        if (user.Role === 'Admin' || user.Role === '管理者') {
+    const catMissingEmpCode = document.getElementById('cat-missing-emp-code');
+
+    if (user.Role === 'Admin' || user.Role === '管理者') {
+        if (catApproval) {
             catApproval.style.display = 'flex';
             catApproval.onclick = () => {
                 panelCategories.style.display = 'none';
@@ -275,11 +291,21 @@ export function initNotificationsPage() {
                 loadDetails('request_approvals');
             };
         }
+        if (catMissingEmpCode) {
+            catMissingEmpCode.style.display = 'flex';
+            catMissingEmpCode.onclick = () => {
+                panelCategories.style.display = 'none';
+                panelDetail.style.display = 'block';
+                document.getElementById('detail-title').textContent = '社員登録（MF連携用）';
+                loadDetails('missing_emp_code');
+            };
+        }
     }
 
     // クリーンアップ
     if (unsubscribeNotifs) unsubscribeNotifs();
     if (window.unsubscribeApplications) window.unsubscribeApplications();
+    if (window.unsubscribeMissingEmp) window.unsubscribeMissingEmp();
 
     // リアルタイム監視（件数更新用）
     const q = query(collection(db, "notifications"), where("status", "==", "pending"));
@@ -330,6 +356,28 @@ export function initNotificationsPage() {
                     loadDetails('request_approvals');
                 }
             });
+            
+            // --- 追加: 社員登録（MF連携）の監視 (管理者のみ) ---
+            const qUsers = query(collection(db, "m_users")); // 一旦全件取得してクライアント側でフィルタ（フィールド非存在のケースも拾うため）
+            window.unsubscribeMissingEmp = onSnapshot(qUsers, (userSnap) => {
+                const missingUsers = [];
+                userSnap.forEach(d => {
+                    const data = d.data();
+                    const status = data.Status || 'active';
+                    // 在職中で、かつ EmployeeCode が空文字列か未定義のものを抽出
+                    if ((status === 'active' || status === '在職中') && !data.EmployeeCode) {
+                        missingUsers.push({ id: d.id, ...data });
+                    }
+                });
+                window.__currentMissingEmpUsers = missingUsers;
+                const mEl = document.getElementById('count-missing-emp-code');
+                if (mEl) mEl.textContent = `${missingUsers.length}件`;
+                
+                if (panelDetail.style.display === 'block' && document.getElementById('detail-title').textContent === '社員登録（MF連携用）') {
+                    loadDetails('missing_emp_code');
+                }
+            });
+
         } else {
             const aEl = document.getElementById('count-request-approvals');
             if (aEl) aEl.textContent = `${approvalCount}件`;
@@ -397,7 +445,9 @@ function renderNotifDetails(items, type) {
     if (!listBody) return;
 
     if (items.length === 0) {
-        const msg = (type === 'shift_published') ? '新しいシフト通知はありません' : '未登録のレシピはありません';
+        let msg = '未登録のレシピはありません';
+        if (type === 'shift_published') msg = '新しいシフト通知はありません';
+        if (type === 'missing_emp_code') msg = '未登録の従業員コードはありません';
         listBody.innerHTML = `<div style="padding: 3rem; text-align: center; color: #94a3b8;">${msg}</div>`;
         return;
     }
@@ -410,6 +460,25 @@ function renderNotifDetails(items, type) {
     });
 
     listBody.innerHTML = items.map(item => {
+        if (type === 'missing_emp_code') {
+            return `
+                <div class="notif-item">
+                    <div class="notif-main-info">
+                        <div class="notif-menu-name"><i class="fas fa-id-badge" style="color:#4f46e5; margin-right:0.4rem;"></i>${item.Name || '名称不明'}</div>
+                        <div class="notif-meta">
+                            <span><i class="fas fa-store"></i> ${item.Store || '店舗不明'}</span>
+                            <span><i class="fas fa-calendar"></i> 入社予定: ${item.HireDate || '-'}</span>
+                            <span><i class="fas fa-envelope"></i> ${item.Email || '-'}</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-register-notif" style="background:#4f46e5; color:white;" onclick="window.openUserEditForm('${item.id}')">
+                            <i class="fas fa-edit"></i> コードを登録する
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
         if (item.type === 'deletion_request') {
             return `
                 <div class="notif-item">

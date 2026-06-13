@@ -933,3 +933,25 @@ function renderPagination(totalPages, filter) {
     };
     container.appendChild(btnNext);
 }
+
+// 外部から直接ユーザー編集画面を開くためのグローバル関数
+window.openUserEditForm = async (userId) => {
+    try {
+        const userSnap = await getDoc(doc(db, "m_users", userId));
+        if (userSnap.exists()) {
+            editingUserData = { id: userSnap.id, ...userSnap.data() };
+            currentView = 'form';
+            if (!document.getElementById('users-page-container')) {
+                if (window.navigateTo) window.navigateTo('users');
+                setTimeout(renderView, 200); // 画面遷移後にレンダリング
+            } else {
+                renderView();
+            }
+        } else {
+            showAlert('エラー', '該当ユーザーが見つかりません');
+        }
+    } catch (e) {
+        console.error("Failed to load user form", e);
+        showAlert('エラー', 'ユーザー情報の取得に失敗しました');
+    }
+};
