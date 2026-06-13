@@ -49,7 +49,7 @@ import { gradesPageHtml, initGradesPage } from './grades.js';
 import { skillsPageHtml, initSkillsPage } from './skills.js';
 import { evaluationPageHtml, initEvaluationPage } from './evaluation.js';
 import { myPageHtml, initMyPage } from './my_page.js';
-import { addressChangePageHtml, initAddressChangePage, newHirePageHtml, initNewHirePage } from './applications.js?v=1.2';
+import { addressChangePageHtml, initAddressChangePage, newHirePageHtml, initNewHirePage, applicationDetailPageHtml, initApplicationDetailPage } from './applications.js?v=1.2';
 
 
 
@@ -749,6 +749,11 @@ async function showPage(target) {
                 updateHeaderTitle('新規アルバイト入社申請');
                 pageContent.innerHTML = newHirePageHtml;
                 initNewHirePage();
+                break;
+            case 'application_detail':
+                updateHeaderTitle('申請詳細確認');
+                pageContent.innerHTML = applicationDetailPageHtml;
+                initApplicationDetailPage();
                 break;
         }
 
