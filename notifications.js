@@ -1,5 +1,5 @@
 import { db } from './firebase.js';
-import { collection, getDocs, query, where, orderBy, updateDoc, doc, deleteDoc, onSnapshot, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, getDocs, getDoc, query, where, orderBy, updateDoc, setDoc, doc, deleteDoc, onSnapshot, arrayUnion, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { showAlert } from './ui_utils.js';
 
 export const notificationsPageHtml = `
@@ -217,7 +217,61 @@ function safeFormatDate(val) {
 
 let unsubscribeNotifs = null;
 
-export function initNotificationsPage() {
+// 承認処理（通知センター上で発火する）
+window.approveNewHire = async (appId) => {
+    if (!confirm("この内容を承認し、従業員マスタに新規登録しますか？\n※添付された書類も同時にマスタへ結合されます。")) return;
+
+    try {
+        const appRef = doc(db, "t_applications", appId);
+        const appSnap = await getDoc(appRef);
+        if (!appSnap.exists()) throw new Error("申請データが見つかりません");
+        const data = appSnap.data();
+
+        // m_users へ登録するデータ構造を作成
+        const newUserData = {
+            EmployeeCode: "", // 手動または別ロジックで採番
+            Name: data.details['氏名'] || "",
+            LastName: data.details['姓'] || "",
+            FirstName: data.details['名'] || "",
+            LastNameKana: data.details['フリガナ'] ? data.details['フリガナ'].split(' ')[0] : "",
+            FirstNameKana: data.details['フリガナ'] ? data.details['フリガナ'].split(' ')[1] : "",
+            Nickname: data.details['ニックネーム'] || "",
+            Email: data.details['メールアドレス'] || "",
+            LoginPassword: data.details['ログインPW'] || "",
+            ClockInPassword: data.details['打刻PW'] || "",
+            Role: "Staff", // デフォルトでアルバイトスタッフ
+            StoreId: data.details['所属予定店舗'] || "",
+            Status: "在職中",
+            HireDate: data.details['入社予定日'] || "",
+            Notes: data.details['備考'] || "",
+            foreign_staff: {
+                is_foreign: data.details['VISA期限'] && data.details['VISA期限'] !== '-',
+                visa_expiry: data.details['VISA期限'] !== '-' ? data.details['VISA期限'] : "",
+                limit_28h: data.details['28時間制限'] === 'あり'
+            },
+            documents: data.documents || {}, // 画像を履歴として結合
+            createdAt: serverTimestamp()
+        };
+
+        const newUserId = `user_${Date.now()}`;
+        await setDoc(doc(db, "m_users", newUserId), newUserData);
+
+        // 申請のステータスを更新
+        await updateDoc(appRef, {
+            status: "承認済",
+            processedAt: serverTimestamp(),
+            processedBy: window.appState?.currentUser?.id || "system"
+        });
+
+        alert("承認とマスタへの登録が完了しました！");
+        // ※ リスナーによりバッジとリストは自動的に再レンダリングされる
+    } catch (e) {
+        console.error(e);
+        alert("エラーが発生しました: " + e.message);
+    }
+};
+
+export function setupNotificationListeners() {
     const catRecipe = document.getElementById('cat-recipe-missing');
     const catShift = document.getElementById('cat-shift-published');
     const btnBack = document.getElementById('btn-notif-back');
@@ -270,14 +324,15 @@ export function initNotificationsPage() {
             catApproval.onclick = () => {
                 panelCategories.style.display = 'none';
                 panelDetail.style.display = 'block';
-                document.getElementById('detail-title').textContent = '申請承認待ちリスト';
-                loadDetails('attendance_correction_request');
+                document.getElementById('detail-title').textContent = '申請承認ワークフロー';
+                loadDetails('request_approvals');
             };
         }
     }
 
     // クリーンアップ
     if (unsubscribeNotifs) unsubscribeNotifs();
+    if (window.unsubscribeApplications) window.unsubscribeApplications();
 
     // リアルタイム監視（件数更新用）
     const q = query(collection(db, "notifications"), where("status", "==", "pending"));
@@ -304,7 +359,34 @@ export function initNotificationsPage() {
             return !readBy.includes(myId);
         }).length;
         const deletionRequestCount = visibleNotifs.filter(n => n.type === 'deletion_request').length;
-        const approvalCount = visibleNotifs.filter(n => n.type === 'attendance_correction_request').length;
+        let approvalCount = visibleNotifs.filter(n => n.type === 'attendance_correction_request').length;
+        
+        // --- 追加: 入社申請の監視 (管理者のみ) ---
+        if (user.Role === 'Admin' || user.Role === '管理者') {
+            const qApps = query(
+                collection(db, "t_applications"),
+                where("type", "==", "new_hire"),
+                where("status", "==", "承認待ち"),
+                orderBy("createdAt", "desc")
+            );
+            window.unsubscribeApplications = onSnapshot(qApps, (appSnap) => {
+                const appNotifs = appSnap.docs.map(d => ({id: d.id, _collection: 't_applications', ...d.data()}));
+                window.__currentAppNotifs = appNotifs;
+                
+                // バッジの合算更新
+                const totalApproval = approvalCount + appNotifs.length;
+                const aEl = document.getElementById('count-request-approvals');
+                if (aEl) aEl.textContent = `${totalApproval}件`;
+                
+                // 詳細画面が開いていれば更新
+                if (panelDetail.style.display === 'block' && document.getElementById('detail-title').textContent === '申請承認ワークフロー') {
+                    loadDetails('request_approvals');
+                }
+            });
+        } else {
+            const aEl = document.getElementById('count-request-approvals');
+            if (aEl) aEl.textContent = `${approvalCount}件`;
+        }
         
         const rEl = document.getElementById('count-recipe-missing');
         if (rEl) rEl.textContent = `${recipeMissingCount}件`;
@@ -315,10 +397,7 @@ export function initNotificationsPage() {
         const dEl = document.getElementById('count-deletion-request');
         if (dEl) dEl.textContent = `${deletionRequestCount}件`;
 
-        const aEl = document.getElementById('count-request-approvals');
-        if (aEl) aEl.textContent = `${approvalCount}件`;
-
-        // 貸与物確認（30日以上未確認の件数）を簡易取得（リアルタイム監視は一旦無しで初期表示時に出すか、別クエリが必要）
+        // 貸与物確認（30日以上未確認の件数）を簡易取得
         updateAssetCheckCount();
         
         // 詳細ビューが開いている場合はリストも更新
@@ -328,13 +407,15 @@ export function initNotificationsPage() {
             let type = 'recipe_missing';
             if (currentTitle.includes('シフト')) type = 'shift_published';
             if (currentTitle.includes('削除')) type = 'deletion_request';
+            if (currentTitle.includes('ワークフロー')) type = 'request_approvals';
             
-            let itemsToRender = visibleNotifs.filter(n => n.type === type);
-            if (type === 'shift_published') {
-                // 既読のものは詳細リストからも除外
-                itemsToRender = itemsToRender.filter(n => !(n.readBy || []).includes(myId));
+            if (type !== 'request_approvals') {
+                let itemsToRender = visibleNotifs.filter(n => n.type === type);
+                if (type === 'shift_published') {
+                    itemsToRender = itemsToRender.filter(n => !(n.readBy || []).includes(myId));
+                }
+                renderNotifDetails(itemsToRender);
             }
-            renderNotifDetails(itemsToRender);
         }
     });
 }
@@ -345,11 +426,19 @@ async function loadDetails(type) {
         const user = JSON.parse(localStorage.getItem('currentUser') || '{}');
         const myId = user.id;
 
-        let items = window.__currentVisibleNotifs.filter(n => n.type === type);
-        
-        // シフト通知のみ、既読のものをリストから除外
-        if (type === 'shift_published') {
-            items = items.filter(n => !(n.readBy || []).includes(myId));
+        let items = [];
+        if (type === 'request_approvals') {
+            // 申請承認ワークフローの場合は、通知コレクションの勤怠修正と、入社申請を合算する
+            const attendances = window.__currentVisibleNotifs.filter(n => n.type === 'attendance_correction_request');
+            const apps = window.__currentAppNotifs || [];
+            items = [...attendances, ...apps];
+        } else {
+            items = window.__currentVisibleNotifs.filter(n => n.type === type);
+            
+            // シフト通知のみ、既読のものをリストから除外
+            if (type === 'shift_published') {
+                items = items.filter(n => !(n.readBy || []).includes(myId));
+            }
         }
 
         renderNotifDetails(items, type);
@@ -414,6 +503,64 @@ function renderNotifDetails(items, type) {
                     <div style="display: flex; gap: 0.5rem;">
                         <button class="btn btn-register-notif" style="background:var(--secondary);" onclick="goToAttendanceApproval()">
                             内容を確認
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (item.type === 'new_hire') {
+            const details = item.details || {};
+            const docs = item.documents || {};
+            const dateStr = item.createdAt ? new Date(item.createdAt.toDate ? item.createdAt.toDate() : item.createdAt.seconds * 1000).toLocaleString('ja-JP') : '日時不明';
+            
+            // 添付書類のリンク生成
+            let docsHtml = '';
+            if (Object.keys(docs).length > 0) {
+                docsHtml += '<div style="margin-top: 1rem; padding: 1rem; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">';
+                docsHtml += '<h4 style="margin: 0 0 0.5rem 0; font-size: 0.9rem; color: #475569;">📁 添付書類</h4>';
+                docsHtml += '<ul style="margin: 0; padding-left: 1.5rem; font-size: 0.9rem; color: #3b82f6; line-height: 1.8;">';
+                
+                if (docs.id_cards && docs.id_cards[0]) {
+                    docsHtml += `<li><a href="${docs.id_cards[0].url}" target="_blank" style="color: #3b82f6; text-decoration: none; font-weight: bold;"><i class="fas fa-external-link-alt"></i> 身分証 (住所確認用)</a></li>`;
+                }
+                if (docs.bank_cards && docs.bank_cards[0]) {
+                    docsHtml += `<li><a href="${docs.bank_cards[0].url}" target="_blank" style="color: #3b82f6; text-decoration: none; font-weight: bold;"><i class="fas fa-external-link-alt"></i> 通帳/キャッシュカード</a></li>`;
+                }
+                if (docs.residence_cards && docs.residence_cards[0]) {
+                    const rc = docs.residence_cards[0];
+                    if (rc.front_url) docsHtml += `<li><a href="${rc.front_url}" target="_blank" style="color: #3b82f6; text-decoration: none; font-weight: bold;"><i class="fas fa-external-link-alt"></i> 在留カード (表) <span style="color: #ef4444; margin-left: 0.5rem;">[期限: ${rc.expire_date || '未設定'}]</span></a></li>`;
+                    if (rc.back_url) docsHtml += `<li><a href="${rc.back_url}" target="_blank" style="color: #3b82f6; text-decoration: none; font-weight: bold;"><i class="fas fa-external-link-alt"></i> 在留カード (裏)</a></li>`;
+                }
+                if (docs.designation_certs && docs.designation_certs[0]) {
+                    docsHtml += `<li><a href="${docs.designation_certs[0].url}" target="_blank" style="color: #3b82f6; text-decoration: none; font-weight: bold;"><i class="fas fa-external-link-alt"></i> 指定書</a></li>`;
+                }
+                docsHtml += '</ul></div>';
+            }
+
+            const detailsHtml = Object.entries(details)
+                .map(([key, val]) => `<div style="margin-bottom: 0.3rem;"><span style="color: #64748b; display: inline-block; width: 120px;">${key}:</span> <strong>${val}</strong></div>`)
+                .join('');
+
+            return `
+                <div style="background: white; border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; margin-top: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                        <div>
+                            <span style="background: #fef08a; color: #854d0e; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: bold; margin-bottom: 0.5rem; display: inline-block;">入社申請・承認待ち</span>
+                            <div style="font-size: 1.1rem; font-weight: bold;">${details['氏名'] || '名称不明'}</div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary);"><i class="fas fa-store"></i> 店舗: ${details['所属予定店舗'] || '-'} / <i class="fas fa-user-edit"></i> 申請者: ${item.applicantName || '不明'} / <i class="far fa-clock"></i> ${dateStr}</div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; font-size: 0.95rem; margin-bottom: 1rem;">
+                        ${detailsHtml}
+                    </div>
+                    
+                    ${docsHtml}
+
+                    <div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
+                        <button class="btn btn-primary" onclick="window.approveNewHire('${item.id}')" style="flex: 1; padding: 0.8rem; background: #10b981; border-color: #10b981; font-weight: bold; font-size: 1rem;">
+                            <i class="fas fa-check-circle"></i> この内容を承認し、従業員マスタに登録する
                         </button>
                     </div>
                 </div>
