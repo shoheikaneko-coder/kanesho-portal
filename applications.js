@@ -203,6 +203,9 @@ export const newHirePageHtml = `
             
             /* 添付ファイルエリアのデザイン強化 */
             input[type="file"] { padding: 1.2rem !important; font-size: 0.95rem !important; }
+            
+            /* 在留カード等、PC時に2カラム横断(span 2)している要素を1カラムにリセット */
+            [style*="grid-column: span 2"] { grid-column: span 1 !important; }
         }
     </style>
     <div style="display: flex; flex-direction: column; gap: 2rem; box-sizing: border-box; width: 100%;">
