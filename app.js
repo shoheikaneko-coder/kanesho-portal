@@ -994,49 +994,42 @@ function initNotificationBadge() {
             updateDOM();
         });
 
-        // 社員登録MF ＆ 貸与物確認 (全社員)
+        // 社員登録MF (全社員)
         const qUsers = query(collection(db, "m_users"));
         onSnapshot(qUsers, (snap) => {
             let missing = 0;
-            let assetAlerts = 0;
-            const now = new Date();
             snap.forEach(d => {
                 const data = d.data();
                 const status = data.Status || 'active';
                 if (status === 'active' || status === '在職中') {
                     if (!data.EmployeeCode) missing++;
-                    const lastCheck = data.LastAssetCheckDate ? new Date(data.LastAssetCheckDate) : null;
-                    if (!lastCheck || (now - lastCheck) / (1000 * 60 * 60 * 24) >= 30) {
-                        assetAlerts++;
-                    }
                 }
             });
             badgeCounts.missingEmp = missing;
+            updateDOM();
+        });
+
+        // 貸与物確認 (全貸与物)
+        const qLoans = query(collection(db, "t_staff_loans"), where("status", "==", "loaned"));
+        onSnapshot(qLoans, (snap) => {
+            let assetAlerts = 0;
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            snap.forEach(d => {
+                const data = d.data();
+                const lastCheck = data.lastVerifiedAt ? new Date(data.lastVerifiedAt.seconds * 1000) : null;
+                if (!lastCheck || lastCheck < thirtyDaysAgo) {
+                    assetAlerts++;
+                }
+            });
             badgeCounts.asset = assetAlerts;
             updateDOM();
         });
     } else {
-        // 店長・スタッフ: 自店舗の貸与物確認アラートのみ
-        const mySid = user.StoreID || user.StoreId;
-        if (mySid) {
-            const qUsers = query(collection(db, "m_users"), where("StoreID", "==", mySid));
-            onSnapshot(qUsers, (snap) => {
-                let assetAlerts = 0;
-                const now = new Date();
-                snap.forEach(d => {
-                    const data = d.data();
-                    const status = data.Status || 'active';
-                    if (status === 'active' || status === '在職中') {
-                        const lastCheck = data.LastAssetCheckDate ? new Date(data.LastAssetCheckDate) : null;
-                        if (!lastCheck || (now - lastCheck) / (1000 * 60 * 60 * 24) >= 30) {
-                            assetAlerts++;
-                        }
-                    }
-                });
-                badgeCounts.asset = assetAlerts;
-                updateDOM();
-            });
-        }
+        // 店長・スタッフはベルアイコンへの貸与物通知は一旦行わない (機能仕様の整理が必要なため)
+        // もし必要であれば自店舗スタッフIDを取得してt_staff_loansを絞り込む処理を後日追加
+        badgeCounts.asset = 0;
+        updateDOM();
     }
 }
 
