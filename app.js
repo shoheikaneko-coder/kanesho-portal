@@ -941,35 +941,17 @@ function initNotificationBadge() {
     if (!btnNotify) return;
     btnNotify.onclick = () => window.navigateTo('notifications');
     
-    // 全ユーザーがバッジを見れるように変更 (以前はAdmin限定)
     const user = state.currentUser;
     if (!user) return;
 
-    const q = query(collection(db, "notifications"), where("status", "==", "pending"));
-    onSnapshot(q, (snapshot) => {
+    // 各カテゴリの未対応件数を保持する状態
+    let badgeCounts = { notifications: 0, apps: 0, missingEmp: 0, asset: 0 };
+
+    // バッジのDOM更新関数
+    const updateDOM = () => {
+        const total = Object.values(badgeCounts).reduce((a, b) => a + b, 0);
         let badge = document.getElementById('notification-badge');
-        const notifs = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
-        
-        // ハイブリッドカウント判定
-        const mySid = user.StoreID || user.StoreId;
-        const myId = user.id;
-
-        const count = notifs.filter(n => {
-            // 1. 店舗フィルタリング (管理者は全件、スタッフは自店舗分のみ)
-            const isAuthorized = (user.Role === 'Admin' || user.Role === '管理者' || n.store_id == mySid);
-            if (!isAuthorized) return false;
-
-            // 2. タイプ別カウント判定
-            if (n.type === 'shift_published') {
-                // 既読管理型: 自分のIDが readBy に入っていないものだけカウント
-                const readBy = n.readBy || [];
-                return !readBy.includes(myId);
-            }
-            // タスク型 (recipe_missing, deletion_request): pending ならカウント (全共有)
-            return true;
-        }).length;
-
-        if (count > 0) {
+        if (total > 0) {
             if (!badge) {
                 badge = document.createElement('span');
                 badge.id = 'notification-badge';
@@ -977,12 +959,85 @@ function initNotificationBadge() {
                 btnNotify.style.position = 'relative';
                 btnNotify.appendChild(badge);
             }
-            badge.textContent = count;
+            badge.textContent = total;
             badge.style.display = 'block';
         } else if (badge) {
             badge.style.display = 'none';
         }
+    };
+
+    // 1. notificationsコレクションの監視 (レシピ、シフト等)
+    const q = query(collection(db, "notifications"), where("status", "==", "pending"));
+    onSnapshot(q, (snapshot) => {
+        const notifs = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
+        const mySid = user.StoreID || user.StoreId;
+        const myId = user.id;
+
+        badgeCounts.notifications = notifs.filter(n => {
+            const isAuthorized = (user.Role === 'Admin' || user.Role === '管理者' || n.store_id == mySid);
+            if (!isAuthorized) return false;
+            if (n.type === 'shift_published') {
+                const readBy = n.readBy || [];
+                return !readBy.includes(myId);
+            }
+            return true;
+        }).length;
+        updateDOM();
     });
+
+    // 2. 他コレクションの監視 (管理者と店長/一般で分岐)
+    if (user.Role === 'Admin' || user.Role === '管理者') {
+        // 申請承認 (新規アルバイト等)
+        const qApps = query(collection(db, "t_applications"), where("status", "==", "承認待ち"));
+        onSnapshot(qApps, (snap) => {
+            badgeCounts.apps = snap.size;
+            updateDOM();
+        });
+
+        // 社員登録MF ＆ 貸与物確認 (全社員)
+        const qUsers = query(collection(db, "m_users"));
+        onSnapshot(qUsers, (snap) => {
+            let missing = 0;
+            let assetAlerts = 0;
+            const now = new Date();
+            snap.forEach(d => {
+                const data = d.data();
+                const status = data.Status || 'active';
+                if (status === 'active' || status === '在職中') {
+                    if (!data.EmployeeCode) missing++;
+                    const lastCheck = data.LastAssetCheckDate ? new Date(data.LastAssetCheckDate) : null;
+                    if (!lastCheck || (now - lastCheck) / (1000 * 60 * 60 * 24) >= 30) {
+                        assetAlerts++;
+                    }
+                }
+            });
+            badgeCounts.missingEmp = missing;
+            badgeCounts.asset = assetAlerts;
+            updateDOM();
+        });
+    } else {
+        // 店長・スタッフ: 自店舗の貸与物確認アラートのみ
+        const mySid = user.StoreID || user.StoreId;
+        if (mySid) {
+            const qUsers = query(collection(db, "m_users"), where("StoreID", "==", mySid));
+            onSnapshot(qUsers, (snap) => {
+                let assetAlerts = 0;
+                const now = new Date();
+                snap.forEach(d => {
+                    const data = d.data();
+                    const status = data.Status || 'active';
+                    if (status === 'active' || status === '在職中') {
+                        const lastCheck = data.LastAssetCheckDate ? new Date(data.LastAssetCheckDate) : null;
+                        if (!lastCheck || (now - lastCheck) / (1000 * 60 * 60 * 24) >= 30) {
+                            assetAlerts++;
+                        }
+                    }
+                });
+                badgeCounts.asset = assetAlerts;
+                updateDOM();
+            });
+        }
+    }
 }
 
 /**
