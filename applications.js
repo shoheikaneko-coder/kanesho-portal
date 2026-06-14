@@ -168,6 +168,42 @@ export const newHirePageHtml = `
         #nh-clock-pw { max-width: 150px !important; }
         #nh-wage { max-width: 150px !important; }
         #nh-date { max-width: 200px !important; }
+
+        /* スマホ特化（ネイティブアプリ風）チューニング */
+        @media (max-width: 768px) {
+            .glass-panel { padding: 1.5rem 1rem !important; border-radius: 0 !important; border-top-width: 6px !important; }
+            .grid-2col { grid-template-columns: 1fr !important; gap: 1.2rem !important; }
+            .form-input { padding: 1rem !important; font-size: 1rem !important; max-width: 100% !important; }
+            #nh-clock-pw, #nh-wage, #nh-date { max-width: 100% !important; }
+            
+            /* 送信ボタンのボトム固定 (Sticky) */
+            .submit-container {
+                position: fixed !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                background: rgba(255, 255, 255, 0.95) !important;
+                backdrop-filter: blur(10px) !important;
+                padding: 1rem !important;
+                box-shadow: 0 -4px 15px rgba(0,0,0,0.05) !important;
+                z-index: 1000 !important;
+                border-top: none !important;
+                margin-top: 0 !important;
+                box-sizing: border-box !important;
+            }
+            #btn-submit-nh { 
+                max-width: 100% !important; 
+                padding: 1.2rem !important; 
+                font-size: 1.2rem !important; 
+                border-radius: 50px !important; 
+                box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4) !important; 
+            }
+            /* ボタン固定によるスクロール下部の余白確保 */
+            #new-hire-form { padding-bottom: 100px !important; }
+            
+            /* 添付ファイルエリアのデザイン強化 */
+            input[type="file"] { padding: 1.2rem !important; font-size: 0.95rem !important; }
+        }
     </style>
     <div style="display: flex; flex-direction: column; gap: 2rem; box-sizing: border-box; width: 100%;">
         
@@ -316,7 +352,7 @@ export const newHirePageHtml = `
                     </div>
                 </div>
 
-                <div style="margin-top: 1rem; border-top: 1px dashed var(--border); padding-top: 1.5rem;">
+                <div class="submit-container" style="margin-top: 1rem; border-top: 1px dashed var(--border); padding-top: 1.5rem;">
                     <button type="submit" id="btn-submit-nh" class="btn btn-primary" style="width: 100%; max-width: 300px; padding: 1rem; font-size: 1.1rem; border-radius: 8px; margin: 0 auto; display: block; background: #10b981; border-color: #10b981;">
                         <i class="fas fa-paper-plane" style="margin-right: 0.5rem;"></i> 申請を送信する
                     </button>
