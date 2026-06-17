@@ -89,6 +89,20 @@ export const notificationsPageHtml = `
                     </div>
                 </div>
             </div>
+
+            <div class="notification-category-card eval-card" id="cat-evaluation-alert">
+                <div class="category-icon">
+                    <i class="fas fa-star"></i>
+                </div>
+                <div class="category-info">
+                    <h3>人事評価（自己評価入力）</h3>
+                    <p>評価期が開始されました。自己評価の入力と提出をお願いいたします。</p>
+                    <div class="category-status">
+                        <span class="count-badge" id="count-evaluation-alert" style="background:#ec4899;">0件</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Detailed List View (Hidden by default) -->
@@ -158,6 +172,7 @@ export const notificationsPageHtml = `
         .task-card .category-icon { background: #f0fdf4; color: #10b981; }
         .danger-card .category-icon { background: #fff7ed; color: #f59e0b; }
         .approval-card .category-icon { background: #ede9fe; color: var(--secondary); }
+        .eval-card .category-icon { background: #fce7f3; color: #ec4899; }
 
         .category-info { flex: 1; }
         .category-info h3 { margin: 0 0 0.4rem 0; font-size: 1.1rem; color: #1e293b; }
@@ -271,6 +286,13 @@ export function initNotificationsPage() {
         };
     }
 
+    const catEvalAlert = document.getElementById('cat-evaluation-alert');
+    if (catEvalAlert) {
+        catEvalAlert.onclick = () => {
+            window.navigateTo('evaluation'); // 評価システムページへ直接遷移
+        };
+    }
+
     if (btnBack) {
         btnBack.onclick = () => {
             panelDetail.style.display = 'none';
@@ -333,6 +355,7 @@ export function initNotificationsPage() {
         }).length;
         const deletionRequestCount = visibleNotifs.filter(n => n.type === 'deletion_request').length;
         let approvalCount = visibleNotifs.filter(n => n.type === 'attendance_correction_request').length;
+        const evalAlertCount = visibleNotifs.filter(n => n.type === 'evaluation_alert').length;
         
         // --- 追加: 入社申請の監視 (管理者のみ) ---
         if (user.Role === 'Admin' || user.Role === '管理者') {
@@ -391,6 +414,9 @@ export function initNotificationsPage() {
 
         const dEl = document.getElementById('count-deletion-request');
         if (dEl) dEl.textContent = `${deletionRequestCount}件`;
+
+        const evalEl = document.getElementById('count-evaluation-alert');
+        if (evalEl) evalEl.textContent = `${evalAlertCount}件`;
 
         // 貸与物確認（30日以上未確認の件数）を簡易取得
         updateAssetCheckCount();
