@@ -17,6 +17,26 @@ let allStaffUsersForAdmin = []; // 管理者タブの評価対象者選択用
 let globalStoreMapForEval = {}; // 店舗ID -> 店舗名のマッピング
 
 export const evaluationPageHtml = `
+    <style>
+        .eval-score-cell { position: relative; }
+        .eval-tooltip {
+            display: none; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+            background: rgba(30, 41, 59, 0.95); color: white; padding: 0.6rem 0.8rem; border-radius: 6px;
+            font-size: 0.72rem; line-height: 1.4; width: 260px; z-index: 1000; pointer-events: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 8px; text-align: left;
+        }
+        .eval-tooltip::after {
+            content: ''; position: absolute; top: 100%; left: 50%; margin-left: -6px;
+            border-width: 6px; border-style: solid; border-color: rgba(30, 41, 59, 0.95) transparent transparent transparent;
+        }
+        .eval-score-cell:hover .eval-tooltip {
+            display: block; animation: fadeInTooltip 0.15s ease-out forwards;
+        }
+        @keyframes fadeInTooltip {
+            from { opacity: 0; transform: translate(-50%, 5px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
+        }
+    </style>
     <div id="evaluation-page-container" class="animate-fade-in" style="padding: 1rem 1.5rem; max-width: 1200px; margin: 0 auto; box-sizing: border-box; font-family: inherit;">
         
         <!-- ヘッダーエリア -->
@@ -1563,27 +1583,32 @@ function renderModalBody(container, mode) {
 
         itemsHtml += `
             <tr style="border-bottom: 1px solid #e2e8f0; background: white;">
-                <td style="padding: 0.8rem 1rem; width: 30%;">
+                <td style="padding: 0.8rem 1rem; width: 30%; vertical-align: middle;">
                     <div style="font-weight: 700; color: #1e293b; line-height: 1.4;">
                         ${item.is_new ? '<span class="badge" style="background:#ef4444; color:white; font-size:0.65rem; padding:0.1rem 0.3rem; margin-right:0.3rem;">新</span>' : ''}
                         ${item.title}
                     </div>
-                    <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 0.2rem;">${item.description}</div>
                 </td>
-                <td style="padding: 0.8rem 0.5rem; text-align: center; font-weight: 700; font-family: monospace; font-size: 0.9rem; color: #64748b; background: #f8fafc; width: 80px;">
+                <td style="padding: 0.8rem 0.5rem; text-align: center; font-weight: 700; font-family: monospace; font-size: 0.9rem; color: #64748b; background: #f8fafc; width: 80px; vertical-align: middle;">
                     ${item.previous_score || '-'}
                 </td>
-                <td style="padding: 0.8rem 1rem; width: 200px;">
+                <td style="padding: 0.8rem 1rem; width: 200px; vertical-align: middle;" class="eval-score-cell">
                     <div style="display: flex; gap: 0.25rem; justify-content: center;">
                         ${selfRadioHtml}
                     </div>
+                    <div class="eval-tooltip">
+                        <strong style="color:#a7f3d0;"><i class="fas fa-info-circle"></i> 基準説明:</strong><br>${item.description}
+                    </div>
                 </td>
-                <td style="padding: 0.8rem 1rem; width: 200px;">
+                <td style="padding: 0.8rem 1rem; width: 200px; vertical-align: middle;" class="eval-score-cell">
                     <div style="display: flex; gap: 0.25rem; justify-content: center;">
                         ${managerRadioHtml}
                     </div>
+                    <div class="eval-tooltip">
+                        <strong style="color:#a7f3d0;"><i class="fas fa-info-circle"></i> 基準説明:</strong><br>${item.description}
+                    </div>
                 </td>
-                <td style="padding: 0.8rem 1rem;">
+                <td style="padding: 0.8rem 1rem; vertical-align: middle;">
                     ${commentAreaHtml}
                 </td>
             </tr>
