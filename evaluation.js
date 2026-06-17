@@ -23,7 +23,7 @@ export const evaluationPageHtml = `
             <div>
                 <h2 style="margin: 0; display: flex; align-items: center; gap: 0.8rem; font-size: 1.5rem; font-weight: 900; color: var(--text-primary);">
                     <i class="fas fa-star" style="color: #ec4899;"></i>
-                    従業員人事評価システム
+                    人事評価システム
                 </h2>
                 <p style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 0.3rem; font-weight: 600;">
                     年に4回の評価ワークフロー（仮評価・本評価）を一元管理し、成長と等級判定をサポートします
