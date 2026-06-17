@@ -621,19 +621,42 @@ function renderSelfTab(container) {
 // 2. 部下評価タブ (上長・店長ビュー)
 // ==========================================
 function renderSubordinatesTab(container) {
-    if (subordinateUsers.length === 0) {
+    // 評価シートが作成されている（評価対象として選ばれた）スタッフのみを抽出
+    const targetUsers = subordinateUsers.filter(u => activeEvaluations.some(e => e.user_id === u.id));
+
+    if (targetUsers.length === 0) {
         container.innerHTML = `
             <div class="glass-panel" style="padding: 4rem; text-align: center; color: var(--text-secondary);">
-                <i class="fas fa-users-slash fa-3x" style="color: #cbd5e1; margin-bottom: 1.5rem;"></i>
-                <h3 style="margin: 0; color: #1e293b;">評価対象の部下が見つかりません</h3>
-                <p style="margin-top: 0.5rem; font-size: 0.9rem;">あなたの店舗所属スタッフが存在しないか、評価データが未初期化です。</p>
+                <i class="fas fa-check-circle fa-3x" style="color: #cbd5e1; margin-bottom: 1.5rem;"></i>
+                <h3 style="margin: 0; color: #1e293b;">現在、進行中の評価対象スタッフはいません</h3>
+                <p style="margin-top: 0.5rem; font-size: 0.9rem;">あなたが行うべき評価タスクはすべて完了しているか、対象者がいません。</p>
             </div>
         `;
         return;
     }
 
+    // 店長が作業すべき優先順位でソート
+    // 優先度高(1): 店長評価中 / 自己評価提出済
+    // 優先度中(2): 面談完了 / 社長査定待ち
+    // 優先度低(3): スタッフ入力待ち (自己評価中)
+    // その他(4): 確定済など
+    const getSortPriority = (status) => {
+        if (status === 'self_submitted' || status === 'manager_evaluating') return 1;
+        if (status === 'interviewing' || status === 'president_pending') return 2;
+        if (status === 'self_evaluating') return 3;
+        return 4;
+    };
+
+    targetUsers.sort((a, b) => {
+        const evalA = activeEvaluations.find(e => e.user_id === a.id);
+        const evalB = activeEvaluations.find(e => e.user_id === b.id);
+        const pA = evalA ? getSortPriority(evalA.status) : 4;
+        const pB = evalB ? getSortPriority(evalB.status) : 4;
+        return pA - pB;
+    });
+
     let rowsHTML = '';
-    subordinateUsers.forEach(u => {
+    targetUsers.forEach(u => {
         const evalData = activeEvaluations.find(e => e.user_id === u.id);
         const status = evalData ? evalData.status : 'not_started';
         const statusJp = getStatusJpName(status);
