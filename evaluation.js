@@ -13,6 +13,7 @@ let selectedEvalDetail = null;  // モーダル表示中の評価詳細オブジ
 let editTemplates = {};        // 編集モーダル用のテンプレート一時保存バッファ
 let activeEditTemplateId = ''; // 編集中のテンプレートID
 let activeEditItems = [];      // 編集中の項目リスト
+let allStaffUsersForAdmin = []; // 管理者タブの評価対象者選択用
 
 export const evaluationPageHtml = `
     <div id="evaluation-page-container" class="animate-fade-in" style="padding: 1rem 1.5rem; max-width: 1200px; margin: 0 auto; box-sizing: border-box; font-family: inherit;">
@@ -358,6 +359,18 @@ async function loadInitialSettingsAndData() {
     const tabAdmin = document.getElementById('tab-admin');
 
     if (role === 'Admin' || role === '管理者') {
+        try {
+            const usersSnap = await getDocs(collection(db, "m_users"));
+            allStaffUsersForAdmin = [];
+            usersSnap.forEach(d => {
+                const data = d.data();
+                const isRetired = data.Status === 'retired' || data.Status === '退職済';
+                if (!isRetired && data.Role !== 'Tablet' && data.Role !== '店舗タブレット') {
+                    allStaffUsersForAdmin.push({ id: d.id, ...data });
+                }
+            });
+        } catch(e) { console.error("Failed to load users for admin:", e); }
+
         if (tabAdmin) tabAdmin.style.display = 'block';
         if (tabSubordinates) tabSubordinates.style.display = 'block';
         if (tabPresident) tabPresident.style.display = 'block';
@@ -880,6 +893,24 @@ function renderAdminTab(container) {
                                 <option value="false">本評価 (6月決算期・給与反映)</option>
                             </select>
                         </div>
+                        
+                        <div class="input-group" style="margin: 0; display: flex; flex-direction: column; gap: 0.5rem;">
+                            <label style="font-weight: 700; color: #475569; font-size:0.8rem;">評価対象者の選択</label>
+                            <div style="display: flex; gap: 0.5rem; margin-bottom: 0.2rem; flex-wrap: wrap;">
+                                <button type="button" class="btn btn-secondary" onclick="window.toggleAllEvalUsers(true)" style="padding: 0.3rem 0.8rem; font-size: 0.8rem; border-color: #cbd5e1;"><i class="fas fa-check-square"></i> すべて選択</button>
+                                <button type="button" class="btn btn-secondary" onclick="window.toggleAllEvalUsers(false)" style="padding: 0.3rem 0.8rem; font-size: 0.8rem; border-color: #cbd5e1;"><i class="far fa-square"></i> すべて解除</button>
+                                <button type="button" class="btn btn-secondary" onclick="window.selectOnlySelfForEval('${window.appState.currentUser.id}')" style="padding: 0.3rem 0.8rem; font-size: 0.8rem; border-color: #3b82f6; color: #2563eb; background: #eff6ff;"><i class="fas fa-user-shield"></i> テスト用 (自分のみ)</button>
+                            </div>
+                            <div style="max-height: 180px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; padding: 0.5rem; background: #f8fafc;">
+                                ${allStaffUsersForAdmin.map(u => `
+                                    <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem; border-bottom: 1px solid #e2e8f0; cursor: pointer;">
+                                        <input type="checkbox" name="target_users" value="${u.id}" class="eval-user-checkbox" checked>
+                                        <span style="font-size: 0.85rem; font-weight: 600; color: #1e293b;">${u.Name} (${u.Role === 'Manager' ? '店長' : 'スタッフ'} / ${u.StoreId || '本店'})</span>
+                                    </label>
+                                `).join('')}
+                            </div>
+                        </div>
+
                         <button type="submit" class="btn btn-primary" style="width: 100%; font-weight: 800; padding: 0.8rem; background: #10b981; border-color: #10b981; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.15);">
                             <i class="fas fa-play"></i> 評価期を新規開始する
                         </button>
@@ -958,16 +989,15 @@ function renderAdminTab(container) {
                 btnSubmit.disabled = true;
 
                 try {
-                    // 1. 在職ユーザーリストの読み込み
-                    const usersSnap = await getDocs(collection(db, "m_users"));
-                    const activeUsers = [];
-                    usersSnap.forEach(d => {
-                        const data = d.data();
-                        const isRetired = data.Status === 'retired' || data.Status === '退職済';
-                        if (!isRetired && data.Role !== 'Tablet' && data.Role !== '店舗タブレット') {
-                            activeUsers.push({ id: d.id, ...data });
-                        }
-                    });
+                    // 1. 選択されたユーザーリストの取得
+                    const checkboxes = document.querySelectorAll('.eval-user-checkbox:checked');
+                    const selectedUserIds = Array.from(checkboxes).map(cb => cb.value);
+                    if (selectedUserIds.length === 0) {
+                        btnSubmit.innerHTML = originalHtml;
+                        btnSubmit.disabled = false;
+                        return showAlert('エラー', '評価対象者を1人以上選択してください。');
+                    }
+                    const activeUsers = allStaffUsersForAdmin.filter(u => selectedUserIds.includes(u.id));
 
                     // 2. 等級マスタの読込 (適用テンプレートの判定用)
                     const gradesSnap = await getDocs(collection(db, "m_grades"));
@@ -2195,4 +2225,14 @@ window.saveActiveTemplate = async () => {
         btnSave.innerHTML = originalText;
         btnSave.disabled = false;
     }
+};
+
+window.toggleAllEvalUsers = function(checked) {
+    document.querySelectorAll('.eval-user-checkbox').forEach(cb => cb.checked = checked);
+};
+
+window.selectOnlySelfForEval = function(myId) {
+    document.querySelectorAll('.eval-user-checkbox').forEach(cb => {
+        cb.checked = (cb.value === myId);
+    });
 };
