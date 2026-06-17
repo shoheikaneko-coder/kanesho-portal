@@ -14,6 +14,7 @@ let editTemplates = {};        // 編集モーダル用のテンプレート一�
 let activeEditTemplateId = ''; // 編集中のテンプレートID
 let activeEditItems = [];      // 編集中の項目リスト
 let allStaffUsersForAdmin = []; // 管理者タブの評価対象者選択用
+let globalStoreMapForEval = {}; // 店舗ID -> 店舗名のマッピング
 
 export const evaluationPageHtml = `
     <div id="evaluation-page-container" class="animate-fade-in" style="padding: 1rem 1.5rem; max-width: 1200px; margin: 0 auto; box-sizing: border-box; font-family: inherit;">
@@ -333,6 +334,16 @@ function setupTabs() {
 async function loadInitialSettingsAndData() {
     const user = window.appState.currentUser;
     if (!user) return;
+
+    // 店舗マスタのロード（名称解決用）
+    try {
+        const storeSnap = await getDocs(collection(db, "m_stores"));
+        globalStoreMapForEval = {};
+        storeSnap.forEach(d => {
+            const data = d.data();
+            globalStoreMapForEval[d.id] = data.store_name || data.店舗名 || d.id;
+        });
+    } catch(e) { console.error("Failed to load stores for eval:", e); }
 
     // 1. シードデータの確認・投入
     await verifyAndSeedTemplates();
@@ -950,7 +961,7 @@ function renderAdminTab(container) {
                                 ${activeEvaluations.map(e => `
                                     <tr style="border-bottom: 1px solid var(--border);">
                                         <td style="padding: 0.75rem 1rem; font-weight: 700; color: #1e293b;">${e.user_name || '一般'}</td>
-                                        <td style="padding: 0.75rem 1rem; color: var(--text-secondary); font-size: 0.8rem;">${e.department === 'sales' ? '営業部' : '製造部'} (${e.store_id || '本店'})</td>
+                                        <td style="padding: 0.75rem 1rem; color: var(--text-secondary); font-size: 0.8rem;">${e.department === 'sales' ? '営業部' : '製造部'} (${globalStoreMapForEval[e.store_id] || e.store_id || '本店'})</td>
                                         <td style="padding: 0.75rem 1rem;"><span class="eval-status-badge status-${e.status}">${getStatusJpName(e.status)}</span></td>
                                         <td style="padding: 0.75rem 1rem; text-align: center; font-weight: 600;">${e.self_total_score || '-'}</td>
                                         <td style="padding: 0.75rem 1rem; text-align: center; font-weight: 600; color: #7c3aed;">${e.manager_total_score || '-'}</td>
