@@ -473,7 +473,9 @@ async function loadEvaluationData() {
             // 自身の所属店舗が一致する一般スタッフ、アルバイトを「部下」とする (Adminは全ユーザー)
             const myStore = user.StoreID || user.StoreId;
             subordinateUsers = allUsers.filter(u => {
-                if (u.id === user.id) return false; // 自分自身は除外
+                // 自分自身は除外（ただし管理者はテスト運用のため自分も表示する）
+                if (u.id === user.id && role !== 'Admin' && role !== '管理者') return false;
+                
                 if (u.Status === 'retired' || u.Status === '退職済') return false; // 退職者は除外
                 if (role === 'Admin' || role === '管理者') return true; // 管理者は全員
                 
