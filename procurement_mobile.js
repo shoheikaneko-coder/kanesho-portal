@@ -1044,7 +1044,24 @@ async function executeMobileConsumeAction(ci, qty) {
     try {
         const now = new Date().toISOString();
         const newQty = currentStock - qty;
+
+        // 1. Update status in parent action (仕込み品のショート処理を今日完了済みにする)
+        const parentDoc = await getDoc(doc(db, "m_store_items", parentSi.id));
+        const parentData = parentDoc.data();
+        if (parentData && parentData.shortage_actions) {
+            const updatedActions = parentData.shortage_actions.map(a => {
+                if (a.type === 'consume' && a.consume_item_id === action.consume_item_id) {
+                    return { ...a, completed_at: now };
+                }
+                return a;
+            });
+            await updateDoc(doc(db, "m_store_items", parentSi.id), { shortage_actions: updatedActions });
+        }
+
+        // 2. Update source item stock
         await updateDoc(doc(db, 'm_store_items', sourceItem.id), { 個数: newQty, updated_at: now });
+
+        // 3. Add History
         await addDoc(collection(db, 't_inventory_history'), {
             store_id: sourceItem.StoreID, item_id: sourceItem.ProductID, store_item_id: sourceItem.id,
             change_qty: -qty, qty_after: newQty, reason_type: 'consume_out',
