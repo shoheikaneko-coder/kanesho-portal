@@ -529,7 +529,7 @@ function renderItemRow(si, master, showStoreName = false) {
                 ${transferUi}
                 <div class="stepper-container">
                     <div style="font-size: 0.75rem; font-weight: 800; color: #475569; padding: 0 0.6rem; display: flex; align-items: center; border-right: 1px solid #cbd5e1; margin-right: 2px; white-space: nowrap;">
-                        在庫: <span style="font-size: 0.9rem; color: #1e293b; margin-left: 0.3rem;">${Number(si.個数 || 0)}</span>
+                        在庫: <span style="font-size: 0.9rem; color: #1e293b; margin-left: 0.3rem;">${Math.round(Number(si.個数 || 0) * 10) / 10}</span>
                     </div>
                     <button class="stepper-btn btn-minus" data-si-id="${si.id}"><i class="fas fa-minus"></i></button>
                     <input type="number" step="1" class="proc-buy-input" placeholder="0" data-si-id="${si.id}" value="${req}">

@@ -617,7 +617,7 @@ function renderItemRow(si, master, showStoreName = false, isInnerRow = false) {
                         ${sName}
                     </div>
                     <div style="display: flex; align-items: center;">
-                        <span class="stock-badge ${currentStock <= 0 ? 'critical' : ''}" style="background: ${currentStock <= 0 ? '#FFF1F2' : '#F1F5F9'}; color: ${currentStock <= 0 ? 'var(--primary)' : '#64748b'}; padding: 1px 6px; border-radius: 4px; font-weight: 700; font-size: 0.65rem; white-space: nowrap;">在庫: ${currentStock}</span>
+                        <span class="stock-badge ${currentStock <= 0 ? 'critical' : ''}" style="background: ${currentStock <= 0 ? '#FFF1F2' : '#F1F5F9'}; color: ${currentStock <= 0 ? 'var(--primary)' : '#64748b'}; padding: 1px 6px; border-radius: 4px; font-weight: 700; font-size: 0.65rem; white-space: nowrap;">在庫: ${Math.round(currentStock * 10) / 10}</span>
                     </div>
                 </div>
                 
@@ -628,7 +628,7 @@ function renderItemRow(si, master, showStoreName = false, isInnerRow = false) {
 
                 <div class="proc-stepper" style="margin-left: auto; gap: 2px;">
                     <div style="font-size: 0.7rem; font-weight: 800; color: #475569; padding: 0 0.4rem; display: flex; align-items: center; border-right: 1px solid #cbd5e1; white-space: nowrap;">
-                        庫:<span style="font-size: 0.85rem; color: #1e293b; margin-left: 0.2rem;">${currentStock}</span>
+                        庫:<span style="font-size: 0.85rem; color: #1e293b; margin-left: 0.2rem;">${Math.round(currentStock * 10) / 10}</span>
                     </div>
                     <button class="proc-stepper-btn btn-minus" data-si-id="${si.id}" style="width: 28px; height: 28px; font-size: 0.7rem;"><i class="fas fa-minus"></i></button>
                     <input type="number" class="proc-qty-input" value="${req}" data-si-id="${si.id}" inputmode="numeric" style="width: 32px; font-size: 1rem;">
