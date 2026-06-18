@@ -627,6 +627,9 @@ function renderItemRow(si, master, showStoreName = false, isInnerRow = false) {
                 </div>
 
                 <div class="proc-stepper" style="margin-left: auto; gap: 2px;">
+                    <div style="font-size: 0.7rem; font-weight: 800; color: #475569; padding: 0 0.4rem; display: flex; align-items: center; border-right: 1px solid #cbd5e1; white-space: nowrap;">
+                        庫:<span style="font-size: 0.85rem; color: #1e293b; margin-left: 0.2rem;">${currentStock}</span>
+                    </div>
                     <button class="proc-stepper-btn btn-minus" data-si-id="${si.id}" style="width: 28px; height: 28px; font-size: 0.7rem;"><i class="fas fa-minus"></i></button>
                     <input type="number" class="proc-qty-input" value="${req}" data-si-id="${si.id}" inputmode="numeric" style="width: 32px; font-size: 1rem;">
                     <button class="proc-stepper-btn btn-plus" data-si-id="${si.id}" style="width: 28px; height: 28px; font-size: 0.7rem;"><i class="fas fa-plus"></i></button>
