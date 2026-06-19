@@ -147,6 +147,9 @@ export const evaluationPageHtml = `
                         </select>
                     </div>
                     <div style="display: flex; gap: 0.6rem;">
+                        <button class="btn btn-secondary" id="btn-template-duplicate" style="font-weight: 700; padding: 0.5rem 1rem; background: white; border: 1px solid #cbd5e1; color: var(--text-secondary); font-size: 0.8rem;">
+                            <i class="fas fa-copy"></i> 現在のシートを複製
+                        </button>
                         <button class="btn btn-secondary" id="btn-template-add-new" style="font-weight: 700; padding: 0.5rem 1rem; background: white; border: 1px solid #cbd5e1; color: var(--text-secondary); font-size: 0.8rem;">
                             <i class="fas fa-plus"></i> 新規シートテンプレート作成
                         </button>
@@ -239,13 +242,15 @@ export const evaluationPageHtml = `
                 <!-- 項目入力 -->
                 <div class="glass-panel" style="padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: white; margin-bottom: 1rem;">
                     <div style="padding: 1rem; background: #f1f5f9; border-bottom: 1px solid var(--border); font-size: 0.8rem; color: #475569;">
-                        各項目に対し、当時の点数を入力してください。<br>※当時の項目名が現在と大きく異なる場合は「当時のメモ」に入力してください。
+                        各項目に対し、当時の点数を入力してください。<br>
+                        <span style="color: #be123c; font-weight: 700;"><i class="fas fa-exclamation-circle"></i> 過去の項目構成（項目数・名称）が現在と異なる場合</span><br>
+                        「評価項目マスタの編集」から現在のテンプレートを<b>「複製」</b>し、過去の評価フォーマットを作成した上でここから適用してください。
                     </div>
                     <div style="overflow-x: auto;">
                         <table class="eval-table" style="font-size: 0.82rem;">
                             <thead>
                                 <tr style="background:#f8fafc;">
-                                    <th style="width: 250px; text-align: left;">現在の項目タイトル</th>
+                                    <th style="width: 250px; text-align: left;">対象の評価項目タイトル</th>
                                     <th style="text-align: left;">当時のメモ (任意)</th>
                                     <th style="width: 100px; text-align: center;">当時の点数</th>
                                 </tr>
@@ -431,6 +436,12 @@ export async function initEvaluationPage() {
     if (btnSaveTemp) {
         btnSaveTemp.onclick = () => {
             window.saveActiveTemplate();
+        };
+    }
+    const btnDuplicateTemp = document.getElementById('btn-template-duplicate');
+    if (btnDuplicateTemp) {
+        btnDuplicateTemp.onclick = () => {
+            window.duplicateTemplate();
         };
     }
     const btnAddTempNew = document.getElementById('btn-template-add-new');
@@ -1561,7 +1572,9 @@ async function getSnapshotItemsForTemplate(templateId, userId) {
 // ==========================================
 // 5. 評価詳細入力・閲覧モーダルの構築と制御
 // ==========================================
-function openEvaluationDetailModal(evalData, mode) {
+let previousPeriodData = null;
+
+async function openEvaluationDetailModal(evalData, mode) {
     selectedEvalDetail = JSON.parse(JSON.stringify(evalData)); // シャローコピーで編集バッファにする
     
     const modal = document.getElementById('eval-detail-modal');
@@ -1572,6 +1585,10 @@ function openEvaluationDetailModal(evalData, mode) {
 
     if (!modal || !bodyEl || !footerEl) return;
 
+    modal.style.display = 'flex';
+    bodyEl.innerHTML = '<div style="text-align:center; padding:4rem;"><i class="fas fa-spinner fa-spin fa-2x" style="color:var(--text-secondary);"></i><div style="margin-top:1rem; font-weight:700; color:var(--text-secondary);">過去データと照合中...</div></div>';
+    footerEl.innerHTML = '';
+
     const isProvisional = selectedEvalDetail.is_provisional;
     const typeStr = isProvisional ? '仮評価' : '本評価 (7月給与反映対象)';
     titleEl.textContent = `【${selectedEvalDetail.period}期 ${typeStr}】 ${selectedEvalDetail.user_name} さんの評価シート`;
@@ -1579,13 +1596,34 @@ function openEvaluationDetailModal(evalData, mode) {
     const statusJp = getStatusJpName(selectedEvalDetail.status);
     subtitleEl.textContent = `ステータス: ${statusJp} | 被評価者の現等級: ${selectedEvalDetail.current_grade} | 前年同期の等級: ${selectedEvalDetail.yoy_grade}`;
 
+    // === 直前期データの取得ロジック ===
+    previousPeriodData = null;
+    try {
+        const userId = selectedEvalDetail.user_id;
+        const q = query(collection(db, "t_evaluations"), where("user_id", "==", userId));
+        const snap = await getDocs(q);
+        
+        let allPast = [];
+        snap.forEach(d => {
+            const data = d.data();
+            if ((data.status === 'approved' || data.status === 'notified' || data.is_legacy_archive) && data.period !== selectedEvalDetail.period) {
+                allPast.push({ id: d.id, ...data });
+            }
+        });
+        
+        if (allPast.length > 0) {
+            allPast.sort((a, b) => b.period.localeCompare(a.period));
+            previousPeriodData = allPast[0];
+        }
+    } catch(e) {
+        console.warn("Failed to load previous period data for diff:", e);
+    }
+
     // モーダルボディの構築
     renderModalBody(bodyEl, mode);
 
     // フッターアクションボタンの構築
     renderModalFooter(footerEl, mode);
-
-    modal.style.display = 'flex';
 }
 
 function renderModalBody(container, mode) {
@@ -1632,6 +1670,35 @@ function renderModalBody(container, mode) {
     }
 
     selectedEvalDetail.items.forEach((item, idx) => {
+        let titleSuffix = '';
+        let diffHtml = '<span style="color:#cbd5e1;">-</span>';
+
+        if (previousPeriodData && previousPeriodData.items) {
+            const pastItem = previousPeriodData.items.find(pi => pi.item_id === item.item_id);
+            if (!pastItem) {
+                titleSuffix = `<span class="eval-status-badge status-not_started" style="margin-left:0.5rem; background:#fee2e2; color:#b91c1c; border:none; font-size:0.65rem; padding: 0.15rem 0.4rem;">（新）</span>`;
+                diffHtml = '<span style="font-size:0.7rem; color:#94a3b8;">比較不可</span>';
+            } else {
+                const pastScore = pastItem.manager_score || 0;
+                const currentScoreForDiff = (status === 'self_evaluating' || status === 'self_submitted') ? (item.self_score || 0) : (item.manager_score || 0);
+                
+                if (pastScore > 0 && currentScoreForDiff > 0) {
+                    const diff = currentScoreForDiff - pastScore;
+                    if (diff > 0) {
+                        diffHtml = `<div><span style="font-size:0.9rem; color:#64748b;">${pastScore}</span><i class="fas fa-arrow-right" style="margin:0 0.2rem; font-size:0.6rem; color:#94a3b8;"></i><span style="font-size:0.75rem; color:#16a34a; font-weight:800;"><i class="fas fa-arrow-up"></i> +${diff}</span></div>`;
+                    } else if (diff < 0) {
+                        diffHtml = `<div><span style="font-size:0.9rem; color:#64748b;">${pastScore}</span><i class="fas fa-arrow-right" style="margin:0 0.2rem; font-size:0.6rem; color:#94a3b8;"></i><span style="font-size:0.75rem; color:#dc2626; font-weight:800;"><i class="fas fa-arrow-down"></i> ${diff}</span></div>`;
+                    } else {
+                        diffHtml = `<div><span style="font-size:0.9rem; color:#64748b;">${pastScore}</span><i class="fas fa-arrow-right" style="margin:0 0.2rem; font-size:0.6rem; color:#94a3b8;"></i><span style="font-size:0.75rem; color:#94a3b8; font-weight:800;"><i class="fas fa-minus"></i> ±0</span></div>`;
+                    }
+                } else if (pastScore > 0) {
+                     diffHtml = `<div style="font-size:0.75rem; color:#64748b; font-weight:600;">前回: ${pastScore}点</div>`;
+                }
+            }
+        } else {
+            titleSuffix = `<span class="eval-status-badge status-not_started" style="margin-left:0.5rem; background:#fee2e2; color:#b91c1c; border:none; font-size:0.65rem; padding: 0.15rem 0.4rem;">（新）</span>`;
+            diffHtml = '<span style="font-size:0.7rem; color:#94a3b8;">比較不可</span>';
+        }
         // カテゴリヘッダーの差し込み
         if (item.category !== currentCategory) {
             currentCategory = item.category;
@@ -1707,13 +1774,12 @@ function renderModalBody(container, mode) {
         itemsHtml += `
             <tr style="border-bottom: 1px solid #e2e8f0; background: white;">
                 <td style="padding: 0.8rem 1rem; width: 30%; vertical-align: middle;">
-                    <div style="font-weight: 700; color: #1e293b; line-height: 1.4;">
-                        ${item.is_new ? '<span class="badge" style="background:#ef4444; color:white; font-size:0.65rem; padding:0.1rem 0.3rem; margin-right:0.3rem;">新</span>' : ''}
-                        ${item.title}
+                    <div style="font-weight: 700; color: #1e293b; line-height: 1.4; display: flex; align-items: center;">
+                        ${item.title} ${titleSuffix}
                     </div>
                 </td>
-                <td style="padding: 0.8rem 0.5rem; text-align: center; font-weight: 700; font-family: monospace; font-size: 0.9rem; color: #64748b; background: #f8fafc; width: 80px; vertical-align: middle;">
-                    ${item.previous_score || '-'}
+                <td style="padding: 0.8rem 0.5rem; text-align: center; font-family: monospace; background: #f8fafc; width: 100px; vertical-align: middle;">
+                    ${diffHtml}
                 </td>
                 <td style="padding: 0.8rem 1rem; width: 200px; vertical-align: middle;" class="eval-score-cell">
                     <div style="display: flex; gap: 0.25rem; justify-content: center;">
@@ -1799,7 +1865,7 @@ function renderModalBody(container, mode) {
                 <thead>
                     <tr style="background:#f8fafc;">
                         <th style="text-align: left;">評価項目・基準説明</th>
-                        <th style="text-align: center; width: 80px;">前回</th>
+                        <th style="text-align: center; width: 100px;">過去との差分</th>
                         <th style="text-align: center; width: 200px;">自己評価点</th>
                         <th style="text-align: center; width: 200px; color:#7c3aed;">上長評価点</th>
                         <th style="text-align: left;">評価理由・フィードバック</th>
@@ -2326,6 +2392,55 @@ window.deleteTemplateItem = (idx) => {
         activeEditItems.splice(idx, 1);
         renderTemplateItems();
     });
+};
+
+window.duplicateTemplate = () => {
+    if (!activeEditTemplateId || !editTemplates[activeEditTemplateId]) {
+        return showAlert("エラー", "複製元のテンプレートが選択されていません。");
+    }
+
+    const sourceTemplate = editTemplates[activeEditTemplateId];
+
+    const templateId = prompt(`「${sourceTemplate.template_name || activeEditTemplateId}」を複製します。\n新しい評価シートのID（半角英数字）を入力してください。\n（例: ${activeEditTemplateId}_2024）`);
+    if (templateId === null) return;
+    
+    const cleanId = templateId.trim().toLowerCase();
+    if (!cleanId || !/^[a-z0-9_]+$/.test(cleanId)) {
+        return showAlert("入力エラー", "テンプレートIDは半角英数字（小文字）およびアンダースコアのみで入力してください。");
+    }
+    
+    if (editTemplates[cleanId]) {
+        return showAlert("入力エラー", "入力されたテンプレートIDはすでに存在しています。");
+    }
+    
+    const templateName = prompt("新しい評価シートの表示名称を入力してください。\n（例: 【過去用】2024年前期 一般用）");
+    if (templateName === null) return;
+    
+    const cleanName = templateName.trim();
+    if (!cleanName) {
+        return showAlert("入力エラー", "表示名称を入力してください。");
+    }
+    
+    const copiedItems = JSON.parse(JSON.stringify(sourceTemplate.items || []));
+    
+    editTemplates[cleanId] = {
+        id: cleanId,
+        template_name: cleanName,
+        items: copiedItems
+    };
+    
+    const select = document.getElementById('select-template-type');
+    if (select) {
+        const opt = document.createElement('option');
+        opt.value = cleanId;
+        opt.textContent = cleanName;
+        select.appendChild(opt);
+        select.value = cleanId;
+        activeEditTemplateId = cleanId;
+    }
+    
+    loadActiveEditTemplate();
+    showAlert("複製完了", `「${cleanName}」を作成しました。「保存する」を押すまでデータベースには反映されません。`);
 };
 
 window.createNewTemplate = () => {
