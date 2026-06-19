@@ -2151,7 +2151,12 @@ async function closeTemplateEditorModal() {
 
 function addTemplateItem() {
     const nextOrder = activeEditItems.reduce((max, it) => Math.max(max, it.display_order || 0), 0) + 1;
-    const nextItemId = `item_${String(activeEditItems.length + 1).padStart(2, '0')}`;
+    
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let nextItemId = '';
+    for (let i = 0; i < 20; i++) {
+        nextItemId += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
     
     activeEditItems.push({
         item_id: nextItemId,
@@ -2252,6 +2257,10 @@ window.saveActiveTemplate = async () => {
     const btnSave = document.getElementById('btn-save-template');
     if (!btnSave) return;
     
+    if (activeEditItems.length !== 24) {
+        return showAlert("保存エラー", `合計項目数が24項目ではありません（現在${activeEditItems.length}項目）。\n120点満点の整合性を保つため、24項目に調整するまで保存できません。`);
+    }
+    
     const hasEmpty = activeEditItems.some(it => !it.category.trim() || !it.title.trim());
     if (hasEmpty) {
         return showAlert("入力エラー", "カテゴリおよび項目タイトルが空の項目があります。すべての項目を入力してください。");
@@ -2267,13 +2276,20 @@ window.saveActiveTemplate = async () => {
         
         await setDoc(docRef, {
             template_name: templateName,
-            items: activeEditItems.map((item, idx) => ({
-                item_id: item.item_id || `item_${String(idx + 1).padStart(2, '0')}`,
-                category: item.category.trim(),
-                title: item.title.trim(),
-                description: (item.description || '').trim(),
-                display_order: parseInt(item.display_order) || (idx + 1)
-            }))
+            items: activeEditItems.map((item, idx) => {
+                let fallbackId = '';
+                if (!item.item_id) {
+                    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+                    for (let i = 0; i < 20; i++) fallbackId += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                return {
+                    item_id: item.item_id || fallbackId,
+                    category: item.category.trim(),
+                    title: item.title.trim(),
+                    description: (item.description || '').trim(),
+                    display_order: parseInt(item.display_order) || (idx + 1)
+                };
+            })
         });
         
         editTemplates[activeEditTemplateId].items = JSON.parse(JSON.stringify(activeEditItems));
