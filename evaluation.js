@@ -200,6 +200,101 @@ export const evaluationPageHtml = `
         </div>
     </div>
 
+    <!-- 過去データ入力モーダル -->
+    <div id="legacy-import-modal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); z-index: 3000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 1rem; box-sizing: border-box;">
+        <div class="glass-panel" style="background: white; width: 100%; max-width: 900px; max-height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);">
+            <div style="padding: 1.2rem 1.8rem; border-bottom: 1px solid var(--border); background: #f8fafc; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+                <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-file-import" style="color: #64748b;"></i>過去データのアーカイブ手入力</h3>
+                <button type="button" id="btn-close-legacy-modal" style="background: transparent; border: none; font-size: 1.4rem; cursor: pointer; color: #94a3b8; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div style="padding: 1.5rem 1.8rem; overflow-y: auto; flex-grow: 1; background: #f8fafc;">
+                <!-- 基本設定 -->
+                <div style="display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;">
+                    <div class="input-group" style="flex: 1; margin: 0;">
+                        <label style="font-weight: 700; color: #475569; font-size:0.8rem;">対象期 (例: 2025-12)</label>
+                        <input type="text" id="legacy-period" placeholder="YYYY-MM" required style="font-family: monospace; font-size:1.05rem; padding: 0.55rem 0.8rem;">
+                    </div>
+                    <div class="input-group" style="flex: 1; margin: 0;">
+                        <label style="font-weight: 700; color: #475569; font-size:0.8rem;">対象スタッフ</label>
+                        <select id="legacy-user-select" style="padding: 0.55rem 0.8rem; background: white; font-weight: 600; font-size:0.95rem;"></select>
+                    </div>
+                    <div class="input-group" style="flex: 1; margin: 0;">
+                        <label style="font-weight: 700; color: #475569; font-size:0.8rem;">適用テンプレート</label>
+                        <select id="legacy-template-select" style="padding: 0.55rem 0.8rem; background: white; font-weight: 600; font-size:0.95rem;"></select>
+                    </div>
+                </div>
+
+                <div class="input-group" style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+                    <div style="flex: 1;">
+                        <label style="font-weight: 700; color: #475569; font-size:0.8rem;">当時の等級 (任意)</label>
+                        <input type="text" id="legacy-grade" placeholder="例: J1" style="padding: 0.55rem 0.8rem; font-family: monospace;">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="font-weight: 700; color: #475569; font-size:0.8rem;">当時の総合点数</label>
+                        <input type="number" id="legacy-total-score" placeholder="合計点" style="padding: 0.55rem 0.8rem; font-weight:800;">
+                    </div>
+                </div>
+
+                <!-- 項目入力 -->
+                <div class="glass-panel" style="padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: white; margin-bottom: 1rem;">
+                    <div style="padding: 1rem; background: #f1f5f9; border-bottom: 1px solid var(--border); font-size: 0.8rem; color: #475569;">
+                        各項目に対し、当時の点数を入力してください。<br>※当時の項目名が現在と大きく異なる場合は「当時のメモ」に入力してください。
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table class="eval-table" style="font-size: 0.82rem;">
+                            <thead>
+                                <tr style="background:#f8fafc;">
+                                    <th style="width: 250px; text-align: left;">現在の項目タイトル</th>
+                                    <th style="text-align: left;">当時のメモ (任意)</th>
+                                    <th style="width: 100px; text-align: center;">当時の点数</th>
+                                </tr>
+                            </thead>
+                            <tbody id="legacy-items-tbody">
+                                <!-- JSで動的生成 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 総括コメント -->
+                <div class="glass-panel" style="padding: 1.2rem; background: white; border: 1px solid var(--border);">
+                    <h5 style="margin: 0 0 0.6rem; color: #475569; font-weight: 800;">面談メモ・総括コメント</h5>
+                    <textarea id="legacy-memo" rows="4" placeholder="当時の所見やフィードバック内容を入力" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.85rem; font-family:inherit; resize:vertical;"></textarea>
+                </div>
+            </div>
+
+            <!-- モーダルフッター -->
+            <div style="padding: 1rem 1.8rem; border-top: 1px solid var(--border); background: white; display: flex; justify-content: flex-end; align-items: center; gap: 0.8rem; flex-shrink: 0;">
+                <button class="btn btn-secondary" id="btn-close-legacy-modal-footer" style="font-weight: 700; padding: 0.6rem 1.2rem; background: white; border: 1px solid #cbd5e1; color: var(--text-secondary);">キャンセル</button>
+                <button class="btn btn-primary" id="btn-save-legacy" style="font-weight: 800; padding: 0.6rem 2rem; background: #10b981; border-color: #10b981; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.15);">アーカイブ保存する</button>
+            </div>
+        </div>
+    <!-- 評価履歴一覧モーダル -->
+    <div id="eval-history-modal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); z-index: 3000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 1rem; box-sizing: border-box;">
+        <div class="glass-panel" style="background: white; width: 100%; max-width: 800px; max-height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
+            <div style="padding: 1.2rem 1.8rem; border-bottom: 1px solid var(--border); background: #f8fafc; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+                <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-history" style="color: #64748b;"></i>過去の評価履歴</h3>
+                <button type="button" id="btn-close-history-modal" style="background: transparent; border: none; font-size: 1.4rem; cursor: pointer; color: #94a3b8; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;"><i class="fas fa-times"></i></button>
+            </div>
+            <div style="padding: 1.5rem 1.8rem; overflow-y: auto; flex-grow: 1; background: #f8fafc;" id="history-content-area">
+                <!-- JSで動的生成 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 評価履歴詳細モーダル -->
+    <div id="eval-history-detail-modal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); z-index: 3100; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 1rem; box-sizing: border-box;">
+        <div class="glass-panel" style="background: white; width: 100%; max-width: 900px; max-height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
+            <div style="padding: 1.2rem 1.8rem; border-bottom: 1px solid var(--border); background: #f8fafc; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+                <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 0.5rem;" id="history-detail-title">履歴詳細</h3>
+                <button type="button" id="btn-close-history-detail-modal" style="background: transparent; border: none; font-size: 1.4rem; cursor: pointer; color: #94a3b8; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;"><i class="fas fa-times"></i></button>
+            </div>
+            <div style="padding: 1.5rem 1.8rem; overflow-y: auto; flex-grow: 1; background: #f8fafc;" id="history-detail-content">
+            </div>
+        </div>
+    </div>
+
     <style>
         .tab-btn.active {
             color: var(--primary) !important;
@@ -295,6 +390,20 @@ export async function initEvaluationPage() {
             document.getElementById('eval-detail-modal').style.display = 'none';
         };
     }
+
+    // 過去データモーダルクローズ＆保存
+    const btnCloseLegacy = document.getElementById('btn-close-legacy-modal');
+    if (btnCloseLegacy) btnCloseLegacy.onclick = window.closeLegacyImportModal;
+    const btnCloseLegacyFooter = document.getElementById('btn-close-legacy-modal-footer');
+    if (btnCloseLegacyFooter) btnCloseLegacyFooter.onclick = window.closeLegacyImportModal;
+    const btnSaveLegacy = document.getElementById('btn-save-legacy');
+    if (btnSaveLegacy) btnSaveLegacy.onclick = window.saveLegacyImportData;
+
+    // 履歴モーダルクローズ
+    const btnCloseHistory = document.getElementById('btn-close-history-modal');
+    if (btnCloseHistory) btnCloseHistory.onclick = () => document.getElementById('eval-history-modal').style.display = 'none';
+    const btnCloseHistoryDetail = document.getElementById('btn-close-history-detail-modal');
+    if (btnCloseHistoryDetail) btnCloseHistoryDetail.onclick = () => document.getElementById('eval-history-detail-modal').style.display = 'none';
 
     // タブクリックイベント
     setupTabs();
@@ -697,6 +806,8 @@ function renderSubordinatesTab(container) {
             actionBtn = `<button class="btn btn-secondary" onclick="window.openSubEvaluation('${u.id}')" style="font-size:0.75rem; font-weight:700; padding: 0.4rem 0.8rem; border:1px solid #cbd5e1; background:white; color:var(--text-secondary);"><i class="fas fa-eye"></i> 閲覧</button>`;
         }
 
+        actionBtn += `<button class="btn btn-secondary" onclick="window.openEvaluationHistory('${u.id}', '${u.Name}')" style="font-size:0.75rem; font-weight:700; padding: 0.4rem 0.6rem; border:1px solid #cbd5e1; background:#f8fafc; color:#475569; margin-left:0.4rem;" title="過去の履歴を見る"><i class="fas fa-history"></i></button>`;
+
         rowsHTML += `
             <tr style="border-bottom: 1px solid var(--border);">
                 <td style="padding: 1rem; font-weight: 700; color: #1e293b;">${u.Name} ${u.DisplayName ? `<span style="font-size:0.75rem; color:#94a3b8; font-weight:400;">(${u.DisplayName})</span>` : ''}</td>
@@ -972,9 +1083,12 @@ function renderAdminTab(container) {
                         </button>
                     </form>
                 `}
-                <div style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1.2rem;">
+                <div style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1.2rem; display: flex; flex-direction: column; gap: 0.8rem;">
                     <button class="btn btn-secondary" id="btn-admin-edit-templates" style="width: 100%; font-weight: 800; padding: 0.8rem; background: white; border: 1px solid #cbd5e1; color: var(--text-secondary);">
                         <i class="fas fa-edit"></i> 評価項目マスタの編集
+                    </button>
+                    <button class="btn btn-secondary" id="btn-admin-import-legacy" style="width: 100%; font-weight: 800; padding: 0.8rem; background: #f8fafc; border: 1px solid #cbd5e1; color: #475569;">
+                        <i class="fas fa-file-import"></i> 過去データのアーカイブ手入力
                     </button>
                 </div>
             </div>
@@ -1012,6 +1126,7 @@ function renderAdminTab(container) {
                                         <td style="padding: 0.75rem 1rem; text-align: center; font-weight: 600; color: #7c3aed;">${e.manager_total_score || '-'}</td>
                                         <td style="padding: 0.75rem 1rem; text-align: right;" class="no-print">
                                             <button class="btn btn-secondary" onclick="window.viewAdminEvaluationDetail('${e.id}')" style="font-size: 0.7rem; padding: 0.3rem 0.6rem; border: 1px solid #cbd5e1; background: white; color: var(--text-secondary);"><i class="fas fa-eye"></i> 閲覧</button>
+                                            <button class="btn btn-secondary" onclick="window.openEvaluationHistory('${e.user_id}', '${e.user_name || '一般'}')" style="font-size:0.7rem; padding: 0.3rem 0.6rem; border:1px solid #cbd5e1; background:#f8fafc; color:#475569; margin-left:0.3rem;" title="過去の履歴を見る"><i class="fas fa-history"></i></button>
                                         </td>
                                     </tr>
                                 `).join('')}
@@ -1278,6 +1393,14 @@ function renderAdminTab(container) {
     if (btnEditTemplates) {
         btnEditTemplates.onclick = () => {
             openTemplateEditorModal();
+        };
+    }
+    
+    // 過去データ取り込みボタンのバインド
+    const btnImportLegacy = document.getElementById('btn-admin-import-legacy');
+    if (btnImportLegacy) {
+        btnImportLegacy.onclick = () => {
+            window.openLegacyImportModal();
         };
     }
 }
@@ -2312,4 +2435,275 @@ window.selectOnlySelfForEval = function(myId) {
     document.querySelectorAll('.eval-user-checkbox').forEach(cb => {
         cb.checked = (cb.value === myId);
     });
+};
+
+// ==========================================
+// 過去データのアーカイブ取り込みロジック (Phase 2)
+// ==========================================
+let legacyImportItems = [];
+
+window.openLegacyImportModal = async () => {
+    if (Object.keys(editTemplates).length === 0) {
+        await fetchEvaluationTemplates();
+    }
+    
+    const userSelect = document.getElementById('legacy-user-select');
+    userSelect.innerHTML = allStaffUsersForAdmin.map(u => 
+        `<option value="${u.id}">${u.Name} (${u.StoreId || '本店'} / ${u.Role === 'Manager' ? '店長' : 'スタッフ'})</option>`
+    ).join('');
+    
+    const templateSelect = document.getElementById('legacy-template-select');
+    templateSelect.innerHTML = Object.values(editTemplates).map(t => 
+        `<option value="${t.id}">${t.template_name}</option>`
+    ).join('');
+    
+    templateSelect.onchange = () => loadLegacyTemplateItems(templateSelect.value);
+    
+    if (Object.keys(editTemplates).length > 0) {
+        loadLegacyTemplateItems(templateSelect.value);
+    }
+    
+    document.getElementById('legacy-period').value = '';
+    document.getElementById('legacy-grade').value = '';
+    document.getElementById('legacy-total-score').value = '';
+    document.getElementById('legacy-memo').value = '';
+    
+    document.getElementById('legacy-import-modal').style.display = 'flex';
+};
+
+window.closeLegacyImportModal = () => {
+    document.getElementById('legacy-import-modal').style.display = 'none';
+};
+
+function loadLegacyTemplateItems(templateId) {
+    const template = editTemplates[templateId];
+    if (!template) return;
+    
+    legacyImportItems = JSON.parse(JSON.stringify(template.items || []));
+    
+    const tbody = document.getElementById('legacy-items-tbody');
+    tbody.innerHTML = legacyImportItems.map((item, idx) => `
+        <tr style="border-bottom: 1px solid var(--border);">
+            <td style="padding: 0.5rem; font-weight: 700; color: #1e293b;">
+                <div style="font-size:0.7rem; color:var(--text-secondary); margin-bottom:0.2rem;">${item.category}</div>
+                ${item.title}
+            </td>
+            <td style="padding: 0.5rem;">
+                <input type="text" id="legacy-memo-${idx}" placeholder="当時の文言などメモ" style="width: 100%; padding: 0.4rem; font-size: 0.8rem; border: 1px solid #cbd5e1; border-radius: 4px;">
+            </td>
+            <td style="padding: 0.5rem; text-align: center;">
+                <input type="number" id="legacy-score-${idx}" min="1" max="5" placeholder="点" style="width: 60px; padding: 0.4rem; font-weight: 800; text-align: center; border: 1px solid #cbd5e1; border-radius: 4px;">
+            </td>
+        </tr>
+    `).join('');
+}
+
+window.saveLegacyImportData = async () => {
+    const period = document.getElementById('legacy-period').value.trim();
+    const userId = document.getElementById('legacy-user-select').value;
+    const templateId = document.getElementById('legacy-template-select').value;
+    const grade = document.getElementById('legacy-grade').value.trim();
+    const totalScoreStr = document.getElementById('legacy-total-score').value.trim();
+    const memo = document.getElementById('legacy-memo').value.trim();
+    
+    if (!period || !userId) {
+        return showAlert('入力エラー', '対象期と対象スタッフは必須です。');
+    }
+    if (!/^\d{4}-\d{2}$/.test(period)) {
+        return showAlert('入力エラー', '対象期は「YYYY-MM」形式で入力してください (例: 2025-12)。');
+    }
+    
+    const user = allStaffUsersForAdmin.find(u => u.id === userId);
+    
+    const evalData = {};
+    for (let i = 0; i < legacyImportItems.length; i++) {
+        const item = legacyImportItems[i];
+        const scoreVal = document.getElementById(`legacy-score-${i}`).value;
+        const memoVal = document.getElementById(`legacy-memo-${i}`).value.trim();
+        
+        evalData[item.item_id] = {
+            self_score: parseInt(scoreVal) || 0,
+            manager_score: parseInt(scoreVal) || 0,
+            legacy_memo: memoVal
+        };
+    }
+    
+    const docId = `${period}_${userId}_legacy`;
+    const docRef = doc(db, "t_evaluations", docId);
+    
+    const btnSave = document.getElementById('btn-save-legacy');
+    const originalText = btnSave.innerHTML;
+    btnSave.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
+    btnSave.disabled = true;
+    
+    try {
+        await setDoc(docRef, {
+            id: docId,
+            period: period,
+            user_id: userId,
+            user_name: user?.Name || '不明',
+            store_id: user?.StoreId || '',
+            department: user?.Department || '',
+            status: 'approved',
+            is_legacy_archive: true,
+            template_id: templateId,
+            template_snapshot: legacyImportItems,
+            eval_data: evalData,
+            self_total_score: parseFloat(totalScoreStr) || 0,
+            manager_total_score: parseFloat(totalScoreStr) || 0,
+            final_total_score: parseFloat(totalScoreStr) || 0,
+            current_grade: grade,
+            new_grade: grade,
+            manager_comment: memo,
+            president_comment: '',
+            updated_at: new Date().toISOString()
+        });
+        
+        showAlert('保存完了', `${period}期の ${user?.Name} さんのアーカイブデータを保存しました。`);
+        window.closeLegacyImportModal();
+        
+        await loadEvaluationData();
+        renderActiveTabContent();
+        
+    } catch (e) {
+        console.error('Failed to save legacy data:', e);
+        showAlert('エラー', '保存に失敗しました。');
+    } finally {
+        btnSave.innerHTML = originalText;
+        btnSave.disabled = false;
+    }
+};
+
+window.cachedHistories = {};
+
+window.openEvaluationHistory = async (userId, userName) => {
+    const modal = document.getElementById('eval-history-modal');
+    const content = document.getElementById('history-content-area');
+    
+    modal.style.display = 'flex';
+    content.innerHTML = '<div style="text-align:center; padding:3rem;"><i class="fas fa-spinner fa-spin fa-2x" style="color:var(--text-secondary);"></i><div style="margin-top:1rem; color:var(--text-secondary); font-size:0.9rem; font-weight:700;">履歴を読み込んでいます...</div></div>';
+    
+    try {
+        const q = query(collection(db, "t_evaluations"), where("user_id", "==", userId));
+        const snap = await getDocs(q);
+        
+        let histories = [];
+        snap.forEach(d => {
+            const data = d.data();
+            if (data.status === 'approved' || data.status === 'notified' || data.is_legacy_archive) {
+                histories.push({ id: d.id, ...data });
+                window.cachedHistories[d.id] = { id: d.id, ...data };
+            }
+        });
+        
+        histories.sort((a, b) => b.period.localeCompare(a.period));
+        
+        if (histories.length === 0) {
+            content.innerHTML = '<div style="text-align:center; padding:3rem; color:var(--text-secondary); font-weight:700;">過去の確定済み評価履歴はありません。</div>';
+            return;
+        }
+        
+        let html = `
+            <h4 style="margin:0 0 1rem; color:#1e293b;"><i class="fas fa-user-circle" style="color:var(--primary); margin-right:0.4rem;"></i>${userName} さんの評価履歴</h4>
+            <div style="overflow-x:auto;">
+                <table class="eval-table">
+                    <thead>
+                        <tr>
+                            <th style="text-align:left;">対象期</th>
+                            <th style="text-align:left;">データ種別</th>
+                            <th style="text-align:center;">確定点数</th>
+                            <th style="text-align:center;">等級判定</th>
+                            <th style="text-align:right;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        histories.forEach(h => {
+            const isLegacy = h.is_legacy_archive ? '<span style="font-size:0.7rem; background:#cbd5e1; color:white; padding:0.2rem 0.4rem; border-radius:4px; font-weight:800;"><i class="fas fa-archive"></i> 手入力アーカイブ</span>' : '<span style="font-size:0.7rem; background:#3b82f6; color:white; padding:0.2rem 0.4rem; border-radius:4px; font-weight:800;"><i class="fas fa-laptop"></i> システム判定</span>';
+            const score = h.final_total_score || h.manager_total_score || h.self_total_score || '-';
+            
+            html += `
+                <tr style="background:white; border-bottom:1px solid #e2e8f0;">
+                    <td style="font-weight:800; color:#1e293b;">${h.period}期</td>
+                    <td>${isLegacy}</td>
+                    <td style="text-align:center; font-weight:800; color:#be123c;">${score}</td>
+                    <td style="text-align:center; font-family:monospace; font-weight:800; color:#059669;">${h.new_grade || '-'}</td>
+                    <td style="text-align:right;">
+                        <button class="btn btn-secondary" onclick="window.viewHistoryDetail('${h.id}')" style="font-size:0.75rem; padding:0.4rem 0.8rem; background:white; border-color:#cbd5e1; font-weight:800;"><i class="fas fa-file-alt" style="color:var(--primary);"></i> 詳細を見る</button>
+                    </td>
+                </tr>
+            `;
+        });
+        html += `</tbody></table></div>`;
+        content.innerHTML = html;
+        
+    } catch(e) {
+        console.error(e);
+        content.innerHTML = '<div style="color:#ef4444; text-align:center; padding:2rem; font-weight:700;"><i class="fas fa-exclamation-triangle"></i> 読み込みエラーが発生しました。</div>';
+    }
+};
+
+window.viewHistoryDetail = (evalId) => {
+    const h = window.cachedHistories[evalId];
+    if (!h) return;
+    
+    document.getElementById('history-detail-title').innerHTML = `<i class="fas fa-file-alt" style="color:var(--primary);"></i> ${h.period}期 ${h.user_name} さんの評価詳細`;
+    
+    let itemsHtml = '';
+    const snapshotItems = h.template_snapshot || h.items || [];
+    const evalData = h.eval_data || {};
+    
+    snapshotItems.forEach(item => {
+        const scoreData = evalData[item.item_id] || {};
+        const managerScore = scoreData.manager_score || scoreData.score || '-';
+        
+        itemsHtml += `
+            <tr style="background:white; border-bottom:1px solid #e2e8f0;">
+                <td style="padding: 0.8rem; font-size:0.85rem;">
+                    <div style="font-size:0.7rem; color:var(--text-secondary); margin-bottom:0.2rem; font-weight:700;">${item.category}</div>
+                    <div style="font-weight:800; color:#1e293b;">${item.title}</div>
+                    ${scoreData.legacy_memo ? `<div style="font-size:0.75rem; color:#d97706; margin-top:0.4rem; background:#fffbeb; padding:0.5rem; border-radius:6px; border:1px solid #fde68a;"><i class="fas fa-info-circle"></i> <b>当時のメモ:</b> ${scoreData.legacy_memo}</div>` : ''}
+                </td>
+                <td style="padding: 0.8rem; text-align:center; font-weight:900; color:#7c3aed; font-size:1.2rem;">
+                    ${managerScore}
+                </td>
+            </tr>
+        `;
+    });
+    
+    const content = `
+        <div style="display:flex; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap;">
+            <div style="flex:1; background:white; padding:1.2rem; border-radius:12px; border:1px solid #cbd5e1; text-align:center; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+                <div style="font-size:0.8rem; color:var(--text-secondary); font-weight:800;">最終総合点数</div>
+                <div style="font-size:1.8rem; font-weight:900; color:#be123c; margin-top:0.4rem;">${h.final_total_score || h.manager_total_score || h.self_total_score || '-'}</div>
+            </div>
+            <div style="flex:1; background:white; padding:1.2rem; border-radius:12px; border:1px solid #cbd5e1; text-align:center; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+                <div style="font-size:0.8rem; color:var(--text-secondary); font-weight:800;">決定等級</div>
+                <div style="font-size:1.8rem; font-weight:900; font-family:monospace; color:#059669; margin-top:0.4rem;">${h.new_grade || '-'}</div>
+            </div>
+        </div>
+        
+        <div style="background:white; padding:1.2rem; border-radius:12px; border:1px solid #cbd5e1; margin-bottom:1.5rem; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+            <div style="font-size:0.85rem; color:var(--text-secondary); font-weight:800; margin-bottom:0.6rem; border-bottom:1px solid #e2e8f0; padding-bottom:0.4rem;"><i class="fas fa-comment-dots" style="color:var(--primary);"></i> 総括コメント・面談メモ</div>
+            <div style="font-size:0.95rem; color:#1e293b; white-space:pre-wrap; line-height:1.6;">${h.manager_comment || h.president_comment || '<span style="color:#94a3b8; font-size:0.85rem;">（コメントの記録はありません）</span>'}</div>
+        </div>
+        
+        <div style="background:white; border-radius:12px; border:1px solid #cbd5e1; overflow:hidden; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+            <table class="eval-table" style="margin:0;">
+                <thead>
+                    <tr>
+                        <th style="text-align:left;">評価項目</th>
+                        <th style="text-align:center; width:100px;">当時の点数</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${itemsHtml || '<tr><td colspan="2" style="text-align:center; padding:2rem;">詳細データがありません。</td></tr>'}
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    document.getElementById('history-detail-content').innerHTML = content;
+    document.getElementById('eval-history-detail-modal').style.display = 'flex';
 };
