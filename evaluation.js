@@ -153,7 +153,7 @@ export const evaluationPageHtml = `
                                 <tr style="background:#f8fafc;">
                                     <th style="width: 250px; text-align: left;">テンプレート表示名称</th>
                                     <th style="text-align: left; color:#64748b;">システムID</th>
-                                    <th style="width: 320px; text-align: center;">操作</th>
+                                    <th style="width: 380px; text-align: center;">操作</th>
                                 </tr>
                             </thead>
                             <tbody id="template-list-tbody">
@@ -2223,6 +2223,14 @@ window.renderTemplateList = () => {
     tbody.innerHTML = '';
     
     const templates = Object.values(editTemplates);
+    
+    // 表示名称の昇順でソート（同じ場合はIDでソート）
+    templates.sort((a, b) => {
+        const nameA = a.template_name || a.id;
+        const nameB = b.template_name || b.id;
+        return nameA.localeCompare(nameB, 'ja');
+    });
+
     if (templates.length === 0) {
         tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:3rem; color:#64748b;">テンプレートがありません。「新規作成」から作成してください。</td></tr>`;
         return;
@@ -2238,11 +2246,13 @@ window.renderTemplateList = () => {
             <td style="padding: 1rem; font-family: monospace; font-size: 0.8rem; color: #64748b;">
                 ${t.id}
             </td>
-            <td style="padding: 1rem; text-align: center;">
-                <button class="btn" onclick="window.openTemplateDetail('${t.id}')" style="background:#f1f5f9; color:#475569; border:none; border-radius:6px; font-size:0.75rem; font-weight:700; padding:0.4rem 0.8rem; margin-right:0.3rem; transition: background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'"><i class="fas fa-edit"></i> 編集</button>
-                <button class="btn" onclick="window.renameTemplate('${t.id}')" style="background:#f1f5f9; color:#475569; border:none; border-radius:6px; font-size:0.75rem; font-weight:700; padding:0.4rem 0.8rem; margin-right:0.3rem; transition: background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'"><i class="fas fa-font"></i> 名称変更</button>
-                <button class="btn" onclick="window.duplicateTemplateFromList('${t.id}')" style="background:#f1f5f9; color:#475569; border:none; border-radius:6px; font-size:0.75rem; font-weight:700; padding:0.4rem 0.8rem; margin-right:0.3rem; transition: background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'"><i class="fas fa-copy"></i> 複製</button>
-                <button class="btn" onclick="window.deleteTemplate('${t.id}')" style="background:#fef2f2; color:#dc2626; border:1px solid #fecaca; border-radius:6px; font-size:0.75rem; font-weight:700; padding:0.4rem 0.8rem; transition: background 0.2s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'"><i class="fas fa-trash"></i> 削除</button>
+            <td style="padding: 1rem;">
+                <div style="display: flex; gap: 0.5rem; justify-content: center; flex-wrap: nowrap;">
+                    <button class="btn" onclick="window.openTemplateDetail('${t.id}')" style="background:#f1f5f9; color:#475569; border:none; border-radius:6px; font-size:0.75rem; font-weight:700; padding:0.4rem 0.8rem; transition: background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'"><i class="fas fa-edit"></i> 編集</button>
+                    <button class="btn" onclick="window.renameTemplate('${t.id}')" style="background:#f1f5f9; color:#475569; border:none; border-radius:6px; font-size:0.75rem; font-weight:700; padding:0.4rem 0.8rem; transition: background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'"><i class="fas fa-font"></i> 名称変更</button>
+                    <button class="btn" onclick="window.duplicateTemplateFromList('${t.id}')" style="background:#f1f5f9; color:#475569; border:none; border-radius:6px; font-size:0.75rem; font-weight:700; padding:0.4rem 0.8rem; transition: background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'"><i class="fas fa-copy"></i> 複製</button>
+                    <button class="btn" onclick="window.deleteTemplate('${t.id}')" style="background:#fef2f2; color:#dc2626; border:1px solid #fecaca; border-radius:6px; font-size:0.75rem; font-weight:700; padding:0.4rem 0.8rem; transition: background 0.2s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'"><i class="fas fa-trash"></i> 削除</button>
+                </div>
             </td>
         `;
         tbody.appendChild(tr);
