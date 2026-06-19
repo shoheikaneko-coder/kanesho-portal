@@ -1676,10 +1676,10 @@ function renderModalBody(container, mode) {
                 <thead>
                     <tr style="background:#f8fafc;">
                         <th style="text-align: left;">評価項目・基準説明</th>
-                        <th style="text-align: center; width: 80px;">前回評価</th>
+                        <th style="text-align: center; width: 80px;">前回</th>
                         <th style="text-align: center; width: 200px;">自己評価点</th>
                         <th style="text-align: center; width: 200px; color:#7c3aed;">上長評価点</th>
-                        <th style="text-align: left;">評価理由・フィードバックコメント</th>
+                        <th style="text-align: left;">評価理由・フィードバック</th>
                     </tr>
                 </thead>
                 <tbody id="modal-eval-table-body">
