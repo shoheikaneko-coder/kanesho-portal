@@ -138,66 +138,90 @@ export const evaluationPageHtml = `
             
             <!-- モーダルボディ (スクロール可能) -->
             <div id="modal-template-body" style="padding: 1.5rem; overflow-y: auto; flex: 1; background: #f8fafc;">
-                <!-- テンプレート選択と操作エリア -->
-                <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; background: white; padding: 1rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1rem;">
-                    <div style="display: flex; align-items: center; gap: 0.8rem;">
-                        <label style="font-weight: 800; font-size: 0.85rem; color: #475569;">編集対象シート:</label>
-                        <select id="select-template-type" style="background: white; padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.9rem; min-width: 250px;">
-                            <!-- オプションは動的に読み込む -->
-                        </select>
-                    </div>
-                    <div style="display: flex; gap: 0.6rem;">
-                        <button class="btn btn-secondary" id="btn-template-duplicate" style="font-weight: 700; padding: 0.5rem 1rem; background: white; border: 1px solid #cbd5e1; color: var(--text-secondary); font-size: 0.8rem;">
-                            <i class="fas fa-copy"></i> 現在のシートを複製
-                        </button>
-                        <button class="btn btn-secondary" id="btn-template-add-new" style="font-weight: 700; padding: 0.5rem 1rem; background: white; border: 1px solid #cbd5e1; color: var(--text-secondary); font-size: 0.8rem;">
-                            <i class="fas fa-plus"></i> 新規シートテンプレート作成
+                
+                <!-- ビュー1：テンプレート一覧画面 -->
+                <div id="template-view-list">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h4 style="margin: 0; color: #1e293b; font-size: 1.05rem;"><i class="fas fa-list"></i> 登録済みテンプレート一覧</h4>
+                        <button class="btn btn-primary" onclick="window.createNewTemplate()" style="font-weight: 700; padding: 0.5rem 1rem; font-size: 0.8rem; background: #10b981; border: none; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);">
+                            <i class="fas fa-plus"></i> 新規作成
                         </button>
                     </div>
-                </div>
-
-                <!-- 警告メッセージ表示エリア -->
-                <div id="template-validation-warning" style="display: none; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 0.75rem 1rem; color: #991b1b; font-size: 0.82rem; font-weight: 700; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
-                    <i class="fas fa-exclamation-triangle" style="color: #dc2626;"></i>
-                    <span id="validation-warning-text">現在の項目数は24個ではありません。自動等級判定（120点満点）の整合性が崩れる可能性があります。</span>
-                </div>
-
-                <!-- 項目編集テーブル -->
-                <div class="glass-panel" style="padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: white; margin-bottom: 1rem;">
-                    <div style="overflow-x: auto;">
-                        <table class="eval-table" style="font-size: 0.82rem;">
+                    <div class="glass-panel" style="padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: white;">
+                        <table class="eval-table" style="font-size: 0.85rem;">
                             <thead>
                                 <tr style="background:#f8fafc;">
-                                    <th style="width: 70px; text-align: center;">順序</th>
-                                    <th style="width: 150px; text-align: left;">カテゴリ</th>
-                                    <th style="text-align: left; width: 35%;">項目タイトル（基準・行動定義）</th>
-                                    <th style="text-align: left; width: 45%;">詳細説明（評価のポイント）</th>
-                                    <th style="width: 60px; text-align: center;">操作</th>
+                                    <th style="width: 250px; text-align: left;">テンプレート表示名称</th>
+                                    <th style="text-align: left; color:#64748b;">システムID</th>
+                                    <th style="width: 320px; text-align: center;">操作</th>
                                 </tr>
                             </thead>
-                            <tbody id="template-items-tbody">
-                                <!-- 項目行が動的に生成されます -->
+                            <tbody id="template-list-tbody">
+                                <!-- 一覧行が動的に生成されます -->
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- 項目追加ボタン -->
-                <div style="display: flex; justify-content: flex-start; padding: 0.5rem 0; margin-bottom: 1rem;">
-                    <button class="btn btn-secondary" id="btn-template-add-item" style="font-weight: 700; font-size: 0.8rem; background: white; border: 1px solid #cbd5e1; color: var(--text-secondary);">
-                        <i class="fas fa-plus-circle"></i> 項目を追加する
-                    </button>
+                <!-- ビュー2：項目編集画面 -->
+                <div id="template-view-editor" style="display: none;">
+                    <!-- テンプレート選択と操作エリア (エディタのヘッダー) -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; background: white; padding: 1rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 0.8rem;">
+                            <button class="btn" onclick="window.backToTemplateList()" style="background: #f1f5f9; border: none; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.8rem; font-weight: 700; color: #475569; transition: background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">
+                                <i class="fas fa-arrow-left"></i> 一覧へ戻る
+                            </button>
+                            <div style="margin-left: 0.5rem;">
+                                <label style="font-weight: 800; font-size: 0.8rem; color: #64748b; display: block; margin-bottom: 0.1rem;">編集中のテンプレート:</label>
+                                <span id="editor-current-template-name" style="font-weight: 800; font-size: 1.05rem; color: #1e293b;"></span>
+                                <span id="editor-current-template-id" style="font-size: 0.75rem; color: #94a3b8; font-family: monospace; margin-left: 0.5rem;"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 警告メッセージ表示エリア -->
+                    <div id="template-validation-warning" style="display: none; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 0.75rem 1rem; color: #991b1b; font-size: 0.82rem; font-weight: 700; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+                        <i class="fas fa-exclamation-triangle" style="color: #dc2626;"></i>
+                        <span id="validation-warning-text">現在の項目数は24個ではありません。自動等級判定（120点満点）の整合性が崩れる可能性があります。</span>
+                    </div>
+
+                    <!-- 項目編集テーブル -->
+                    <div class="glass-panel" style="padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: white; margin-bottom: 1rem;">
+                        <div style="overflow-x: auto;">
+                            <table class="eval-table" style="font-size: 0.82rem;">
+                                <thead>
+                                    <tr style="background:#f8fafc;">
+                                        <th style="width: 70px; text-align: center;">順序</th>
+                                        <th style="width: 150px; text-align: left;">カテゴリ</th>
+                                        <th style="text-align: left; width: 35%;">項目タイトル（基準・行動定義）</th>
+                                        <th style="text-align: left; width: 45%;">詳細説明（評価のポイント）</th>
+                                        <th style="width: 60px; text-align: center;">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="template-items-tbody">
+                                    <!-- 項目行が動的に生成されます -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 項目追加ボタン -->
+                    <div style="display: flex; justify-content: flex-start; padding: 0.5rem 0; margin-bottom: 1rem;">
+                        <button class="btn btn-secondary" id="btn-template-add-item" style="font-weight: 700; font-size: 0.8rem; background: white; border: 1px solid #cbd5e1; color: var(--text-secondary);">
+                            <i class="fas fa-plus-circle"></i> 項目を追加する
+                        </button>
+                    </div>
                 </div>
             </div>
 
             <!-- モーダルフッター -->
-            <div style="padding: 1rem 1.8rem; border-top: 1px solid var(--border); background: white; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+            <!-- モーダルフッター -->
+            <div id="template-view-editor-footer" style="display: none; padding: 1rem 1.8rem; border-top: 1px solid var(--border); background: white; justify-content: space-between; align-items: center; flex-shrink: 0;">
                 <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-secondary);">
                     合計項目数: <span id="template-total-items-count" style="font-weight: 900; color: #1e293b;">0</span> / 24
                 </div>
                 <div style="display: flex; gap: 0.8rem;">
-                    <button class="btn btn-secondary" id="btn-close-template-modal-footer" style="font-weight: 700; padding: 0.6rem 1.2rem; background: white; border: 1px solid #cbd5e1; color: var(--text-secondary);">閉じる</button>
-                    <button class="btn btn-primary" id="btn-save-template" style="font-weight: 800; padding: 0.6rem 2rem; background: #2563eb; border-color: #2563eb; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.15);">保存する</button>
+                    <button class="btn btn-primary" id="btn-save-template" style="font-weight: 800; padding: 0.6rem 2rem; background: #2563eb; border-color: #2563eb; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.15);">変更を保存する</button>
                 </div>
             </div>
         </div>
@@ -2183,49 +2207,66 @@ async function openTemplateEditorModal() {
         return;
     }
     
-    // ドロップダウンを更新
-    const select = document.getElementById('select-template-type');
-    if (select) {
-        select.innerHTML = '';
-        Object.keys(editTemplates).forEach(id => {
-            const opt = document.createElement('option');
-            opt.value = id;
-            opt.textContent = editTemplates[id].template_name || id;
-            select.appendChild(opt);
-        });
-        
-        // 切り替えイベント
-        select.onchange = async (e) => {
-            const nextValue = e.target.value;
-            if (checkUnsavedChanges()) {
-                const confirmSwitch = await showConfirm(
-                    "未保存の変更", 
-                    "現在のテンプレートに変更（未保存）があります。保存せずに切り替えますか？"
-                );
-                if (confirmSwitch) {
-                    activeEditTemplateId = nextValue;
-                    loadActiveEditTemplate();
-                } else {
-                    select.value = activeEditTemplateId;
-                }
-            } else {
-                activeEditTemplateId = nextValue;
-                loadActiveEditTemplate();
-            }
-        };
-
-        // デフォルトで一般用テンプレートを選択
-        if (editTemplates['general']) {
-            select.value = 'general';
-        } else if (Object.keys(editTemplates).length > 0) {
-            select.value = Object.keys(editTemplates)[0];
-        }
-        activeEditTemplateId = select.value;
-    }
+    // 一覧画面に切り替え
+    document.getElementById('template-view-list').style.display = 'block';
+    document.getElementById('template-view-editor').style.display = 'none';
+    document.getElementById('template-view-editor-footer').style.display = 'none';
     
-    loadActiveEditTemplate();
+    window.renderTemplateList();
+    
     modal.style.display = 'flex';
 }
+
+window.renderTemplateList = () => {
+    const tbody = document.getElementById('template-list-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    
+    const templates = Object.values(editTemplates);
+    if (templates.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:3rem; color:#64748b;">テンプレートがありません。「新規作成」から作成してください。</td></tr>`;
+        return;
+    }
+    
+    templates.forEach(t => {
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = '1px solid #e2e8f0';
+        tr.innerHTML = `
+            <td style="padding: 1rem; font-weight: 700; color: #1e293b;">
+                ${t.template_name || t.id}
+            </td>
+            <td style="padding: 1rem; font-family: monospace; font-size: 0.8rem; color: #64748b;">
+                ${t.id}
+            </td>
+            <td style="padding: 1rem; text-align: center;">
+                <button class="btn" onclick="window.openTemplateDetail('${t.id}')" style="background:#f1f5f9; color:#475569; border:none; border-radius:6px; font-size:0.75rem; font-weight:700; padding:0.4rem 0.8rem; margin-right:0.3rem; transition: background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'"><i class="fas fa-edit"></i> 編集</button>
+                <button class="btn" onclick="window.renameTemplate('${t.id}')" style="background:#f1f5f9; color:#475569; border:none; border-radius:6px; font-size:0.75rem; font-weight:700; padding:0.4rem 0.8rem; margin-right:0.3rem; transition: background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'"><i class="fas fa-font"></i> 名称変更</button>
+                <button class="btn" onclick="window.duplicateTemplateFromList('${t.id}')" style="background:#f1f5f9; color:#475569; border:none; border-radius:6px; font-size:0.75rem; font-weight:700; padding:0.4rem 0.8rem; margin-right:0.3rem; transition: background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'"><i class="fas fa-copy"></i> 複製</button>
+                <button class="btn" onclick="window.deleteTemplate('${t.id}')" style="background:#fef2f2; color:#dc2626; border:1px solid #fecaca; border-radius:6px; font-size:0.75rem; font-weight:700; padding:0.4rem 0.8rem; transition: background 0.2s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'"><i class="fas fa-trash"></i> 削除</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+};
+
+window.backToTemplateList = () => {
+    document.getElementById('template-view-editor').style.display = 'none';
+    document.getElementById('template-view-editor-footer').style.display = 'none';
+    document.getElementById('template-view-list').style.display = 'block';
+};
+
+window.openTemplateDetail = (id) => {
+    activeEditTemplateId = id;
+    const t = editTemplates[id];
+    document.getElementById('editor-current-template-name').textContent = t.template_name || id;
+    document.getElementById('editor-current-template-id').textContent = id;
+    
+    loadActiveEditTemplate();
+    
+    document.getElementById('template-view-list').style.display = 'none';
+    document.getElementById('template-view-editor').style.display = 'block';
+    document.getElementById('template-view-editor-footer').style.display = 'flex';
+};
 
 function loadActiveEditTemplate() {
     if (!activeEditTemplateId || !editTemplates[activeEditTemplateId]) {
@@ -2394,14 +2435,11 @@ window.deleteTemplateItem = (idx) => {
     });
 };
 
-window.duplicateTemplate = () => {
-    if (!activeEditTemplateId || !editTemplates[activeEditTemplateId]) {
-        return showAlert("エラー", "複製元のテンプレートが選択されていません。");
-    }
+window.duplicateTemplateFromList = async (sourceId) => {
+    const sourceTemplate = editTemplates[sourceId];
+    if (!sourceTemplate) return;
 
-    const sourceTemplate = editTemplates[activeEditTemplateId];
-
-    const templateId = prompt(`「${sourceTemplate.template_name || activeEditTemplateId}」を複製します。\n新しい評価シートのID（半角英数字）を入力してください。\n（例: ${activeEditTemplateId}_2024）`);
+    const templateId = prompt(`「${sourceTemplate.template_name || sourceId}」を複製します。\n新しい評価シートのシステムID（半角英数字）を入力してください。\n（例: ${sourceId}_copy）`);
     if (templateId === null) return;
     
     const cleanId = templateId.trim().toLowerCase();
@@ -2413,7 +2451,7 @@ window.duplicateTemplate = () => {
         return showAlert("入力エラー", "入力されたテンプレートIDはすでに存在しています。");
     }
     
-    const templateName = prompt("新しい評価シートの表示名称を入力してください。\n（例: 【過去用】2024年前期 一般用）");
+    const templateName = prompt("新しい評価シートの表示名称を入力してください。\n（例: 2026年1〜3月 店長用）");
     if (templateName === null) return;
     
     const cleanName = templateName.trim();
@@ -2421,30 +2459,27 @@ window.duplicateTemplate = () => {
         return showAlert("入力エラー", "表示名称を入力してください。");
     }
     
-    const copiedItems = JSON.parse(JSON.stringify(sourceTemplate.items || []));
-    
-    editTemplates[cleanId] = {
-        id: cleanId,
-        template_name: cleanName,
-        items: copiedItems
-    };
-    
-    const select = document.getElementById('select-template-type');
-    if (select) {
-        const opt = document.createElement('option');
-        opt.value = cleanId;
-        opt.textContent = cleanName;
-        select.appendChild(opt);
-        select.value = cleanId;
-        activeEditTemplateId = cleanId;
+    // DBに即時保存
+    try {
+        const copiedItems = JSON.parse(JSON.stringify(sourceTemplate.items || []));
+        const newData = {
+            template_name: cleanName,
+            items: copiedItems,
+            updated_at: new Date().toISOString()
+        };
+        await setDoc(doc(db, "m_evaluation_templates", cleanId), newData);
+        
+        editTemplates[cleanId] = { id: cleanId, ...newData };
+        window.renderTemplateList();
+        showAlert("複製完了", `「${cleanName}」を作成しました。`);
+    } catch(e) {
+        console.error("Duplicate failed", e);
+        showAlert("エラー", "複製の保存に失敗しました。");
     }
-    
-    loadActiveEditTemplate();
-    showAlert("複製完了", `「${cleanName}」を作成しました。「保存する」を押すまでデータベースには反映されません。`);
 };
 
-window.createNewTemplate = () => {
-    const templateId = prompt("新しい評価シートのID（半角英数字）を入力してください。\n（例: leader）");
+window.createNewTemplate = async () => {
+    const templateId = prompt("新しい評価シートのシステムID（半角英数字）を入力してください。\n（例: new_template）");
     if (templateId === null) return;
     
     const cleanId = templateId.trim().toLowerCase();
@@ -2456,7 +2491,7 @@ window.createNewTemplate = () => {
         return showAlert("入力エラー", "入力されたテンプレートIDはすでに存在しています。");
     }
     
-    const templateName = prompt("新しい評価シートの表示名称を入力してください。\n（例: リーダー用評価シート）");
+    const templateName = prompt("新しい評価シートの表示名称を入力してください。\n（例: 新規評価シート）");
     if (templateName === null) return;
     
     const cleanName = templateName.trim();
@@ -2469,24 +2504,68 @@ window.createNewTemplate = () => {
         defaultItems = JSON.parse(JSON.stringify(editTemplates['general'].items || []));
     }
     
-    editTemplates[cleanId] = {
-        id: cleanId,
-        template_name: cleanName,
-        items: defaultItems
-    };
+    try {
+        const newData = {
+            template_name: cleanName,
+            items: defaultItems,
+            updated_at: new Date().toISOString()
+        };
+        await setDoc(doc(db, "m_evaluation_templates", cleanId), newData);
+        
+        editTemplates[cleanId] = { id: cleanId, ...newData };
+        window.renderTemplateList();
+        showAlert("作成完了", `新しいテンプレート「${cleanName}」を作成しました。`);
+    } catch(e) {
+        console.error("Create failed", e);
+        showAlert("エラー", "新規作成に失敗しました。");
+    }
+};
+
+window.renameTemplate = async (id) => {
+    const template = editTemplates[id];
+    if (!template) return;
     
-    const select = document.getElementById('select-template-type');
-    if (select) {
-        const opt = document.createElement('option');
-        opt.value = cleanId;
-        opt.textContent = cleanName;
-        select.appendChild(opt);
-        select.value = cleanId;
-        activeEditTemplateId = cleanId;
+    const newName = prompt("新しい表示名称を入力してください。", template.template_name || id);
+    if (newName === null) return;
+    
+    const cleanName = newName.trim();
+    if (!cleanName) {
+        return showAlert("入力エラー", "表示名称は空にできません。");
     }
     
-    loadActiveEditTemplate();
-    showAlert("作成成功", `新しいテンプレート「${cleanName}」を追加しました。項目を編集したあと、最後に「保存する」を押して確定させてください。`);
+    try {
+        await updateDoc(doc(db, "m_evaluation_templates", id), {
+            template_name: cleanName,
+            updated_at: new Date().toISOString()
+        });
+        
+        editTemplates[id].template_name = cleanName;
+        window.renderTemplateList();
+    } catch(e) {
+        console.error("Rename failed", e);
+        showAlert("エラー", "名称変更に失敗しました。");
+    }
+};
+
+window.deleteTemplate = async (id) => {
+    const template = editTemplates[id];
+    if (!template) return;
+    
+    const confirmDelete = await showConfirm(
+        "本当に削除しますか？",
+        `「${template.template_name || id}」を削除しますか？\n\n【警告】過去データには干渉しませんが、現在進行中の評価でこのシートが使われている場合はスタッフの評価画面が壊れる可能性があります。`
+    );
+    
+    if (confirmDelete) {
+        try {
+            await deleteDoc(doc(db, "m_evaluation_templates", id));
+            delete editTemplates[id];
+            window.renderTemplateList();
+        } catch(e) {
+            console.error("Delete failed", e);
+            showAlert("エラー", "削除に失敗しました。");
+        }
+    }
 };
 
 window.saveActiveTemplate = async () => {
