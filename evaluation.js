@@ -2444,7 +2444,16 @@ let legacyImportItems = [];
 
 window.openLegacyImportModal = async () => {
     if (Object.keys(editTemplates).length === 0) {
-        await fetchEvaluationTemplates();
+        try {
+            const snap = await getDocs(collection(db, "m_evaluation_templates"));
+            editTemplates = {};
+            snap.forEach(d => {
+                editTemplates[d.id] = { id: d.id, ...d.data() };
+            });
+        } catch (e) {
+            console.error("Failed to load templates:", e);
+            return showAlert("エラー", "テンプレートの読み込みに失敗しました。");
+        }
     }
     
     const userSelect = document.getElementById('legacy-user-select');
