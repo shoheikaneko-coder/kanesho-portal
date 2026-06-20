@@ -96,31 +96,7 @@ export const evaluationPageHtml = `
 
     </div>
 
-    <!-- 評価入力・閲覧モーダル (PC全画面推奨サイズ) -->
-    <div id="eval-detail-modal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); z-index: 3000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 1rem; box-sizing: border-box;">
-        <div class="glass-panel animate-fade-in" style="background: white; border-radius: 16px; border: 1px solid var(--border); box-shadow: var(--shadow-xl); width: 100%; max-width: 1100px; height: 92vh; display: flex; flex-direction: column; padding: 0; overflow: hidden;">
-            <!-- モーダルヘッダー -->
-            <div style="padding: 1.2rem 1.8rem; border-bottom: 1px solid var(--border); background: #f8fafc; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
-                <div>
-                    <h3 id="modal-eval-title" style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #1e293b;">人事考課詳細</h3>
-                    <p id="modal-eval-subtitle" style="margin: 0.2rem 0 0 0; font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">---</p>
-                </div>
-                <button type="button" id="btn-close-eval-modal" style="background: transparent; border: none; font-size: 1.4rem; cursor: pointer; color: #94a3b8; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <!-- モーダルボディ (スクロール可能) -->
-            <div id="modal-eval-body" style="padding: 2rem; overflow-y: auto; flex: 1; background: #f8fafc;">
-                <!-- 評価シートの中身が動的に生成されます -->
-            </div>
-
-            <!-- モーダルフッター -->
-            <div id="modal-eval-footer" style="padding: 1rem 1.8rem; border-top: 1px solid var(--border); background: white; display: flex; justify-content: flex-end; gap: 0.8rem; flex-shrink: 0;">
-                <!-- アクションボタンが動的に挿入されます -->
-            </div>
-        </div>
-    </div>
+    <!-- (評価入力用モーダルはインライン化に伴い廃止) -->
 
     <!-- 評価項目マスタ編集モーダル -->
     <div id="eval-template-modal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); z-index: 3000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 1rem; box-sizing: border-box;">
@@ -758,35 +734,37 @@ function renderSelfTab(container) {
                     </span>
                 </div>
                 <div>
-                    ${myEvaluation.status === 'self_evaluating' ? `
-                        <button class="btn btn-primary" id="btn-open-self-eval" style="padding: 0.7rem 1.8rem; font-weight: 800; background: #2563eb; border-color: #2563eb; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.15);">
-                            <i class="fas fa-edit"></i> 自己評価を入力する
-                        </button>
-                    ` : `
-                        <button class="btn btn-secondary" id="btn-open-self-eval" style="padding: 0.7rem 1.8rem; font-weight: 700; background: white; border: 1px solid #cbd5e1; color: var(--text-secondary);">
-                            <i class="fas fa-eye"></i> 評価シートを表示 (読み取り専用)
-                        </button>
-                    `}
+                    <span style="font-size: 0.9rem; color: #475569; font-weight: 600;">
+                        <i class="fas fa-info-circle" style="color: #3b82f6; margin-right: 0.4rem;"></i>
+                        ${guideText}
+                    </span>
                 </div>
             </div>
-            <p style="font-size: 0.9rem; color: #475569; font-weight: 600; margin: 0; line-height: 1.6;">
-                <i class="fas fa-info-circle" style="color: #3b82f6; margin-right: 0.4rem;"></i>
-                ${guideText}
-            </p>
         </div>
+        <div id="self-eval-inline-container"></div>
     `;
 
-    document.getElementById('btn-open-self-eval').onclick = () => {
-        openEvaluationDetailModal(myEvaluation, 'self');
-    };
+    // インラインで直接描画
+    const inlineContainer = document.getElementById('self-eval-inline-container');
+    renderEvalDetailInline(inlineContainer, myEvaluation, 'self');
 }
 
 // ==========================================
 // 2. 部下評価タブ (上長・店長ビュー)
 // ==========================================
 function renderSubordinatesTab(container) {
-    // 評価シートが作成されている（評価対象として選ばれた）スタッフのみを抽出
-    const targetUsers = subordinateUsers.filter(u => activeEvaluations.some(e => e.user_id === u.id));
+    // 評価シートが作成されている（評価対象として選ばれた）スタッフのみを抽出し、
+    // 上長タスクが完了したもの（社長決裁待ち以降）はリストから除外する
+    const targetUsers = subordinateUsers.filter(u => {
+        const evalData = activeEvaluations.find(e => e.user_id === u.id);
+        if (!evalData) return false;
+        
+        // 店長のタスクが完了しているステータス
+        if (evalData.status === 'president_pending' || evalData.status === 'approved' || evalData.status === 'notified') {
+            return false;
+        }
+        return true;
+    });
 
     if (targetUsers.length === 0) {
         container.innerHTML = `
@@ -801,12 +779,11 @@ function renderSubordinatesTab(container) {
 
     // 店長が作業すべき優先順位でソート
     // 優先度高(1): 店長評価中 / 自己評価提出済
-    // 優先度中(2): 面談完了 / 社長査定待ち
+    // 優先度中(2): 面談完了
     // 優先度低(3): スタッフ入力待ち (自己評価中)
-    // その他(4): 確定済など
     const getSortPriority = (status) => {
         if (status === 'self_submitted' || status === 'manager_evaluating') return 1;
-        if (status === 'interviewing' || status === 'president_pending') return 2;
+        if (status === 'interviewing') return 2;
         if (status === 'self_evaluating') return 3;
         return 4;
     };
@@ -832,13 +809,11 @@ function renderSubordinatesTab(container) {
         if (status === 'self_evaluating') {
             actionBtn = `<span style="font-size:0.78rem; color:#94a3b8; font-weight:600;"><i class="fas fa-clock"></i> スタッフ入力待ち</span>`;
         } else if (status === 'self_submitted' || status === 'manager_evaluating') {
-            actionBtn = `<button class="btn btn-primary" onclick="window.openSubEvaluation('${u.id}')" style="font-size:0.75rem; font-weight:800; background:#7c3aed; border-color:#7c3aed; padding: 0.4rem 0.8rem;">評価・コメント入力</button>`;
+            actionBtn = `<button class="btn btn-primary" onclick="window.showSubordinateDetail('${u.id}')" style="font-size:0.75rem; font-weight:800; background:#7c3aed; border-color:#7c3aed; padding: 0.4rem 0.8rem;">評価・コメント入力</button>`;
         } else if (status === 'interviewing') {
-            actionBtn = `<button class="btn" onclick="window.openSubEvaluation('${u.id}')" style="font-size:0.75rem; font-weight:800; background:#a21caf; border-color:#a21caf; color:white; padding: 0.4rem 0.8rem;">面談完了・社長提出</button>`;
-        } else if (status === 'not_started') {
-            actionBtn = `<span style="font-size:0.78rem; color:#94a3b8; font-weight:600;">未作成</span>`;
+            actionBtn = `<button class="btn" onclick="window.showSubordinateDetail('${u.id}')" style="font-size:0.75rem; font-weight:800; background:#a21caf; border-color:#a21caf; color:white; padding: 0.4rem 0.8rem;">面談結果入力・社長提出</button>`;
         } else {
-            actionBtn = `<button class="btn btn-secondary" onclick="window.openSubEvaluation('${u.id}')" style="font-size:0.75rem; font-weight:700; padding: 0.4rem 0.8rem; border:1px solid #cbd5e1; background:white; color:var(--text-secondary);"><i class="fas fa-eye"></i> 閲覧</button>`;
+            actionBtn = `<button class="btn btn-secondary" onclick="window.showSubordinateDetail('${u.id}')" style="font-size:0.75rem; font-weight:700; padding: 0.4rem 0.8rem; border:1px solid #cbd5e1; background:white; color:var(--text-secondary);"><i class="fas fa-eye"></i> 閲覧</button>`;
         }
 
         actionBtn += `<button class="btn btn-secondary" onclick="window.openEvaluationHistory('${u.id}', '${u.Name}')" style="font-size:0.75rem; font-weight:700; padding: 0.4rem 0.6rem; border:1px solid #cbd5e1; background:#f8fafc; color:#475569; margin-left:0.4rem;" title="過去の履歴を見る"><i class="fas fa-history"></i></button>`;
@@ -858,41 +833,53 @@ function renderSubordinatesTab(container) {
     });
 
     container.innerHTML = `
-        <div class="glass-panel" style="padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);">
-            <div style="padding: 1rem 1.2rem; border-bottom: 1px solid var(--border); background: #f8fafc;">
-                <h4 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: #1e293b;">
-                    <i class="fas fa-users-rectangle" style="color: #7c3aed; margin-right: 0.4rem;"></i>
-                    店舗スタッフ・部下の評価一覧
-                </h4>
-            </div>
-            <div style="overflow-x: auto;">
-                <table class="eval-table">
-                    <thead>
-                        <tr>
-                            <th style="text-align: left;">お名前</th>
-                            <th style="text-align: left;">表示役職</th>
-                            <th style="text-align: left; width: 80px;">現在の等級</th>
-                            <th style="text-align: left; width: 140px;">ステータス</th>
-                            <th style="text-align: center; width: 80px;">自己評価点</th>
-                            <th style="text-align: center; width: 80px;">上長評価点</th>
-                            <th style="text-align: center; width: 80px;">判定等級</th>
-                            <th style="text-align: right; width: 160px;" class="no-print">操作</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${rowsHTML}
-                    </tbody>
-                </table>
+        <div id="subordinate-list-container">
+            <div class="glass-panel" style="padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);">
+                <div style="padding: 1rem 1.2rem; border-bottom: 1px solid var(--border); background: #f8fafc;">
+                    <h4 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: #1e293b;">
+                        <i class="fas fa-users-rectangle" style="color: #7c3aed; margin-right: 0.4rem;"></i>
+                        店舗スタッフ・部下の評価一覧
+                    </h4>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="eval-table">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left;">お名前</th>
+                                <th style="text-align: left;">表示役職</th>
+                                <th style="text-align: left; width: 80px;">現在の等級</th>
+                                <th style="text-align: left; width: 140px;">ステータス</th>
+                                <th style="text-align: center; width: 80px;">自己評価点</th>
+                                <th style="text-align: center; width: 80px;">上長評価点</th>
+                                <th style="text-align: center; width: 80px;">判定等級</th>
+                                <th style="text-align: right; width: 160px;" class="no-print">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHTML}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
+        <div id="subordinate-detail-container" style="display: none;"></div>
     `;
 
-    // グローバル関数への登録
-    window.openSubEvaluation = (userId) => {
+    // 画面切り替え（ドリルダウン）関数
+    window.showSubordinateDetail = (userId) => {
         const evalData = activeEvaluations.find(e => e.user_id === userId);
         if (evalData) {
-            openEvaluationDetailModal(evalData, 'manager');
+            document.getElementById('subordinate-list-container').style.display = 'none';
+            const detailContainer = document.getElementById('subordinate-detail-container');
+            detailContainer.style.display = 'block';
+            renderEvalDetailInline(detailContainer, evalData, 'manager');
         }
+    };
+
+    window.backToSubordinateList = () => {
+        document.getElementById('subordinate-detail-container').style.display = 'none';
+        document.getElementById('subordinate-detail-container').innerHTML = '';
+        document.getElementById('subordinate-list-container').style.display = 'block';
     };
 }
 
@@ -909,9 +896,9 @@ function renderPresidentTab(container) {
 
         let actionBtn = '';
         if (isPending) {
-            actionBtn = `<button class="btn btn-primary" onclick="window.openPresidentEvaluation('${e.id}')" style="font-size:0.75rem; font-weight:800; background:#be123c; border-color:#be123c; padding: 0.4rem 0.8rem;">査定・確定する</button>`;
+            actionBtn = `<button class="btn btn-primary" onclick="window.showPresidentDetail('${e.id}')" style="font-size:0.75rem; font-weight:800; background:#be123c; border-color:#be123c; padding: 0.4rem 0.8rem;">査定・確定する</button>`;
         } else {
-            actionBtn = `<button class="btn btn-secondary" onclick="window.openPresidentEvaluation('${e.id}')" style="font-size:0.75rem; font-weight:700; padding: 0.4rem 0.8rem; border:1px solid #cbd5e1; background:white; color:var(--text-secondary);"><i class="fas fa-eye"></i> 閲覧</button>`;
+            actionBtn = `<button class="btn btn-secondary" onclick="window.showPresidentDetail('${e.id}')" style="font-size:0.75rem; font-weight:700; padding: 0.4rem 0.8rem; border:1px solid #cbd5e1; background:white; color:var(--text-secondary);"><i class="fas fa-eye"></i> 閲覧</button>`;
         }
 
         rowsHTML += `
@@ -930,38 +917,67 @@ function renderPresidentTab(container) {
     });
 
     container.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.2rem; flex-wrap:wrap; gap:1rem;" class="no-print">
-            <h4 style="margin:0; font-size:1rem; font-weight:800; color:#1e293b;"><i class="fas fa-user-tie" style="color:#be123c; margin-right:0.4rem;"></i> 全社評価一覧・最終査定</h4>
-            ${pendingEvals.length > 0 ? `
-                <button class="btn btn-success" id="btn-president-approve-all" style="background:#059669; border-color:#059669; font-weight:800; padding:0.6rem 1.3rem;">
-                    <i class="fas fa-check-double"></i> 申請中の全評価を一括確定する (${pendingEvals.length}件)
-                </button>
-            ` : ''}
-        </div>
-        
-        <div class="glass-panel" style="padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);">
-            <div style="overflow-x: auto;">
-                <table class="eval-table">
-                    <thead>
-                        <tr>
-                            <th style="text-align: left;">お名前</th>
-                            <th style="text-align: left;">部門</th>
-                            <th style="text-align: left; width: 80px;">現等級</th>
-                            <th style="text-align: center; width: 90px;">自己点</th>
-                            <th style="text-align: center; width: 90px;">上長点</th>
-                            <th style="text-align: center; width: 90px; color: #be123c;">確定点</th>
-                            <th style="text-align: center; width: 90px;">新等級(判定)</th>
-                            <th style="text-align: left; width: 140px;">ステータス</th>
-                            <th style="text-align: right; width: 140px;" class="no-print">操作</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${rowsHTML.length > 0 ? rowsHTML : `<tr><td colspan="9" style="text-align:center; padding:3rem; color:var(--text-secondary);">今期の評価データはまだありません。</td></tr>`}
-                    </tbody>
-                </table>
+        <div id="president-list-container">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.2rem; flex-wrap:wrap; gap:1rem;" class="no-print">
+                <h4 style="margin:0; font-size:1rem; font-weight:800; color:#1e293b;"><i class="fas fa-user-tie" style="color:#be123c; margin-right:0.4rem;"></i> 全社評価一覧・最終査定</h4>
+                ${pendingEvals.length > 0 ? `
+                    <button class="btn btn-success" id="btn-president-approve-all" style="background:#059669; border-color:#059669; font-weight:800; padding:0.6rem 1.3rem;">
+                        <i class="fas fa-check-double"></i> 申請中の全評価を一括確定する (${pendingEvals.length}件)
+                    </button>
+                ` : ''}
+            </div>
+            
+            <div class="glass-panel" style="padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);">
+                <div style="overflow-x: auto;">
+                    <table class="eval-table">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left;">お名前</th>
+                                <th style="text-align: left;">部門</th>
+                                <th style="text-align: left; width: 80px;">現等級</th>
+                                <th style="text-align: center; width: 90px;">自己点</th>
+                                <th style="text-align: center; width: 90px;">上長点</th>
+                                <th style="text-align: center; width: 90px; color: #be123c;">確定点</th>
+                                <th style="text-align: center; width: 90px;">新等級(判定)</th>
+                                <th style="text-align: left; width: 140px;">ステータス</th>
+                                <th style="text-align: right; width: 140px;" class="no-print">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHTML.length > 0 ? rowsHTML : `<tr><td colspan="9" style="text-align:center; padding:3rem; color:var(--text-secondary);">今期の評価データはまだありません。</td></tr>`}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
+        <div id="president-detail-container" style="display: none;"></div>
     `;
+
+    // 画面切り替え（ドリルダウン）関数
+    window.showPresidentDetail = (evalId) => {
+        const evalData = activeEvaluations.find(e => e.id === evalId);
+        if (evalData) {
+            document.getElementById('president-list-container').style.display = 'none';
+            const detailContainer = document.getElementById('president-detail-container');
+            detailContainer.style.display = 'block';
+            renderEvalDetailInline(detailContainer, evalData, 'president');
+        }
+    };
+
+    window.backToSubordinateList = () => { // 汎用的に使用（ヘッダーで呼ばれるため）
+        const subContainer = document.getElementById('subordinate-list-container');
+        if (subContainer) {
+            document.getElementById('subordinate-detail-container').style.display = 'none';
+            document.getElementById('subordinate-detail-container').innerHTML = '';
+            subContainer.style.display = 'block';
+        }
+        const presContainer = document.getElementById('president-list-container');
+        if (presContainer) {
+            document.getElementById('president-detail-container').style.display = 'none';
+            document.getElementById('president-detail-container').innerHTML = '';
+            presContainer.style.display = 'block';
+        }
+    };
 
     // 一括確定イベント
     const btnApproveAll = document.getElementById('btn-president-approve-all');
@@ -1598,27 +1614,10 @@ async function getSnapshotItemsForTemplate(templateId, userId) {
 // ==========================================
 let previousPeriodData = null;
 
-async function openEvaluationDetailModal(evalData, mode) {
+async function renderEvalDetailInline(container, evalData, mode) {
     selectedEvalDetail = JSON.parse(JSON.stringify(evalData)); // シャローコピーで編集バッファにする
     
-    const modal = document.getElementById('eval-detail-modal');
-    const titleEl = document.getElementById('modal-eval-title');
-    const subtitleEl = document.getElementById('modal-eval-subtitle');
-    const bodyEl = document.getElementById('modal-eval-body');
-    const footerEl = document.getElementById('modal-eval-footer');
-
-    if (!modal || !bodyEl || !footerEl) return;
-
-    modal.style.display = 'flex';
-    bodyEl.innerHTML = '<div style="text-align:center; padding:4rem;"><i class="fas fa-spinner fa-spin fa-2x" style="color:var(--text-secondary);"></i><div style="margin-top:1rem; font-weight:700; color:var(--text-secondary);">過去データと照合中...</div></div>';
-    footerEl.innerHTML = '';
-
-    const isProvisional = selectedEvalDetail.is_provisional;
-    const typeStr = isProvisional ? '仮評価' : '本評価 (7月給与反映対象)';
-    titleEl.textContent = `【${selectedEvalDetail.period}期 ${typeStr}】 ${selectedEvalDetail.user_name} さんの評価シート`;
-    
-    const statusJp = getStatusJpName(selectedEvalDetail.status);
-    subtitleEl.textContent = `ステータス: ${statusJp} | 被評価者の現等級: ${selectedEvalDetail.current_grade} | 前年同期の等級: ${selectedEvalDetail.yoy_grade}`;
+    container.innerHTML = '<div style="text-align:center; padding:4rem;"><i class="fas fa-spinner fa-spin fa-2x" style="color:var(--text-secondary);"></i><div style="margin-top:1rem; font-weight:700; color:var(--text-secondary);">過去データと照合中...</div></div>';
 
     // === 直前期データの取得ロジック ===
     previousPeriodData = null;
@@ -1643,11 +1642,44 @@ async function openEvaluationDetailModal(evalData, mode) {
         console.warn("Failed to load previous period data for diff:", e);
     }
 
-    // モーダルボディの構築
-    renderModalBody(bodyEl, mode);
+    container.innerHTML = ''; // クリア
 
-    // フッターアクションボタンの構築
-    renderModalFooter(footerEl, mode);
+    // インライン用のラッパーを作成
+    const detailWrapper = document.createElement('div');
+    detailWrapper.style.cssText = "background: white; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); padding: 0; overflow: hidden; margin-top: 1rem; position: relative;";
+    
+    // ヘッダー部分
+    const isProvisional = selectedEvalDetail.is_provisional;
+    const typeStr = isProvisional ? '仮評価' : '本評価 (7月給与反映対象)';
+    const statusJp = getStatusJpName(selectedEvalDetail.status);
+    
+    const headerHtml = `
+        <div style="padding: 1.5rem 2rem; border-bottom: 1px solid var(--border); background: #f8fafc; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #1e293b;">【${selectedEvalDetail.period}期 ${typeStr}】 ${selectedEvalDetail.user_name} さんの評価シート</h3>
+                <p style="margin: 0.3rem 0 0 0; font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;">
+                    ステータス: <span style="color:#2563eb;">${statusJp}</span> | 被評価者の現等級: ${selectedEvalDetail.current_grade || '-'} | 前年同期の等級: ${selectedEvalDetail.yoy_grade || '-'}
+                </p>
+            </div>
+            ${mode !== 'self' ? `<button class="btn" onclick="window.backToSubordinateList()" style="background:#f1f5f9; color:#475569; border:none; padding:0.5rem 1rem; border-radius:6px; font-weight:700;"><i class="fas fa-arrow-left"></i> 一覧へ戻る</button>` : ''}
+        </div>
+    `;
+
+    // ボディ部分（既存のrenderModalBodyの中身を使う）
+    const bodyContainer = document.createElement('div');
+    bodyContainer.style.cssText = "padding: 1.5rem 2rem; background: #f8fafc;";
+    renderModalBody(bodyContainer, mode);
+
+    // フッター部分（固定アクションバー）
+    const footerContainer = document.createElement('div');
+    footerContainer.style.cssText = "padding: 1rem 2rem; border-top: 1px solid var(--border); background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); display: flex; justify-content: flex-end; gap: 0.8rem; position: sticky; bottom: 0; z-index: 100; box-shadow: 0 -4px 6px -1px rgba(0,0,0,0.02);";
+    renderModalFooter(footerContainer, mode);
+
+    detailWrapper.innerHTML = headerHtml;
+    detailWrapper.appendChild(bodyContainer);
+    detailWrapper.appendChild(footerContainer);
+
+    container.appendChild(detailWrapper);
 }
 
 function renderModalBody(container, mode) {
