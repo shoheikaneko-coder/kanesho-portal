@@ -144,14 +144,39 @@ export const evaluationPageHtml = `
                 <form id="form-start-period" style="display: flex; flex-direction: column; gap: 1.5rem; max-width: 900px; margin: 0 auto;">
                     <div style="display: flex; gap: 1.5rem; flex-wrap: wrap;">
                         <div class="input-group" style="flex: 1; margin: 0;">
-                            <label style="font-weight: 700; color: #475569; font-size: 0.85rem; margin-bottom: 0.4rem; display: block;">新規開始する評価期 (例: 2026-06)</label>
-                            <input type="text" id="input-period-name" placeholder="YYYY-MM" required style="width: 100%; font-family: monospace; font-size: 1.05rem; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box;">
+                            <label style="font-weight: 700; color: #475569; font-size: 0.85rem; margin-bottom: 0.4rem; display: block;">新規開始する評価期</label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <select id="input-period-year" required style="flex: 1; font-family: monospace; font-size: 1.05rem; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; background: white;">
+                                    <option value="" disabled selected>年を選択</option>
+                                    <option value="2025">2025年</option>
+                                    <option value="2026">2026年</option>
+                                    <option value="2027">2027年</option>
+                                    <option value="2028">2028年</option>
+                                    <option value="2029">2029年</option>
+                                </select>
+                                <select id="input-period-month" required style="flex: 1; font-family: monospace; font-size: 1.05rem; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; background: white;">
+                                    <option value="" disabled selected>月を選択</option>
+                                    <option value="01">01月</option>
+                                    <option value="02">02月</option>
+                                    <option value="03">03月</option>
+                                    <option value="04">04月</option>
+                                    <option value="05">05月</option>
+                                    <option value="06">06月</option>
+                                    <option value="07">07月</option>
+                                    <option value="08">08月</option>
+                                    <option value="09">09月</option>
+                                    <option value="10">10月</option>
+                                    <option value="11">11月</option>
+                                    <option value="12">12月</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="input-group" style="flex: 1; margin: 0;">
                             <label style="font-weight: 700; color: #475569; font-size: 0.85rem; margin-bottom: 0.4rem; display: block;">評価の種類</label>
                             <select id="select-period-provisional" required style="width: 100%; background: white; font-weight: 600; font-size: 1.05rem; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box;">
-                                <option value="true" selected>仮評価 (9月, 12月, 3月)</option>
-                                <option value="false">本評価 (6月決算期・給与反映)</option>
+                                <option value="" disabled selected>評価区分を選択してください</option>
+                                <option value="true">仮評価 (仮等級が付与されます)</option>
+                                <option value="false">本評価 (次期の等級が付与されます・給与反映)</option>
                             </select>
                         </div>
                     </div>
@@ -545,12 +570,21 @@ export async function initEvaluationPage() {
     if (formStart) {
         formStart.onsubmit = async (e) => {
             e.preventDefault();
-            const periodName = document.getElementById('input-period-name').value.trim();
-            const isProvisional = document.getElementById('select-period-provisional').value === 'true';
-
-            if (!/^\d{4}-\d{2}$/.test(periodName)) {
-                return showAlert('入力エラー', '評価期は「YYYY-MM」形式で入力してください (例: 2026-06)。');
+            const year = document.getElementById('input-period-year').value;
+            const month = document.getElementById('input-period-month').value;
+            
+            if (!year || !month) {
+                return showAlert('入力エラー', '評価開始の「年」と「月」を選択してください。');
             }
+            
+            const periodName = `${year}-${month}`;
+            const provSelect = document.getElementById('select-period-provisional').value;
+            
+            if (!provSelect) {
+                return showAlert('入力エラー', '評価区分（仮評価/本評価）を選択してください。');
+            }
+            
+            const isProvisional = provSelect === 'true';
 
             showConfirm('評価期の開始', `新評価期「${periodName}期 (${isProvisional ? '仮評価' : '本評価'})」を開始しますか？\n（在職中のすべての対象従業員の評価シートが自動作成されます）`, async () => {
                 const btnSubmit = formStart.querySelector('button[type="submit"]');
