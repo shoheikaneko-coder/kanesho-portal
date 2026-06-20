@@ -193,7 +193,13 @@ export const evaluationPageHtml = `
                             <button type="button" class="btn btn-secondary" onclick="window.toggleAllEvalUsers(false)" style="padding: 0.4rem 1rem; font-size: 0.85rem; border-color: #cbd5e1; font-weight: 600;"><i class="far fa-square"></i> すべて解除</button>
                             <button type="button" class="btn btn-secondary" onclick="window.selectOnlySelfForEval()" style="padding: 0.4rem 1rem; font-size: 0.85rem; border-color: #3b82f6; color: #2563eb; background: #eff6ff; font-weight: 600;"><i class="fas fa-user-shield"></i> テスト用 (自分のみ)</button>
                         </div>
-                        <div id="start-period-user-list" style="max-height: 450px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 8px; padding: 1.5rem; background: #f8fafc; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem;">
+                        <div style="display: flex; align-items: center; gap: 1rem; padding: 0.8rem 1.2rem; background: #e2e8f0; border-radius: 8px 8px 0 0; font-size: 0.85rem; font-weight: 700; color: #475569; margin-top: 0.5rem; border: 1px solid #cbd5e1; border-bottom: none;">
+                            <div style="width: 1.25rem;"></div> <!-- チェックボックス用余白 -->
+                            <div style="width: 200px;">従業員名</div>
+                            <div style="width: 150px;">所属店舗</div>
+                            <div style="flex: 1;">役職</div>
+                        </div>
+                        <div id="start-period-user-list" style="max-height: 400px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 0 0 8px 8px; background: white; display: flex; flex-direction: column;">
                             <!-- 対象者リストがJSで挿入されます -->
                         </div>
                     </div>
@@ -3168,12 +3174,11 @@ window.openPeriodStartForm = () => {
     const listContainer = document.getElementById('start-period-user-list');
     if (listContainer) {
         listContainer.innerHTML = allStaffUsersForAdmin.map(u => `
-            <label style="display: flex; align-items: flex-start; gap: 1rem; padding: 1.2rem; border: 1px solid #e2e8f0; cursor: pointer; background: white; border-radius: 12px; transition: border-color 0.2s, box-shadow 0.2s;" onmouseover="this.style.borderColor='#cbd5e1'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.04)'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
-                <input type="checkbox" name="target_users" value="${u.id}" class="eval-user-checkbox" checked onchange="window.updateSelectionCounter()" style="width: 1.25rem; height: 1.25rem; accent-color: #10b981; margin-top: 0.1rem; cursor: pointer;">
-                <div style="display: flex; flex-direction: column; gap: 0.2rem;">
-                    <span style="font-size: 1.05rem; font-weight: 800; color: #1e293b; letter-spacing: 0.02em;">${u.Name}</span>
-                    <span style="font-size: 0.8rem; color: #64748b; font-weight: 600;"><i class="fas fa-tag" style="font-size: 0.7rem; margin-right: 0.2rem;"></i>${u.Role === 'Manager' ? '店長' : 'スタッフ'} <span style="margin: 0 0.4rem; color: #cbd5e1;">|</span> <i class="fas fa-store" style="font-size: 0.7rem; margin-right: 0.2rem;"></i>${globalStoreMapForEval[u.StoreId] || u.StoreId || '本店'}</span>
-                </div>
+            <label style="display: flex; align-items: center; gap: 1rem; padding: 0.8rem 1.2rem; border-bottom: 1px solid #e2e8f0; cursor: pointer; background: white; transition: background-color 0.2s; margin: 0;" onmouseover="this.style.backgroundColor='#f8fafc'" onmouseout="this.style.backgroundColor='white'">
+                <input type="checkbox" name="target_users" value="${u.id}" class="eval-user-checkbox" checked onchange="window.updateSelectionCounter()" style="width: 1.25rem; height: 1.25rem; accent-color: #10b981; cursor: pointer; flex-shrink: 0; margin: 0;">
+                <div style="width: 200px; font-size: 1rem; font-weight: 800; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${u.Name}</div>
+                <div style="width: 150px; font-size: 0.9rem; color: #475569; font-weight: 600;"><i class="fas fa-store" style="font-size: 0.8rem; margin-right: 0.3rem; color: #94a3b8;"></i>${globalStoreMapForEval[u.StoreId] || u.StoreId || '本店'}</div>
+                <div style="flex: 1; font-size: 0.9rem; color: #64748b; font-weight: 600;"><span style="background: ${u.Role === 'Manager' ? '#fef3c7' : '#f1f5f9'}; color: ${u.Role === 'Manager' ? '#d97706' : '#64748b'}; padding: 0.2rem 0.6rem; border-radius: 4px; border: 1px solid ${u.Role === 'Manager' ? '#fde68a' : '#e2e8f0'};"><i class="fas fa-tag" style="font-size: 0.7rem; margin-right: 0.3rem;"></i>${u.Role === 'Manager' ? '店長' : 'スタッフ'}</span></div>
             </label>
         `).join('');
         
