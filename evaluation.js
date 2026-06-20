@@ -3174,12 +3174,15 @@ window.openPeriodStartForm = () => {
     const listContainer = document.getElementById('start-period-user-list');
     if (listContainer) {
         listContainer.innerHTML = allStaffUsersForAdmin.map(u => `
-            <label style="display: flex; align-items: center; gap: 1rem; padding: 0.8rem 1.2rem; border-bottom: 1px solid #e2e8f0; cursor: pointer; background: white; transition: background-color 0.2s; margin: 0;" onmouseover="this.style.backgroundColor='#f8fafc'" onmouseout="this.style.backgroundColor='white'">
+            <div style="display: flex; align-items: center; gap: 1rem; padding: 0.8rem 1.2rem; border-bottom: 1px solid #e2e8f0; cursor: pointer; background: white; transition: background-color 0.2s; margin: 0;" 
+                 onmouseover="this.style.backgroundColor='#f8fafc'" 
+                 onmouseout="this.style.backgroundColor='white'"
+                 onclick="if(event.target.tagName !== 'INPUT') { const cb = this.querySelector('.eval-user-checkbox'); cb.checked = !cb.checked; window.updateSelectionCounter(); }">
                 <input type="checkbox" name="target_users" value="${u.id}" class="eval-user-checkbox" checked onchange="window.updateSelectionCounter()" style="width: 1.25rem; height: 1.25rem; accent-color: #10b981; cursor: pointer; flex-shrink: 0; margin: 0;">
                 <div style="width: 200px; font-size: 1rem; font-weight: 800; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${u.Name}</div>
                 <div style="width: 150px; font-size: 0.9rem; color: #475569; font-weight: 600;"><i class="fas fa-store" style="font-size: 0.8rem; margin-right: 0.3rem; color: #94a3b8;"></i>${globalStoreMapForEval[u.StoreId] || u.StoreId || '本店'}</div>
                 <div style="flex: 1; font-size: 0.9rem; color: #64748b; font-weight: 600;"><span style="background: ${u.Role === 'Manager' ? '#fef3c7' : '#f1f5f9'}; color: ${u.Role === 'Manager' ? '#d97706' : '#64748b'}; padding: 0.2rem 0.6rem; border-radius: 4px; border: 1px solid ${u.Role === 'Manager' ? '#fde68a' : '#e2e8f0'};"><i class="fas fa-tag" style="font-size: 0.7rem; margin-right: 0.3rem;"></i>${u.Role === 'Manager' ? '店長' : 'スタッフ'}</span></div>
-            </label>
+            </div>
         `).join('');
         
         // カウンターの初期表示を更新
