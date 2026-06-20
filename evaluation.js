@@ -1000,8 +1000,17 @@ function renderPresidentTab(container) {
                 }
                 try {
                     await batch.commit();
-                    showAlert('一括確定成功', `${pendingEvals.length}件の評価を確定しました！「全体管理ダッシュボード」から本人通知を公開してください。`);
+                    
+                    // 自動公開ロジックをフック
                     await loadEvaluationData();
+                    const wasPublished = await window.autoPublishIfAllApproved();
+                    
+                    if (wasPublished) {
+                        showAlert('一括確定＆自動公開成功', `${pendingEvals.length}件の評価を確定し、全対象者の評価結果が自動公開されました！`);
+                    } else {
+                        showAlert('一括確定成功', `${pendingEvals.length}件の評価を確定しました！`);
+                    }
+                    
                     renderActiveTabContent();
                 } catch(e) {
                     console.error(e);
@@ -1010,13 +1019,6 @@ function renderPresidentTab(container) {
             });
         };
     }
-
-    window.openPresidentEvaluation = (evalId) => {
-        const evalData = activeEvaluations.find(e => e.id === evalId);
-        if (evalData) {
-            openEvaluationDetailModal(evalData, 'president');
-        }
-    };
 }
 
 // ==========================================
@@ -1031,37 +1033,40 @@ function renderAdminTab(container) {
         const selfEvaluating = activeEvaluations.filter(e => e.status === 'self_evaluating').length;
         const managerEvaluating = activeEvaluations.filter(e => ['self_submitted', 'manager_evaluating', 'interviewing'].includes(e.status)).length;
         const presidentPending = activeEvaluations.filter(e => e.status === 'president_pending').length;
-        const approvedCount = activeEvaluations.filter(e => e.status === 'approved').length;
-        const notifiedCount = activeEvaluations.filter(e => e.status === 'notified').length;
+        
+        // 全員が完了(notified)しているか判定
+        const isAllCompleted = totalCount > 0 && activeEvaluations.every(e => e.status === 'notified');
 
-        statsHTML = `
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
-                <div class="glass-panel" style="padding: 1rem; text-align: center; background: #f8fafc;">
-                    <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700;">評価対象者数</div>
-                    <div style="font-size: 1.8rem; font-weight: 900; color: #1e293b; margin-top: 0.3rem;">${totalCount}名</div>
+        if (isAllCompleted) {
+            statsHTML = `
+                <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 2rem; border-radius: 16px; margin-bottom: 2rem; text-align: center; box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);">
+                    <i class="fas fa-check-circle fa-3x" style="margin-bottom: 1rem; text-shadow: 0 2px 4px rgba(0,0,0,0.2);"></i>
+                    <h2 style="margin: 0; font-size: 1.8rem; font-weight: 900; letter-spacing: 0.05em;">🎉 今期の評価フローはすべて完了・公開済です</h2>
+                    <p style="margin: 0.8rem 0 0 0; font-size: 1.05rem; opacity: 0.9; font-weight: 600;">全対象者の評価が確定し、自動公開されました。お疲れ様でした！</p>
                 </div>
-                <div class="glass-panel" style="padding: 1rem; text-align: center; background: #fffbeb;">
-                    <div style="font-size: 0.75rem; color: #d97706; font-weight: 700;">自己評価入力中</div>
-                    <div style="font-size: 1.8rem; font-weight: 900; color: #d97706; margin-top: 0.3rem;">${selfEvaluating}名</div>
+            `;
+        } else {
+            statsHTML = `
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.2rem; margin-bottom: 2.5rem;">
+                    <div style="background: linear-gradient(to bottom right, #ffffff, #f8fafc); border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.5rem; text-align: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 10px 15px -3px rgba(0,0,0,0.1)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px -1px rgba(0,0,0,0.05)';">
+                        <div style="font-size: 0.85rem; color: #64748b; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 0.5rem;"><i class="fas fa-users" style="margin-right:0.4rem; color:#94a3b8;"></i>評価対象者</div>
+                        <div style="font-size: 2.8rem; font-weight: 900; color: #1e293b; line-height: 1.2;">${totalCount}<span style="font-size: 1rem; color: #94a3b8; font-weight: 700; margin-left: 0.2rem;">名</span></div>
+                    </div>
+                    <div style="background: linear-gradient(to bottom right, #fffbeb, #fef3c7); border: 1px solid #fde68a; border-radius: 16px; padding: 1.5rem; text-align: center; box-shadow: 0 4px 6px -1px rgba(217, 119, 6, 0.08); transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 10px 15px -3px rgba(217, 119, 6, 0.15)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px -1px rgba(217, 119, 6, 0.08)';">
+                        <div style="font-size: 0.85rem; color: #d97706; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 0.5rem;"><i class="fas fa-pen-nib" style="margin-right:0.4rem; color:#fbbf24;"></i>自己評価入力中</div>
+                        <div style="font-size: 2.8rem; font-weight: 900; color: #b45309; line-height: 1.2;">${selfEvaluating}<span style="font-size: 1rem; color: #d97706; font-weight: 700; margin-left: 0.2rem;">名</span></div>
+                    </div>
+                    <div style="background: linear-gradient(to bottom right, #eff6ff, #dbeafe); border: 1px solid #bfdbfe; border-radius: 16px; padding: 1.5rem; text-align: center; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.08); transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 10px 15px -3px rgba(37, 99, 235, 0.15)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px -1px rgba(37, 99, 235, 0.08)';">
+                        <div style="font-size: 0.85rem; color: #2563eb; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 0.5rem;"><i class="fas fa-comments" style="margin-right:0.4rem; color:#60a5fa;"></i>上長評価・面談中</div>
+                        <div style="font-size: 2.8rem; font-weight: 900; color: #1d4ed8; line-height: 1.2;">${managerEvaluating}<span style="font-size: 1rem; color: #3b82f6; font-weight: 700; margin-left: 0.2rem;">名</span></div>
+                    </div>
+                    <div style="background: linear-gradient(to bottom right, #fff1f2, #ffe4e6); border: 1px solid #fecdd3; border-radius: 16px; padding: 1.5rem; text-align: center; box-shadow: 0 4px 6px -1px rgba(225, 29, 72, 0.08); transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 10px 15px -3px rgba(225, 29, 72, 0.15)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px -1px rgba(225, 29, 72, 0.08)';">
+                        <div style="font-size: 0.85rem; color: #e11d48; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 0.5rem;"><i class="fas fa-stamp" style="margin-right:0.4rem; color:#fb7185;"></i>最終承認待ち</div>
+                        <div style="font-size: 2.8rem; font-weight: 900; color: #be123c; line-height: 1.2;">${presidentPending}<span style="font-size: 1rem; color: #f43f5e; font-weight: 700; margin-left: 0.2rem;">名</span></div>
+                    </div>
                 </div>
-                <div class="glass-panel" style="padding: 1rem; text-align: center; background: #eff6ff;">
-                    <div style="font-size: 0.75rem; color: #2563eb; font-weight: 700;">店長評価・面談中</div>
-                    <div style="font-size: 1.8rem; font-weight: 900; color: #2563eb; margin-top: 0.3rem;">${managerEvaluating}名</div>
-                </div>
-                <div class="glass-panel" style="padding: 1rem; text-align: center; background: #fff1f2;">
-                    <div style="font-size: 0.75rem; color: #e11d48; font-weight: 700;">社長査定待ち</div>
-                    <div style="font-size: 1.8rem; font-weight: 900; color: #e11d48; margin-top: 0.3rem;">${presidentPending}名</div>
-                </div>
-                <div class="glass-panel" style="padding: 1rem; text-align: center; background: #ecfdf5;">
-                    <div style="font-size: 0.75rem; color: #059669; font-weight: 700;">確定済(未公開)</div>
-                    <div style="font-size: 1.8rem; font-weight: 900; color: #059669; margin-top: 0.3rem;">${approvedCount}名</div>
-                </div>
-                <div class="glass-panel" style="padding: 1rem; text-align: center; background: #f5f3ff;">
-                    <div style="font-size: 0.75rem; color: #7c3aed; font-weight: 700;">公開・通知済</div>
-                    <div style="font-size: 1.8rem; font-weight: 900; color: #7c3aed; margin-top: 0.3rem;">${notifiedCount}名</div>
-                </div>
-            </div>
-        `;
+            `;
+        }
     }
 
     container.innerHTML = `
@@ -1081,11 +1086,6 @@ function renderAdminTab(container) {
                     </div>
 
                     <div style="display:flex; flex-direction:column; gap:0.6rem;">
-                        <button class="btn btn-success" id="btn-admin-notify-all" style="width: 100%; background: #7c3aed; border-color: #7c3aed; font-weight: 800; padding: 0.8rem;" ${activeEvaluations.filter(e => e.status === 'approved').length === 0 ? 'disabled title="確定済みのシートがありません"' : ''}>
-                            <i class="fas fa-bullhorn"></i> 確定結果を全従業員に一括公開 (通知)
-                        </button>
-                        <p style="font-size:0.7rem; color:var(--text-secondary); margin: 0 0 0.8rem;">※ 確定済（未公開）状態のシートが、全スタッフのマイページに通知公開されます。</p>
-                        
                         <button class="btn" id="btn-admin-close-period" style="width: 100%; background: #fee2e2; border-color: #fca5a5; color: #dc2626; font-weight: 800; padding: 0.8rem;">
                             <i class="fas fa-lock"></i> 今期の評価期を終了・ロックする
                         </button>
@@ -2138,7 +2138,8 @@ function renderModalFooter(container, mode) {
                     status: nextStatus,
                     updated_at: new Date().toISOString()
                 });
-                document.getElementById('eval-detail-modal').style.display = 'none';
+                
+                if (window.backToSubordinateList) window.backToSubordinateList();
                 showAlert('完了', nextStatus === 'interviewing' ? '評価を下書き保存し、面談待ちとしました。' : '社長への最終提出が完了しました！');
                 await loadInitialSettingsAndData();
             } catch(e) {
@@ -2165,9 +2166,17 @@ function renderModalFooter(container, mode) {
                     status: 'approved', // 確定済
                     updated_at: new Date().toISOString()
                 });
-                document.getElementById('eval-detail-modal').style.display = 'none';
-                showAlert('確定完了', '社長査定を確定しました！「全体管理ダッシュボード」から一括公開が可能です。');
+                
+                if (window.backToSubordinateList) window.backToSubordinateList();
+                
                 await loadInitialSettingsAndData();
+                const wasPublished = await window.autoPublishIfAllApproved();
+                
+                if (wasPublished) {
+                    showAlert('確定＆自動公開完了', '社長査定を確定し、全対象者の評価結果が自動公開されました！');
+                } else {
+                    showAlert('確定完了', '社長査定を確定しました！');
+                }
             } catch(e) {
                 console.error(e);
                 showAlert('エラー', '確定処理に失敗しました。');
