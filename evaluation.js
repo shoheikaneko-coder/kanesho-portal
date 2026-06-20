@@ -144,7 +144,7 @@ export const evaluationPageHtml = `
                 <form id="form-start-period" style="display: flex; flex-direction: column; gap: 1.5rem; max-width: 900px; margin: 0 auto;">
                     <div style="display: flex; gap: 1.5rem; flex-wrap: wrap;">
                         <div class="input-group" style="flex: 1; margin: 0;">
-                            <label style="font-weight: 700; color: #475569; font-size: 0.85rem; margin-bottom: 0.4rem; display: block;">新規開始する評価期</label>
+                            <div style="font-weight: 700; color: #475569; font-size: 0.85rem; margin-bottom: 0.4rem; display: block;">新規開始する評価期</div>
                             <div style="display: flex; gap: 0.5rem;">
                                 <select id="input-period-year" required style="flex: 1; font-family: monospace; font-size: 1.05rem; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; background: white;">
                                     <option value="" disabled selected>年を選択</option>
@@ -172,7 +172,7 @@ export const evaluationPageHtml = `
                             </div>
                         </div>
                         <div class="input-group" style="flex: 1; margin: 0;">
-                            <label style="font-weight: 700; color: #475569; font-size: 0.85rem; margin-bottom: 0.4rem; display: block;">評価の種類</label>
+                            <div style="font-weight: 700; color: #475569; font-size: 0.85rem; margin-bottom: 0.4rem; display: block;">評価の種類</div>
                             <select id="select-period-provisional" required style="width: 100%; background: white; font-weight: 600; font-size: 1.05rem; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box;">
                                 <option value="" disabled selected>評価区分を選択してください</option>
                                 <option value="true">仮評価 (仮等級が付与されます)</option>
@@ -183,7 +183,7 @@ export const evaluationPageHtml = `
                     
                     <div class="input-group" style="margin: 0; display: flex; flex-direction: column; gap: 0.8rem;">
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">
-                            <label style="font-weight: 700; color: #475569; font-size: 0.85rem; margin: 0;">評価対象者の選択</label>
+                            <div style="font-weight: 700; color: #475569; font-size: 0.85rem; margin: 0;">評価対象者の選択</div>
                             <div id="selection-counter-badge" style="font-size: 0.85rem; font-weight: 800; color: #10b981; background: #ecfdf5; padding: 0.4rem 1rem; border-radius: 20px; border: 1px solid #a7f3d0; box-shadow: 0 1px 2px rgba(16, 185, 129, 0.05);">
                                 <i class="fas fa-users"></i> 選択中: -名 / 全-名
                             </div>
