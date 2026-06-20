@@ -144,7 +144,7 @@ export const evaluationPageHtml = `
                         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                             <button type="button" class="btn btn-secondary" onclick="window.toggleAllEvalUsers(true)" style="padding: 0.4rem 1rem; font-size: 0.85rem; border-color: #cbd5e1; font-weight: 600;"><i class="fas fa-check-square"></i> すべて選択</button>
                             <button type="button" class="btn btn-secondary" onclick="window.toggleAllEvalUsers(false)" style="padding: 0.4rem 1rem; font-size: 0.85rem; border-color: #cbd5e1; font-weight: 600;"><i class="far fa-square"></i> すべて解除</button>
-                            <button type="button" class="btn btn-secondary" onclick="window.selectOnlySelfForEval('${window.appState?.currentUser?.id}')" style="padding: 0.4rem 1rem; font-size: 0.85rem; border-color: #3b82f6; color: #2563eb; background: #eff6ff; font-weight: 600;"><i class="fas fa-user-shield"></i> テスト用 (自分のみ)</button>
+                            <button type="button" class="btn btn-secondary" onclick="window.selectOnlySelfForEval()" style="padding: 0.4rem 1rem; font-size: 0.85rem; border-color: #3b82f6; color: #2563eb; background: #eff6ff; font-weight: 600;"><i class="fas fa-user-shield"></i> テスト用 (自分のみ)</button>
                         </div>
                         <div id="start-period-user-list" style="max-height: 300px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0.8rem; background: #f8fafc; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.5rem;">
                             <!-- 対象者リストがJSで挿入されます -->
@@ -573,9 +573,9 @@ export async function initEvaluationPage() {
                     for (const u of activeUsers) {
                         const gradeConfig = gradeMap[u.GradeCode] || {};
                         const templateId = gradeConfig.evaluation_template_id || 'general';
-                        const evalItems = await window.getSnapshotItemsForTemplate(templateId, u.id);
+                        const evalItems = await getSnapshotItemsForTemplate(templateId, u.id);
 
-                        const yoyPeriod = window.getYoYPeriod(periodName);
+                        const yoyPeriod = getYoYPeriod(periodName);
                         let yoyGrade = '-';
                         try {
                             const yoyDoc = await getDoc(doc(db, "t_evaluations", `${u.id}_${yoyPeriod}`));
@@ -2727,7 +2727,9 @@ window.toggleAllEvalUsers = function(checked) {
     document.querySelectorAll('.eval-user-checkbox').forEach(cb => cb.checked = checked);
 };
 
-window.selectOnlySelfForEval = function(myId) {
+window.selectOnlySelfForEval = function() {
+    const myId = window.appState?.currentUser?.id;
+    if (!myId) return;
     document.querySelectorAll('.eval-user-checkbox').forEach(cb => {
         cb.checked = (cb.value === myId);
     });
