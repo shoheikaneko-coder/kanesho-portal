@@ -181,7 +181,7 @@ export const evaluationPageHtml = `
                         </div>
                     </div>
                     
-                    <div class="input-group" style="margin: 0; display: flex; flex-direction: column; gap: 0.8rem;">
+                    <div style="margin: 0; display: flex; flex-direction: column; gap: 0.8rem;">
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">
                             <div style="font-weight: 700; color: #475569; font-size: 0.85rem; margin: 0;">評価対象者の選択</div>
                             <div id="selection-counter-badge" style="font-size: 0.85rem; font-weight: 800; color: #10b981; background: #ecfdf5; padding: 0.4rem 1rem; border-radius: 20px; border: 1px solid #a7f3d0; box-shadow: 0 1px 2px rgba(16, 185, 129, 0.05);">
