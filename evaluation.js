@@ -536,6 +536,12 @@ async function loadInitialSettingsAndData() {
         if (tabAdmin) tabAdmin.style.display = 'block';
         if (tabSubordinates) tabSubordinates.style.display = 'block';
         if (tabPresident) tabPresident.style.display = 'block';
+        
+        const btnEditTemplatesTab = document.getElementById('btn-admin-edit-templates-tab');
+        if (btnEditTemplatesTab) btnEditTemplatesTab.style.display = 'block';
+        const btnCancelPeriodTab = document.getElementById('btn-admin-cancel-period-tab');
+        if (btnCancelPeriodTab) btnCancelPeriodTab.style.display = 'block';
+        
         activeTab = 'admin'; // 管理者はダッシュボードをデフォルトに
         document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
         document.getElementById('tab-admin')?.classList.add('active');
