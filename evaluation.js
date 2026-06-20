@@ -1356,8 +1356,6 @@ function renderAdminTab(container) {
         </div>
     `;
 
-    `;
-
     // 確定結果の一括公開 (通知)
     const btnNotifyAll = document.getElementById('btn-admin-notify-all');
     if (btnNotifyAll) {
