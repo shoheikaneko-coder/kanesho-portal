@@ -95,6 +95,9 @@ export const evaluationPageHtml = `
                 <button class="btn btn-secondary" id="btn-admin-cancel-period-tab" style="display: none; padding: 0.5rem 1rem; font-size: 0.8rem; font-weight: 700; border: 1px solid #fecdd3; background: #fff1f2; color: #be123c; border-radius: 6px; cursor: pointer;">
                     <i class="fas fa-trash-alt"></i> 評価リセット
                 </button>
+                <button class="btn btn-primary" id="btn-admin-start-period-tab" style="display: none; padding: 0.5rem 1rem; font-size: 0.8rem; font-weight: 800; border: none; background: #10b981; color: white; border-radius: 6px; cursor: pointer; box-shadow: 0 2px 4px rgba(16,185,129,0.2);">
+                    <i class="fas fa-play"></i> 評価を新規開始する
+                </button>
             </div>
         </div>
 
@@ -107,7 +110,59 @@ export const evaluationPageHtml = `
 
     </div>
 
-    <!-- (評価入力用モーダルはインライン化に伴い廃止) -->
+    <!-- 評価期新規開始画面 (インライン展開) -->
+    <div id="period-start-container" style="display: none; margin-bottom: 2rem;">
+        <div class="glass-panel animate-fade-in" style="background: white; border-radius: 16px; border: 1px solid var(--border); box-shadow: var(--shadow-xl); width: 100%; padding: 0; overflow: hidden;">
+            <div style="padding: 1.2rem 1.8rem; border-bottom: 1px solid var(--border); background: #f8fafc; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-play" style="color: #10b981;"></i>評価期を新規開始する</h3>
+                    <p style="margin: 0.2rem 0 0 0; font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">対象者とスケジュールを設定し、新しい評価期をスタートします</p>
+                </div>
+                <button type="button" onclick="closePeriodStartForm()" class="btn" style="background: white; border: 1px solid #cbd5e1; font-size: 0.9rem; font-weight: 700; cursor: pointer; color: #475569; border-radius: 8px; padding: 0.5rem 1rem;">
+                    <i class="fas fa-times"></i> 閉じる
+                </button>
+            </div>
+            
+            <div style="padding: 2rem; background: #ffffff;">
+                <form id="form-start-period" style="display: flex; flex-direction: column; gap: 1.5rem; max-width: 900px; margin: 0 auto;">
+                    <div style="display: flex; gap: 1.5rem; flex-wrap: wrap;">
+                        <div class="input-group" style="flex: 1; margin: 0;">
+                            <label style="font-weight: 700; color: #475569; font-size: 0.85rem; margin-bottom: 0.4rem; display: block;">新規開始する評価期 (例: 2026-06)</label>
+                            <input type="text" id="input-period-name" placeholder="YYYY-MM" required style="width: 100%; font-family: monospace; font-size: 1.05rem; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box;">
+                        </div>
+                        <div class="input-group" style="flex: 1; margin: 0;">
+                            <label style="font-weight: 700; color: #475569; font-size: 0.85rem; margin-bottom: 0.4rem; display: block;">評価の種類</label>
+                            <select id="select-period-provisional" required style="width: 100%; background: white; font-weight: 600; font-size: 1.05rem; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box;">
+                                <option value="true" selected>仮評価 (9月, 12月, 3月)</option>
+                                <option value="false">本評価 (6月決算期・給与反映)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="input-group" style="margin: 0; display: flex; flex-direction: column; gap: 0.8rem;">
+                        <label style="font-weight: 700; color: #475569; font-size: 0.85rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">評価対象者の選択</label>
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <button type="button" class="btn btn-secondary" onclick="window.toggleAllEvalUsers(true)" style="padding: 0.4rem 1rem; font-size: 0.85rem; border-color: #cbd5e1; font-weight: 600;"><i class="fas fa-check-square"></i> すべて選択</button>
+                            <button type="button" class="btn btn-secondary" onclick="window.toggleAllEvalUsers(false)" style="padding: 0.4rem 1rem; font-size: 0.85rem; border-color: #cbd5e1; font-weight: 600;"><i class="far fa-square"></i> すべて解除</button>
+                            <button type="button" class="btn btn-secondary" onclick="window.selectOnlySelfForEval('${window.appState?.currentUser?.id}')" style="padding: 0.4rem 1rem; font-size: 0.85rem; border-color: #3b82f6; color: #2563eb; background: #eff6ff; font-weight: 600;"><i class="fas fa-user-shield"></i> テスト用 (自分のみ)</button>
+                        </div>
+                        <div id="start-period-user-list" style="max-height: 300px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0.8rem; background: #f8fafc; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.5rem;">
+                            <!-- 対象者リストがJSで挿入されます -->
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem; border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">
+                        <button type="button" onclick="closePeriodStartForm()" class="btn btn-secondary" style="font-weight: 700; padding: 0.8rem 1.5rem; background: white; border: 1px solid #cbd5e1; color: var(--text-secondary);">
+                            キャンセル
+                        </button>
+                        <button type="submit" class="btn btn-primary" style="font-weight: 800; padding: 0.8rem 2.5rem; background: #10b981; border-color: #10b981; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.15); font-size: 1rem;">
+                            <i class="fas fa-play"></i> 新しい評価期を開始する
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <!-- 評価項目マスタ編集画面 (インライン展開) -->
     <div id="template-editor-container" style="display: none; margin-bottom: 2rem;">
@@ -462,6 +517,129 @@ export async function initEvaluationPage() {
         };
     }
 
+    // トップタブの「評価を新規開始する」ボタンイベント
+    const btnAdminStart = document.getElementById('btn-admin-start-period-tab');
+    if (btnAdminStart) {
+        btnAdminStart.onclick = window.openPeriodStartForm;
+    }
+
+    // 評価期開始イベント
+    const formStart = document.getElementById('form-start-period');
+    if (formStart) {
+        formStart.onsubmit = async (e) => {
+            e.preventDefault();
+            const periodName = document.getElementById('input-period-name').value.trim();
+            const isProvisional = document.getElementById('select-period-provisional').value === 'true';
+
+            if (!/^\d{4}-\d{2}$/.test(periodName)) {
+                return showAlert('入力エラー', '評価期は「YYYY-MM」形式で入力してください (例: 2026-06)。');
+            }
+
+            showConfirm('評価期の開始', `新評価期「${periodName}期 (${isProvisional ? '仮評価' : '本評価'})」を開始しますか？\n（在職中のすべての対象従業員の評価シートが自動作成されます）`, async () => {
+                const btnSubmit = formStart.querySelector('button[type="submit"]');
+                const originalHtml = btnSubmit.innerHTML;
+                btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 初期化中...';
+                btnSubmit.disabled = true;
+
+                try {
+                    const checkboxes = document.querySelectorAll('.eval-user-checkbox:checked');
+                    const selectedUserIds = Array.from(checkboxes).map(cb => cb.value);
+                    if (selectedUserIds.length === 0) {
+                        btnSubmit.innerHTML = originalHtml;
+                        btnSubmit.disabled = false;
+                        return showAlert('エラー', '評価対象者を1人以上選択してください。');
+                    }
+                    const activeUsers = allStaffUsersForAdmin.filter(u => selectedUserIds.includes(u.id));
+
+                    const gradesSnap = await getDocs(collection(db, "m_grades"));
+                    const gradeMap = {};
+                    gradesSnap.forEach(d => {
+                        const data = d.data();
+                        if (data.grade_code) {
+                            gradeMap[data.grade_code] = data;
+                        }
+                    });
+
+                    const batch = writeBatch(db);
+                    
+                    const settingsRef = doc(db, "settings", "evaluation");
+                    batch.set(settingsRef, {
+                        active_period: periodName,
+                        is_provisional: isProvisional,
+                        status: 'open',
+                        updated_at: new Date().toISOString()
+                    });
+
+                    for (const u of activeUsers) {
+                        const gradeConfig = gradeMap[u.GradeCode] || {};
+                        const templateId = gradeConfig.evaluation_template_id || 'general';
+                        const evalItems = await window.getSnapshotItemsForTemplate(templateId, u.id);
+
+                        const yoyPeriod = window.getYoYPeriod(periodName);
+                        let yoyGrade = '-';
+                        try {
+                            const yoyDoc = await getDoc(doc(db, "t_evaluations", `${u.id}_${yoyPeriod}`));
+                            if (yoyDoc.exists()) {
+                                yoyGrade = yoyDoc.data().new_grade || '-';
+                            }
+                        } catch(e) { console.warn("Failed to fetch YoY grade:", e); }
+
+                        const evalId = `${u.id}_${periodName}`;
+                        const evalDocRef = doc(db, "t_evaluations", evalId);
+                        
+                        const evalRecord = {
+                            user_id: u.id,
+                            user_name: u.Name || '一般',
+                            department: (u.Role === 'PartTimer' || u.StoreID === 'kitchen') ? 'manufacturing' : 'sales',
+                            store_id: u.StoreID || 'honten',
+                            evaluator_id: '',
+                            evaluator_name: '',
+                            period: periodName,
+                            status: 'self_evaluating',
+                            is_provisional: isProvisional,
+                            current_grade: u.GradeCode || '-',
+                            yoy_grade: yoyGrade,
+                            new_grade: '-',
+                            self_total_score: 0,
+                            manager_total_score: 0,
+                            final_total_score: 0,
+                            interview_date: '',
+                            interview_notes: '',
+                            president_comment: '',
+                            items: evalItems,
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString()
+                        };
+                        
+                        batch.set(evalDocRef, evalRecord);
+
+                        const notifRef = doc(collection(db, "notifications"));
+                        batch.set(notifRef, {
+                            title: `【評価開始】${periodName}期 人事評価シート入力のお知らせ`,
+                            message: `自己評価の入力期限となりました。マイページまたは評価システムより自己スコアの入力・提出をお願いいたします。`,
+                            type: 'evaluation_alert',
+                            status: 'pending',
+                            store_id: u.StoreID || 'honten',
+                            created_at: new Date().toISOString(),
+                            readBy: []
+                        });
+                    }
+
+                    await batch.commit();
+                    window.closePeriodStartForm();
+                    showAlert('開始成功', `${periodName}期の評価セッションを開始しました！全スタッフ宛に入力依頼を通知しました。`);
+                    await loadInitialSettingsAndData();
+                } catch (err) {
+                    console.error(err);
+                    showAlert('エラー', '評価期の初期化に失敗しました。');
+                } finally {
+                    btnSubmit.innerHTML = originalHtml;
+                    btnSubmit.disabled = false;
+                }
+            });
+        };
+    }
+
     // 読み込み初期化
     await loadInitialSettingsAndData();
 }
@@ -539,8 +717,18 @@ async function loadInitialSettingsAndData() {
         
         const btnEditTemplatesTab = document.getElementById('btn-admin-edit-templates-tab');
         if (btnEditTemplatesTab) btnEditTemplatesTab.style.display = 'block';
+        
+        const isOpen = localPeriodSettings && localPeriodSettings.status === 'open';
         const btnCancelPeriodTab = document.getElementById('btn-admin-cancel-period-tab');
-        if (btnCancelPeriodTab) btnCancelPeriodTab.style.display = 'block';
+        const btnStartPeriodTab = document.getElementById('btn-admin-start-period-tab');
+        
+        if (isOpen) {
+            if (btnCancelPeriodTab) btnCancelPeriodTab.style.display = 'block';
+            if (btnStartPeriodTab) btnStartPeriodTab.style.display = 'none';
+        } else {
+            if (btnCancelPeriodTab) btnCancelPeriodTab.style.display = 'none';
+            if (btnStartPeriodTab) btnStartPeriodTab.style.display = 'block';
+        }
         
         activeTab = 'admin'; // 管理者はダッシュボードをデフォルトに
         document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
@@ -1087,6 +1275,25 @@ function renderAdminTab(container) {
         }
     }
 
+    if (!isOpen) {
+        // 未開始時の1カラム・Empty State
+        container.innerHTML = `
+            <div style="background: white; border-radius: 16px; border: 1px solid #cbd5e1; padding: 4rem 2rem; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.02); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px; margin-top: 1rem;">
+                <div style="width: 80px; height: 80px; background: #f1f5f9; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem;">
+                    <i class="fas fa-calendar-alt" style="font-size: 2.5rem; color: #94a3b8;"></i>
+                </div>
+                <h3 style="margin: 0 0 0.8rem 0; font-size: 1.4rem; font-weight: 800; color: #1e293b;">今期の評価スケジュールはまだ開始されていません</h3>
+                <p style="margin: 0 0 2rem 0; font-size: 0.95rem; color: #64748b; max-width: 450px; line-height: 1.6;">
+                    右上の「評価を新規開始する」ボタンから、対象者とスケジュールを設定して新しい評価期をスタートしてください。
+                </p>
+                <button class="btn btn-primary" onclick="openPeriodStartForm()" style="padding: 0.8rem 2rem; font-size: 1rem; font-weight: 800; border-radius: 8px; background: #10b981; border-color: #10b981; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2);">
+                    <i class="fas fa-play"></i> 評価を新規開始する
+                </button>
+            </div>
+        `;
+        return;
+    }
+
     container.innerHTML = `
         <div style="display: grid; grid-template-columns: 350px 1fr; gap: 1.5rem; align-items: start;">
             
@@ -1097,54 +1304,10 @@ function renderAdminTab(container) {
                     評価期（スケジュール）運用
                 </h4>
                 
-                ${isOpen ? `
-                    <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 1rem; margin-bottom: 1.2rem; display: flex; flex-direction: column; gap: 0.4rem;">
-                        <span style="font-size: 0.82rem; color: #065f46; font-weight: 800;"><i class="fas fa-check-circle"></i> 現在稼働中の評価期</span>
-                        <span style="font-size: 1.25rem; font-weight: 900; color: #047857;">${localPeriodSettings.active_period} 期 (${localPeriodSettings.is_provisional ? '仮評価' : '本評価'})</span>
-                    </div>
-
-
-                ` : `
-                    <div style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; text-align: center; color: #64748b;">
-                        現在、評価期間はロックまたは未開始です。
-                    </div>
-
-                    <form id="form-start-period" style="display: flex; flex-direction: column; gap: 1rem;">
-                        <div class="input-group" style="margin: 0;">
-                            <label style="font-weight: 700; color: #475569; font-size:0.8rem;">新規開始する評価期 (例: 2026-06)</label>
-                            <input type="text" id="input-period-name" placeholder="YYYY-MM" required style="font-family: monospace; font-size:1.05rem; padding: 0.55rem 0.8rem;">
-                        </div>
-                        <div class="input-group" style="margin: 0;">
-                            <label style="font-weight: 700; color: #475569; font-size:0.8rem;">評価の種類</label>
-                            <select id="select-period-provisional" required style="background: white; font-weight: 600; font-size:0.95rem; padding: 0.55rem 0.8rem;">
-                                <option value="true" selected>仮評価 (9月, 12月, 3月)</option>
-                                <option value="false">本評価 (6月決算期・給与反映)</option>
-                            </select>
-                        </div>
-                        
-                        <div class="input-group" style="margin: 0; display: flex; flex-direction: column; gap: 0.5rem;">
-                            <label style="font-weight: 700; color: #475569; font-size:0.8rem;">評価対象者の選択</label>
-                            <div style="display: flex; gap: 0.5rem; margin-bottom: 0.2rem; flex-wrap: wrap;">
-                                <button type="button" class="btn btn-secondary" onclick="window.toggleAllEvalUsers(true)" style="padding: 0.3rem 0.8rem; font-size: 0.8rem; border-color: #cbd5e1;"><i class="fas fa-check-square"></i> すべて選択</button>
-                                <button type="button" class="btn btn-secondary" onclick="window.toggleAllEvalUsers(false)" style="padding: 0.3rem 0.8rem; font-size: 0.8rem; border-color: #cbd5e1;"><i class="far fa-square"></i> すべて解除</button>
-                                <button type="button" class="btn btn-secondary" onclick="window.selectOnlySelfForEval('${window.appState.currentUser.id}')" style="padding: 0.3rem 0.8rem; font-size: 0.8rem; border-color: #3b82f6; color: #2563eb; background: #eff6ff;"><i class="fas fa-user-shield"></i> テスト用 (自分のみ)</button>
-                            </div>
-                            <div style="max-height: 180px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 6px; padding: 0.5rem; background: #f8fafc;">
-                                ${allStaffUsersForAdmin.map(u => `
-                                    <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem; border-bottom: 1px solid #e2e8f0; cursor: pointer;">
-                                        <input type="checkbox" name="target_users" value="${u.id}" class="eval-user-checkbox" checked>
-                                        <span style="font-size: 0.85rem; font-weight: 600; color: #1e293b;">${u.Name} (${u.Role === 'Manager' ? '店長' : 'スタッフ'} / ${u.StoreId || '本店'})</span>
-                                    </label>
-                                `).join('')}
-                            </div>
-                        </div>
-
-                        <button type="submit" class="btn btn-primary" style="width: 100%; font-weight: 800; padding: 0.8rem; background: #10b981; border-color: #10b981; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.15);">
-                            <i class="fas fa-play"></i> 評価期を新規開始する
-                        </button>
-                    </form>
-                `}
-
+                <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 1rem; display: flex; flex-direction: column; gap: 0.4rem;">
+                    <span style="font-size: 0.82rem; color: #065f46; font-weight: 800;"><i class="fas fa-check-circle"></i> 現在稼働中の評価期</span>
+                    <span style="font-size: 1.25rem; font-weight: 900; color: #047857;">${localPeriodSettings.active_period} 期 (${localPeriodSettings.is_provisional ? '仮評価' : '本評価'})</span>
+                </div>
             </div>
 
             <!-- 右カラム: 進行チャート・一括一覧 -->
@@ -1193,131 +1356,7 @@ function renderAdminTab(container) {
         </div>
     `;
 
-    // 評価期開始イベント
-    const formStart = document.getElementById('form-start-period');
-    if (formStart) {
-        formStart.onsubmit = async (e) => {
-            e.preventDefault();
-            const periodName = document.getElementById('input-period-name').value.trim();
-            const isProvisional = document.getElementById('select-period-provisional').value === 'true';
-
-            // バリデーション (例: 2026-06)
-            if (!/^\d{4}-\d{2}$/.test(periodName)) {
-                return showAlert('入力エラー', '評価期は「YYYY-MM」形式で入力してください (例: 2026-06)。');
-            }
-
-            showConfirm('評価期の開始', `新評価期「${periodName}期 (${isProvisional ? '仮評価' : '本評価'})」を開始しますか？\n（在職中のすべての対象従業員の評価シートが自動作成されます）`, async () => {
-                const btnSubmit = formStart.querySelector('button[type="submit"]');
-                const originalHtml = btnSubmit.innerHTML;
-                btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 初期化中...';
-                btnSubmit.disabled = true;
-
-                try {
-                    // 1. 選択されたユーザーリストの取得
-                    const checkboxes = document.querySelectorAll('.eval-user-checkbox:checked');
-                    const selectedUserIds = Array.from(checkboxes).map(cb => cb.value);
-                    if (selectedUserIds.length === 0) {
-                        btnSubmit.innerHTML = originalHtml;
-                        btnSubmit.disabled = false;
-                        return showAlert('エラー', '評価対象者を1人以上選択してください。');
-                    }
-                    const activeUsers = allStaffUsersForAdmin.filter(u => selectedUserIds.includes(u.id));
-
-                    // 2. 等級マスタの読込 (適用テンプレートの判定用)
-                    const gradesSnap = await getDocs(collection(db, "m_grades"));
-                    const gradeMap = {};
-                    gradesSnap.forEach(d => {
-                        const data = d.data();
-                        if (data.grade_code) {
-                            gradeMap[data.grade_code] = data;
-                        }
-                    });
-
-                    // 3. 各自の評価ドキュメントをバッチ作成
-                    const batch = writeBatch(db);
-                    
-                    // 設定情報の登録
-                    const settingsRef = doc(db, "settings", "evaluation");
-                    batch.set(settingsRef, {
-                        active_period: periodName,
-                        is_provisional: isProvisional,
-                        status: 'open',
-                        updated_at: new Date().toISOString()
-                    });
-
-                    // 各ユーザーの評価ドキュメント生成
-                    for (const u of activeUsers) {
-                        const gradeConfig = gradeMap[u.GradeCode] || {};
-                        const templateId = gradeConfig.evaluation_template_id || 'general';
-                        
-                        // テンプレートアイテムのスナップショットをロード
-                        const evalItems = await getSnapshotItemsForTemplate(templateId, u.id);
-
-                        // 前回評価期 (YoY判定用の1年前の等級の読み込みを試みる)
-                        const yoyPeriod = getYoYPeriod(periodName);
-                        let yoyGrade = '-';
-                        try {
-                            const yoyDoc = await getDoc(doc(db, "t_evaluations", `${u.id}_${yoyPeriod}`));
-                            if (yoyDoc.exists()) {
-                                yoyGrade = yoyDoc.data().new_grade || '-';
-                            }
-                        } catch(e) { console.warn("Failed to fetch YoY grade:", e); }
-
-                        const evalId = `${u.id}_${periodName}`;
-                        const evalDocRef = doc(db, "t_evaluations", evalId);
-                        
-                        const evalRecord = {
-                            user_id: u.id,
-                            user_name: u.Name || '一般',
-                            department: (u.Role === 'PartTimer' || u.StoreID === 'kitchen') ? 'manufacturing' : 'sales', // 簡易分割
-                            store_id: u.StoreID || 'honten',
-                            evaluator_id: '', // 空 (店長による評価開始時に設定または自動紐付け)
-                            evaluator_name: '',
-                            period: periodName,
-                            status: 'self_evaluating',
-                            is_provisional: isProvisional,
-                            current_grade: u.GradeCode || '-',
-                            yoy_grade: yoyGrade,
-                            new_grade: '-',
-                            self_total_score: 0,
-                            manager_total_score: 0,
-                            final_total_score: 0,
-                            interview_date: '',
-                            interview_notes: '',
-                            president_comment: '',
-                            items: evalItems,
-                            created_at: new Date().toISOString(),
-                            updated_at: new Date().toISOString()
-                        };
-                        
-                        batch.set(evalDocRef, evalRecord);
-
-                        // 4. 通知センターへの自動アラート挿入
-                        const notifRef = doc(collection(db, "notifications"));
-                        batch.set(notifRef, {
-                            title: `【評価開始】${periodName}期 人事評価シート入力のお知らせ`,
-                            message: `自己評価の入力期限となりました。マイページまたは評価システムより自己スコアの入力・提出をお願いいたします。`,
-                            type: 'evaluation_alert',
-                            status: 'pending',
-                            store_id: u.StoreID || 'honten',
-                            created_at: new Date().toISOString(),
-                            readBy: []
-                        });
-                    }
-
-                    await batch.commit();
-                    showAlert('開始成功', `${periodName}期の評価セッションを開始しました！全スタッフ宛に入力依頼を通知しました。`);
-                    await loadInitialSettingsAndData();
-                } catch (err) {
-                    console.error(err);
-                    showAlert('エラー', '評価期の初期化に失敗しました。');
-                } finally {
-                    btnSubmit.innerHTML = originalHtml;
-                    btnSubmit.disabled = false;
-                }
-            });
-        };
-    }
+    `;
 
     // 確定結果の一括公開 (通知)
     const btnNotifyAll = document.getElementById('btn-admin-notify-all');
@@ -3031,4 +3070,33 @@ window.autoPublishIfAllApproved = async () => {
         console.error("Auto publish error:", e);
         return false;
     }
+};
+
+// ==========================================
+// 8. 評価開始フォームのインライン展開
+// ==========================================
+window.openPeriodStartForm = () => {
+    // 既存のメインコンテンツ（ダッシュボード等）を非表示
+    document.getElementById('eval-main-content').style.display = 'none';
+    // 新規開始フォームを表示
+    document.getElementById('period-start-container').style.display = 'block';
+
+    // 対象者リストを動的にレンダリング
+    const listContainer = document.getElementById('start-period-user-list');
+    if (listContainer) {
+        listContainer.innerHTML = allStaffUsersForAdmin.map(u => `
+            <label style="display: flex; align-items: center; gap: 0.8rem; padding: 0.6rem 0.8rem; border: 1px solid #e2e8f0; cursor: pointer; background: white; border-radius: 8px; transition: border-color 0.2s, box-shadow 0.2s;" onmouseover="this.style.borderColor='#cbd5e1'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.02)'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+                <input type="checkbox" name="target_users" value="${u.id}" class="eval-user-checkbox" checked style="width: 1.1rem; height: 1.1rem; accent-color: #10b981;">
+                <div style="display: flex; flex-direction: column;">
+                    <span style="font-size: 0.95rem; font-weight: 800; color: #1e293b;">${u.Name}</span>
+                    <span style="font-size: 0.75rem; color: #64748b; font-weight: 600;">${u.Role === 'Manager' ? '店長' : 'スタッフ'} / ${globalStoreMapForEval[u.StoreId] || u.StoreId || '本店'}</span>
+                </div>
+            </label>
+        `).join('');
+    }
+};
+
+window.closePeriodStartForm = () => {
+    document.getElementById('period-start-container').style.display = 'none';
+    document.getElementById('eval-main-content').style.display = 'block';
 };
