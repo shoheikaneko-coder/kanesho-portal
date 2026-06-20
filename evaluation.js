@@ -47,7 +47,7 @@ export const evaluationPageHtml = `
                     人事評価システム
                 </h2>
                 <p style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 0.3rem; font-weight: 600;">
-                    年に4回の評価ワークフロー（仮評価・本評価）を一元管理し、成長と等級判定をサポートします
+                    年４回の評価を通じて成長をサポートします
                 </p>
             </div>
             <div style="display: flex; gap: 0.6rem; align-items: center;">
@@ -551,10 +551,10 @@ function updatePeriodBanner() {
 
     const periodStr = localPeriodSettings.active_period || '未設定';
     const isProvisional = localPeriodSettings.is_provisional;
-    const typeStr = isProvisional ? '仮評価' : '本評価 (給与反映対象)';
+    const typeStr = isProvisional ? '仮評価' : '本評価';
     
     titleEl.textContent = `${periodStr}期 人事評価スケジュール進行中`;
-    descEl.textContent = `今回の評価区分: ${typeStr} | 6月決算期の本評価は7月からの等級・基本給に反映されます。仮評価はレベル自覚用です。`;
+    descEl.textContent = `今回の評価区分: ${typeStr}`;
     
     const isOpen = localPeriodSettings.status === 'open';
     badgeEl.innerHTML = isOpen 
@@ -1049,19 +1049,19 @@ function renderAdminTab(container) {
             statsHTML = `
                 <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.2rem; margin-bottom: 2.5rem;">
                     <div style="background: linear-gradient(to bottom right, #ffffff, #f8fafc); border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.5rem; text-align: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 10px 15px -3px rgba(0,0,0,0.1)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px -1px rgba(0,0,0,0.05)';">
-                        <div style="font-size: 0.85rem; color: #64748b; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 0.5rem;"><i class="fas fa-users" style="margin-right:0.4rem; color:#94a3b8;"></i>評価対象者</div>
+                        <div style="font-size: 0.85rem; color: #64748b; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 0.5rem;">評価対象者</div>
                         <div style="font-size: 2.8rem; font-weight: 900; color: #1e293b; line-height: 1.2;">${totalCount}<span style="font-size: 1rem; color: #94a3b8; font-weight: 700; margin-left: 0.2rem;">名</span></div>
                     </div>
                     <div style="background: linear-gradient(to bottom right, #fffbeb, #fef3c7); border: 1px solid #fde68a; border-radius: 16px; padding: 1.5rem; text-align: center; box-shadow: 0 4px 6px -1px rgba(217, 119, 6, 0.08); transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 10px 15px -3px rgba(217, 119, 6, 0.15)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px -1px rgba(217, 119, 6, 0.08)';">
-                        <div style="font-size: 0.85rem; color: #d97706; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 0.5rem;"><i class="fas fa-pen-nib" style="margin-right:0.4rem; color:#fbbf24;"></i>自己評価入力中</div>
+                        <div style="font-size: 0.85rem; color: #d97706; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 0.5rem;">自己評価入力中</div>
                         <div style="font-size: 2.8rem; font-weight: 900; color: #b45309; line-height: 1.2;">${selfEvaluating}<span style="font-size: 1rem; color: #d97706; font-weight: 700; margin-left: 0.2rem;">名</span></div>
                     </div>
                     <div style="background: linear-gradient(to bottom right, #eff6ff, #dbeafe); border: 1px solid #bfdbfe; border-radius: 16px; padding: 1.5rem; text-align: center; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.08); transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 10px 15px -3px rgba(37, 99, 235, 0.15)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px -1px rgba(37, 99, 235, 0.08)';">
-                        <div style="font-size: 0.85rem; color: #2563eb; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 0.5rem;"><i class="fas fa-comments" style="margin-right:0.4rem; color:#60a5fa;"></i>上長評価・面談中</div>
+                        <div style="font-size: 0.85rem; color: #2563eb; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 0.5rem;">上長評価・面談中</div>
                         <div style="font-size: 2.8rem; font-weight: 900; color: #1d4ed8; line-height: 1.2;">${managerEvaluating}<span style="font-size: 1rem; color: #3b82f6; font-weight: 700; margin-left: 0.2rem;">名</span></div>
                     </div>
                     <div style="background: linear-gradient(to bottom right, #fff1f2, #ffe4e6); border: 1px solid #fecdd3; border-radius: 16px; padding: 1.5rem; text-align: center; box-shadow: 0 4px 6px -1px rgba(225, 29, 72, 0.08); transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 10px 15px -3px rgba(225, 29, 72, 0.15)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px -1px rgba(225, 29, 72, 0.08)';">
-                        <div style="font-size: 0.85rem; color: #e11d48; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 0.5rem;"><i class="fas fa-stamp" style="margin-right:0.4rem; color:#fb7185;"></i>最終承認待ち</div>
+                        <div style="font-size: 0.85rem; color: #e11d48; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 0.5rem;">最終承認待ち</div>
                         <div style="font-size: 2.8rem; font-weight: 900; color: #be123c; line-height: 1.2;">${presidentPending}<span style="font-size: 1rem; color: #f43f5e; font-weight: 700; margin-left: 0.2rem;">名</span></div>
                     </div>
                 </div>
@@ -1150,8 +1150,7 @@ function renderAdminTab(container) {
                 <div class="glass-panel" style="padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
                     <div style="padding: 1rem 1.2rem; border-bottom: 1px solid var(--border); background: #f8fafc; display: flex; justify-content: space-between; align-items: center;">
                         <h4 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: #1e293b;">
-                            <i class="fas fa-list" style="color: var(--primary); margin-right: 0.4rem;"></i>
-                            評価進行ステータス一覧
+                            評価進行ステータス
                         </h4>
                     </div>
                     <div style="overflow-x: auto; max-height: 400px;">
