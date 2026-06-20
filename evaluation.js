@@ -182,13 +182,18 @@ export const evaluationPageHtml = `
                     </div>
                     
                     <div class="input-group" style="margin: 0; display: flex; flex-direction: column; gap: 0.8rem;">
-                        <label style="font-weight: 700; color: #475569; font-size: 0.85rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">評価対象者の選択</label>
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">
+                            <label style="font-weight: 700; color: #475569; font-size: 0.85rem; margin: 0;">評価対象者の選択</label>
+                            <div id="selection-counter-badge" style="font-size: 0.85rem; font-weight: 800; color: #10b981; background: #ecfdf5; padding: 0.4rem 1rem; border-radius: 20px; border: 1px solid #a7f3d0; box-shadow: 0 1px 2px rgba(16, 185, 129, 0.05);">
+                                <i class="fas fa-users"></i> 選択中: -名 / 全-名
+                            </div>
+                        </div>
                         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                             <button type="button" class="btn btn-secondary" onclick="window.toggleAllEvalUsers(true)" style="padding: 0.4rem 1rem; font-size: 0.85rem; border-color: #cbd5e1; font-weight: 600;"><i class="fas fa-check-square"></i> すべて選択</button>
                             <button type="button" class="btn btn-secondary" onclick="window.toggleAllEvalUsers(false)" style="padding: 0.4rem 1rem; font-size: 0.85rem; border-color: #cbd5e1; font-weight: 600;"><i class="far fa-square"></i> すべて解除</button>
                             <button type="button" class="btn btn-secondary" onclick="window.selectOnlySelfForEval()" style="padding: 0.4rem 1rem; font-size: 0.85rem; border-color: #3b82f6; color: #2563eb; background: #eff6ff; font-weight: 600;"><i class="fas fa-user-shield"></i> テスト用 (自分のみ)</button>
                         </div>
-                        <div id="start-period-user-list" style="max-height: 300px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0.8rem; background: #f8fafc; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.5rem;">
+                        <div id="start-period-user-list" style="max-height: 450px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 8px; padding: 1.5rem; background: #f8fafc; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem;">
                             <!-- 対象者リストがJSで挿入されます -->
                         </div>
                     </div>
@@ -2777,8 +2782,31 @@ window.saveActiveTemplate = async () => {
     }
 };
 
+window.updateSelectionCounter = function() {
+    const checkboxes = document.querySelectorAll('.eval-user-checkbox');
+    if (!checkboxes || checkboxes.length === 0) return;
+    
+    const total = checkboxes.length;
+    const selected = Array.from(checkboxes).filter(cb => cb.checked).length;
+    const badge = document.getElementById('selection-counter-badge');
+    
+    if (badge) {
+        badge.innerHTML = `<i class="fas fa-users"></i> 選択中: ${selected}名 / 全${total}名`;
+        if (selected === 0) {
+            badge.style.background = '#fef2f2';
+            badge.style.color = '#ef4444';
+            badge.style.borderColor = '#fecaca';
+        } else {
+            badge.style.background = '#ecfdf5';
+            badge.style.color = '#10b981';
+            badge.style.borderColor = '#a7f3d0';
+        }
+    }
+};
+
 window.toggleAllEvalUsers = function(checked) {
     document.querySelectorAll('.eval-user-checkbox').forEach(cb => cb.checked = checked);
+    window.updateSelectionCounter();
 };
 
 window.selectOnlySelfForEval = function() {
@@ -2787,6 +2815,7 @@ window.selectOnlySelfForEval = function() {
     document.querySelectorAll('.eval-user-checkbox').forEach(cb => {
         cb.checked = (cb.value === myId);
     });
+    window.updateSelectionCounter();
 };
 
 // ==========================================
@@ -3139,14 +3168,17 @@ window.openPeriodStartForm = () => {
     const listContainer = document.getElementById('start-period-user-list');
     if (listContainer) {
         listContainer.innerHTML = allStaffUsersForAdmin.map(u => `
-            <label style="display: flex; align-items: center; gap: 0.8rem; padding: 0.6rem 0.8rem; border: 1px solid #e2e8f0; cursor: pointer; background: white; border-radius: 8px; transition: border-color 0.2s, box-shadow 0.2s;" onmouseover="this.style.borderColor='#cbd5e1'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.02)'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
-                <input type="checkbox" name="target_users" value="${u.id}" class="eval-user-checkbox" checked style="width: 1.1rem; height: 1.1rem; accent-color: #10b981;">
-                <div style="display: flex; flex-direction: column;">
-                    <span style="font-size: 0.95rem; font-weight: 800; color: #1e293b;">${u.Name}</span>
-                    <span style="font-size: 0.75rem; color: #64748b; font-weight: 600;">${u.Role === 'Manager' ? '店長' : 'スタッフ'} / ${globalStoreMapForEval[u.StoreId] || u.StoreId || '本店'}</span>
+            <label style="display: flex; align-items: flex-start; gap: 1rem; padding: 1.2rem; border: 1px solid #e2e8f0; cursor: pointer; background: white; border-radius: 12px; transition: border-color 0.2s, box-shadow 0.2s;" onmouseover="this.style.borderColor='#cbd5e1'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.04)'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+                <input type="checkbox" name="target_users" value="${u.id}" class="eval-user-checkbox" checked onchange="window.updateSelectionCounter()" style="width: 1.25rem; height: 1.25rem; accent-color: #10b981; margin-top: 0.1rem; cursor: pointer;">
+                <div style="display: flex; flex-direction: column; gap: 0.2rem;">
+                    <span style="font-size: 1.05rem; font-weight: 800; color: #1e293b; letter-spacing: 0.02em;">${u.Name}</span>
+                    <span style="font-size: 0.8rem; color: #64748b; font-weight: 600;"><i class="fas fa-tag" style="font-size: 0.7rem; margin-right: 0.2rem;"></i>${u.Role === 'Manager' ? '店長' : 'スタッフ'} <span style="margin: 0 0.4rem; color: #cbd5e1;">|</span> <i class="fas fa-store" style="font-size: 0.7rem; margin-right: 0.2rem;"></i>${globalStoreMapForEval[u.StoreId] || u.StoreId || '本店'}</span>
                 </div>
             </label>
         `).join('');
+        
+        // カウンターの初期表示を更新
+        setTimeout(() => window.updateSelectionCounter(), 50);
     }
 };
 
