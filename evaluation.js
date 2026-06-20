@@ -58,18 +58,35 @@ export const evaluationPageHtml = `
         </div>
 
         <!-- 評価期インフォバナー -->
-        <div id="eval-period-banner" class="glass-panel" style="padding: 1rem 1.5rem; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 12px; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-            <div style="display: flex; align-items: center; gap: 0.8rem;">
-                <div style="width: 40px; height: 40px; border-radius: 50%; background: #fef3c7; color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">
-                    <i class="fas fa-bullhorn"></i>
+        <div id="eval-period-banner" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+            <div class="glass-panel" style="padding: 1.2rem; background: white; border: 1px solid var(--border); border-radius: 12px; display: flex; align-items: center; gap: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                <div style="width: 40px; height: 40px; border-radius: 50%; background: #f0fdf4; color: #16a34a; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;">
+                    <i class="fas fa-tasks"></i>
                 </div>
                 <div>
-                    <h4 id="banner-period-title" style="margin: 0; color: #92400e; font-size: 0.95rem; font-weight: 800;">読み込み中...</h4>
-                    <p id="banner-period-desc" style="margin: 0.2rem 0 0 0; font-size: 0.8rem; color: #b45309; font-weight: 600;">---</p>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700; margin-bottom: 0.2rem;">評価プロセス</div>
+                    <div id="banner-status-text" style="font-size: 1.05rem; font-weight: 800; color: #1e293b;">読込中...</div>
                 </div>
             </div>
-            <div id="banner-status-badge">
-                <span class="badge" style="background: #94a3b8; color: white;">読込中</span>
+            
+            <div class="glass-panel" style="padding: 1.2rem; background: white; border: 1px solid var(--border); border-radius: 12px; display: flex; align-items: center; gap: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                <div style="width: 40px; height: 40px; border-radius: 50%; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;">
+                    <i class="fas fa-calendar-alt"></i>
+                </div>
+                <div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700; margin-bottom: 0.2rem;">現在の評価期</div>
+                    <div id="banner-period-title" style="font-size: 1.05rem; font-weight: 800; color: #1e293b;">読込中...</div>
+                </div>
+            </div>
+
+            <div class="glass-panel" style="padding: 1.2rem; background: white; border: 1px solid var(--border); border-radius: 12px; display: flex; align-items: center; gap: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                <div style="width: 40px; height: 40px; border-radius: 50%; background: #fef2f2; color: #dc2626; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;">
+                    <i class="fas fa-tags"></i>
+                </div>
+                <div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700; margin-bottom: 0.2rem;">評価区分</div>
+                    <div id="banner-period-desc" style="font-size: 1.05rem; font-weight: 800; color: #1e293b;">読込中...</div>
+                </div>
             </div>
         </div>
 
@@ -752,31 +769,33 @@ async function loadInitialSettingsAndData() {
 function updatePeriodBanner() {
     const titleEl = document.getElementById('banner-period-title');
     const descEl = document.getElementById('banner-period-desc');
-    const badgeEl = document.getElementById('banner-status-badge');
-    if (!titleEl || !descEl || !badgeEl) return;
+    const statusEl = document.getElementById('banner-status-text');
+    if (!titleEl || !descEl || !statusEl) return;
 
     const periodStr = localPeriodSettings.active_period || '未設定';
     const isProvisional = localPeriodSettings.is_provisional;
     const typeStr = isProvisional ? '仮評価' : '本評価';
     
-    titleEl.textContent = `${periodStr}期 人事評価スケジュール進行中`;
-    descEl.textContent = `今回の評価区分: ${typeStr}`;
+    titleEl.textContent = `${periodStr} 期`;
+    descEl.textContent = typeStr;
     
     const isOpen = localPeriodSettings.status === 'open';
-    badgeEl.innerHTML = isOpen 
-        ? `<span class="badge" style="background: #10b981; color: white; font-weight: 800; padding: 0.4rem 1rem; border-radius: 20px;"><i class="fas fa-check-circle"></i> 評価受付中</span>`
-        : `<span class="badge" style="background: #ef4444; color: white; font-weight: 800; padding: 0.4rem 1rem; border-radius: 20px;"><i class="fas fa-lock"></i> 評価締め切り</span>`;
+    if (isOpen) {
+        statusEl.innerHTML = `<span style="color: #16a34a;"><i class="fas fa-play-circle"></i> 進行中 (評価受付中)</span>`;
+    } else {
+        statusEl.innerHTML = `<span style="color: #ef4444;"><i class="fas fa-lock"></i> 締め切り</span>`;
+    }
 }
 
 function updatePeriodBannerEmpty() {
     const titleEl = document.getElementById('banner-period-title');
     const descEl = document.getElementById('banner-period-desc');
-    const badgeEl = document.getElementById('banner-status-badge');
-    if (!titleEl || !descEl || !badgeEl) return;
+    const statusEl = document.getElementById('banner-status-text');
+    if (!titleEl || !descEl || !statusEl) return;
 
-    titleEl.textContent = `評価スケジュール未開始`;
-    descEl.textContent = `現在、アクティブな人事評価セッションはありません。人事総務または管理者による評価期の開始をお待ちください。`;
-    badgeEl.innerHTML = `<span class="badge" style="background: #64748b; color: white; font-weight: 800; padding: 0.4rem 1rem; border-radius: 20px;"><i class="fas fa-pause-circle"></i> 未開始</span>`;
+    titleEl.textContent = `-`;
+    descEl.textContent = `-`;
+    statusEl.innerHTML = `<span style="color: #94a3b8;"><i class="fas fa-pause-circle"></i> 未開始</span>`;
 }
 
 // データベースからの評価データ読み込み
@@ -1295,22 +1314,7 @@ function renderAdminTab(container) {
     }
 
     container.innerHTML = `
-        <div style="display: grid; grid-template-columns: 350px 1fr; gap: 1.5rem; align-items: start;">
-            
-            <!-- 左カラム: 評価期運用管理コントローラ -->
-            <div class="glass-panel" style="padding: 1.5rem; background: white; border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
-                <h4 style="margin-top: 0; margin-bottom: 1.2rem; color: var(--text-primary); border-bottom: 2px solid #f1f5f9; padding-bottom: 0.8rem; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-                    <i class="fas fa-sliders" style="color:var(--primary);"></i>
-                    評価期（スケジュール）運用
-                </h4>
-                
-                <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 1rem; display: flex; flex-direction: column; gap: 0.4rem;">
-                    <span style="font-size: 0.82rem; color: #065f46; font-weight: 800;"><i class="fas fa-check-circle"></i> 現在稼働中の評価期</span>
-                    <span style="font-size: 1.25rem; font-weight: 900; color: #047857;">${localPeriodSettings.active_period} 期 (${localPeriodSettings.is_provisional ? '仮評価' : '本評価'})</span>
-                </div>
-            </div>
-
-            <!-- 右カラム: 進行チャート・一括一覧 -->
+        <div style="display: block;">
             <div>
                 ${statsHTML}
                 
