@@ -678,8 +678,21 @@ function setupTabs() {
 
 // 初期設定とデータの取得
 async function loadInitialSettingsAndData() {
-    const user = window.appState.currentUser;
-    if (!user) return;
+    let user = window.appState.currentUser;
+    if (!user) {
+        // SPAリロード時の認証遅延対策
+        for (let i = 0; i < 30; i++) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            if (window.appState.currentUser) {
+                user = window.appState.currentUser;
+                break;
+            }
+        }
+        if (!user) {
+            console.warn("User auth not found after waiting. Halting evaluation init.");
+            return;
+        }
+    }
 
     // 店舗マスタのロード（名称解決用）
     try {
@@ -1462,8 +1475,11 @@ function renderAdminTab(container) {
                     });
 
                     await batch.commit();
+                    // Alertの非同期性を考慮してsetTimeoutで少し待ってからリロード
                     showAlert('取り消し完了', `${period}期の評価データをリセットし、通知を削除しました。`);
-                    await loadInitialSettingsAndData();
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
                 } catch(err) {
                     console.error("Failed to cancel evaluation period:", err);
                     showAlert('エラー', '評価期の取り消しに失敗しました。');
