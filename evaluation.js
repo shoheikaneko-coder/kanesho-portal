@@ -86,6 +86,16 @@ export const evaluationPageHtml = `
             <button class="tab-btn" id="tab-president" style="display: none; padding: 0.75rem 1.5rem; font-weight: 800; border: none; background: transparent; border-bottom: 3px solid transparent; cursor: pointer; color: var(--text-secondary); transition: all 0.2s;">
                 ③社長承認 <span class="count-badge" id="president-badge" style="display:none; font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 10px; background: #8b5cf6; color: white;">0</span>
             </button>
+            
+            <!-- 管理者用 特殊操作ボタン (右寄せ) -->
+            <div style="margin-left: auto; display: flex; gap: 0.5rem; align-items: center; padding-bottom: 0.5rem;" id="admin-management-buttons">
+                <button class="btn btn-secondary" id="btn-admin-edit-templates-tab" style="display: none; padding: 0.5rem 1rem; font-size: 0.8rem; font-weight: 700; border: 1px solid #cbd5e1; background: #f8fafc; color: #475569; border-radius: 6px; cursor: pointer;">
+                    <i class="fas fa-edit"></i> 評価項目マスタ編集
+                </button>
+                <button class="btn btn-secondary" id="btn-admin-cancel-period-tab" style="display: none; padding: 0.5rem 1rem; font-size: 0.8rem; font-weight: 700; border: 1px solid #fecdd3; background: #fff1f2; color: #be123c; border-radius: 6px; cursor: pointer;">
+                    <i class="fas fa-trash-alt"></i> 評価リセット
+                </button>
+            </div>
         </div>
 
         <!-- メインコンテンツ表示エリア -->
@@ -93,21 +103,23 @@ export const evaluationPageHtml = `
             <!-- 各タブの中身がJSでレンダリングされます -->
         </div>
 
+
+
     </div>
 
     <!-- (評価入力用モーダルはインライン化に伴い廃止) -->
 
-    <!-- 評価項目マスタ編集モーダル -->
-    <div id="eval-template-modal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); z-index: 3000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 1rem; box-sizing: border-box;">
-        <div class="glass-panel animate-fade-in" style="background: white; border-radius: 16px; border: 1px solid var(--border); box-shadow: var(--shadow-xl); width: 100%; max-width: 1200px; height: 92vh; display: flex; flex-direction: column; padding: 0; overflow: hidden;">
+    <!-- 評価項目マスタ編集画面 (インライン展開) -->
+    <div id="template-editor-container" style="display: none; margin-bottom: 2rem;">
+        <div class="glass-panel animate-fade-in" style="background: white; border-radius: 16px; border: 1px solid var(--border); box-shadow: var(--shadow-xl); width: 100%; height: 80vh; display: flex; flex-direction: column; padding: 0; overflow: hidden;">
             <!-- モーダルヘッダー -->
             <div style="padding: 1.2rem 1.8rem; border-bottom: 1px solid var(--border); background: #f8fafc; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
                 <div>
                     <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-edit" style="color: #ec4899;"></i>評価項目マスタ編集</h3>
                     <p style="margin: 0.2rem 0 0 0; font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">各職位・シートごとの評価項目をカスタマイズします</p>
                 </div>
-                <button type="button" id="btn-close-template-modal" style="background: transparent; border: none; font-size: 1.4rem; cursor: pointer; color: #94a3b8; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
-                    <i class="fas fa-times"></i>
+                <button type="button" id="btn-close-template-modal" class="btn" style="background: white; border: 1px solid #cbd5e1; font-size: 0.9rem; font-weight: 700; cursor: pointer; color: #475569; border-radius: 8px; padding: 0.5rem 1rem;">
+                    <i class="fas fa-times"></i> 閉じる
                 </button>
             </div>
             
@@ -1085,14 +1097,7 @@ function renderAdminTab(container) {
                         <span style="font-size: 1.25rem; font-weight: 900; color: #047857;">${localPeriodSettings.active_period} 期 (${localPeriodSettings.is_provisional ? '仮評価' : '本評価'})</span>
                     </div>
 
-                    <div style="display:flex; flex-direction:column; gap:0.6rem;">
-                        <button class="btn" id="btn-admin-close-period" style="width: 100%; background: #fee2e2; border-color: #fca5a5; color: #dc2626; font-weight: 800; padding: 0.8rem;">
-                            <i class="fas fa-lock"></i> 今期の評価期を終了・ロックする
-                        </button>
-                        <button class="btn" id="btn-admin-cancel-period" style="width: 100%; background: #fff1f2; border-color: #fecdd3; color: #be123c; font-weight: 800; padding: 0.8rem; margin-top: 0.6rem;">
-                            <i class="fas fa-trash-alt"></i> 今期の評価開始を取り消す (リセット)
-                        </button>
-                    </div>
+
                 ` : `
                     <div style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; text-align: center; color: #64748b;">
                         現在、評価期間はロックまたは未開始です。
@@ -1133,14 +1138,7 @@ function renderAdminTab(container) {
                         </button>
                     </form>
                 `}
-                <div style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1.2rem; display: flex; flex-direction: column; gap: 0.8rem;">
-                    <button class="btn btn-secondary" id="btn-admin-edit-templates" style="width: 100%; font-weight: 800; padding: 0.8rem; background: white; border: 1px solid #cbd5e1; color: var(--text-secondary);">
-                        <i class="fas fa-edit"></i> 評価項目マスタの編集
-                    </button>
-                    <button class="btn btn-secondary" id="btn-admin-import-legacy" style="width: 100%; font-weight: 800; padding: 0.8rem; background: #f8fafc; border: 1px solid #cbd5e1; color: #475569;">
-                        <i class="fas fa-file-import"></i> 過去データのアーカイブ手入力
-                    </button>
-                </div>
+
             </div>
 
             <!-- 右カラム: 進行チャート・一括一覧 -->
@@ -1389,7 +1387,7 @@ function renderAdminTab(container) {
     }
 
     // 評価期の開始取消・リセット
-    const btnCancelPeriod = document.getElementById('btn-admin-cancel-period');
+    const btnCancelPeriod = document.getElementById('btn-admin-cancel-period-tab');
     if (btnCancelPeriod) {
         btnCancelPeriod.onclick = () => {
             const period = localPeriodSettings.active_period;
@@ -1438,7 +1436,7 @@ function renderAdminTab(container) {
     };
 
     // 評価項目マスタ編集ボタンのバインド
-    const btnEditTemplates = document.getElementById('btn-admin-edit-templates');
+    const btnEditTemplates = document.getElementById('btn-admin-edit-templates-tab');
     if (btnEditTemplates) {
         btnEditTemplates.onclick = () => {
             openTemplateEditorModal();
@@ -2227,8 +2225,8 @@ function getStatusJpName(status) {
 // ==========================================
 
 async function openTemplateEditorModal() {
-    const modal = document.getElementById('eval-template-modal');
-    if (!modal) return;
+    const container = document.getElementById('template-editor-container');
+    if (!container) return;
     
     // 全テンプレートをFirestoreからロード
     try {
@@ -2253,7 +2251,13 @@ async function openTemplateEditorModal() {
     
     window.renderTemplateList();
     
-    modal.style.display = 'flex';
+    // インライン展開：ダッシュボードや他のコンテンツを隠し、エディタを表示する
+    document.getElementById('eval-main-content').style.display = 'none';
+    document.getElementById('eval-period-banner').style.display = 'none';
+    const tabsContainer = document.querySelector('.tabs-container');
+    if (tabsContainer) tabsContainer.style.display = 'none';
+    
+    container.style.display = 'block';
 }
 
 window.renderTemplateList = () => {
@@ -2415,16 +2419,22 @@ function checkUnsavedChanges() {
 }
 
 async function closeTemplateEditorModal() {
+    const closeAction = () => {
+        document.getElementById('template-editor-container').style.display = 'none';
+        document.getElementById('eval-main-content').style.display = 'block';
+        document.getElementById('eval-period-banner').style.display = 'flex';
+        const tabsContainer = document.querySelector('.tabs-container');
+        if (tabsContainer) tabsContainer.style.display = 'flex';
+    };
+
     if (checkUnsavedChanges()) {
         const confirmClose = await showConfirm(
             "変更の破棄",
             "編集中の変更内容が保存されていません。変更を破棄して閉じますか？"
         );
-        if (confirmClose) {
-            document.getElementById('eval-template-modal').style.display = 'none';
-        }
+        if (confirmClose) closeAction();
     } else {
-        document.getElementById('eval-template-modal').style.display = 'none';
+        closeAction();
     }
 }
 
@@ -2958,4 +2968,61 @@ window.viewHistoryDetail = (evalId) => {
     
     document.getElementById('history-detail-content').innerHTML = content;
     document.getElementById('eval-history-detail-modal').style.display = 'flex';
+};
+
+// ==========================================
+// 7. 全自動公開・ロック処理
+// ==========================================
+window.autoPublishIfAllApproved = async () => {
+    try {
+        const snap = await getDocs(query(collection(db, "t_evaluations"), where("period", "==", localPeriodSettings.active_period)));
+        let total = 0;
+        let approvedOrNotified = 0;
+        let pendingEvals = [];
+
+        snap.forEach(d => {
+            total++;
+            const st = d.data().status;
+            if (st === 'approved' || st === 'notified') {
+                approvedOrNotified++;
+            }
+            if (st === 'approved') {
+                pendingEvals.push(d.ref);
+            }
+        });
+
+        // もし全員の評価が承認済みであれば自動公開＆ロックを実行
+        if (total > 0 && total === approvedOrNotified) {
+            const batch = writeBatch(db);
+            
+            // 1. 各評価データを notified に更新
+            pendingEvals.forEach(ref => {
+                batch.update(ref, { status: 'notified', updated_at: new Date().toISOString() });
+            });
+            
+            // 2. 評価期(settings)のステータスを closed に更新
+            batch.update(doc(db, "settings", "evaluation"), {
+                status: 'closed',
+                updated_at: new Date().toISOString()
+            });
+
+            // 3. 通知 (Notification) を追加
+            const notifRef = doc(collection(db, "notifications"));
+            batch.set(notifRef, {
+                title: `${localPeriodSettings.active_period}期の評価結果が公開されました`,
+                message: `全対象者の評価が確定し、結果が公開されました。マイページから確認してください。`,
+                type: 'evaluation_published',
+                target: 'all',
+                created_at: new Date().toISOString(),
+                is_read: false
+            });
+
+            await batch.commit();
+            return true;
+        }
+        return false;
+    } catch(e) {
+        console.error("Auto publish error:", e);
+        return false;
+    }
 };
