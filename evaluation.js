@@ -128,6 +128,21 @@ export const evaluationPageHtml = `
     </div>
 
     <!-- 評価期新規開始画面 (インライン展開) -->
+    <style>
+        .eval-list-grid {
+            display: grid;
+            grid-template-columns: 30px 2fr 1.5fr 1fr;
+            gap: 1rem;
+            align-items: center;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        @media (min-width: 1024px) {
+            .eval-list-grid {
+                grid-template-columns: 30px 2.5fr 1.5fr 1.5fr;
+            }
+        }
+    </style>
     <div id="period-start-container" style="display: none; margin-bottom: 2rem;">
         <div class="glass-panel animate-fade-in" style="background: white; border-radius: 16px; border: 1px solid var(--border); box-shadow: var(--shadow-xl); width: 100%; padding: 0; overflow: hidden;">
             <div style="padding: 1.2rem 1.8rem; border-bottom: 1px solid var(--border); background: #f8fafc; display: flex; justify-content: space-between; align-items: center;">
@@ -141,8 +156,8 @@ export const evaluationPageHtml = `
             </div>
             
             <div style="padding: 2rem; background: #ffffff;">
-                <form id="form-start-period" style="display: flex; flex-direction: column; gap: 1.5rem; max-width: 900px; margin: 0 auto;">
-                    <div style="display: flex; gap: 1.5rem; flex-wrap: wrap;">
+                <form id="form-start-period" style="display: flex; flex-direction: column; gap: 1.5rem; width: 100%;">
+                    <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; max-width: 800px;">
                         <div class="input-group" style="flex: 1; margin: 0;">
                             <div style="font-weight: 700; color: #475569; font-size: 0.85rem; margin-bottom: 0.4rem; display: block;">新規開始する評価期</div>
                             <div style="display: flex; gap: 0.5rem;">
@@ -193,13 +208,13 @@ export const evaluationPageHtml = `
                             <button type="button" class="btn btn-secondary" onclick="window.toggleAllEvalUsers(false)" style="padding: 0.4rem 1rem; font-size: 0.85rem; border-color: #cbd5e1; font-weight: 600;"><i class="far fa-square"></i> すべて解除</button>
                             <button type="button" class="btn btn-secondary" onclick="window.selectOnlySelfForEval()" style="padding: 0.4rem 1rem; font-size: 0.85rem; border-color: #3b82f6; color: #2563eb; background: #eff6ff; font-weight: 600;"><i class="fas fa-user-shield"></i> テスト用 (自分のみ)</button>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 1rem; padding: 0.8rem 1.2rem; background: #e2e8f0; border-radius: 8px 8px 0 0; font-size: 0.85rem; font-weight: 700; color: #475569; margin-top: 0.5rem; border: 1px solid #cbd5e1; border-bottom: none;">
-                            <div style="width: 1.25rem;"></div> <!-- チェックボックス用余白 -->
-                            <div style="width: 200px;">従業員名</div>
-                            <div style="width: 150px;">所属店舗</div>
-                            <div style="flex: 1;">役職</div>
+                        <div class="eval-list-grid" style="padding: 0.8rem 1.2rem; background: #e2e8f0; border-radius: 8px 8px 0 0; font-size: 0.85rem; font-weight: 700; color: #475569; margin-top: 0.5rem; border: 1px solid #cbd5e1; border-bottom: none; position: sticky; top: 0; z-index: 10;">
+                            <div></div> <!-- チェックボックス用余白 -->
+                            <div>従業員名</div>
+                            <div>所属店舗</div>
+                            <div>役職</div>
                         </div>
-                        <div id="start-period-user-list" style="max-height: 400px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 0 0 8px 8px; background: white; display: flex; flex-direction: column;">
+                        <div id="start-period-user-list" style="max-height: 500px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 0 0 8px 8px; background: white; display: flex; flex-direction: column;">
                             <!-- 対象者リストがJSで挿入されます -->
                         </div>
                     </div>
@@ -3190,14 +3205,14 @@ window.openPeriodStartForm = () => {
             const roleBorder = u.Role === 'Manager' ? '#fde68a' : '#e2e8f0';
 
             return `
-            <div style="display: flex; align-items: center; gap: 1rem; padding: 0.8rem 1.2rem; border-bottom: 1px solid #e2e8f0; cursor: pointer; background: white; transition: background-color 0.2s; margin: 0;" 
+            <div class="eval-list-grid" style="padding: 0.8rem 1.2rem; border-bottom: 1px solid #e2e8f0; cursor: pointer; background: white; transition: background-color 0.2s; margin: 0;" 
                  onmouseover="this.style.backgroundColor='#f8fafc'" 
                  onmouseout="this.style.backgroundColor='white'"
                  onclick="if(event.target.tagName !== 'INPUT') { const cb = this.querySelector('.eval-user-checkbox'); cb.checked = !cb.checked; window.updateSelectionCounter(); }">
-                <input type="checkbox" name="target_users" value="${u.id}" class="eval-user-checkbox" checked onchange="window.updateSelectionCounter()" style="width: 1.25rem; height: 1.25rem; accent-color: #10b981; cursor: pointer; flex-shrink: 0; margin: 0;">
-                <div style="width: 200px; font-size: 1rem; font-weight: 800; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${safeName}">${safeName}</div>
-                <div style="width: 150px; font-size: 0.9rem; color: #475569; font-weight: 600;"><i class="fas fa-store" style="font-size: 0.8rem; margin-right: 0.3rem; color: #94a3b8;"></i>${safeStore}</div>
-                <div style="flex: 1; font-size: 0.9rem; color: #64748b; font-weight: 600;"><span style="background: ${roleColorBg}; color: ${roleColorText}; padding: 0.2rem 0.6rem; border-radius: 4px; border: 1px solid ${roleBorder};"><i class="fas fa-tag" style="font-size: 0.7rem; margin-right: 0.3rem;"></i>${safeRole}</span></div>
+                <input type="checkbox" name="target_users" value="${u.id}" class="eval-user-checkbox" checked onchange="window.updateSelectionCounter()" style="width: 1.25rem; height: 1.25rem; accent-color: #10b981; cursor: pointer; justify-self: center; margin: 0;">
+                <div style="font-size: 1rem; font-weight: 800; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${safeName}">${safeName}</div>
+                <div style="font-size: 0.9rem; color: #475569; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><i class="fas fa-store" style="font-size: 0.8rem; margin-right: 0.3rem; color: #94a3b8;"></i>${safeStore}</div>
+                <div style="font-size: 0.9rem; color: #64748b; font-weight: 600;"><span style="background: ${roleColorBg}; color: ${roleColorText}; padding: 0.2rem 0.6rem; border-radius: 4px; border: 1px solid ${roleBorder}; white-space: nowrap;"><i class="fas fa-tag" style="font-size: 0.7rem; margin-right: 0.3rem;"></i>${safeRole}</span></div>
             </div>
             `;
         }).join('');
