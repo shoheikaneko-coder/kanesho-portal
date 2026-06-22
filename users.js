@@ -150,18 +150,18 @@ function renderListView(container) {
             </div>
 
             <div style="overflow-x: auto;">
-                <table style="width: 100%; border-collapse: collapse; text-align: left;">
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
                     <thead>
-                        <tr style="background: white; border-bottom: 2px solid var(--border); color: var(--text-secondary); font-size: 0.8rem; text-transform: uppercase;">
-                            <th style="padding: 1rem; font-weight: 600;">従業員コード</th>
-                            <th style="padding: 1rem; font-weight: 600;">お名前</th>
-                            <th style="padding: 1rem; font-weight: 600;">所属性</th>
-                            <th style="padding: 1rem; font-weight: 600;">等級</th>
-                            <th style="padding: 1rem; font-weight: 600;">権限</th>
-                            <th style="padding: 1rem; font-weight: 600;">ステータス</th>
-                            <th style="padding: 1rem; font-weight: 600;">打刻PW</th>
-                            <th style="padding: 1rem; font-weight: 600;">ログインPW</th>
-                            <th style="padding: 1rem; text-align: right; font-weight: 600;">操作</th>
+                        <tr style="background: #10b981; color: white; font-size: 0.85rem; text-transform: uppercase;">
+                            <th style="padding: 0.8rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2);">従業員コード</th>
+                            <th style="padding: 0.8rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2);">お名前</th>
+                            <th style="padding: 0.8rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2);">所属店舗</th>
+                            <th style="padding: 0.8rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2);">雇用形態</th>
+                            <th style="padding: 0.8rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2);">等級</th>
+                            <th style="padding: 0.8rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2);">役職</th>
+                            <th style="padding: 0.8rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2);">ステータス</th>
+                            <th style="padding: 0.8rem; text-align: right; font-weight: 700;">操作</th>
                         </tr>
                     </thead>
                     <tbody id="users-table-body"></tbody>
@@ -323,8 +323,9 @@ function renderFormView(container) {
                                     <input type="text" id="user-job-title" placeholder="副店長等" style="background: #f0fdf4; border: 1px solid #bbf7d0;">
                                 </div>
                                 <div class="input-group" style="margin: 0;">
-                                    <label style="font-weight: 700; color: #475569;">雇用契約種別</label>
-                                    <select id="user-employment-type" style="background: white; font-weight: 600;">
+                                    <label style="font-weight: 700; color: #475569;">雇用契約種別 <span style="color: #ef4444;">*</span></label>
+                                    <select id="user-employment-type" required style="background: white; font-weight: 600;">
+                                        <option value="" disabled selected>選択してください</option>
                                         <option value="Full-time">正社員</option>
                                         <option value="Part-time">アルバイト</option>
                                     </select>
@@ -459,7 +460,7 @@ function renderFormView(container) {
             document.getElementById('user-role').value = editingUserData.Role || 'Staff';
             document.getElementById('user-status').value = editingUserData.Status || 'active';
             document.getElementById('user-store-select').value = editingUserData.StoreID || '';
-            document.getElementById('user-employment-type').value = editingUserData.EmploymentType || 'Full-time';
+            document.getElementById('user-employment-type').value = editingUserData.EmploymentType || '';
             document.getElementById('user-28h-limit').checked = !!editingUserData.Has28hLimit;
             document.getElementById('user-display-name').value = editingUserData.DisplayName || '';
             document.getElementById('user-job-title').value = editingUserData.JobTitle || '';
@@ -901,31 +902,43 @@ function renderTable(filter = "") {
             return;
         }
 
-        itemsToShow.forEach(item => {
+        itemsToShow.forEach((item, index) => {
             const roleNameMap = {
                 'Admin': '管理者', 'Manager': '店長', 'Staff': '一般社員', 'PartTimer': 'アルバイト', 'Tablet': '店舗タブレット'
             };
             const role = item['Role'] || 'Staff';
             const status = item['Status'] || 'active';
             const statusMap = { 'active': '在職', 'resigning': '退職手続中', 'retired': '退職' };
+            const empType = item['EmploymentType'] || '';
+            const empTypeLabel = empType === 'Full-time' ? '正社員' : (empType === 'Part-time' ? 'アルバイト' : '未設定');
+            const empTypeColorBg = empType === 'Full-time' ? '#dcfce7' : (empType === 'Part-time' ? '#e0f2fe' : '#f1f5f9');
+            const empTypeColorText = empType === 'Full-time' ? '#166534' : (empType === 'Part-time' ? '#0369a1' : '#64748b');
 
             const tr = document.createElement('tr');
-            tr.style.borderBottom = '1px solid var(--border)';
+            tr.style.borderBottom = '1px solid #e2e8f0';
+            if (index % 2 === 1) {
+                tr.style.backgroundColor = '#f8fafc';
+            }
+            tr.onmouseover = () => tr.style.backgroundColor = '#f1f5f9';
+            tr.onmouseout = () => tr.style.backgroundColor = index % 2 === 1 ? '#f8fafc' : 'white';
             tr.style.transition = 'background 0.2s';
             tr.innerHTML = `
-                <td style="padding: 1rem; font-family: monospace;">${item['EmployeeCode'] || '-'}</td>
-                <td style="padding: 1rem; font-weight: 600;">
+                <td style="padding: 0.6rem 0.8rem; font-family: monospace; color: #475569;">${item['EmployeeCode'] || '-'}</td>
+                <td style="padding: 0.6rem 0.8rem; font-weight: 700; color: #1e293b;">
                     ${item['Name'] || '-'}
-                    ${item['DisplayName'] ? `<br><span style="font-size:0.7rem; color:var(--text-secondary); font-weight:400;">(${item['DisplayName']})</span>` : ''}
+                    ${item['DisplayName'] ? `<span style="font-size:0.75rem; color:#94a3b8; font-weight:600; margin-left:0.4rem;">(${item['DisplayName']})</span>` : ''}
                 </td>
-                <td style="padding: 1rem; color: var(--text-secondary); font-size: 0.85rem;">${item['Store'] || '-'}</td>
-                <td style="padding: 1rem; font-family: monospace; font-weight: 700; color: #1e3a8a;">${item['GradeCode'] || '-'}</td>
-                <td style="padding: 1rem;"><span class="badge ${role.toLowerCase()}">${roleNameMap[role] || role}</span></td>
-                <td style="padding: 1rem;"><span class="badge status-${status}">${statusMap[status]}</span></td>
-                <td style="padding: 1rem; font-family: monospace; color: var(--text-secondary);">${item['ClockInPassword'] || '-'}</td>
-                <td style="padding: 1rem; font-family: monospace; color: var(--text-secondary);">${item['LoginPassword'] ? '********' : '-'}</td>
-                <td style="padding: 1rem; text-align: right;">
-                    <button class="btn btn-edit-user" style="padding: 0.5rem; background: transparent; color: var(--text-secondary);" title="編集"><i class="fas fa-edit"></i></button>
+                <td style="padding: 0.6rem 0.8rem; color: #475569; font-size: 0.85rem;">${item['Store'] || '-'}</td>
+                <td style="padding: 0.6rem 0.8rem;">
+                    <span style="background: ${empTypeColorBg}; color: ${empTypeColorText}; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700; border: 1px solid rgba(0,0,0,0.05);">${empTypeLabel}</span>
+                </td>
+                <td style="padding: 0.6rem 0.8rem; font-family: monospace; font-weight: 800; color: #2563eb;">${item['GradeCode'] || '-'}</td>
+                <td style="padding: 0.6rem 0.8rem;"><span class="badge ${role.toLowerCase()}" style="padding:0.2rem 0.5rem; font-size:0.75rem;">${roleNameMap[role] || role}</span></td>
+                <td style="padding: 0.6rem 0.8rem;"><span class="badge status-${status}" style="padding:0.2rem 0.5rem; font-size:0.75rem;">${statusMap[status]}</span></td>
+                <td style="padding: 0.6rem 0.8rem; text-align: right;">
+                    <button class="btn btn-edit-user" style="padding: 0.4rem 0.8rem; background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; border-radius: 6px; font-weight: 600; font-size: 0.8rem;" title="編集">
+                        <i class="fas fa-edit"></i> 編集
+                    </button>
                 </td>
             `;
 
