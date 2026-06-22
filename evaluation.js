@@ -131,7 +131,7 @@ export const evaluationPageHtml = `
     <style>
         .eval-list-grid {
             display: grid;
-            grid-template-columns: 30px 2fr 1.5fr 1fr;
+            grid-template-columns: 30px 2.5fr 1.5fr 1fr 1fr;
             gap: 1rem;
             align-items: center;
             width: 100%;
@@ -139,7 +139,7 @@ export const evaluationPageHtml = `
         }
         @media (min-width: 1024px) {
             .eval-list-grid {
-                grid-template-columns: 30px 2.5fr 1.5fr 1.5fr;
+                grid-template-columns: 30px 3fr 2fr 1.5fr 1.5fr;
             }
         }
     </style>
@@ -194,6 +194,13 @@ export const evaluationPageHtml = `
                                 <option value="false">本評価 (次期の等級が付与されます・給与反映)</option>
                             </select>
                         </div>
+                        <div class="input-group" style="flex: 1; margin: 0;">
+                            <div style="font-weight: 700; color: #475569; font-size: 0.85rem; margin-bottom: 0.4rem; display: block;">対象の雇用形態</div>
+                            <select id="select-period-employment" required style="width: 100%; background: white; font-weight: 600; font-size: 1.05rem; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box;" onchange="window.renderEvalUserList()">
+                                <option value="Full-time" selected>正社員</option>
+                                <option value="Part-time">アルバイト</option>
+                            </select>
+                        </div>
                     </div>
                     
                     <div style="margin: 0; display: flex; flex-direction: column; gap: 0.8rem;">
@@ -212,6 +219,7 @@ export const evaluationPageHtml = `
                             <div></div> <!-- チェックボックス用余白 -->
                             <div>従業員名</div>
                             <div>所属店舗</div>
+                            <div>雇用形態</div>
                             <div>役職</div>
                         </div>
                         <div id="start-period-user-list" style="max-height: 500px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 0 0 8px 8px; background: white; display: flex; flex-direction: column;">
@@ -3179,6 +3187,56 @@ window.autoPublishIfAllApproved = async () => {
 // ==========================================
 // 8. 評価開始フォームのインライン展開
 // ==========================================
+window.renderEvalUserList = () => {
+    const listContainer = document.getElementById('start-period-user-list');
+    if (!listContainer) return;
+
+    const escapeHTML = (str) => {
+        if (!str) return '';
+        return String(str).replace(/[&<>"']/g, function(match) {
+            const escapeMap = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+            return escapeMap[match];
+        });
+    };
+
+    const targetType = document.getElementById('select-period-employment')?.value || 'Full-time';
+
+    // 雇用形態でフィルタリング。既存のデータで未入力のものは表示されない
+    const filteredUsers = allStaffUsersForAdmin.filter(u => {
+        return u.EmploymentType === targetType;
+    });
+
+    listContainer.innerHTML = filteredUsers.map(u => {
+        const safeName = escapeHTML(u.Name);
+        const safeStore = escapeHTML(globalStoreMapForEval[u.StoreId] || u.StoreId || '本店');
+        const safeRole = u.Role === 'Manager' ? '店長' : 'スタッフ';
+        const roleColorBg = u.Role === 'Manager' ? '#fef3c7' : '#f1f5f9';
+        const roleColorText = u.Role === 'Manager' ? '#d97706' : '#64748b';
+        const roleBorder = u.Role === 'Manager' ? '#fde68a' : '#e2e8f0';
+
+        const safeEmpType = u.EmploymentType === 'Part-time' ? 'アルバイト' : '正社員';
+        const empTypeColorBg = u.EmploymentType === 'Part-time' ? '#e0f2fe' : '#dcfce7';
+        const empTypeColorText = u.EmploymentType === 'Part-time' ? '#0369a1' : '#166534';
+        const empTypeBorder = u.EmploymentType === 'Part-time' ? '#bae6fd' : '#bbf7d0';
+
+        return `
+        <div class="eval-list-grid" style="padding: 0.8rem 1.2rem; border-bottom: 1px solid #e2e8f0; cursor: pointer; background: white; transition: background-color 0.2s; margin: 0;" 
+             onmouseover="this.style.backgroundColor='#f8fafc'" 
+             onmouseout="this.style.backgroundColor='white'"
+             onclick="if(event.target.tagName !== 'INPUT') { const cb = this.querySelector('.eval-user-checkbox'); cb.checked = !cb.checked; window.updateSelectionCounter(); }">
+            <input type="checkbox" name="target_users" value="${u.id}" class="eval-user-checkbox" checked onchange="window.updateSelectionCounter()" style="width: 1.25rem; height: 1.25rem; accent-color: #10b981; cursor: pointer; justify-self: center; margin: 0;">
+            <div style="font-size: 1rem; font-weight: 800; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${safeName}">${safeName}</div>
+            <div style="font-size: 0.9rem; color: #475569; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><i class="fas fa-store" style="font-size: 0.8rem; margin-right: 0.3rem; color: #94a3b8;"></i>${safeStore}</div>
+            <div style="font-size: 0.9rem; color: #64748b; font-weight: 600;"><span style="background: ${empTypeColorBg}; color: ${empTypeColorText}; padding: 0.2rem 0.6rem; border-radius: 4px; border: 1px solid ${empTypeBorder}; white-space: nowrap;">${safeEmpType}</span></div>
+            <div style="font-size: 0.9rem; color: #64748b; font-weight: 600;"><span style="background: ${roleColorBg}; color: ${roleColorText}; padding: 0.2rem 0.6rem; border-radius: 4px; border: 1px solid ${roleBorder}; white-space: nowrap;"><i class="fas fa-tag" style="font-size: 0.7rem; margin-right: 0.3rem;"></i>${safeRole}</span></div>
+        </div>
+        `;
+    }).join('');
+    
+    // カウンターの初期表示を更新
+    setTimeout(() => window.updateSelectionCounter(), 50);
+};
+
 window.openPeriodStartForm = () => {
     // 既存のメインコンテンツ（ダッシュボード等）を非表示
     document.getElementById('eval-main-content').style.display = 'none';
@@ -3186,40 +3244,7 @@ window.openPeriodStartForm = () => {
     document.getElementById('period-start-container').style.display = 'block';
 
     // 対象者リストを動的にレンダリング
-    const listContainer = document.getElementById('start-period-user-list');
-    if (listContainer) {
-        const escapeHTML = (str) => {
-            if (!str) return '';
-            return String(str).replace(/[&<>"']/g, function(match) {
-                const escapeMap = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-                return escapeMap[match];
-            });
-        };
-
-        listContainer.innerHTML = allStaffUsersForAdmin.map(u => {
-            const safeName = escapeHTML(u.Name);
-            const safeStore = escapeHTML(globalStoreMapForEval[u.StoreId] || u.StoreId || '本店');
-            const safeRole = u.Role === 'Manager' ? '店長' : 'スタッフ';
-            const roleColorBg = u.Role === 'Manager' ? '#fef3c7' : '#f1f5f9';
-            const roleColorText = u.Role === 'Manager' ? '#d97706' : '#64748b';
-            const roleBorder = u.Role === 'Manager' ? '#fde68a' : '#e2e8f0';
-
-            return `
-            <div class="eval-list-grid" style="padding: 0.8rem 1.2rem; border-bottom: 1px solid #e2e8f0; cursor: pointer; background: white; transition: background-color 0.2s; margin: 0;" 
-                 onmouseover="this.style.backgroundColor='#f8fafc'" 
-                 onmouseout="this.style.backgroundColor='white'"
-                 onclick="if(event.target.tagName !== 'INPUT') { const cb = this.querySelector('.eval-user-checkbox'); cb.checked = !cb.checked; window.updateSelectionCounter(); }">
-                <input type="checkbox" name="target_users" value="${u.id}" class="eval-user-checkbox" checked onchange="window.updateSelectionCounter()" style="width: 1.25rem; height: 1.25rem; accent-color: #10b981; cursor: pointer; justify-self: center; margin: 0;">
-                <div style="font-size: 1rem; font-weight: 800; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${safeName}">${safeName}</div>
-                <div style="font-size: 0.9rem; color: #475569; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><i class="fas fa-store" style="font-size: 0.8rem; margin-right: 0.3rem; color: #94a3b8;"></i>${safeStore}</div>
-                <div style="font-size: 0.9rem; color: #64748b; font-weight: 600;"><span style="background: ${roleColorBg}; color: ${roleColorText}; padding: 0.2rem 0.6rem; border-radius: 4px; border: 1px solid ${roleBorder}; white-space: nowrap;"><i class="fas fa-tag" style="font-size: 0.7rem; margin-right: 0.3rem;"></i>${safeRole}</span></div>
-            </div>
-            `;
-        }).join('');
-        
-        // カウンターの初期表示を更新
-        setTimeout(() => window.updateSelectionCounter(), 50);
-    }
+    window.renderEvalUserList();
 };
 
 window.closePeriodStartForm = () => {

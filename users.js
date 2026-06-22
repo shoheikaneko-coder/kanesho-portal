@@ -323,6 +323,13 @@ function renderFormView(container) {
                                     <input type="text" id="user-job-title" placeholder="副店長等" style="background: #f0fdf4; border: 1px solid #bbf7d0;">
                                 </div>
                                 <div class="input-group" style="margin: 0;">
+                                    <label style="font-weight: 700; color: #475569;">雇用契約種別</label>
+                                    <select id="user-employment-type" style="background: white; font-weight: 600;">
+                                        <option value="Full-time">正社員</option>
+                                        <option value="Part-time">アルバイト</option>
+                                    </select>
+                                </div>
+                                <div class="input-group" style="margin: 0;">
                                     <label style="font-weight: 700; color: #475569;">等級</label>
                                     <select id="user-grade-select" style="background: white; font-weight: 600;">
                                         <option value="">等級を選択...</option>
@@ -452,6 +459,7 @@ function renderFormView(container) {
             document.getElementById('user-role').value = editingUserData.Role || 'Staff';
             document.getElementById('user-status').value = editingUserData.Status || 'active';
             document.getElementById('user-store-select').value = editingUserData.StoreID || '';
+            document.getElementById('user-employment-type').value = editingUserData.EmploymentType || 'Full-time';
             document.getElementById('user-28h-limit').checked = !!editingUserData.Has28hLimit;
             document.getElementById('user-display-name').value = editingUserData.DisplayName || '';
             document.getElementById('user-job-title').value = editingUserData.JobTitle || '';
@@ -643,6 +651,7 @@ function setupFormLogic() {
             'Role': document.getElementById('user-role').value,
             'Store': selectedOpt ? selectedOpt.text : '',
             'StoreID': storeSelect.value || '', // StoreID is now primary
+            'EmploymentType': document.getElementById('user-employment-type').value,
             'Has28hLimit': document.getElementById('user-28h-limit').checked,
             'DisplayName': document.getElementById('user-display-name').value,
             'JobTitle': document.getElementById('user-job-title').value,
