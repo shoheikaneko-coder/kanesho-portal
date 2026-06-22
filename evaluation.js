@@ -272,6 +272,7 @@ export const evaluationPageHtml = `
                                 <tr style="background:#f8fafc;">
                                     <th style="width: 250px; text-align: left;">テンプレート表示名称</th>
                                     <th style="text-align: left; color:#64748b;">システムID</th>
+                                    <th style="width: 120px; text-align: center;">ステータス</th>
                                     <th style="width: 380px; text-align: center;">操作</th>
                                 </tr>
                             </thead>
@@ -2421,6 +2422,12 @@ window.renderTemplateList = () => {
             <td style="padding: 1rem; font-family: monospace; font-size: 0.8rem; color: #64748b;">
                 ${t.id}
             </td>
+            <td style="padding: 1rem; text-align: center;">
+                <select onchange="window.updateTemplateStatus('${t.id}', this.value)" style="font-size: 0.75rem; padding: 0.3rem 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px; background: ${t.status === 'archived' ? '#f1f5f9' : '#dcfce7'}; color: ${t.status === 'archived' ? '#475569' : '#166534'}; font-weight: 700; cursor: pointer; outline: none;">
+                    <option value="active" ${t.status !== 'archived' ? 'selected' : ''}>運用中</option>
+                    <option value="archived" ${t.status === 'archived' ? 'selected' : ''}>運用終了</option>
+                </select>
+            </td>
             <td style="padding: 1rem;">
                 <div style="display: flex; gap: 0.5rem; justify-content: center; flex-wrap: nowrap;">
                     <button class="btn" onclick="window.openTemplateDetail('${t.id}')" style="background:#f1f5f9; color:#475569; border:none; border-radius:6px; font-size:0.75rem; font-weight:700; padding:0.4rem 0.8rem; transition: background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'"><i class="fas fa-edit"></i> 編集</button>
@@ -2735,6 +2742,20 @@ window.renameTemplate = async (id) => {
     } catch(e) {
         console.error("Rename failed", e);
         showAlert("エラー", "名称変更に失敗しました。");
+    }
+};
+
+window.updateTemplateStatus = async (id, newStatus) => {
+    try {
+        await updateDoc(doc(db, "m_evaluation_templates", id), {
+            status: newStatus,
+            updated_at: new Date().toISOString()
+        });
+        editTemplates[id].status = newStatus;
+        window.renderTemplateList();
+    } catch(e) {
+        console.error("Update status failed", e);
+        showAlert("エラー", "ステータスの変更に失敗しました。");
     }
 };
 

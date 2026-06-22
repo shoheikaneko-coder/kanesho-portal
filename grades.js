@@ -388,7 +388,8 @@ async function loadGradesData() {
             if (!templatesSnapshot.empty) {
                 localTemplates = [];
                 templatesSnapshot.forEach(d => {
-                    localTemplates.push({ id: d.id, name: d.data().template_name || d.id });
+                    const data = d.data();
+                    localTemplates.push({ id: d.id, name: data.template_name || d.id, status: data.status || 'active' });
                 });
             }
         } catch (err) {
@@ -545,7 +546,12 @@ function renderGradesTable() {
             <td>
                 <select class="select-evaluation-template" onchange="window.handleGradeChange(${index}, 'evaluation_template_id', this.value)" style="font-size: 0.68rem; padding: 0.2rem 0.25rem; width: 100%; box-sizing: border-box;">
                     <option value="">未設定</option>
-                    ${localTemplates.map(t => `<option value="${t.id}" ${grade.evaluation_template_id === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}
+                    ${localTemplates.map(t => {
+                        const isArchived = t.status === 'archived';
+                        const isSelected = grade.evaluation_template_id === t.id;
+                        if (isArchived && !isSelected) return '';
+                        return \`<option value="\${t.id}" \${isSelected ? 'selected' : ''}>\${isArchived ? '（運用終了）' : ''}\${t.name}</option>\`;
+                    }).join('')}
                 </select>
             </td>
             <!-- 査定最低点 -->
