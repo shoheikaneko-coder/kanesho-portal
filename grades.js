@@ -550,7 +550,7 @@ function renderGradesTable() {
                         const isArchived = t.status === 'archived';
                         const isSelected = grade.evaluation_template_id === t.id;
                         if (isArchived && !isSelected) return '';
-                        return \`<option value="\${t.id}" \${isSelected ? 'selected' : ''}>\${isArchived ? '（運用終了）' : ''}\${t.name}</option>\`;
+                        return `<option value="${t.id}" ${isSelected ? 'selected' : ''}>${isArchived ? '（運用終了）' : ''}${t.name}</option>`;
                     }).join('')}
                 </select>
             </td>
