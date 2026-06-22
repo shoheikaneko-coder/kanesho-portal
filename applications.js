@@ -807,6 +807,7 @@ window.approveNewHireFromDetail = async (appId) => {
             LoginPassword: data.details['ログインPW'] || "",
             ClockInPassword: data.details['打刻PW'] || "",
             Role: "PartTimer", 
+            EmploymentType: "Part-time",
             StoreID: data.details['所属予定店舗'] || "",
             Status: "active",
             HireDate: data.details['入社予定日'] || "",
