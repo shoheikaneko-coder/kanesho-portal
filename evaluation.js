@@ -272,7 +272,7 @@ export const evaluationPageHtml = `
                             <thead>
                                 <tr style="background:#f8fafc;">
                                     <th style="width: 250px; text-align: left;">テンプレート表示名称</th>
-                                    <th style="text-align: left; color:#64748b;">システムID</th>
+                                    <th style="text-align: left; color:#64748b;">適用する役職</th>
                                     <th style="width: 120px; text-align: center;">ステータス</th>
                                     <th style="width: 380px; text-align: center;">操作</th>
                                 </tr>
@@ -2435,8 +2435,13 @@ window.renderTemplateList = () => {
     
     const templates = Object.values(editTemplates);
     
-    // 表示名称の昇順でソート（同じ場合はIDでソート）
+    // ステータス（運用中を上）の優先ソート、同じ場合は表示名称でソート
     templates.sort((a, b) => {
+        const isAArchived = a.status === 'archived';
+        const isBArchived = b.status === 'archived';
+        if (isAArchived !== isBArchived) {
+            return isAArchived ? 1 : -1;
+        }
         const nameA = a.template_name || a.id;
         const nameB = b.template_name || b.id;
         return nameA.localeCompare(nameB, 'ja');
@@ -2450,12 +2455,19 @@ window.renderTemplateList = () => {
     templates.forEach(t => {
         const tr = document.createElement('tr');
         tr.style.borderBottom = '1px solid #e2e8f0';
+        let jobTitlesHtml = '<span style="color:#94a3b8; font-size:0.75rem;">未設定</span>';
+        if (t.target_job_titles && t.target_job_titles.length > 0) {
+            jobTitlesHtml = '<div style="display: flex; gap: 0.3rem; flex-wrap: wrap;">' + 
+                t.target_job_titles.map(jt => `<span style="background: #e0e7ff; color: #3730a3; font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 700;">${jt}</span>`).join('') +
+                '</div>';
+        }
+
         tr.innerHTML = `
             <td style="padding: 1rem; font-weight: 700; color: #1e293b;">
                 ${t.template_name || t.id}
             </td>
-            <td style="padding: 1rem; font-family: monospace; font-size: 0.8rem; color: #64748b;">
-                ${t.id}
+            <td style="padding: 1rem;">
+                ${jobTitlesHtml}
             </td>
             <td style="padding: 1rem; text-align: center;">
                 <select onchange="window.updateTemplateStatus('${t.id}', this.value)" style="font-size: 0.75rem; padding: 0.3rem 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px; background: ${t.status === 'archived' ? '#f1f5f9' : '#dcfce7'}; color: ${t.status === 'archived' ? '#475569' : '#166534'}; font-weight: 700; cursor: pointer; outline: none;">
