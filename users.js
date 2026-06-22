@@ -10,6 +10,9 @@ let currentPage = 1;
 const pageSize = 30;
 let activeScrollSpyListener = null;
 
+let currentSortColumn = 'EmployeeCode';
+let currentSortDirection = 'desc';
+
 export const usersPageHtml = `
     <div id="users-page-container" class="animate-fade-in">
         <!-- Content swapped here -->
@@ -153,14 +156,14 @@ function renderListView(container) {
             <div style="overflow-x: auto;">
                 <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
                     <thead>
-                        <tr style="background: #10b981; color: white; font-size: 0.85rem; text-transform: uppercase;">
-                            <th style="padding: 0.8rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2);">従業員コード</th>
-                            <th style="padding: 0.8rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2);">お名前</th>
-                            <th style="padding: 0.8rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2);">所属店舗</th>
-                            <th style="padding: 0.8rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2);">雇用形態</th>
-                            <th style="padding: 0.8rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2);">等級</th>
-                            <th style="padding: 0.8rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2);">役職</th>
-                            <th style="padding: 0.8rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2);">ステータス</th>
+                        <tr id="users-table-header" style="background: #10b981; color: white; font-size: 0.85rem; text-transform: uppercase;">
+                            <th data-sort="EmployeeCode" style="padding: 0.8rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2); cursor: pointer; user-select: none;">従業員コード <i class="fas fa-sort"></i></th>
+                            <th data-sort="Name" style="padding: 0.8rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2); cursor: pointer; user-select: none;">お名前 <i class="fas fa-sort"></i></th>
+                            <th data-sort="Store" style="padding: 0.8rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2); cursor: pointer; user-select: none;">所属店舗 <i class="fas fa-sort"></i></th>
+                            <th data-sort="EmploymentType" style="padding: 0.8rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2); cursor: pointer; user-select: none;">雇用形態 <i class="fas fa-sort"></i></th>
+                            <th data-sort="GradeCode" style="padding: 0.8rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2); cursor: pointer; user-select: none;">等級 <i class="fas fa-sort"></i></th>
+                            <th data-sort="Role" style="padding: 0.8rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2); cursor: pointer; user-select: none;">役職 <i class="fas fa-sort"></i></th>
+                            <th data-sort="Status" style="padding: 0.8rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2); cursor: pointer; user-select: none;">ステータス <i class="fas fa-sort"></i></th>
                             <th style="padding: 0.8rem; text-align: right; font-weight: 700;">操作</th>
                         </tr>
                     </thead>
@@ -196,6 +199,20 @@ function renderListView(container) {
             renderTable(document.getElementById('user-search')?.value || "");
         };
     }
+
+    const headers = container.querySelectorAll('th[data-sort]');
+    headers.forEach(th => {
+        th.addEventListener('click', () => {
+            const col = th.getAttribute('data-sort');
+            if (currentSortColumn === col) {
+                currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortColumn = col;
+                currentSortDirection = 'asc';
+            }
+            renderTable(document.getElementById('user-search')?.value || "");
+        });
+    });
 
     renderTable();
 }
@@ -864,7 +881,7 @@ function renderTable(filter = "") {
 
     try {
         const todayStr = new Date().toISOString().substring(0, 10);
-        const filtered = cachedUsers.filter(u => {
+        let filtered = cachedUsers.filter(u => {
             // 退職者の除外処理
             if (!includeRetired) {
                 if (u.Status === 'retired' || u.Status === '退職済') return false;
@@ -874,6 +891,19 @@ function renderTable(filter = "") {
             const f = filter.toLowerCase();
             return (u.Name || '').toLowerCase().includes(f) || 
                    (u.EmployeeCode || '').toLowerCase().includes(f);
+        });
+
+        // フィルタ後の配列に対してソートを適用
+        filtered.sort((a, b) => {
+            let valA = a[currentSortColumn] || '';
+            let valB = b[currentSortColumn] || '';
+
+            // roleなどは表示名ではなく内部値ベースでの比較になるが実用上問題なし
+            let comparison = 0;
+            if (valA < valB) comparison = -1;
+            else if (valA > valB) comparison = 1;
+
+            return currentSortDirection === 'asc' ? comparison : -comparison;
         });
 
         const totalItems = filtered.length;
@@ -896,6 +926,20 @@ function renderTable(filter = "") {
 
         tbody.innerHTML = '';
         renderPagination(totalPages, filter);
+
+        // ヘッダーアイコンの更新処理
+        const headerCells = document.querySelectorAll('#users-table-header th[data-sort]');
+        headerCells.forEach(th => {
+            const icon = th.querySelector('i');
+            if (!icon) return;
+            if (th.getAttribute('data-sort') === currentSortColumn) {
+                icon.className = currentSortDirection === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down';
+                icon.style.opacity = '1';
+            } else {
+                icon.className = 'fas fa-sort';
+                icon.style.opacity = '0.3';
+            }
+        });
 
         if (itemsToShow.length === 0) {
             tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 4rem; color: var(--text-secondary);">該当するユーザーが見つかりません</td></tr>';
