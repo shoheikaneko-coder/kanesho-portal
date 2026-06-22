@@ -2492,6 +2492,9 @@ window.backToTemplateList = () => {
     document.getElementById('template-view-editor').style.display = 'none';
     document.getElementById('template-view-editor-footer').style.display = 'none';
     document.getElementById('template-view-list').style.display = 'block';
+    
+    // 一覧画面に戻る際に最新の状態（設定した役職など）を再描画する
+    window.renderTemplateList();
 };
 
 window.openTemplateDetail = (id) => {
