@@ -343,6 +343,7 @@ function renderFormView(container) {
                                     <label style="font-weight: 700; color: #475569;">雇用契約種別 <span style="color: #ef4444;">*</span></label>
                                     <select id="user-employment-type" required style="background: white; font-weight: 600;">
                                         <option value="" disabled selected>選択してください</option>
+                                        <option value="Executive">役員</option>
                                         <option value="Full-time">正社員</option>
                                         <option value="Part-time">アルバイト</option>
                                     </select>
@@ -954,9 +955,9 @@ function renderTable(filter = "") {
             const status = item['Status'] || 'active';
             const statusMap = { 'active': '在職', 'resigning': '退職手続中', 'retired': '退職' };
             const empType = item['EmploymentType'] || '';
-            const empTypeLabel = empType === 'Full-time' ? '正社員' : (empType === 'Part-time' ? 'アルバイト' : '未設定');
-            const empTypeColorBg = empType === 'Full-time' ? '#dcfce7' : (empType === 'Part-time' ? '#e0f2fe' : '#f1f5f9');
-            const empTypeColorText = empType === 'Full-time' ? '#166534' : (empType === 'Part-time' ? '#0369a1' : '#64748b');
+            const empTypeLabel = empType === 'Full-time' ? '正社員' : (empType === 'Part-time' ? 'アルバイト' : (empType === 'Executive' ? '役員' : '未設定'));
+            const empTypeColorBg = empType === 'Full-time' ? '#dcfce7' : (empType === 'Part-time' ? '#e0f2fe' : (empType === 'Executive' ? '#f3e8ff' : '#f1f5f9'));
+            const empTypeColorText = empType === 'Full-time' ? '#166534' : (empType === 'Part-time' ? '#0369a1' : (empType === 'Executive' ? '#7e22ce' : '#64748b'));
 
             const tr = document.createElement('tr');
             tr.style.borderBottom = '1px solid #e2e8f0';

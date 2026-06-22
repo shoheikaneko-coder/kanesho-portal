@@ -197,6 +197,7 @@ export const evaluationPageHtml = `
                         <div class="input-group" style="flex: 1; margin: 0;">
                             <div style="font-weight: 700; color: #475569; font-size: 0.85rem; margin-bottom: 0.4rem; display: block;">対象の雇用形態</div>
                             <select id="select-period-employment" required style="width: 100%; background: white; font-weight: 600; font-size: 1.05rem; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box;" onchange="window.renderEvalUserList()">
+                                <option value="Executive">役員</option>
                                 <option value="Full-time" selected>正社員</option>
                                 <option value="Part-time">アルバイト</option>
                             </select>
