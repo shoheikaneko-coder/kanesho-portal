@@ -51,11 +51,11 @@ export const gradesPageHtml = `
                 <table class="grades-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.78rem; table-layout: fixed;">
                     <thead>
                         <tr style="background: #1e3a8a; border-bottom: 2px solid #0f172a; color: white;">
+                            <th style="width: 75px; position: sticky; left: 0; z-index: 10; background: #1e3a8a; box-shadow: 2px 0 5px rgba(0,0,0,0.15); border-right: 2px solid #94a3b8;">等級</th>
                             <th class="col-edit-action" style="width: 45px;">操作</th>
                             <th class="col-edit-action" style="width: 60px;">並び順</th>
                             <th style="width: 105px;">スキルレベル</th>
                             <th style="width: 95px;">役職</th>
-                            <th style="width: 75px;">等級</th>
                             <th style="width: 82px;">基本給</th>
                             <th style="width: 78px;">役職<br>手当</th>
                             <th style="width: 52px;">総労働<br>時間</th>
@@ -187,6 +187,17 @@ export const gradesPageHtml = `
         }
         .grades-table tr:hover {
             background: rgba(248, 250, 252, 0.6);
+        }
+        .sticky-col {
+            position: sticky;
+            left: 0;
+            z-index: 5;
+            background: #ffffff;
+            border-right: 2px solid #e2e8f0 !important;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+        }
+        .grades-table tr:hover .sticky-col {
+            background: #f8fafc;
         }
         .grades-btn-sort {
             padding: 0.15rem 0.3rem;
@@ -445,6 +456,10 @@ function renderGradesTable() {
         recalculateReadOnlys(index, false);
 
         tr.innerHTML = `
+            <!-- 等級コード -->
+            <td class="sticky-col">
+                <input type="text" class="input-grade-code" value="${grade.grade_code || ''}" onchange="window.handleGradeChange(${index}, 'grade_code', this.value)">
+            </td>
             <!-- 操作 (削除) [整理モード時のみ出現] -->
             <td class="col-edit-action" style="text-align: center;">
                 <button class="btn" onclick="window.deleteGradeRow(${index})" style="background: transparent; color: var(--danger); padding: 0.2rem; border: none; cursor: pointer;" title="この行を削除">
@@ -465,10 +480,6 @@ function renderGradesTable() {
             <!-- 役職 -->
             <td>
                 <input type="text" class="input-job-title" value="${grade.job_title || ''}" onchange="window.handleGradeChange(${index}, 'job_title', this.value)">
-            </td>
-            <!-- 等級コード -->
-            <td>
-                <input type="text" class="input-grade-code" value="${grade.grade_code || ''}" onchange="window.handleGradeChange(${index}, 'grade_code', this.value)">
             </td>
             <!-- 基本給 -->
             <td>
