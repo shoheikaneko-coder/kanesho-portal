@@ -15,6 +15,7 @@ let activeEditTemplateId = ''; // 編集中のテンプレートID
 let activeEditItems = [];      // 編集中の項目リスト
 let allStaffUsersForAdmin = []; // 管理者タブの評価対象者選択用
 let globalStoreMapForEval = {}; // 店舗ID -> 店舗名のマッピング
+let globalJobTitles = [];       // マスタからロードした一意な役職（job_title）リスト
 
 export const evaluationPageHtml = `
     <style>
@@ -296,6 +297,15 @@ export const evaluationPageHtml = `
                                 <span id="editor-current-template-name" style="font-weight: 800; font-size: 1.05rem; color: #1e293b;"></span>
                                 <span id="editor-current-template-id" style="font-size: 0.75rem; color: #94a3b8; font-family: monospace; margin-left: 0.5rem;"></span>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- 対象役職の選択エリア -->
+                    <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1rem;">
+                        <div style="font-weight: 800; font-size: 0.9rem; color: #1e293b; margin-bottom: 0.5rem;"><i class="fas fa-users" style="color: #6366f1; margin-right: 0.4rem;"></i>このシートを適用する役職</div>
+                        <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 0.8rem;">チェックを入れた役職のスタッフに対して、次回の評価期開始時からこのシートが自動的に割り当てられます。（運用中の場合）</div>
+                        <div id="editor-target-job-titles" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                            <!-- ここにチェックボックスが動的に生成されます -->
                         </div>
                     </div>
 
@@ -659,7 +669,21 @@ export async function initEvaluationPage() {
 
                     for (const u of activeUsers) {
                         const gradeConfig = gradeMap[u.GradeCode] || {};
-                        const templateId = gradeConfig.evaluation_template_id || 'general';
+                        const userJobTitle = gradeConfig.job_title;
+                        
+                        let templateId = 'general'; // フォールバック
+                        if (userJobTitle && Object.keys(editTemplates).length > 0) {
+                            const templates = Object.values(editTemplates);
+                            const matchedTemplate = templates.find(t => 
+                                t.status !== 'archived' && 
+                                Array.isArray(t.target_job_titles) && 
+                                t.target_job_titles.includes(userJobTitle)
+                            );
+                            if (matchedTemplate) {
+                                templateId = matchedTemplate.id;
+                            }
+                        }
+
                         const evalItems = await getSnapshotItemsForTemplate(templateId, u.id);
 
                         const yoyPeriod = getYoYPeriod(periodName);
@@ -773,6 +797,17 @@ async function loadInitialSettingsAndData() {
             globalStoreMapForEval[d.id] = data.store_name || data.店舗名 || d.id;
         });
     } catch(e) { console.error("Failed to load stores for eval:", e); }
+
+    // 等級マスタから役職（job_title）のロード
+    try {
+        const gradesSnap = await getDocs(collection(db, "m_grades"));
+        const jobTitlesSet = new Set();
+        gradesSnap.forEach(d => {
+            const jt = d.data().job_title;
+            if (jt) jobTitlesSet.add(jt);
+        });
+        globalJobTitles = Array.from(jobTitlesSet).sort();
+    } catch(e) { console.error("Failed to load job titles for eval:", e); }
 
     // 1. シードデータの確認・投入
     await verifyAndSeedTemplates();
@@ -2471,8 +2506,71 @@ function loadActiveEditTemplate() {
     activeEditItems = JSON.parse(JSON.stringify(template.items || []));
     activeEditItems.sort((a, b) => (a.display_order || 999) - (b.display_order || 999));
     
+    renderTargetJobTitles();
     renderTemplateItems();
 }
+
+function renderTargetJobTitles() {
+    const container = document.getElementById('editor-target-job-titles');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    const template = editTemplates[activeEditTemplateId];
+    if (!template) return;
+    
+    const targets = template.target_job_titles || [];
+    
+    if (globalJobTitles.length === 0) {
+        container.innerHTML = '<span style="color:#94a3b8; font-size:0.75rem;">役職データが見つかりません</span>';
+        return;
+    }
+    
+    globalJobTitles.forEach(jt => {
+        const isChecked = targets.includes(jt);
+        const label = document.createElement('label');
+        label.style.display = 'flex';
+        label.style.alignItems = 'center';
+        label.style.gap = '0.3rem';
+        label.style.cursor = 'pointer';
+        label.style.fontSize = '0.8rem';
+        label.style.fontWeight = '600';
+        label.style.color = isChecked ? '#1e293b' : '#64748b';
+        label.style.background = isChecked ? '#e0e7ff' : '#f1f5f9';
+        label.style.padding = '0.4rem 0.8rem';
+        label.style.borderRadius = '20px';
+        label.style.transition = 'all 0.2s';
+        label.style.border = isChecked ? '1px solid #c7d2fe' : '1px solid transparent';
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = isChecked;
+        checkbox.style.cursor = 'pointer';
+        checkbox.onchange = () => {
+            window.toggleTargetJobTitle(jt, checkbox.checked);
+        };
+        
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(jt));
+        container.appendChild(label);
+    });
+}
+
+window.toggleTargetJobTitle = (jobTitle, isChecked) => {
+    const template = editTemplates[activeEditTemplateId];
+    if (!template) return;
+    
+    if (!template.target_job_titles) template.target_job_titles = [];
+    
+    if (isChecked) {
+        if (!template.target_job_titles.includes(jobTitle)) {
+            template.target_job_titles.push(jobTitle);
+        }
+    } else {
+        template.target_job_titles = template.target_job_titles.filter(jt => jt !== jobTitle);
+    }
+    renderTargetJobTitles();
+};
 
 function renderTemplateItems() {
     const tbody = document.getElementById('template-items-tbody');
@@ -2802,9 +2900,11 @@ window.saveActiveTemplate = async () => {
     try {
         const docRef = doc(db, "m_evaluation_templates", activeEditTemplateId);
         const templateName = editTemplates[activeEditTemplateId]?.template_name || activeEditTemplateId;
+        const targetJobTitles = editTemplates[activeEditTemplateId]?.target_job_titles || [];
         
         await setDoc(docRef, {
             template_name: templateName,
+            target_job_titles: targetJobTitles,
             items: activeEditItems.map((item, idx) => {
                 let fallbackId = '';
                 if (!item.item_id) {
@@ -2819,7 +2919,7 @@ window.saveActiveTemplate = async () => {
                     display_order: parseInt(item.display_order) || (idx + 1)
                 };
             })
-        });
+        }, { merge: true }); // Use merge to preserve status
         
         editTemplates[activeEditTemplateId].items = JSON.parse(JSON.stringify(activeEditItems));
         showAlert("保存成功", `評価項目マスタ「${templateName}」を保存しました！`);

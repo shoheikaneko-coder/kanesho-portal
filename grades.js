@@ -111,7 +111,6 @@ export const gradesPageHtml = `
                                 </div>
                             </th>
                             <th style="width: 55px;">賞与<br>回数</th>
-                            <th style="width: 100px;">評価シート</th>
                             <th style="width: 70px;">査定最低点</th>
                             <th style="width: 70px;">査定最高点</th>
                         </tr>
@@ -541,18 +540,6 @@ function renderGradesTable() {
             <!-- 賞与回数 -->
             <td>
                 <input type="number" class="input-bonus-count" value="${grade.bonus_count || 0}" min="0" step="1" onchange="window.handleGradeChange(${index}, 'bonus_count', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
-            </td>
-            <!-- 評価シート -->
-            <td>
-                <select class="select-evaluation-template" onchange="window.handleGradeChange(${index}, 'evaluation_template_id', this.value)" style="font-size: 0.68rem; padding: 0.2rem 0.25rem; width: 100%; box-sizing: border-box;">
-                    <option value="">未設定</option>
-                    ${localTemplates.map(t => {
-                        const isArchived = t.status === 'archived';
-                        const isSelected = grade.evaluation_template_id === t.id;
-                        if (isArchived && !isSelected) return '';
-                        return `<option value="${t.id}" ${isSelected ? 'selected' : ''}>${isArchived ? '（運用終了）' : ''}${t.name}</option>`;
-                    }).join('')}
-                </select>
             </td>
             <!-- 査定最低点 -->
             <td>
