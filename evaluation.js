@@ -775,7 +775,7 @@ async function loadInitialSettingsAndData() {
     let user = window.appState.currentUser;
     if (!user) {
         // SPAリロード時の認証遅延対策
-        for (let i = 0; i < 30; i++) {
+        for (let i = 0; i < 100; i++) {
             await new Promise(resolve => setTimeout(resolve, 100));
             if (window.appState.currentUser) {
                 user = window.appState.currentUser;
@@ -784,6 +784,23 @@ async function loadInitialSettingsAndData() {
         }
         if (!user) {
             console.warn("User auth not found after waiting. Halting evaluation init.");
+            const container = document.getElementById('eval-main-content');
+            if (container) {
+                container.innerHTML = `
+                    <div class="glass-panel" style="padding: 4rem; text-align: center; color: var(--danger);">
+                        <i class="fas fa-exclamation-triangle fa-3x" style="color: #ef4444; margin-bottom: 1.5rem;"></i>
+                        <h3 style="margin: 0; color: #1e293b;">認証タイムアウト</h3>
+                        <p style="margin-top: 0.5rem; font-size: 0.9rem; color: #64748b;">ログイン情報の取得に時間がかかっています。<br>ネットワーク環境をご確認のうえ、ページを再読み込みしてください。</p>
+                        <button class="btn" onclick="location.reload()" style="margin-top: 1.5rem; background: #3b82f6; color: white; border: none; padding: 0.6rem 1.5rem; border-radius: 8px; font-weight: 700; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">再読み込み</button>
+                    </div>
+                `;
+                
+                // バナーなども非表示にする
+                const banner = document.getElementById('eval-period-banner');
+                if (banner) banner.style.display = 'none';
+                const tabs = document.querySelector('.tabs-container');
+                if (tabs) tabs.style.display = 'none';
+            }
             return;
         }
     }
