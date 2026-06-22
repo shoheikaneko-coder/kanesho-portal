@@ -2669,6 +2669,12 @@ function checkUnsavedChanges() {
 
 async function closeTemplateEditorModal() {
     const closeAction = () => {
+        const editorView = document.getElementById('template-view-editor');
+        if (editorView && editorView.style.display !== 'none') {
+            window.backToTemplateList();
+            return;
+        }
+
         document.getElementById('template-editor-container').style.display = 'none';
         document.getElementById('eval-main-content').style.display = 'block';
         document.getElementById('eval-period-banner').style.display = 'flex';
