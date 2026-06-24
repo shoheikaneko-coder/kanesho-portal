@@ -191,6 +191,9 @@ export const evaluationPageHtml = `
             <button class="tab-btn active" id="tab-self" style="padding: 0.75rem 1.5rem; font-weight: 800; border: none; background: transparent; border-bottom: 3px solid transparent; cursor: pointer; color: var(--text-secondary); transition: all 0.2s; position: relative;">
                 自己評価
             </button>
+            <button class="tab-btn" id="tab-history" style="padding: 0.75rem 1.5rem; font-weight: 800; border: none; background: transparent; border-bottom: 3px solid transparent; cursor: pointer; color: var(--text-secondary); transition: all 0.2s; position: relative;">
+                過去の履歴
+            </button>
             <button class="tab-btn" id="tab-subordinates" style="display: none; padding: 0.75rem 1.5rem; font-weight: 800; border: none; background: transparent; border-bottom: 3px solid transparent; cursor: pointer; color: var(--text-secondary); transition: all 0.2s; position: relative;">
                 部下の評価 <span class="count-badge" id="subordinates-badge" style="display:none; font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 10px; background: #ec4899; color: white;">0</span>
             </button>
@@ -589,7 +592,7 @@ export const evaluationPageHtml = `
     </div>
 
     <!-- 評価履歴一覧モーダル -->
-    <div id="eval-history-modal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); z-index: 3000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 1rem; box-sizing: border-box;">
+    <div id="eval-history-modal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); z-index: 25000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 1rem; box-sizing: border-box;">
         <div class="glass-panel" style="background: white; width: 100%; max-width: 800px; max-height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
             <div style="padding: 1.2rem 1.8rem; border-bottom: 1px solid var(--border); background: #f8fafc; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
                 <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-history" style="color: #64748b;"></i>過去の評価履歴</h3>
@@ -602,7 +605,7 @@ export const evaluationPageHtml = `
     </div>
 
     <!-- 評価履歴詳細モーダル -->
-    <div id="eval-history-detail-modal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); z-index: 3100; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 1rem; box-sizing: border-box;">
+    <div id="eval-history-detail-modal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); z-index: 25100; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 1rem; box-sizing: border-box;">
         <div class="glass-panel" style="background: white; width: 100%; max-width: 900px; max-height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
             <div style="padding: 1.2rem 1.8rem; border-bottom: 1px solid var(--border); background: #f8fafc; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
                 <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 0.5rem;" id="history-detail-title">履歴詳細</h3>
@@ -962,7 +965,7 @@ export async function initEvaluationPage() {
 }
 
 function setupTabs() {
-    const tabs = ['self', 'subordinates', 'interview', 'president', 'admin'];
+    const tabs = ['self', 'history', 'subordinates', 'interview', 'president', 'admin'];
     tabs.forEach(tabId => {
         const btn = document.getElementById(`tab-${tabId}`);
         if (btn) {
@@ -1332,7 +1335,7 @@ function renderActiveTabContent() {
     const container = document.getElementById('eval-main-content');
     if (!container) return;
 
-    if (!localPeriodSettings && activeTab !== 'admin') {
+    if (!localPeriodSettings && activeTab !== 'admin' && activeTab !== 'history') {
         container.innerHTML = `
             <div class="glass-panel" style="padding: 4rem; text-align: center; color: var(--text-secondary);">
                 <i class="fas fa-hourglass-start fa-3x" style="color: #cbd5e1; margin-bottom: 1.5rem;"></i>
@@ -1346,6 +1349,9 @@ function renderActiveTabContent() {
     switch (activeTab) {
         case 'self':
             renderSelfTab(container);
+            break;
+        case 'history':
+            renderHistoryTab(container);
             break;
         case 'subordinates':
             renderSubordinatesTab(container);
@@ -1413,6 +1419,86 @@ function renderSelfTab(container) {
 
     const inlineContainer = document.getElementById('self-eval-inline-container');
     renderEvalDetailInline(inlineContainer, myEvaluation, 'self');
+}
+
+// ==========================================
+// 1.5. 過去の履歴タブ (本人の履歴閲覧ビュー)
+// ==========================================
+async function renderHistoryTab(container) {
+    const user = window.appState.currentUser;
+    if (!user) {
+        container.innerHTML = '<div style="text-align:center; padding:3rem; color:var(--text-secondary);">ユーザー情報が取得できません。</div>';
+        return;
+    }
+
+    container.innerHTML = '<div style="text-align:center; padding:4rem;"><i class="fas fa-spinner fa-spin fa-3x" style="color:#cbd5e1;"></i><div style="margin-top:1.5rem; color:var(--text-secondary); font-size:1rem; font-weight:800;">過去の履歴を読み込んでいます...</div></div>';
+
+    try {
+        const q = query(collection(db, "t_evaluations"), where("user_id", "==", user.id));
+        const snap = await getDocs(q);
+
+        let histories = [];
+        snap.forEach(d => {
+            const data = d.data();
+            if (data.status === 'approved' || data.status === 'notified' || data.is_legacy_archive) {
+                histories.push({ id: d.id, ...data });
+                window.cachedHistories[d.id] = { id: d.id, ...data };
+            }
+        });
+
+        histories.sort((a, b) => b.period.localeCompare(a.period));
+
+        if (histories.length === 0) {
+            container.innerHTML = `
+                <div class="glass-panel" style="padding: 4rem; text-align: center; color: var(--text-secondary);">
+                    <i class="fas fa-history fa-3x" style="color: #cbd5e1; margin-bottom: 1.5rem;"></i>
+                    <h3 style="margin: 0; color: #1e293b;">過去の評価履歴はありません</h3>
+                    <p style="margin-top: 0.5rem; font-size: 0.9rem;">確定済みの評価データが存在しません。</p>
+                </div>
+            `;
+            return;
+        }
+
+        let html = `
+            <div class="glass-panel" style="padding: 1.5rem; background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);">
+                <h3 style="margin: 0 0 1.5rem; display: flex; align-items: center; gap: 0.5rem; color: #1e293b;"><i class="fas fa-history" style="color: var(--primary);"></i> ${user.Name} さんの過去の評価履歴</h3>
+                <div style="overflow-x:auto;">
+                    <table class="eval-table">
+                        <thead>
+                            <tr>
+                                <th style="text-align:left;">対象期</th>
+                                <th style="text-align:left;">データ種別</th>
+                                <th style="text-align:center;">確定点数</th>
+                                <th style="text-align:center;">等級判定</th>
+                                <th style="text-align:right;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `;
+
+        histories.forEach(h => {
+            const isLegacy = h.is_legacy_archive ? '<span style="font-size:0.75rem; background:#cbd5e1; color:white; padding:0.2rem 0.6rem; border-radius:4px; font-weight:800;"><i class="fas fa-archive"></i> 手入力アーカイブ</span>' : '<span style="font-size:0.75rem; background:#3b82f6; color:white; padding:0.2rem 0.6rem; border-radius:4px; font-weight:800;"><i class="fas fa-laptop"></i> システム判定</span>';
+            const score = h.final_total_score || h.manager_total_score || h.self_total_score || '-';
+
+            html += `
+                <tr style="background:white; border-bottom:1px solid #e2e8f0; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+                    <td style="font-weight:900; color:#1e293b; padding:1.2rem;">${h.period}期</td>
+                    <td style="padding:1.2rem;">${isLegacy}</td>
+                    <td style="text-align:center; font-weight:900; color:#be123c; font-size:1.2rem; padding:1.2rem;">${score}</td>
+                    <td style="text-align:center; font-family:monospace; font-weight:900; color:#059669; font-size:1.2rem; padding:1.2rem;">${h.new_grade || '-'}</td>
+                    <td style="text-align:right; padding:1.2rem;">
+                        <button class="btn btn-secondary" onclick="window.viewHistoryDetail('${h.id}'); document.getElementById('eval-history-detail-modal').style.display='flex';" style="font-size:0.85rem; padding:0.6rem 1.2rem; background:white; border-color:#cbd5e1; font-weight:800; color:var(--primary); transition: all 0.2s;" onmouseover="this.style.borderColor='var(--primary)'; this.style.backgroundColor='#eff6ff'" onmouseout="this.style.borderColor='#cbd5e1'; this.style.backgroundColor='white'"><i class="fas fa-file-alt"></i> 詳細を見る</button>
+                    </td>
+                </tr>
+            `;
+        });
+        html += `</tbody></table></div></div>`;
+        container.innerHTML = html;
+
+    } catch(e) {
+        console.error("Failed to load history tab:", e);
+        container.innerHTML = '<div style="color:#ef4444; text-align:center; padding:3rem; font-weight:800; background:#fef2f2; border-radius:12px;"><i class="fas fa-exclamation-triangle fa-2x" style="margin-bottom:1rem;"></i><br>読み込みエラーが発生しました。<br>通信環境を確認して再度お試しください。</div>';
+    }
 }
 
 // ==========================================
@@ -2345,7 +2431,10 @@ async function renderEvalDetailInline(container, evalData, mode) {
                         ステータス: <span style="color:#2563eb; font-weight:800;">${statusJp}</span> | 被評価者の現等級: ${selectedEvalDetail.current_grade || '-'} | 前年同期の等級: ${selectedEvalDetail.yoy_grade || '-'}
                     </p>
                 </div>
-                ${mode !== 'self' ? `<button class="btn" onclick="window.backToSubordinateList()" style="background:#f1f5f9; color:#475569; border:none; padding:0.5rem 1rem; border-radius:6px; font-weight:700;"><i class="fas fa-arrow-left"></i> 一覧へ戻る</button>` : ''}
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-secondary" onclick="window.openEvaluationHistory('${userId}', '${selectedEvalDetail.user_name || '一般'}')" style="background:#fff; color:#475569; border:1px solid #cbd5e1; padding:0.5rem 1rem; border-radius:6px; font-weight:700;"><i class="fas fa-history"></i> 過去の履歴を見る</button>
+                    ${mode !== 'self' ? `<button class="btn" onclick="window.backToSubordinateList()" style="background:#f1f5f9; color:#475569; border:none; padding:0.5rem 1rem; border-radius:6px; font-weight:700;"><i class="fas fa-arrow-left"></i> 一覧へ戻る</button>` : ''}
+                </div>
             </div>
             ${stepperHtml}
         </div>
@@ -4309,7 +4398,7 @@ window.openEvaluationHistory = async (userId, userName) => {
         histories.sort((a, b) => b.period.localeCompare(a.period));
         
         if (histories.length === 0) {
-            content.innerHTML = '<div style="text-align:center; padding:3rem; color:var(--text-secondary); font-weight:700;">過去の確定済み評価履歴はありません。</div>';
+            content.innerHTML = '<div style="text-align:center; padding:3rem; color:var(--text-secondary); font-weight:700;"><i class="fas fa-info-circle fa-2x" style="margin-bottom: 1rem; color: #cbd5e1;"></i><br>確定済みの評価履歴がありません。<br><span style="font-size: 0.8rem; font-weight: 500;">※現在進行中、または途中で保存されただけの評価データはここには表示されません。</span></div>';
             return;
         }
         
