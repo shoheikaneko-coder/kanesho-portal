@@ -22,9 +22,10 @@ export const evaluationPageHtml = `
         .eval-score-cell { position: relative; }
         .eval-tooltip {
             display: none; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
-            background: rgba(30, 41, 59, 0.95); color: white; padding: 0.6rem 0.8rem; border-radius: 6px;
-            font-size: 0.72rem; line-height: 1.4; width: 260px; z-index: 1000; pointer-events: none;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 8px; text-align: left;
+            background: rgba(30, 41, 59, 0.95); color: white; padding: 0.8rem 1rem; border-radius: 8px;
+            font-size: 0.75rem; line-height: 1.5; min-width: 260px; max-width: 400px; width: max-content; z-index: 1000; pointer-events: none;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2); margin-bottom: 8px; text-align: left;
+            white-space: pre-wrap; word-break: break-word;
         }
         .eval-tooltip::after {
             content: ''; position: absolute; top: 100%; left: 50%; margin-left: -6px;
@@ -36,6 +37,108 @@ export const evaluationPageHtml = `
         @keyframes fadeInTooltip {
             from { opacity: 0; transform: translate(-50%, 5px); }
             to { opacity: 1; transform: translate(-50%, 0); }
+        }
+        .eval-score-cell.comment-tooltip .eval-tooltip {
+            left: auto;
+            right: -30px;
+            transform: translateY(5px);
+        }
+        .eval-score-cell.comment-tooltip:hover .eval-tooltip {
+            animation: fadeInTooltipRight 0.15s ease-out forwards;
+        }
+        @keyframes fadeInTooltipRight {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .eval-score-cell.comment-tooltip .eval-tooltip::after {
+            left: auto;
+            right: 34px;
+            margin-left: 0;
+        }
+        
+        /* 下方向に開くツールチップ（上部の行用） */
+        .eval-score-cell.tooltip-down .eval-tooltip {
+            top: 100%;
+            bottom: auto;
+            margin-top: 8px;
+            margin-bottom: 0;
+            transform: translate(-50%, -5px);
+        }
+        .eval-score-cell.tooltip-down .eval-tooltip::after {
+            top: -6px;
+            bottom: auto;
+            border-width: 0 6px 6px 6px;
+            border-color: transparent transparent rgba(30, 41, 59, 0.95) transparent;
+        }
+        .eval-score-cell:hover.tooltip-down .eval-tooltip {
+            animation: fadeInTooltipDown 0.15s ease-out forwards;
+        }
+        @keyframes fadeInTooltipDown {
+            from { opacity: 0; transform: translate(-50%, -5px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
+        }
+
+        /* comment-tooltip と tooltip-down の複合 */
+        .eval-score-cell.comment-tooltip.tooltip-down .eval-tooltip {
+            top: 100%;
+            bottom: auto;
+            margin-top: 8px;
+            margin-bottom: 0;
+            transform: translateY(-5px);
+        }
+        .eval-score-cell.comment-tooltip.tooltip-down .eval-tooltip::after {
+            top: -6px;
+            bottom: auto;
+            border-width: 0 6px 6px 6px;
+            border-color: transparent transparent rgba(30, 41, 59, 0.95) transparent;
+        }
+        .eval-score-cell.comment-tooltip.tooltip-down:hover .eval-tooltip {
+            animation: fadeInTooltipRightDown 0.15s ease-out forwards;
+        }
+        @keyframes fadeInTooltipRightDown {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .tab-ping-indicator {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 8px;
+            height: 8px;
+            background-color: #ef4444;
+            border-radius: 50%;
+            z-index: 10;
+        }
+        .tab-ping-indicator::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border-radius: 50%;
+            background-color: #ef4444;
+            animation: ping-anim 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+        @keyframes ping-anim {
+            75%, 100% { transform: scale(2.5); opacity: 0; }
+        }
+        .tab-has-task {
+            color: #ef4444 !important;
+        }
+        /* PC向け広々テーブルデザイン */
+        .eval-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .eval-table thead th {
+            background-color: #10b981;
+            color: #ffffff;
+            font-weight: 800;
+            white-space: nowrap !important;
+            padding: 0.8rem 1rem;
+            border-bottom: none;
+        }
+        .eval-table tbody td {
+            white-space: nowrap !important;
+            vertical-align: middle;
         }
     </style>
     <div id="evaluation-page-container" class="animate-fade-in" style="padding: 1rem 1.5rem; max-width: 1200px; margin: 0 auto; box-sizing: border-box; font-family: inherit;">
@@ -59,59 +162,55 @@ export const evaluationPageHtml = `
         </div>
 
         <!-- 評価期インフォバナー -->
-        <div id="eval-period-banner" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
-            <div class="glass-panel" style="padding: 1.2rem; background: white; border: 1px solid var(--border); border-radius: 12px; display: flex; align-items: center; gap: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                <div style="width: 40px; height: 40px; border-radius: 50%; background: #f0fdf4; color: #16a34a; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;">
-                    <i class="fas fa-tasks"></i>
-                </div>
-                <div>
-                    <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700; margin-bottom: 0.2rem;">評価プロセス</div>
-                    <div id="banner-status-text" style="font-size: 1.05rem; font-weight: 800; color: #1e293b;">読込中...</div>
-                </div>
+        <div id="eval-period-banner" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+            <div class="glass-panel" style="padding: 1rem 1.5rem; background: white; border: 1px solid var(--border); border-radius: 8px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 700; white-space: nowrap;">進行状況</div>
+                <div id="banner-status-text" style="font-size: 1rem; font-weight: 800; color: #1e293b; white-space: nowrap;">読込中...</div>
             </div>
             
-            <div class="glass-panel" style="padding: 1.2rem; background: white; border: 1px solid var(--border); border-radius: 12px; display: flex; align-items: center; gap: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                <div style="width: 40px; height: 40px; border-radius: 50%; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;">
-                    <i class="fas fa-calendar-alt"></i>
-                </div>
-                <div>
-                    <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700; margin-bottom: 0.2rem;">現在の評価期</div>
-                    <div id="banner-period-title" style="font-size: 1.05rem; font-weight: 800; color: #1e293b;">読込中...</div>
-                </div>
+            <div class="glass-panel" style="padding: 1rem 1.5rem; background: white; border: 1px solid var(--border); border-radius: 8px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 700; white-space: nowrap;">現在の評価期</div>
+                <div id="banner-period-title" style="font-size: 1rem; font-weight: 800; color: #1e293b; white-space: nowrap;">読込中...</div>
             </div>
 
-            <div class="glass-panel" style="padding: 1.2rem; background: white; border: 1px solid var(--border); border-radius: 12px; display: flex; align-items: center; gap: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                <div style="width: 40px; height: 40px; border-radius: 50%; background: #fef2f2; color: #dc2626; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;">
-                    <i class="fas fa-tags"></i>
-                </div>
-                <div>
-                    <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700; margin-bottom: 0.2rem;">評価区分</div>
-                    <div id="banner-period-desc" style="font-size: 1.05rem; font-weight: 800; color: #1e293b;">読込中...</div>
-                </div>
+            <div class="glass-panel" style="padding: 1rem 1.5rem; background: white; border: 1px solid var(--border); border-radius: 8px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 700; white-space: nowrap;">評価区分</div>
+                <div id="banner-period-desc" style="font-size: 1rem; font-weight: 800; color: #1e293b; white-space: nowrap;">読込中...</div>
+            </div>
+
+            <div class="glass-panel" style="padding: 0.5rem 1.5rem; background: white; border: 1px solid var(--border); border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); gap: 0;">
+                <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 700; white-space: nowrap;">最終評価の締切日</div>
+                <div id="banner-deadline-text" style="font-size: 1rem; font-weight: 800; color: #1e293b; white-space: nowrap;">読込中...</div>
             </div>
         </div>
 
         <div class="tabs-container no-print" style="display: flex; border-bottom: 2px solid var(--border); margin-bottom: 1.5rem; gap: 0.5rem; flex-wrap: wrap;">
-            <button class="tab-btn" id="tab-admin" style="display: none; padding: 0.75rem 1.5rem; font-weight: 800; border: none; background: transparent; border-bottom: 3px solid transparent; cursor: pointer; color: var(--text-secondary); transition: all 0.2s;">
-                全体管理ダッシュボード
+            <button class="tab-btn" id="tab-admin" style="display: none; padding: 0.75rem 1.5rem; font-weight: 800; border: none; background: transparent; border-bottom: 3px solid transparent; cursor: pointer; color: var(--text-secondary); transition: all 0.2s; position: relative;">
+                全体管理
             </button>
-            <button class="tab-btn active" id="tab-self" style="padding: 0.75rem 1.5rem; font-weight: 800; border: none; background: transparent; border-bottom: 3px solid transparent; cursor: pointer; color: var(--text-secondary); transition: all 0.2s;">
-                ①自己評価を入力
+            <button class="tab-btn active" id="tab-self" style="padding: 0.75rem 1.5rem; font-weight: 800; border: none; background: transparent; border-bottom: 3px solid transparent; cursor: pointer; color: var(--text-secondary); transition: all 0.2s; position: relative;">
+                自己評価
             </button>
-            <button class="tab-btn" id="tab-subordinates" style="display: none; padding: 0.75rem 1.5rem; font-weight: 800; border: none; background: transparent; border-bottom: 3px solid transparent; cursor: pointer; color: var(--text-secondary); transition: all 0.2s;">
-                ②部下の評価を入力 <span class="count-badge" id="subordinates-badge" style="display:none; font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 10px; background: #ec4899; color: white;">0</span>
+            <button class="tab-btn" id="tab-subordinates" style="display: none; padding: 0.75rem 1.5rem; font-weight: 800; border: none; background: transparent; border-bottom: 3px solid transparent; cursor: pointer; color: var(--text-secondary); transition: all 0.2s; position: relative;">
+                部下の評価 <span class="count-badge" id="subordinates-badge" style="display:none; font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 10px; background: #ec4899; color: white;">0</span>
             </button>
-            <button class="tab-btn" id="tab-president" style="display: none; padding: 0.75rem 1.5rem; font-weight: 800; border: none; background: transparent; border-bottom: 3px solid transparent; cursor: pointer; color: var(--text-secondary); transition: all 0.2s;">
-                ③社長承認 <span class="count-badge" id="president-badge" style="display:none; font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 10px; background: #8b5cf6; color: white;">0</span>
+            <button class="tab-btn" id="tab-interview" style="display: none; padding: 0.75rem 1.5rem; font-weight: 800; border: none; background: transparent; border-bottom: 3px solid transparent; cursor: pointer; color: var(--text-secondary); transition: all 0.2s; position: relative;">
+                面談 <span class="count-badge" id="interview-badge" style="display:none; font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 10px; background: #059669; color: white;">0</span>
+            </button>
+            <button class="tab-btn" id="tab-president" style="display: none; padding: 0.75rem 1.5rem; font-weight: 800; border: none; background: transparent; border-bottom: 3px solid transparent; cursor: pointer; color: var(--text-secondary); transition: all 0.2s; position: relative;">
+                社長承認 <span class="count-badge" id="president-badge" style="display:none; font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 10px; background: #8b5cf6; color: white;">0</span>
             </button>
             
             <!-- 管理者用 特殊操作ボタン (右寄せ) -->
-            <div style="margin-left: auto; display: flex; gap: 0.5rem; align-items: center; padding-bottom: 0.5rem;" id="admin-management-buttons">
-                <button class="btn btn-secondary" id="btn-admin-edit-templates-tab" style="display: none; padding: 0.5rem 1rem; font-size: 0.8rem; font-weight: 700; border: 1px solid #cbd5e1; background: #f8fafc; color: #475569; border-radius: 6px; cursor: pointer;">
-                    <i class="fas fa-edit"></i> 評価項目マスタ編集
+            <div style="margin-left: auto; display: none; gap: 0.5rem; align-items: center; padding-bottom: 0.5rem;" id="admin-management-buttons">
+                <button class="btn btn-secondary" id="btn-admin-workflow-tab" title="評価ルート（ワークフロー）設定" style="display: none; padding: 0.5rem; width: 36px; height: 36px; align-items: center; justify-content: center; font-size: 1.1rem; border: 1px solid #cbd5e1; background: #f8fafc; color: #475569; border-radius: 6px; cursor: pointer;">
+                    <i class="fas fa-route"></i>
                 </button>
-                <button class="btn btn-secondary" id="btn-admin-cancel-period-tab" style="display: none; padding: 0.5rem 1rem; font-size: 0.8rem; font-weight: 700; border: 1px solid #fecdd3; background: #fff1f2; color: #be123c; border-radius: 6px; cursor: pointer;">
-                    <i class="fas fa-trash-alt"></i> 評価リセット
+                <button class="btn btn-secondary" id="btn-admin-edit-templates-tab" title="評価項目マスタ編集" style="display: none; padding: 0.5rem; width: 36px; height: 36px; align-items: center; justify-content: center; font-size: 1.1rem; border: 1px solid #cbd5e1; background: #f8fafc; color: #475569; border-radius: 6px; cursor: pointer;">
+                    <i class="fas fa-cog"></i>
+                </button>
+                <button class="btn btn-secondary" id="btn-admin-cancel-period-tab" title="評価リセット" style="display: none; padding: 0.5rem; width: 36px; height: 36px; align-items: center; justify-content: center; font-size: 1.1rem; border: 1px solid #fecdd3; background: #fff1f2; color: #be123c; border-radius: 6px; cursor: pointer;">
+                    <i class="fas fa-trash-alt"></i>
                 </button>
                 <button class="btn btn-primary" id="btn-admin-start-period-tab" style="display: none; padding: 0.5rem 1rem; font-size: 0.8rem; font-weight: 800; border: none; background: #10b981; color: white; border-radius: 6px; cursor: pointer; box-shadow: 0 2px 4px rgba(16,185,129,0.2);">
                     <i class="fas fa-play"></i> 評価を新規開始する
@@ -203,6 +302,10 @@ export const evaluationPageHtml = `
                                 <option value="Part-time">アルバイト</option>
                             </select>
                         </div>
+                        <div class="input-group" style="flex: 1; margin: 0;">
+                            <div style="font-weight: 700; color: #475569; font-size: 0.85rem; margin-bottom: 0.4rem; display: block;">評価の締切日</div>
+                            <input type="date" id="input-period-deadline" required style="width: 100%; background: white; font-weight: 600; font-size: 1.05rem; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box;">
+                        </div>
                     </div>
                     
                     <div style="margin: 0; display: flex; flex-direction: column; gap: 0.8rem;">
@@ -238,6 +341,34 @@ export const evaluationPageHtml = `
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 評価ルート（ワークフロー）設定画面 -->
+    <div id="workflow-editor-container" style="display: none; margin-bottom: 2rem;">
+        <div class="glass-panel animate-fade-in" style="background: white; border-radius: 16px; border: 1px solid var(--border); box-shadow: var(--shadow-xl); width: 100%; height: 80vh; display: flex; flex-direction: column; padding: 0; overflow: hidden;">
+            <!-- モーダルヘッダー -->
+            <div style="padding: 1.2rem 1.8rem; border-bottom: 1px solid var(--border); background: #f8fafc; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+                <div>
+                    <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-route" style="color: #3b82f6;"></i>評価ルート（ワークフロー）設定</h3>
+                    <p style="margin: 0.2rem 0 0 0; font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">各役職ごとの評価順序を設定します</p>
+                </div>
+                <button type="button" onclick="closeWorkflowEditor()" class="btn" style="background: white; border: 1px solid #cbd5e1; font-size: 0.9rem; font-weight: 700; cursor: pointer; color: #475569; border-radius: 8px; padding: 0.5rem 1rem;">
+                    <i class="fas fa-times"></i> 閉じる
+                </button>
+            </div>
+            <!-- モーダルボディ -->
+            <div style="flex: 1; overflow-y: auto; padding: 1.5rem; background: #f1f5f9;">
+                <div id="workflow-list-container" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <!-- JSでレンダリング -->
+                </div>
+            </div>
+            <!-- モーダルフッター -->
+            <div style="padding: 1rem 1.8rem; border-top: 1px solid var(--border); background: white; display: flex; justify-content: flex-end; gap: 1rem; flex-shrink: 0;">
+                <button type="button" class="btn btn-primary" onclick="saveWorkflowSettings()" style="font-weight: 800; padding: 0.6rem 2rem; font-size: 1rem; border-radius: 8px;">
+                    <i class="fas fa-save"></i> 設定を保存する
+                </button>
             </div>
         </div>
     </div>
@@ -341,6 +472,13 @@ export const evaluationPageHtml = `
                             <i class="fas fa-plus-circle"></i> 項目を追加する
                         </button>
                     </div>
+
+                    <!-- 特記事項・昇格条件入力エリア -->
+                    <div style="background: white; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1rem;">
+                        <div style="font-weight: 800; font-size: 0.95rem; color: #1e293b; margin-bottom: 0.5rem;"><i class="fas fa-exclamation-circle" style="color: #e11d48; margin-right: 0.4rem;"></i>特記事項・昇格条件</div>
+                        <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.8rem;">このシートの対象者が次の役職に昇格するための絶対条件や、評価における特記事項があれば入力してください。空欄の場合は評価画面に表示されません。</div>
+                        <textarea id="editor-special-note" rows="3" placeholder="例：食品衛生管理試験に合格し、衛生管理資格を持たないものは料理長以上への昇格は不可とする。" style="width: 100%; box-sizing: border-box; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; line-height: 1.5; resize: vertical;"></textarea>
+                    </div>
                 </div>
             </div>
 
@@ -429,6 +567,27 @@ export const evaluationPageHtml = `
                 <button class="btn btn-primary" id="btn-save-legacy" style="font-weight: 800; padding: 0.6rem 2rem; background: #10b981; border-color: #10b981; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.15);">アーカイブ保存する</button>
             </div>
         </div>
+    <!-- 評価詳細モーダル (部下評価・閲覧用) -->
+    <div id="eval-detail-modal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); z-index: 3000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 1rem; box-sizing: border-box;">
+        <div class="glass-panel animate-fade-in" style="background: white; width: 100%; max-width: 1000px; max-height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
+            <div style="padding: 1.2rem 1.8rem; border-bottom: 1px solid var(--border); background: #f8fafc; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+                <div>
+                    <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-file-signature" style="color: #6366f1;"></i>評価シート詳細</h3>
+                </div>
+                <button type="button" onclick="const m=document.getElementById('eval-detail-modal');if(m)m.style.display='none';" style="background: transparent; border: none; font-size: 1.4rem; cursor: pointer; color: #94a3b8; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div id="modal-eval-content" style="padding: 1.5rem 1.8rem; overflow-y: auto; flex-grow: 1; background: #f8fafc;">
+                <!-- ここに詳細テーブルが動的に挿入される -->
+            </div>
+
+            <!-- モーダルフッター -->
+            <div id="modal-eval-footer" style="padding: 1rem 1.8rem; border-top: 1px solid var(--border); background: white; display: flex; justify-content: flex-end; align-items: center; gap: 0.8rem; flex-shrink: 0;">
+                <!-- 保存・提出ボタン等がJSで挿入される -->
+            </div>
+        </div>
+    </div>
+
     <!-- 評価履歴一覧モーダル -->
     <div id="eval-history-modal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); z-index: 3000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 1rem; box-sizing: border-box;">
         <div class="glass-panel" style="background: white; width: 100%; max-width: 800px; max-height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
@@ -546,7 +705,8 @@ export async function initEvaluationPage() {
     const btnCloseModal = document.getElementById('btn-close-eval-modal');
     if (btnCloseModal) {
         btnCloseModal.onclick = () => {
-            document.getElementById('eval-detail-modal').style.display = 'none';
+            const modal = document.getElementById('eval-detail-modal');
+            if (modal) modal.style.display = 'none';
         };
     }
 
@@ -611,6 +771,22 @@ export async function initEvaluationPage() {
         btnAdminStart.onclick = window.openPeriodStartForm;
     }
 
+    // 評価項目マスタ編集ボタンのバインド
+    const btnEditTemplates = document.getElementById('btn-admin-edit-templates-tab');
+    if (btnEditTemplates) {
+        btnEditTemplates.onclick = () => {
+            openTemplateEditorModal();
+        };
+    }
+    
+    // 評価ルート（ワークフロー）設定ボタンのバインド
+    const btnWorkflowTab = document.getElementById('btn-admin-workflow-tab');
+    if (btnWorkflowTab) {
+        btnWorkflowTab.onclick = () => {
+            window.openWorkflowEditorModal();
+        };
+    }
+
     // 評価期開始イベント
     const formStart = document.getElementById('form-start-period');
     if (formStart) {
@@ -618,9 +794,13 @@ export async function initEvaluationPage() {
             e.preventDefault();
             const year = document.getElementById('input-period-year').value;
             const month = document.getElementById('input-period-month').value;
+            const deadline = document.getElementById('input-period-deadline').value;
             
             if (!year || !month) {
                 return showAlert('入力エラー', '評価開始の「年」と「月」を選択してください。');
+            }
+            if (!deadline) {
+                return showAlert('入力エラー', '評価の締切日を入力してください。');
             }
             
             const periodName = `${year}-${month}`;
@@ -657,6 +837,20 @@ export async function initEvaluationPage() {
                         }
                     });
 
+                    // ワークフロー設定の読み込み
+                    const routesSnap = await getDocs(collection(db, "m_evaluation_routes"));
+                    const routeMap = {};
+                    routesSnap.forEach(d => {
+                        routeMap[d.id] = d.data();
+                    });
+
+                    // 評価テンプレートの読み込み
+                    const templatesSnap = await getDocs(collection(db, "m_evaluation_templates"));
+                    editTemplates = {};
+                    templatesSnap.forEach(d => {
+                        editTemplates[d.id] = { id: d.id, ...d.data() };
+                    });
+
                     const batch = writeBatch(db);
                     
                     const settingsRef = doc(db, "settings", "evaluation");
@@ -664,14 +858,16 @@ export async function initEvaluationPage() {
                         active_period: periodName,
                         is_provisional: isProvisional,
                         status: 'open',
+                        deadline: deadline,
                         updated_at: new Date().toISOString()
                     });
 
                     for (const u of activeUsers) {
                         const gradeConfig = gradeMap[u.GradeCode] || {};
-                        const userJobTitle = gradeConfig.job_title;
+                        const userJobTitle = gradeConfig.job_title || u.JobTitle || '';
                         
                         let templateId = 'general'; // フォールバック
+                        let specialNote = '';
                         if (userJobTitle && Object.keys(editTemplates).length > 0) {
                             const templates = Object.values(editTemplates);
                             const matchedTemplate = templates.find(t => 
@@ -681,6 +877,7 @@ export async function initEvaluationPage() {
                             );
                             if (matchedTemplate) {
                                 templateId = matchedTemplate.id;
+                                specialNote = matchedTemplate.special_note || '';
                             }
                         }
 
@@ -698,6 +895,9 @@ export async function initEvaluationPage() {
                         const evalId = `${u.id}_${periodName}`;
                         const evalDocRef = doc(db, "t_evaluations", evalId);
                         
+                        const defaultWorkflow = { primary_evaluator: '', secondary_evaluator: '店長' };
+                        const workflowSettings = userJobTitle && routeMap[userJobTitle] ? routeMap[userJobTitle] : defaultWorkflow;
+                        
                         const evalRecord = {
                             user_id: u.id,
                             user_name: u.Name || '一般',
@@ -706,18 +906,24 @@ export async function initEvaluationPage() {
                             evaluator_id: '',
                             evaluator_name: '',
                             period: periodName,
-                            status: 'self_evaluating',
+                            status: 'evaluating',
+                            is_self_submitted: false,
+                            is_primary_submitted: false,
+                            is_manager_submitted: false,
                             is_provisional: isProvisional,
                             current_grade: u.GradeCode || '-',
                             yoy_grade: yoyGrade,
                             new_grade: '-',
                             self_total_score: 0,
+                            primary_total_score: 0,
                             manager_total_score: 0,
                             final_total_score: 0,
                             interview_date: '',
                             interview_notes: '',
                             president_comment: '',
                             items: evalItems,
+                            special_note: specialNote,
+                            workflow: workflowSettings,
                             created_at: new Date().toISOString(),
                             updated_at: new Date().toISOString()
                         };
@@ -756,7 +962,7 @@ export async function initEvaluationPage() {
 }
 
 function setupTabs() {
-    const tabs = ['self', 'subordinates', 'president', 'admin'];
+    const tabs = ['self', 'subordinates', 'interview', 'president', 'admin'];
     tabs.forEach(tabId => {
         const btn = document.getElementById(`tab-${tabId}`);
         if (btn) {
@@ -847,6 +1053,7 @@ async function loadInitialSettingsAndData() {
     // 3. 権限に基づくタブの表示制御
     const role = user.Role || 'Staff';
     const tabSubordinates = document.getElementById('tab-subordinates');
+    const tabInterview = document.getElementById('tab-interview');
     const tabPresident = document.getElementById('tab-president');
     const tabAdmin = document.getElementById('tab-admin');
 
@@ -865,10 +1072,17 @@ async function loadInitialSettingsAndData() {
 
         if (tabAdmin) tabAdmin.style.display = 'block';
         if (tabSubordinates) tabSubordinates.style.display = 'block';
+        if (tabInterview) tabInterview.style.display = 'block';
         if (tabPresident) tabPresident.style.display = 'block';
         
+        const adminManagementButtons = document.getElementById('admin-management-buttons');
+        if (adminManagementButtons) adminManagementButtons.style.display = 'flex';
+        
         const btnEditTemplatesTab = document.getElementById('btn-admin-edit-templates-tab');
-        if (btnEditTemplatesTab) btnEditTemplatesTab.style.display = 'block';
+        if (btnEditTemplatesTab) btnEditTemplatesTab.style.display = 'flex';
+        
+        const btnWorkflowTab = document.getElementById('btn-admin-workflow-tab');
+        if (btnWorkflowTab) btnWorkflowTab.style.display = 'flex';
         
         const isOpen = localPeriodSettings && localPeriodSettings.status === 'open';
         const btnCancelPeriodTab = document.getElementById('btn-admin-cancel-period-tab');
@@ -887,6 +1101,7 @@ async function loadInitialSettingsAndData() {
         document.getElementById('tab-admin')?.classList.add('active');
     } else if (role === 'Manager' || role === '店長') {
         if (tabSubordinates) tabSubordinates.style.display = 'block';
+        if (tabInterview) tabInterview.style.display = 'block';
         activeTab = 'subordinates'; // 店長は部下評価をデフォルトに
         document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
         document.getElementById('tab-subordinates')?.classList.add('active');
@@ -905,6 +1120,7 @@ function updatePeriodBanner() {
     const titleEl = document.getElementById('banner-period-title');
     const descEl = document.getElementById('banner-period-desc');
     const statusEl = document.getElementById('banner-status-text');
+    const deadlineEl = document.getElementById('banner-deadline-text');
     if (!titleEl || !descEl || !statusEl) return;
 
     const periodStr = localPeriodSettings.active_period || '未設定';
@@ -913,12 +1129,24 @@ function updatePeriodBanner() {
     
     titleEl.textContent = `${periodStr} 期`;
     descEl.textContent = typeStr;
+    if (deadlineEl) {
+        if (localPeriodSettings.deadline) {
+            const d = localPeriodSettings.deadline.split('-');
+            if (d.length === 3) {
+                deadlineEl.innerHTML = `<span style="color: #ef4444; font-size: 1.15rem;">${d[0]}年${d[1]}月${d[2]}日</span>`;
+            } else {
+                deadlineEl.innerHTML = `<span style="color: #ef4444; font-size: 1.15rem;">${localPeriodSettings.deadline}</span>`;
+            }
+        } else {
+            deadlineEl.textContent = '未設定';
+        }
+    }
     
     const isOpen = localPeriodSettings.status === 'open';
     if (isOpen) {
-        statusEl.innerHTML = `<span style="color: #16a34a;"><i class="fas fa-play-circle"></i> 進行中 (評価受付中)</span>`;
+        statusEl.innerHTML = `<span style="color: #16a34a;">進行中</span>`;
     } else {
-        statusEl.innerHTML = `<span style="color: #ef4444;"><i class="fas fa-lock"></i> 締め切り</span>`;
+        statusEl.innerHTML = `<span style="color: #ef4444;">締め切り</span>`;
     }
 }
 
@@ -926,11 +1154,15 @@ function updatePeriodBannerEmpty() {
     const titleEl = document.getElementById('banner-period-title');
     const descEl = document.getElementById('banner-period-desc');
     const statusEl = document.getElementById('banner-status-text');
+    const deadlineEl = document.getElementById('banner-deadline-text');
     if (!titleEl || !descEl || !statusEl) return;
 
     titleEl.textContent = `-`;
     descEl.textContent = `-`;
-    statusEl.innerHTML = `<span style="color: #94a3b8;"><i class="fas fa-pause-circle"></i> 未開始</span>`;
+    if (deadlineEl) {
+        deadlineEl.textContent = `-`;
+    }
+    statusEl.innerHTML = `<span style="color: #94a3b8;">未開始</span>`;
 }
 
 // データベースからの評価データ読み込み
@@ -978,8 +1210,20 @@ async function loadEvaluationData() {
                 if (u.Status === 'retired' || u.Status === '退職済') return false; // 退職者は除外
                 if (role === 'Admin' || role === '管理者') return true; // 管理者は全員
                 
-                // 店長の場合は同じ店舗のスタッフ・アルバイト
-                return u.StoreID === myStore && (u.Role === 'Staff' || u.Role === 'PartTimer' || u.Role === '一般社員' || u.Role === 'アルバイト');
+                // 店長の場合は同じ店舗のスタッフ・アルバイト・副店長を含める
+                if (u.StoreID !== myStore) return false;
+                const myJob = user.JobTitle || '';
+                const uJob = u.JobTitle || '';
+                
+                // 自分が店長でない場合、上位役職者は部下として表示しない
+                if (myJob !== '店長' && myJob !== '統括店長') {
+                    if (uJob === '店長' || uJob === '統括店長') return false;
+                }
+                if (myJob === '一般社員' || myJob === 'アルバイト' || myJob === '社員') {
+                    if (uJob === '店長' || uJob === '統括店長' || uJob === '副店長') return false;
+                }
+                
+                return true;
             });
 
             // バッジカウントの表示更新
@@ -991,20 +1235,80 @@ async function loadEvaluationData() {
 }
 
 function updateTabBadges() {
+    const user = window.appState.currentUser;
+    const role = user.Role || '';
+    const myJobTitle = user.JobTitle || '';
+
+    // タブのPingアニメーションと文字色ハイライトを制御するヘルパー関数
+    const updatePing = (tabId, hasPending) => {
+        const tab = document.getElementById(tabId);
+        if (!tab) return;
+        let ping = tab.querySelector('.tab-ping-indicator');
+        if (hasPending) {
+            if (!ping) {
+                ping = document.createElement('div');
+                ping.className = 'tab-ping-indicator';
+                tab.appendChild(ping);
+            }
+            tab.classList.add('tab-has-task');
+        } else {
+            if (ping) ping.remove();
+            tab.classList.remove('tab-has-task');
+        }
+    };
+
+    // 自己評価タブの通知状態
+    const selfPending = myEvaluation && ['evaluating', 'self_evaluating'].includes(myEvaluation.status) && !myEvaluation.is_self_submitted;
+    updatePing('tab-self', selfPending);
+
     // 部下評価の残り件数をバッジに表示 (自己評価提出済・店長評価中の件数)
     const subordinatesBadge = document.getElementById('subordinates-badge');
     if (subordinatesBadge) {
         const pendingCount = activeEvaluations.filter(e => {
-            // 被評価者が部下リストに含まれ、かつステータスが「自己評価提出済」「上長評価中」「面談待ち」のもの
             const isSub = subordinateUsers.some(u => u.id === e.user_id);
-            return isSub && ['self_submitted', 'manager_evaluating', 'interviewing'].includes(e.status);
+            if (!isSub) return false;
+            
+            if (!['evaluating', 'self_evaluating', 'self_submitted', 'primary_evaluating', 'primary_submitted', 'manager_evaluating'].includes(e.status)) return false;
+
+            // 管理者の場合は全員分を通知
+            if (role === 'Admin' || role === '管理者') return true;
+
+            const wf = e.workflow || {};
+            const isPrimary = wf.primary_evaluator === myJobTitle;
+            const isSecondary = wf.secondary_evaluator === myJobTitle || (!wf.secondary_evaluator && (role === 'Manager' || role === '店長'));
+            
+            let amISubmitted = false;
+            if (isPrimary) amISubmitted = e.is_primary_submitted;
+            else if (isSecondary) amISubmitted = e.is_manager_submitted;
+            
+            return !amISubmitted;
         }).length;
 
         if (pendingCount > 0) {
             subordinatesBadge.textContent = pendingCount;
             subordinatesBadge.style.display = 'inline-block';
+            updatePing('tab-subordinates', true);
         } else {
             subordinatesBadge.style.display = 'none';
+            updatePing('tab-subordinates', false);
+        }
+    }
+
+    // 面談待ちの残り件数をバッジに表示
+    const interviewBadge = document.getElementById('interview-badge');
+    if (interviewBadge) {
+        const pendingCount = activeEvaluations.filter(e => {
+            const isSub = subordinateUsers.some(u => u.id === e.user_id);
+            return isSub && e.status === 'interviewing';
+        }).length;
+
+        if (pendingCount > 0) {
+            interviewBadge.textContent = pendingCount;
+            interviewBadge.style.display = 'inline-block';
+            updatePing('tab-interview', true);
+        } else {
+            interviewBadge.style.display = 'none';
+            updatePing('tab-interview', false);
         }
     }
 
@@ -1015,8 +1319,10 @@ function updateTabBadges() {
         if (pendingCount > 0) {
             presidentBadge.textContent = pendingCount;
             presidentBadge.style.display = 'inline-block';
+            updatePing('tab-president', true);
         } else {
             presidentBadge.style.display = 'none';
+            updatePing('tab-president', false);
         }
     }
 }
@@ -1044,6 +1350,9 @@ function renderActiveTabContent() {
         case 'subordinates':
             renderSubordinatesTab(container);
             break;
+        case 'interview':
+            renderInterviewTab(container);
+            break;
         case 'president':
             renderPresidentTab(container);
             break;
@@ -1060,50 +1369,48 @@ function renderSelfTab(container) {
     if (!myEvaluation) {
         container.innerHTML = `
             <div class="glass-panel" style="padding: 4rem; text-align: center; color: var(--text-secondary);">
-                <i class="fas fa-user-slash fa-3x" style="color: #cbd5e1; margin-bottom: 1.5rem;"></i>
-                <h3 style="margin: 0; color: #1e293b;">あなたの今期の評価シートは作成されていません</h3>
-                <p style="margin-top: 0.5rem; font-size: 0.9rem;">等級が設定されていないか、評価対象外の可能性があります。管理者に確認してください。</p>
+                <i class="fas fa-file-alt fa-3x" style="color: #cbd5e1; margin-bottom: 1.5rem;"></i>
+                <h3 style="margin: 0; color: #1e293b;">現在、あなたの評価シートはありません</h3>
+                <p style="margin-top: 0.5rem; font-size: 0.9rem;">評価期間が開始されるとお知らせします。</p>
             </div>
         `;
         return;
     }
 
-    const statusLabels = {
-        'self_evaluating': '自己評価を入力してください。入力後、上長へ提出してください。',
-        'self_submitted': '自己評価は提出済みです。上長による評価・面談の設定をお待ちください。',
-        'manager_evaluating': '上長による評価入力中です。',
-        'interviewing': '面談待ちです。評価シートを見ながら上長と面談を行ってください。',
-        'president_pending': '社長確認待ちです。評価確定までお待ちください。',
-        'approved': '評価は確定しました。人事担当者による公開までお待ちください。',
-        'notified': '確定した評価結果とフィードバックがマイページにて確認できます！'
-    };
+    const e = myEvaluation;
+    const statusJp = getStatusJpName(e.status, e);
+    let alertHtml = '';
 
-    const displayStatus = getStatusJpName(myEvaluation.status);
-    const guideText = statusLabels[myEvaluation.status] || '';
+    if (['evaluating', 'self_evaluating', 'self_submitted', 'primary_evaluating', 'primary_submitted', 'manager_evaluating'].includes(e.status)) {
+        if (!e.is_self_submitted) {
+            alertHtml = `
+                <div style="background: #fef9c3; border-left: 4px solid #eab308; padding: 1rem; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
+                    <div><span style="color: #ca8a04; font-weight: 800; font-size: 0.9rem;">ステータス: 評価入力中</span> <span style="margin-left: 1rem; font-size: 0.85rem; color: #475569;">現在の等級: ${e.current_grade} | 前年同期の等級: ${e.yoy_grade}</span></div>
+                    <div style="font-size: 0.85rem; color: #1e293b;"><i class="fas fa-info-circle" style="color:#3b82f6;"></i> 自己評価を入力してください。入力後、下部のボタンから提出してください。</div>
+                </div>
+            `;
+        } else {
+            alertHtml = `
+                <div style="background: #f1f5f9; border-left: 4px solid #64748b; padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem;">
+                    <div style="color: #475569; font-weight: 800; font-size: 0.9rem; margin-bottom: 0.4rem;">ステータス: 自己評価提出済（他者待ち）</div>
+                    <div style="font-size: 0.85rem; color: #64748b;">自己評価は提出済みです。他者の評価完了・面談をお待ちください。</div>
+                </div>
+            `;
+        }
+    } else {
+        alertHtml = `
+            <div style="background: #f1f5f9; border-left: 4px solid #64748b; padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem;">
+                <div style="color: #475569; font-weight: 800; font-size: 0.9rem; margin-bottom: 0.4rem;">ステータス: ${statusJp}</div>
+                <div style="font-size: 0.85rem; color: #64748b;">現在のステータスです。評価結果の確定をお待ちください。</div>
+            </div>
+        `;
+    }
 
     container.innerHTML = `
-        <div class="glass-panel" style="padding: 1.5rem 2rem; background: white; border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); margin-bottom: 1.5rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 1rem; margin-bottom: 1.2rem; flex-wrap: wrap; gap: 1rem;">
-                <div>
-                    <span class="eval-status-badge status-${myEvaluation.status}" style="font-size: 0.85rem; padding: 0.35rem 1rem;">
-                        ステータス: ${displayStatus}
-                    </span>
-                    <span style="font-size: 0.85rem; color: #475569; font-weight: 700; margin-left: 1rem;">
-                        現在の等級: ${myEvaluation.current_grade || '-'} | 前年同期の等級: ${myEvaluation.yoy_grade || '-'}
-                    </span>
-                </div>
-                <div>
-                    <span style="font-size: 0.9rem; color: #475569; font-weight: 600;">
-                        <i class="fas fa-info-circle" style="color: #3b82f6; margin-right: 0.4rem;"></i>
-                        ${guideText}
-                    </span>
-                </div>
-            </div>
-        </div>
+        ${alertHtml}
         <div id="self-eval-inline-container"></div>
     `;
 
-    // インラインで直接描画
     const inlineContainer = document.getElementById('self-eval-inline-container');
     renderEvalDetailInline(inlineContainer, myEvaluation, 'self');
 }
@@ -1112,13 +1419,9 @@ function renderSelfTab(container) {
 // 2. 部下評価タブ (上長・店長ビュー)
 // ==========================================
 function renderSubordinatesTab(container) {
-    // 評価シートが作成されている（評価対象として選ばれた）スタッフのみを抽出し、
-    // 上長タスクが完了したもの（社長決裁待ち以降）はリストから除外する
     const targetUsers = subordinateUsers.filter(u => {
         const evalData = activeEvaluations.find(e => e.user_id === u.id);
         if (!evalData) return false;
-        
-        // 店長のタスクが完了しているステータス
         if (evalData.status === 'president_pending' || evalData.status === 'approved' || evalData.status === 'notified') {
             return false;
         }
@@ -1136,89 +1439,153 @@ function renderSubordinatesTab(container) {
         return;
     }
 
-    // 店長が作業すべき優先順位でソート
-    // 優先度高(1): 店長評価中 / 自己評価提出済
-    // 優先度中(2): 面談完了
-    // 優先度低(3): スタッフ入力待ち (自己評価中)
-    const getSortPriority = (status) => {
-        if (status === 'self_submitted' || status === 'manager_evaluating') return 1;
-        if (status === 'interviewing') return 2;
-        if (status === 'self_evaluating') return 3;
-        return 4;
-    };
+    const user = window.appState.currentUser;
+    const role = user.Role || '';
+    const myJobTitle = user.JobTitle || '';
 
-    targetUsers.sort((a, b) => {
-        const evalA = activeEvaluations.find(e => e.user_id === a.id);
-        const evalB = activeEvaluations.find(e => e.user_id === b.id);
-        const pA = evalA ? getSortPriority(evalA.status) : 4;
-        const pB = evalB ? getSortPriority(evalB.status) : 4;
-        return pA - pB;
-    });
+    const sectionA = []; // あなたの評価待ち
+    const sectionB = []; // 他者の入力待ち
+    const sectionC = []; // 面談可能
 
-    let rowsHTML = '';
     targetUsers.forEach(u => {
         const evalData = activeEvaluations.find(e => e.user_id === u.id);
-        const status = evalData ? evalData.status : 'not_started';
-        const statusJp = getStatusJpName(status);
-        const score = evalData ? (evalData.self_total_score || '-') : '-';
-        const mgrScore = evalData ? (evalData.manager_total_score || '-') : '-';
-        const resultGrade = evalData ? (evalData.new_grade || '-') : '-';
+        const wf = evalData.workflow || {};
+        const isPrimary = wf.primary_evaluator === myJobTitle;
+        const isSecondary = wf.secondary_evaluator === myJobTitle || (!wf.secondary_evaluator && (role === 'Manager' || role === '店長'));
 
-        let actionBtn = '';
-        if (status === 'self_evaluating') {
-            actionBtn = `<span style="font-size:0.78rem; color:#94a3b8; font-weight:600;"><i class="fas fa-clock"></i> スタッフ入力待ち</span>`;
-        } else if (status === 'self_submitted' || status === 'manager_evaluating') {
-            actionBtn = `<button class="btn btn-primary" onclick="window.showSubordinateDetail('${u.id}')" style="font-size:0.75rem; font-weight:800; background:#7c3aed; border-color:#7c3aed; padding: 0.4rem 0.8rem;">評価・コメント入力</button>`;
-        } else if (status === 'interviewing') {
-            actionBtn = `<button class="btn" onclick="window.showSubordinateDetail('${u.id}')" style="font-size:0.75rem; font-weight:800; background:#a21caf; border-color:#a21caf; color:white; padding: 0.4rem 0.8rem;">面談結果入力・社長提出</button>`;
-        } else {
-            actionBtn = `<button class="btn btn-secondary" onclick="window.showSubordinateDetail('${u.id}')" style="font-size:0.75rem; font-weight:700; padding: 0.4rem 0.8rem; border:1px solid #cbd5e1; background:white; color:var(--text-secondary);"><i class="fas fa-eye"></i> 閲覧</button>`;
+        if (['evaluating', 'self_evaluating', 'self_submitted', 'primary_evaluating', 'primary_submitted', 'manager_evaluating'].includes(evalData.status)) {
+            const isEvaluator = isPrimary || isSecondary;
+            if (isEvaluator || role === 'Admin') {
+                let amISubmitted = false;
+                if (isPrimary && isSecondary) {
+                    amISubmitted = evalData.is_primary_submitted && evalData.is_manager_submitted;
+                } else if (isPrimary) {
+                    amISubmitted = evalData.is_primary_submitted;
+                } else if (isSecondary) {
+                    amISubmitted = evalData.is_manager_submitted;
+                }
+                
+                if (!amISubmitted || role === 'Admin') {
+                    sectionA.push(u);
+                } else {
+                    sectionB.push(u);
+                }
+            } else {
+                // 自分が評価者ではない場合は「他者の入力待ち」セクション（閲覧用）に回す
+                sectionB.push(u);
+            }
+        } else if (evalData.status === 'interviewing') {
+            sectionC.push(u);
         }
-
-        actionBtn += `<button class="btn btn-secondary" onclick="window.openEvaluationHistory('${u.id}', '${u.Name}')" style="font-size:0.75rem; font-weight:700; padding: 0.4rem 0.6rem; border:1px solid #cbd5e1; background:#f8fafc; color:#475569; margin-left:0.4rem;" title="過去の履歴を見る"><i class="fas fa-history"></i></button>`;
-
-        rowsHTML += `
-            <tr style="border-bottom: 1px solid var(--border);">
-                <td style="padding: 1rem; font-weight: 700; color: #1e293b;">${u.Name} ${u.DisplayName ? `<span style="font-size:0.75rem; color:#94a3b8; font-weight:400;">(${u.DisplayName})</span>` : ''}</td>
-                <td style="padding: 1rem; font-weight: 600; color: var(--text-secondary);">${u.JobTitle || '一般'}</td>
-                <td style="padding: 1rem; font-family: monospace; font-weight: 700; color: #1e3a8a;">${u.GradeCode || '-'}</td>
-                <td style="padding: 1rem;"><span class="eval-status-badge status-${status}">${statusJp}</span></td>
-                <td style="padding: 1rem; text-align: center; font-weight: 700;">${score}</td>
-                <td style="padding: 1rem; text-align: center; font-weight: 700; color: #7c3aed;">${mgrScore}</td>
-                <td style="padding: 1rem; text-align: center; font-family: monospace; font-weight: 900; color: #059669;">${resultGrade}</td>
-                <td style="padding: 1rem; text-align: right;" class="no-print">${actionBtn}</td>
-            </tr>
-        `;
     });
+
+    const generateRows = (users) => {
+        if (users.length === 0) return `<tr><td colspan="8" style="padding: 1.5rem; text-align: center; color: #94a3b8; font-size: 0.85rem;">該当するスタッフはいません</td></tr>`;
+        
+        let html = '';
+        users.forEach(u => {
+            const evalData = activeEvaluations.find(e => e.user_id === u.id);
+            const status = evalData ? evalData.status : 'not_started';
+            const statusJp = getStatusJpName(status, evalData);
+            
+            let score = '-';
+            let mgrScore = '-';
+            if (status === 'interviewing') {
+                score = evalData.self_total_score || '-';
+                mgrScore = evalData.manager_total_score || '-';
+            } else if (['evaluating', 'self_evaluating', 'self_submitted', 'primary_evaluating', 'primary_submitted', 'manager_evaluating'].includes(status)) {
+                score = '<span style="font-size:0.75rem; color:#94a3b8;"><i class="fas fa-lock"></i> 非公開</span>';
+                mgrScore = '<span style="font-size:0.75rem; color:#94a3b8;"><i class="fas fa-lock"></i> 非公開</span>';
+            }
+            
+            const resultGrade = evalData ? (evalData.new_grade || '-') : '-';
+            const wf = evalData && evalData.workflow ? evalData.workflow : {};
+            
+            const isPrimary = wf.primary_evaluator === myJobTitle;
+            const isSecondary = wf.secondary_evaluator === myJobTitle || (!wf.secondary_evaluator && (role === 'Manager' || role === '店長'));
+
+            let actionBtn = '';
+            if (['evaluating', 'self_evaluating', 'self_submitted', 'primary_evaluating', 'primary_submitted', 'manager_evaluating'].includes(status)) {
+                let amISubmitted = false;
+                if (isPrimary) amISubmitted = evalData.is_primary_submitted;
+                else if (isSecondary) amISubmitted = evalData.is_manager_submitted;
+                
+                if (!amISubmitted || role === 'Admin') {
+                    actionBtn = `<button class="btn btn-primary" onclick="window.showSubordinateDetail('${u.id}')" style="font-size:0.75rem; font-weight:800; background:#7c3aed; border-color:#7c3aed; padding: 0.4rem 0.8rem;">評価を入力</button>`;
+                } else {
+                    actionBtn = `<button class="btn btn-secondary" onclick="window.showSubordinateDetail('${u.id}')" style="font-size:0.75rem; font-weight:700; padding: 0.4rem 0.8rem; border:1px solid #cbd5e1; background:white; color:var(--text-secondary);"><i class="fas fa-check"></i> 入力済</button>`;
+                }
+            } else if (status === 'interviewing') {
+                actionBtn = `<button class="btn" onclick="window.showSubordinateDetail('${u.id}')" style="font-size:0.75rem; font-weight:800; background:#a21caf; border-color:#a21caf; color:white; padding: 0.4rem 0.8rem;">面談結果入力・社長提出</button>`;
+            } else {
+                actionBtn = `<button class="btn btn-secondary" onclick="window.showSubordinateDetail('${u.id}')" style="font-size:0.75rem; font-weight:700; padding: 0.4rem 0.8rem; border:1px solid #cbd5e1; background:white; color:var(--text-secondary);"><i class="fas fa-eye"></i> 閲覧</button>`;
+            }
+
+            actionBtn += `<button class="btn btn-secondary" onclick="window.openEvaluationHistory('${u.id}', '${u.Name}')" style="font-size:0.75rem; font-weight:700; padding: 0.4rem 0.6rem; border:1px solid #cbd5e1; background:#f8fafc; color:#475569; margin-left:0.4rem;" title="過去の履歴を見る"><i class="fas fa-history"></i></button>`;
+
+            html += `
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 1rem; font-weight: 700; color: #1e293b;">${u.Name} ${u.DisplayName ? `<span style="font-size:0.75rem; color:#94a3b8; font-weight:400;">(${u.DisplayName})</span>` : ''}</td>
+                    <td style="padding: 1rem; font-weight: 600; color: var(--text-secondary);">${u.JobTitle || '一般'}</td>
+                    <td style="padding: 1rem; font-family: monospace; font-weight: 700; color: #1e3a8a;">${u.GradeCode || '-'}</td>
+                    <td style="padding: 1rem;"><span class="eval-status-badge status-${status}">${statusJp}</span></td>
+                    <td style="padding: 1rem; text-align: center; font-weight: 700;">${score}</td>
+                    <td style="padding: 1rem; text-align: center; font-weight: 700; color: #7c3aed;">${mgrScore}</td>
+                    <td style="padding: 1rem; text-align: center; font-family: monospace; font-weight: 900; color: #059669;">${resultGrade}</td>
+                    <td style="padding: 1rem; text-align: right;" class="no-print">
+                        <div style="display: flex; gap: 0.5rem; justify-content: flex-end; align-items: center;">
+                            ${actionBtn}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+        return html;
+    };
+
+    const tableHeader = `
+        <div style="overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 2rem;">
+            <table class="eval-table">
+                <thead>
+                    <tr style="background: #f8fafc;">
+                        <th style="padding: 0.8rem 1rem; text-align: left;">スタッフ名</th>
+                        <th style="padding: 0.8rem 1rem; text-align: left;">役職</th>
+                        <th style="padding: 0.8rem 1rem; text-align: left;">等級</th>
+                        <th style="padding: 0.8rem 1rem; text-align: left;">進捗</th>
+                        <th style="padding: 0.8rem 1rem; text-align: center;">自己評価点</th>
+                        <th style="padding: 0.8rem 1rem; text-align: center;">最終評価点</th>
+                        <th style="padding: 0.8rem 1rem; text-align: center;">新等級(仮)</th>
+                        <th style="padding: 0.8rem 1rem; text-align: right;" class="no-print">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    const tableFooter = `</tbody></table></div>`;
 
     container.innerHTML = `
         <div id="subordinate-list-container">
-            <div class="glass-panel" style="padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);">
-                <div style="padding: 1rem 1.2rem; border-bottom: 1px solid var(--border); background: #f8fafc;">
-                    <h4 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: #1e293b;">
-                        <i class="fas fa-users-rectangle" style="color: #7c3aed; margin-right: 0.4rem;"></i>
-                        店舗スタッフ・部下の評価一覧
-                    </h4>
-                </div>
-                <div style="overflow-x: auto;">
-                    <table class="eval-table">
-                        <thead>
-                            <tr>
-                                <th style="text-align: left;">お名前</th>
-                                <th style="text-align: left;">表示役職</th>
-                                <th style="text-align: left; width: 80px;">現在の等級</th>
-                                <th style="text-align: left; width: 140px;">ステータス</th>
-                                <th style="text-align: center; width: 80px;">自己評価点</th>
-                                <th style="text-align: center; width: 80px;">上長評価点</th>
-                                <th style="text-align: center; width: 80px;">判定等級</th>
-                                <th style="text-align: right; width: 160px;" class="no-print">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${rowsHTML}
-                        </tbody>
-                    </table>
-                </div>
+            <div style="margin-bottom: 2rem;">
+                <h4 style="margin: 0 0 0.8rem; color: #1e293b; font-size: 1.1rem; border-left: 4px solid #ef4444; padding-left: 0.6rem;">
+                    あなたの評価待ち（最優先）
+                    <span style="font-size: 0.8rem; color: #64748b; font-weight: normal; margin-left: 0.5rem;">※あなたの入力が完了するまで面談に進めません。</span>
+                </h4>
+                ${tableHeader}${generateRows(sectionA)}${tableFooter}
+            </div>
+
+            <div style="margin-bottom: 2rem;">
+                <h4 style="margin: 0 0 0.8rem; color: #1e293b; font-size: 1.1rem; border-left: 4px solid #3b82f6; padding-left: 0.6rem;">
+                    他者の入力完了待ち
+                    <span style="font-size: 0.8rem; color: #64748b; font-weight: normal; margin-left: 0.5rem;">※あなたの入力は完了しました。他者の入力を待っています。</span>
+                </h4>
+                ${tableHeader}${generateRows(sectionB)}${tableFooter}
+            </div>
+            
+            <div style="margin-bottom: 2rem;">
+                <h4 style="margin: 0 0 0.8rem; color: #1e293b; font-size: 1.1rem; border-left: 4px solid #a21caf; padding-left: 0.6rem;">
+                    面談可能（全員入力完了）
+                    <span style="font-size: 0.8rem; color: #64748b; font-weight: normal; margin-left: 0.5rem;">※全員の入力が完了しました。面談を実施し、結果を入力してください。</span>
+                </h4>
+                ${tableHeader}${generateRows(sectionC)}${tableFooter}
             </div>
         </div>
         <div id="subordinate-detail-container" style="display: none;"></div>
@@ -1243,6 +1610,116 @@ function renderSubordinatesTab(container) {
 }
 
 // ==========================================
+// 2.5 面談タブ (上長・店長ビュー)
+// ==========================================
+function renderInterviewTab(container) {
+    // 評価シートが作成されており、面談フェーズ以降のスタッフを抽出
+    const targetUsers = subordinateUsers.filter(u => {
+        const evalData = activeEvaluations.find(e => e.user_id === u.id);
+        if (!evalData) return false;
+        return ['interviewing', 'president_pending', 'approved', 'notified'].includes(evalData.status);
+    });
+
+    if (targetUsers.length === 0) {
+        container.innerHTML = `
+            <div class="glass-panel" style="padding: 4rem; text-align: center; color: var(--text-secondary);">
+                <i class="fas fa-comments fa-3x" style="color: #cbd5e1; margin-bottom: 1.5rem;"></i>
+                <h3 style="margin: 0; color: #1e293b;">現在、面談が必要なスタッフはいません</h3>
+                <p style="margin-top: 0.5rem; font-size: 0.9rem;">「部下の評価を入力」から評価を確定させると、こちらに面談対象者として表示されます。</p>
+            </div>
+        `;
+        return;
+    }
+
+    targetUsers.sort((a, b) => {
+        const evalA = activeEvaluations.find(e => e.user_id === a.id);
+        const evalB = activeEvaluations.find(e => e.user_id === b.id);
+        const isPendingA = evalA && evalA.status === 'interviewing' ? 0 : 1;
+        const isPendingB = evalB && evalB.status === 'interviewing' ? 0 : 1;
+        return isPendingA - isPendingB;
+    });
+
+    let rowsHTML = '';
+    targetUsers.forEach(u => {
+        const evalData = activeEvaluations.find(e => e.user_id === u.id);
+        const status = evalData ? evalData.status : 'not_started';
+        const statusJp = getStatusJpName(status, evalData);
+        const resultGrade = evalData ? (evalData.new_grade || '-') : '-';
+        const interviewDate = (evalData && evalData.interview_date) ? evalData.interview_date : '-';
+
+        let actionBtn = '';
+        if (status === 'interviewing') {
+            actionBtn = `<button class="btn" onclick="window.showInterviewDetail('${u.id}')" style="font-size:0.75rem; font-weight:800; background:#059669; border-color:#059669; color:white; padding: 0.4rem 0.8rem;"><i class="fas fa-edit"></i> 面談記録を入力</button>`;
+        } else {
+            actionBtn = `<button class="btn btn-secondary" onclick="window.showInterviewDetail('${u.id}')" style="font-size:0.75rem; font-weight:700; padding: 0.4rem 0.8rem; border:1px solid #cbd5e1; background:white; color:var(--text-secondary);"><i class="fas fa-eye"></i> 面談記録を見る</button>`;
+        }
+
+        rowsHTML += `
+            <tr style="border-bottom: 1px solid var(--border);">
+                <td style="padding: 1rem; font-weight: 700; color: #1e293b;">${u.Name} ${u.DisplayName ? `<span style="font-size:0.75rem; color:#94a3b8; font-weight:400;">(${u.DisplayName})</span>` : ''}</td>
+                <td style="padding: 1rem; font-weight: 600; color: var(--text-secondary);">${u.JobTitle || '一般'}</td>
+                <td style="padding: 1rem;"><span class="eval-status-badge status-${status}">${statusJp}</span></td>
+                <td style="padding: 1rem; text-align: center; font-weight: 700; color: #475569;">${interviewDate}</td>
+                <td style="padding: 1rem; text-align: center; font-family: monospace; font-weight: 900; color: #059669;">${resultGrade}</td>
+                <td style="padding: 1rem; text-align: right;" class="no-print">
+                    <div style="display: flex; gap: 0.5rem; justify-content: flex-end; align-items: center;">
+                        ${actionBtn}
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+
+    container.innerHTML = `
+        <div id="interview-list-container">
+            <div class="glass-panel" style="padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);">
+                <div style="padding: 1rem 1.2rem; border-bottom: 1px solid var(--border); background: #f8fafc;">
+                    <h4 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: #1e293b;">
+                        <i class="fas fa-comments" style="color: #059669; margin-right: 0.4rem;"></i>
+                        面談対象者・面談履歴
+                    </h4>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="eval-table">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left;">お名前</th>
+                                <th style="text-align: left;">表示役職</th>
+                                <th style="text-align: left;">ステータス</th>
+                                <th style="text-align: center;">面談実施日</th>
+                                <th style="text-align: center;">判定等級</th>
+                                <th style="text-align: right;" class="no-print">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHTML}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div id="interview-detail-container" style="display: none;"></div>
+    `;
+
+    // 画面切り替え（ドリルダウン）関数
+    window.showInterviewDetail = (userId) => {
+        const evalData = activeEvaluations.find(e => e.user_id === userId);
+        if (evalData) {
+            document.getElementById('interview-list-container').style.display = 'none';
+            const detailContainer = document.getElementById('interview-detail-container');
+            detailContainer.style.display = 'block';
+            renderEvalDetailInline(detailContainer, evalData, 'interview');
+        }
+    };
+
+    window.backToInterviewList = () => {
+        document.getElementById('interview-detail-container').style.display = 'none';
+        document.getElementById('interview-detail-container').innerHTML = '';
+        document.getElementById('interview-list-container').style.display = 'block';
+    };
+}
+
+// ==========================================
 // 3. 社長査定タブ (社長ビュー)
 // ==========================================
 function renderPresidentTab(container) {
@@ -1251,7 +1728,7 @@ function renderPresidentTab(container) {
     let rowsHTML = '';
     activeEvaluations.forEach(e => {
         const isPending = e.status === 'president_pending';
-        const statusJp = getStatusJpName(e.status);
+        const statusJp = getStatusJpName(e.status, e);
 
         let actionBtn = '';
         if (isPending) {
@@ -1270,7 +1747,11 @@ function renderPresidentTab(container) {
                 <td style="padding: 1rem; text-align: center; font-weight: 800; color: #be123c;">${e.final_total_score || e.manager_total_score || '-'}</td>
                 <td style="padding: 1rem; text-align: center; font-family: monospace; font-weight: 900; color: #059669;">${e.new_grade || '-'}</td>
                 <td style="padding: 1rem;"><span class="eval-status-badge status-${e.status}">${statusJp}</span></td>
-                <td style="padding: 1rem; text-align: right;" class="no-print">${actionBtn}</td>
+                <td style="padding: 1rem; text-align: right;" class="no-print">
+                    <div style="display: flex; gap: 0.5rem; justify-content: flex-end; align-items: center;">
+                        ${actionBtn}
+                    </div>
+                </td>
             </tr>
         `;
     });
@@ -1293,13 +1774,13 @@ function renderPresidentTab(container) {
                             <tr>
                                 <th style="text-align: left;">お名前</th>
                                 <th style="text-align: left;">部門</th>
-                                <th style="text-align: left; width: 80px;">現等級</th>
-                                <th style="text-align: center; width: 90px;">自己点</th>
-                                <th style="text-align: center; width: 90px;">上長点</th>
-                                <th style="text-align: center; width: 90px; color: #be123c;">確定点</th>
-                                <th style="text-align: center; width: 90px;">新等級(判定)</th>
-                                <th style="text-align: left; width: 140px;">ステータス</th>
-                                <th style="text-align: right; width: 140px;" class="no-print">操作</th>
+                                <th style="text-align: left;">現等級</th>
+                                <th style="text-align: center;">自己点</th>
+                                <th style="text-align: center;">上長点</th>
+                                <th style="text-align: center; color: #be123c;">確定点</th>
+                                <th style="text-align: center;">新等級(判定)</th>
+                                <th style="text-align: left;">ステータス</th>
+                                <th style="text-align: right;" class="no-print">操作</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1476,7 +1957,7 @@ function renderAdminTab(container) {
                                     <tr style="border-bottom: 1px solid var(--border);">
                                         <td style="padding: 0.75rem 1rem; font-weight: 700; color: #1e293b;">${e.user_name || '一般'}</td>
                                         <td style="padding: 0.75rem 1rem; color: var(--text-secondary); font-size: 0.8rem;">${e.department === 'sales' ? '営業部' : '製造部'} (${globalStoreMapForEval[e.store_id] || e.store_id || '本店'})</td>
-                                        <td style="padding: 0.75rem 1rem;"><span class="eval-status-badge status-${e.status}">${getStatusJpName(e.status)}</span></td>
+                                        <td style="padding: 0.75rem 1rem;"><span class="eval-status-badge status-${e.status}">${getStatusJpName(e.status, e)}</span></td>
                                         <td style="padding: 0.75rem 1rem; text-align: center; font-weight: 600;">${e.self_total_score || '-'}</td>
                                         <td style="padding: 0.75rem 1rem; text-align: center; font-weight: 600; color: #7c3aed;">${e.manager_total_score || '-'}</td>
                                         <td style="padding: 0.75rem 1rem; text-align: right;" class="no-print">
@@ -1619,24 +2100,8 @@ function renderAdminTab(container) {
             openEvaluationDetailModal(evalData, 'admin');
         }
     };
-
-    // 評価項目マスタ編集ボタンのバインド
-    const btnEditTemplates = document.getElementById('btn-admin-edit-templates-tab');
-    if (btnEditTemplates) {
-        btnEditTemplates.onclick = () => {
-            openTemplateEditorModal();
-        };
-    }
-    
-    // 過去データ取り込みボタンのバインド
-    const btnImportLegacy = document.getElementById('btn-admin-import-legacy');
-    if (btnImportLegacy) {
-        btnImportLegacy.onclick = () => {
-            window.openLegacyImportModal();
-        };
-    }
+    // イベントバインドはinitEvaluationに移動しました
 }
-
 // YoY (前年同期) のPeriod名を算出するヘルパー (例: 2026-06 -> 2025-06)
 function getYoYPeriod(periodName) {
     const parts = periodName.split('-');
@@ -1794,36 +2259,23 @@ async function getSnapshotItemsForTemplate(templateId, userId) {
 // 5. 評価詳細入力・閲覧モーダルの構築と制御
 // ==========================================
 let previousPeriodData = null;
+window.pastEvaluationsCache = window.pastEvaluationsCache || {}; // 過去データキャッシュ
 
 async function renderEvalDetailInline(container, evalData, mode) {
+    window.currentEvalMode = mode; // Save mode for updateComment to know which container to update
     selectedEvalDetail = JSON.parse(JSON.stringify(evalData)); // シャローコピーで編集バッファにする
-    
-    container.innerHTML = '<div style="text-align:center; padding:4rem;"><i class="fas fa-spinner fa-spin fa-2x" style="color:var(--text-secondary);"></i><div style="margin-top:1rem; font-weight:700; color:var(--text-secondary);">過去データと照合中...</div></div>';
+    const userId = selectedEvalDetail.user_id;
 
-    // === 直前期データの取得ロジック ===
-    previousPeriodData = null;
-    try {
-        const userId = selectedEvalDetail.user_id;
-        const q = query(collection(db, "t_evaluations"), where("user_id", "==", userId));
-        const snap = await getDocs(q);
-        
-        let allPast = [];
-        snap.forEach(d => {
-            const data = d.data();
-            if ((data.status === 'approved' || data.status === 'notified' || data.is_legacy_archive) && data.period !== selectedEvalDetail.period) {
-                allPast.push({ id: d.id, ...data });
-            }
-        });
-        
-        if (allPast.length > 0) {
-            allPast.sort((a, b) => b.period.localeCompare(a.period));
-            previousPeriodData = allPast[0];
-        }
-    } catch(e) {
-        console.warn("Failed to load previous period data for diff:", e);
+    // キャッシュチェック（遅延ローディング）
+    let isPastDataCached = false;
+    if (window.pastEvaluationsCache[userId] !== undefined) {
+        previousPeriodData = window.pastEvaluationsCache[userId];
+        isPastDataCached = true;
+    } else {
+        previousPeriodData = null;
     }
 
-    container.innerHTML = ''; // クリア
+    container.innerHTML = ''; // 即時描画のためクリア
 
     // インライン用のラッパーを作成
     const detailWrapper = document.createElement('div');
@@ -1832,17 +2284,70 @@ async function renderEvalDetailInline(container, evalData, mode) {
     // ヘッダー部分
     const isProvisional = selectedEvalDetail.is_provisional;
     const typeStr = isProvisional ? '仮評価' : '本評価 (7月給与反映対象)';
-    const statusJp = getStatusJpName(selectedEvalDetail.status);
+    const statusJp = getStatusJpName(selectedEvalDetail.status, selectedEvalDetail);
     
-    const headerHtml = `
-        <div style="padding: 1.5rem 2rem; border-bottom: 1px solid var(--border); background: #f8fafc; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-            <div>
-                <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #1e293b;">【${selectedEvalDetail.period}期 ${typeStr}】 ${selectedEvalDetail.user_name} さんの評価シート</h3>
-                <p style="margin: 0.3rem 0 0 0; font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;">
-                    ステータス: <span style="color:#2563eb;">${statusJp}</span> | 被評価者の現等級: ${selectedEvalDetail.current_grade || '-'} | 前年同期の等級: ${selectedEvalDetail.yoy_grade || '-'}
-                </p>
+    // === 進捗ステータスバー (Stepper) の構築 ===
+    const wf = selectedEvalDetail.workflow || {};
+    const hasPrimary = !!wf.primary_evaluator;
+    const currentStatus = selectedEvalDetail.status;
+
+    const steps = [
+        { id: 'self', label: '自己評価', activeStatuses: ['not_started', 'self_evaluating'], doneStatuses: ['self_submitted', 'primary_evaluating', 'primary_submitted', 'manager_evaluating', 'interviewing', 'president_pending', 'approved', 'notified'] }
+    ];
+    if (hasPrimary) {
+        steps.push({ id: 'primary', label: '1次評価', activeStatuses: ['self_submitted', 'primary_evaluating'], doneStatuses: ['primary_submitted', 'manager_evaluating', 'interviewing', 'president_pending', 'approved', 'notified'] });
+        steps.push({ id: 'manager', label: '最終評価', activeStatuses: ['primary_submitted', 'manager_evaluating'], doneStatuses: ['interviewing', 'president_pending', 'approved', 'notified'] });
+    } else {
+        steps.push({ id: 'manager', label: '上長評価', activeStatuses: ['self_submitted', 'manager_evaluating'], doneStatuses: ['interviewing', 'president_pending', 'approved', 'notified'] });
+    }
+    steps.push({ id: 'interview', label: '面談', activeStatuses: ['interviewing'], doneStatuses: ['president_pending', 'approved', 'notified'] });
+    steps.push({ id: 'president', label: '社長承認', activeStatuses: ['president_pending'], doneStatuses: ['approved', 'notified'] });
+
+    let stepperHtml = '<div style="display: flex; align-items: center; gap: 0.4rem; margin-top: 1rem; width: 100%; overflow-x: auto; padding-bottom: 0.2rem; scrollbar-width: none;">';
+    steps.forEach((step, idx) => {
+        let state = 'pending';
+        if (step.doneStatuses.includes(currentStatus)) state = 'done';
+        else if (step.activeStatuses.includes(currentStatus)) state = 'active';
+
+        let icon = '<i class="fas fa-circle" style="font-size:0.5rem;"></i>';
+        let textColor = '#94a3b8'; // gray
+        let textWeight = '600';
+        
+        if (state === 'done') {
+            icon = '<i class="fas fa-check-circle"></i>';
+            textColor = '#10b981'; // green
+        } else if (state === 'active') {
+            icon = '<i class="fas fa-play-circle"></i>';
+            textColor = '#3b82f6'; // blue
+            textWeight = '800';
+        }
+
+        stepperHtml += `
+            <div style="display: flex; align-items: center; gap: 0.3rem; color: ${textColor}; background: ${state === 'active' ? '#eff6ff' : 'transparent'}; padding: ${state === 'active' ? '0.2rem 0.6rem' : '0 0.2rem'}; border-radius: 12px; transition: all 0.2s;">
+                <span style="font-size: 1.1rem;">${icon}</span>
+                <span style="font-weight: ${textWeight}; font-size: 0.85rem; white-space: nowrap;">${step.label}</span>
             </div>
-            ${mode !== 'self' ? `<button class="btn" onclick="window.backToSubordinateList()" style="background:#f1f5f9; color:#475569; border:none; padding:0.5rem 1rem; border-radius:6px; font-weight:700;"><i class="fas fa-arrow-left"></i> 一覧へ戻る</button>` : ''}
+        `;
+
+        if (idx < steps.length - 1) {
+            let lineColor = state === 'done' ? '#10b981' : '#cbd5e1';
+            stepperHtml += `<div style="height: 2px; width: 24px; background-color: ${lineColor}; border-radius: 1px;"></div>`;
+        }
+    });
+    stepperHtml += '</div>';
+
+    const headerHtml = `
+        <div style="padding: 1.5rem 2rem; border-bottom: 1px solid var(--border); background: #f8fafc; display: flex; flex-direction: column; gap: 0.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #1e293b;">【${selectedEvalDetail.period}期 ${typeStr}】 ${selectedEvalDetail.user_name} さんの評価シート</h3>
+                    <p style="margin: 0.3rem 0 0 0; font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;">
+                        ステータス: <span style="color:#2563eb; font-weight:800;">${statusJp}</span> | 被評価者の現等級: ${selectedEvalDetail.current_grade || '-'} | 前年同期の等級: ${selectedEvalDetail.yoy_grade || '-'}
+                    </p>
+                </div>
+                ${mode !== 'self' ? `<button class="btn" onclick="window.backToSubordinateList()" style="background:#f1f5f9; color:#475569; border:none; padding:0.5rem 1rem; border-radius:6px; font-weight:700;"><i class="fas fa-arrow-left"></i> 一覧へ戻る</button>` : ''}
+            </div>
+            ${stepperHtml}
         </div>
     `;
 
@@ -1861,13 +2366,115 @@ async function renderEvalDetailInline(container, evalData, mode) {
     detailWrapper.appendChild(footerContainer);
 
     container.appendChild(detailWrapper);
+
+    // キャッシュがない場合は裏側で通信し、DOMを部分更新する
+    if (!isPastDataCached) {
+        fetchAndRenderPastData(userId, selectedEvalDetail.period);
+    }
+}
+
+async function fetchAndRenderPastData(userId, currentPeriod) {
+    try {
+        const q = query(collection(db, "t_evaluations"), where("user_id", "==", userId));
+        const snap = await getDocs(q);
+        
+        let allPast = [];
+        snap.forEach(d => {
+            const data = d.data();
+            if ((data.status === 'approved' || data.status === 'notified' || data.is_legacy_archive) && data.period !== currentPeriod) {
+                allPast.push({ id: d.id, ...data });
+            }
+        });
+        
+        if (allPast.length > 0) {
+            allPast.sort((a, b) => b.period.localeCompare(a.period));
+            window.pastEvaluationsCache[userId] = allPast[0];
+        } else {
+            window.pastEvaluationsCache[userId] = null;
+        }
+    } catch(e) {
+        console.warn("Failed to load previous period data for diff:", e);
+        window.pastEvaluationsCache[userId] = null;
+    }
+    
+    // 取得完了後、UIを部分更新
+    previousPeriodData = window.pastEvaluationsCache[userId];
+    updateDiffUI();
+}
+
+function updateDiffUI() {
+    if (!selectedEvalDetail || !selectedEvalDetail.items) return;
+    const status = selectedEvalDetail.status;
+    
+    selectedEvalDetail.items.forEach((item, idx) => {
+        const containerId = `diff-container-${item.item_id}`;
+        const containerEl = document.getElementById(containerId);
+        if (!containerEl) return;
+        
+        let diffHtml = '<span style="color:#cbd5e1;">-</span>';
+        let titleSuffix = '';
+
+        if (previousPeriodData && previousPeriodData.items) {
+            const pastItem = previousPeriodData.items.find(pi => pi.item_id === item.item_id);
+            if (!pastItem) {
+                titleSuffix = `<span class="eval-status-badge status-not_started" style="margin-left:0.5rem; background:#fee2e2; color:#b91c1c; border:none; font-size:0.65rem; padding: 0.15rem 0.4rem;">（新）</span>`;
+                diffHtml = '<span style="font-size:0.7rem; color:#94a3b8;">比較不可</span>';
+            } else {
+                const pastScore = pastItem.manager_score || 0;
+                const currentScoreForDiff = (status === 'self_evaluating' || status === 'self_submitted') ? (item.self_score || 0) : (item.manager_score || 0);
+                
+                if (pastScore > 0 && currentScoreForDiff > 0) {
+                    const diff = currentScoreForDiff - pastScore;
+                    if (diff > 0) {
+                        diffHtml = `<div><span style="font-size:0.9rem; color:#64748b;">${pastScore}</span><i class="fas fa-arrow-right" style="margin:0 0.2rem; font-size:0.6rem; color:#94a3b8;"></i><span style="font-size:0.75rem; color:#16a34a; font-weight:800;"><i class="fas fa-arrow-up"></i> +${diff}</span></div>`;
+                    } else if (diff < 0) {
+                        diffHtml = `<div><span style="font-size:0.9rem; color:#64748b;">${pastScore}</span><i class="fas fa-arrow-right" style="margin:0 0.2rem; font-size:0.6rem; color:#94a3b8;"></i><span style="font-size:0.75rem; color:#dc2626; font-weight:800;"><i class="fas fa-arrow-down"></i> ${diff}</span></div>`;
+                    } else {
+                        diffHtml = `<div><span style="font-size:0.9rem; color:#64748b;">${pastScore}</span><i class="fas fa-arrow-right" style="margin:0 0.2rem; font-size:0.6rem; color:#94a3b8;"></i><span style="font-size:0.75rem; color:#94a3b8; font-weight:800;"><i class="fas fa-minus"></i> ±0</span></div>`;
+                    }
+                } else if (pastScore > 0) {
+                     diffHtml = `<div style="font-size:0.75rem; color:#64748b; font-weight:600;">前回: ${pastScore}点</div>`;
+                }
+            }
+        } else {
+            titleSuffix = `<span class="eval-status-badge status-not_started" style="margin-left:0.5rem; background:#fee2e2; color:#b91c1c; border:none; font-size:0.65rem; padding: 0.15rem 0.4rem;">（新）</span>`;
+            diffHtml = '<span style="font-size:0.7rem; color:#94a3b8;">比較不可</span>';
+        }
+        
+        containerEl.innerHTML = diffHtml;
+        
+        // titleSuffix は別途更新（項目名部分）
+        const titleSuffixContainerId = `title-suffix-container-${item.item_id}`;
+        const titleSuffixEl = document.getElementById(titleSuffixContainerId);
+        if (titleSuffixEl) {
+            titleSuffixEl.innerHTML = titleSuffix;
+        }
+    });
 }
 
 function renderModalBody(container, mode) {
     const status = selectedEvalDetail.status;
-    const isSelfMode = mode === 'self' && status === 'self_evaluating';
-    const isManagerMode = mode === 'manager' && (status === 'self_submitted' || status === 'manager_evaluating' || status === 'interviewing');
+    const isManagerMode = mode === 'manager';
     const isPresidentMode = mode === 'president' && status === 'president_pending';
+    const isInterviewMode = mode === 'interview' && status === 'interviewing';
+    const isSelfMode = mode === 'self' && ['not_started', 'evaluating', 'self_evaluating'].includes(status);
+
+    const wf = selectedEvalDetail.workflow || {};
+    const hasPrimary = !!wf.primary_evaluator;
+    const myJobTitle = window.appState.currentUser ? window.appState.currentUser.JobTitle : '';
+    const isPrimary = wf.primary_evaluator === myJobTitle;
+    const isSecondary = wf.secondary_evaluator === myJobTitle || (!wf.secondary_evaluator && (window.appState.currentUser.Role === 'Manager' || window.appState.currentUser.Role === '店長'));
+
+    const canEditPrimary = isManagerMode && isPrimary && ['evaluating', 'self_evaluating', 'self_submitted', 'primary_evaluating', 'primary_submitted'].includes(status);
+    const canEditSecondary = isManagerMode && isSecondary && ['evaluating', 'self_evaluating', 'self_submitted', 'primary_evaluating', 'primary_submitted', 'manager_evaluating'].includes(status);
+
+    // 全員が提出完了しているか、もしくは管理者かどうかの判定（ブラインド評価用）
+    const allSubmitted = selectedEvalDetail.is_self_submitted && 
+                         (!hasPrimary || selectedEvalDetail.is_primary_submitted) && 
+                         selectedEvalDetail.is_manager_submitted;
+    const role = window.appState.currentUser ? window.appState.currentUser.Role : '';
+    const isAdmin = role === 'Admin';
+    const hiddenIconHtml = `<div style="text-align: center; width: 100%;"><i class="fas fa-lock" style="color: #94a3b8; font-size: 0.9rem;" title="全員の評価が完了するまで非公開です"></i></div>`;
 
     // 項目ごとの行を構築
     let itemsHtml = '';
@@ -1875,7 +2482,21 @@ function renderModalBody(container, mode) {
     
     // 集計用初期値
     let selfTotal = 0;
+    let primaryTotal = 0;
     let managerTotal = 0;
+
+    // 特記事項・昇格条件の表示（上部配置）
+    let specialNoteHtml = '';
+    if (selectedEvalDetail.special_note && selectedEvalDetail.special_note.trim() !== '') {
+        specialNoteHtml = `
+            <div class="glass-panel" style="padding: 1.2rem; background: #fff1f2; border: 1px solid #fecdd3; border-left: 4px solid #e11d48; border-radius: 8px; margin-bottom: 1.5rem;">
+                <h5 style="margin: 0 0 0.4rem; color: #be123c; font-weight: 800; font-size: 0.9rem;">
+                    <i class="fas fa-exclamation-circle" style="margin-right: 0.4rem;"></i>特記事項・昇格条件
+                </h5>
+                <p style="margin: 0; font-size: 0.85rem; color: #9f1239; line-height: 1.6; white-space: pre-wrap;">${selectedEvalDetail.special_note}</p>
+            </div>
+        `;
+    }
 
     // 店長が評価する際の「部下育成進捗」アシストウィジェットの構築
     let assistWidgetHtml = '';
@@ -1906,35 +2527,47 @@ function renderModalBody(container, mode) {
         }
     }
 
+    // itemsHtmlの組み立て開始時に特記事項とアシストウィジェットを挿入
+    itemsHtml += specialNoteHtml;
+    itemsHtml += assistWidgetHtml;
+
     selectedEvalDetail.items.forEach((item, idx) => {
         let titleSuffix = '';
-        let diffHtml = '<span style="color:#cbd5e1;">-</span>';
+        let diffHtml = '';
 
-        if (previousPeriodData && previousPeriodData.items) {
-            const pastItem = previousPeriodData.items.find(pi => pi.item_id === item.item_id);
-            if (!pastItem) {
+        // キャッシュチェック（遅延ローディング対応）
+        const isPastDataCached = window.pastEvaluationsCache[selectedEvalDetail.user_id] !== undefined;
+
+        if (isPastDataCached) {
+            if (previousPeriodData && previousPeriodData.items) {
+                const pastItem = previousPeriodData.items.find(pi => pi.item_id === item.item_id);
+                if (!pastItem) {
+                    titleSuffix = `<span class="eval-status-badge status-not_started" style="margin-left:0.5rem; background:#fee2e2; color:#b91c1c; border:none; font-size:0.65rem; padding: 0.15rem 0.4rem;">（新）</span>`;
+                    diffHtml = '<span style="font-size:0.7rem; color:#94a3b8;">比較不可</span>';
+                } else {
+                    const pastScore = pastItem.manager_score || 0;
+                    const currentScoreForDiff = (status === 'self_evaluating' || status === 'self_submitted') ? (item.self_score || 0) : (item.manager_score || 0);
+                    
+                    if (pastScore > 0 && currentScoreForDiff > 0) {
+                        const diff = currentScoreForDiff - pastScore;
+                        if (diff > 0) {
+                            diffHtml = `<div><span style="font-size:0.9rem; color:#64748b;">${pastScore}</span><i class="fas fa-arrow-right" style="margin:0 0.2rem; font-size:0.6rem; color:#94a3b8;"></i><span style="font-size:0.75rem; color:#16a34a; font-weight:800;"><i class="fas fa-arrow-up"></i> +${diff}</span></div>`;
+                        } else if (diff < 0) {
+                            diffHtml = `<div><span style="font-size:0.9rem; color:#64748b;">${pastScore}</span><i class="fas fa-arrow-right" style="margin:0 0.2rem; font-size:0.6rem; color:#94a3b8;"></i><span style="font-size:0.75rem; color:#dc2626; font-weight:800;"><i class="fas fa-arrow-down"></i> ${diff}</span></div>`;
+                        } else {
+                            diffHtml = `<div><span style="font-size:0.9rem; color:#64748b;">${pastScore}</span><i class="fas fa-arrow-right" style="margin:0 0.2rem; font-size:0.6rem; color:#94a3b8;"></i><span style="font-size:0.75rem; color:#94a3b8; font-weight:800;"><i class="fas fa-minus"></i> ±0</span></div>`;
+                        }
+                    } else if (pastScore > 0) {
+                         diffHtml = `<div style="font-size:0.75rem; color:#64748b; font-weight:600;">前回: ${pastScore}点</div>`;
+                    }
+                }
+            } else {
                 titleSuffix = `<span class="eval-status-badge status-not_started" style="margin-left:0.5rem; background:#fee2e2; color:#b91c1c; border:none; font-size:0.65rem; padding: 0.15rem 0.4rem;">（新）</span>`;
                 diffHtml = '<span style="font-size:0.7rem; color:#94a3b8;">比較不可</span>';
-            } else {
-                const pastScore = pastItem.manager_score || 0;
-                const currentScoreForDiff = (status === 'self_evaluating' || status === 'self_submitted') ? (item.self_score || 0) : (item.manager_score || 0);
-                
-                if (pastScore > 0 && currentScoreForDiff > 0) {
-                    const diff = currentScoreForDiff - pastScore;
-                    if (diff > 0) {
-                        diffHtml = `<div><span style="font-size:0.9rem; color:#64748b;">${pastScore}</span><i class="fas fa-arrow-right" style="margin:0 0.2rem; font-size:0.6rem; color:#94a3b8;"></i><span style="font-size:0.75rem; color:#16a34a; font-weight:800;"><i class="fas fa-arrow-up"></i> +${diff}</span></div>`;
-                    } else if (diff < 0) {
-                        diffHtml = `<div><span style="font-size:0.9rem; color:#64748b;">${pastScore}</span><i class="fas fa-arrow-right" style="margin:0 0.2rem; font-size:0.6rem; color:#94a3b8;"></i><span style="font-size:0.75rem; color:#dc2626; font-weight:800;"><i class="fas fa-arrow-down"></i> ${diff}</span></div>`;
-                    } else {
-                        diffHtml = `<div><span style="font-size:0.9rem; color:#64748b;">${pastScore}</span><i class="fas fa-arrow-right" style="margin:0 0.2rem; font-size:0.6rem; color:#94a3b8;"></i><span style="font-size:0.75rem; color:#94a3b8; font-weight:800;"><i class="fas fa-minus"></i> ±0</span></div>`;
-                    }
-                } else if (pastScore > 0) {
-                     diffHtml = `<div style="font-size:0.75rem; color:#64748b; font-weight:600;">前回: ${pastScore}点</div>`;
-                }
             }
         } else {
-            titleSuffix = `<span class="eval-status-badge status-not_started" style="margin-left:0.5rem; background:#fee2e2; color:#b91c1c; border:none; font-size:0.65rem; padding: 0.15rem 0.4rem;">（新）</span>`;
-            diffHtml = '<span style="font-size:0.7rem; color:#94a3b8;">比較不可</span>';
+            // 遅延ローディング中
+            diffHtml = '<div style="font-size:0.8rem; color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> 取得中</div>';
         }
         // カテゴリヘッダーの差し込み
         if (item.category !== currentCategory) {
@@ -1950,72 +2583,180 @@ function renderModalBody(container, mode) {
         }
 
         selfTotal += item.self_score || 0;
+        primaryTotal += item.primary_score || 0;
         managerTotal += item.manager_score || 0;
 
-        // 自己評価ラジオボタン
+        // 自己評価ラジオボタン（編集権限がない場合は数字のみ表示）
         let selfRadioHtml = '';
-        for (let s = 5; s >= 1; s--) {
-            const isSel = item.self_score === s;
-            const disabledAttr = isSelfMode ? '' : 'disabled';
-            selfRadioHtml += `
-                <button type="button" class="score-btn ${isSel ? 'selected-self' : ''}" 
-                        onclick="window.selectScore(${idx}, 'self', ${s})" ${disabledAttr}>
-                    ${s}
-                </button>
-            `;
+        if (isSelfMode) {
+            for (let s = 5; s >= 1; s--) {
+                const isSel = item.self_score === s;
+                selfRadioHtml += `
+                    <button type="button" class="score-btn ${isSel ? 'selected-self' : ''}" 
+                            onclick="window.selectScore(${idx}, 'self', ${s})">
+                        ${s}
+                    </button>
+                `;
+            }
+        } else if (mode === 'self' || allSubmitted || isAdmin) {
+            selfRadioHtml = `<div style="font-weight: 800; font-size: 1.1rem; color: #3b82f6; text-align: center; width: 100%;">${item.self_score || '-'}</div>`;
+        } else {
+            selfRadioHtml = hiddenIconHtml;
         }
 
-        // 上長評価ラジオボタン
+        // 1次評価ラジオボタン
+        let primaryRadioHtml = '';
+        if (hasPrimary) {
+            if (canEditPrimary) {
+                for (let s = 5; s >= 1; s--) {
+                    const isSel = item.primary_score === s;
+                    primaryRadioHtml += `
+                        <button type="button" class="score-btn ${isSel ? 'selected-manager' : ''}" 
+                                onclick="window.selectScore(${idx}, 'primary', ${s})">
+                            ${s}
+                        </button>
+                    `;
+                }
+            } else if (allSubmitted || isAdmin) {
+                primaryRadioHtml = `<div style="font-weight: 800; font-size: 1.1rem; color: #10b981; text-align: center; width: 100%;">${item.primary_score || '-'}</div>`;
+            } else {
+                primaryRadioHtml = hiddenIconHtml;
+            }
+        }
+
+        // 上長評価（2次評価/最終評価）ラジオボタン
         let managerRadioHtml = '';
-        for (let s = 5; s >= 1; s--) {
-            const isSel = item.manager_score === s;
-            const disabledAttr = isManagerMode ? '' : 'disabled';
-            managerRadioHtml += `
-                <button type="button" class="score-btn ${isSel ? 'selected-manager' : ''}" 
-                        onclick="window.selectScore(${idx}, 'manager', ${s})" ${disabledAttr}>
-                    ${s}
-                </button>
+        if (canEditSecondary) {
+            for (let s = 5; s >= 1; s--) {
+                const isSel = item.manager_score === s;
+                managerRadioHtml += `
+                    <button type="button" class="score-btn ${isSel ? 'selected-manager' : ''}" 
+                            onclick="window.selectScore(${idx}, 'manager', ${s})">
+                        ${s}
+                    </button>
+                `;
+            }
+        } else if (isInterviewMode) {
+            // ポップオーバー用のボタンリスト
+            let popoverBtns = '';
+            for (let s = 5; s >= 1; s--) {
+                const isSel = item.manager_score === s;
+                popoverBtns += `
+                    <button type="button" class="score-btn ${isSel ? 'selected-manager' : ''}" 
+                            onclick="window.selectScore(${idx}, 'manager', ${s})" style="padding: 0.3rem 0.5rem;">
+                        ${s}
+                    </button>
+                `;
+            }
+            managerRadioHtml = `
+                <div class="eval-popover-container" style="position: relative; display: inline-block; width: 100%; text-align: center;">
+                    <div onclick="window.toggleScorePopover(${idx}, event)" style="cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.3rem; padding: 0.2rem 0.5rem; border-radius: 6px; transition: background 0.2s;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'" title="クリックして点数を変更">
+                        <span id="popover-score-text-${idx}" style="font-weight: 800; font-size: 1.1rem; color: #7c3aed;">${item.manager_score || '-'}</span>
+                        <i class="fas fa-pencil-alt" style="font-size: 0.7rem; color: #a78bfa;"></i>
+                    </div>
+                    <!-- 吹き出し本体 -->
+                    <div id="popover-score-${idx}" class="eval-popover-menu" style="display: none; position: absolute; top: calc(100% + 5px); left: 50%; transform: translateX(-50%); background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.4rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); z-index: 50; white-space: nowrap;">
+                        <div style="position: absolute; top: -5px; left: 50%; transform: translateX(-50%) rotate(45deg); width: 10px; height: 10px; background: white; border-top: 1px solid #e2e8f0; border-left: 1px solid #e2e8f0;"></div>
+                        <div style="display: flex; gap: 0.25rem; position: relative;">
+                            ${popoverBtns}
+                        </div>
+                    </div>
+                </div>
             `;
+        } else if (allSubmitted || isAdmin) {
+            managerRadioHtml = `<div style="font-weight: 800; font-size: 1.1rem; color: #7c3aed; text-align: center; width: 100%;">${item.manager_score || '-'}</div>`;
+        } else {
+            managerRadioHtml = hiddenIconHtml;
         }
 
         // コメント入力欄
-        let commentAreaHtml = '';
-        if (isSelfMode) {
-            commentAreaHtml = `
-                <input type="text" value="${item.self_comment || ''}" placeholder="自己評価の理由を記入" 
-                       onchange="window.updateComment(${idx}, 'self', this.value)" 
-                       style="width: 100%; padding: 0.4rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.78rem;">
+        let commentAreaHtml = `<div style="display: flex; gap: 0.5rem; align-items: center; justify-content: center; width: 100%;">`;
+        
+        let editRole = null;
+        if (isSelfMode) editRole = 'self';
+        else if (canEditPrimary) editRole = 'primary';
+        else if (canEditSecondary) editRole = 'manager';
+
+        const isBlind = ['evaluating', 'self_evaluating', 'self_submitted', 'primary_evaluating', 'primary_submitted', 'manager_evaluating'].includes(status);
+        
+        let displaySelfComment = item.self_comment || '未記入';
+        let displayPrimaryComment = item.primary_comment || '未記入';
+        let displayManagerComment = item.manager_comment || '未記入';
+
+        let mySelfColor = item.self_comment ? 'white' : '#cbd5e1';
+        let myPrimaryColor = item.primary_comment ? 'white' : '#cbd5e1';
+        let myManagerColor = item.manager_comment ? 'white' : '#cbd5e1';
+
+        if (isBlind) {
+            const maskedHtml = '<span style="color:#94a3b8;"><i class="fas fa-lock"></i> 非公開</span>';
+            if (editRole !== 'self') { displaySelfComment = maskedHtml; mySelfColor = '#cbd5e1'; }
+            if (editRole !== 'primary') { displayPrimaryComment = maskedHtml; myPrimaryColor = '#cbd5e1'; }
+            if (editRole !== 'manager') { displayManagerComment = maskedHtml; myManagerColor = '#cbd5e1'; }
+        }
+
+        let combinedTooltipHtml = '';
+        combinedTooltipHtml += `<div style="margin-bottom:0.4rem;"><strong style="color:${item.self_comment && (!isBlind || editRole === 'self') ? '#93c5fd' : '#94a3b8'};"><i class="fas fa-user"></i> 自己理由:</strong><br><span style="color:${mySelfColor};">${displaySelfComment}</span></div>`;
+        
+        if (hasPrimary) {
+            combinedTooltipHtml += `<div style="margin-bottom:0.4rem;"><strong style="color:${item.primary_comment && (!isBlind || editRole === 'primary') ? '#a7f3d0' : '#94a3b8'};"><i class="fas fa-user-tie"></i> 1次FB:</strong><br><span style="color:${myPrimaryColor};">${displayPrimaryComment}</span></div>`;
+        }
+        
+        combinedTooltipHtml += `<div><strong style="color:${item.manager_comment && (!isBlind || editRole === 'manager') ? '#c4b5fd' : '#94a3b8'};"><i class="fas fa-chess-king"></i> 最終FB:</strong><br><span style="color:${myManagerColor};">${displayManagerComment}</span></div>`;
+
+        if (editRole) {
+            let myCommentText = '';
+            if (editRole === 'self') myCommentText = item.self_comment;
+            else if (editRole === 'primary') myCommentText = item.primary_comment;
+            else if (editRole === 'manager') myCommentText = item.manager_comment;
+            
+            const hasMyComment = !!(myCommentText && myCommentText.trim() !== '');
+            const iconColor = hasMyComment ? '#10b981' : '#cbd5e1';
+            const downClass = idx < 12 ? ' tooltip-down' : '';
+            
+            commentAreaHtml += `
+                <div class="eval-score-cell comment-tooltip${downClass}" style="display:inline-block; cursor: pointer;" onclick="window.openCommentModal(${idx}, '${editRole}')">
+                    <i class="fas fa-pen" style="color: ${iconColor}; font-size: 1.2rem; transition: color 0.2s;" onmouseover="this.style.color='#059669'" onmouseout="this.style.color='${iconColor}'"></i>
+                    <div class="eval-tooltip">
+                        ${combinedTooltipHtml}
+                    </div>
+                </div>
             `;
         } else {
+            const hasAnyComment = !!(item.self_comment || item.primary_comment || item.manager_comment);
+            const iconColor = hasAnyComment ? '#3b82f6' : '#cbd5e1';
+            const downClass = idx < 12 ? ' tooltip-down' : '';
+            
             commentAreaHtml += `
-                <div style="font-size:0.75rem; color:#475569; font-weight: 600; line-height: 1.4;">
-                    ${item.self_comment ? `自己理由: ${item.self_comment}` : '<span style="color:#94a3b8;">自己理由: 未記入</span>'}
+                <div class="eval-score-cell comment-tooltip${downClass}" style="display:inline-block; cursor: help;">
+                    <i class="fas ${hasAnyComment ? 'fa-comment-dots' : 'fa-comment'}" style="color: ${iconColor}; font-size: 1.3rem;"></i>
+                    <div class="eval-tooltip">
+                        ${combinedTooltipHtml}
+                    </div>
                 </div>
             `;
         }
 
-        if (isManagerMode) {
-            commentAreaHtml += `
-                <input type="text" value="${item.manager_comment || ''}" placeholder="フィードバック、上長評価の理由を記入" 
-                       onchange="window.updateComment(${idx}, 'manager', this.value)" 
-                       style="width: 100%; padding: 0.4rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.78rem; margin-top: 0.3rem;">
-            `;
-        } else {
-            commentAreaHtml += `
-                <div style="font-size:0.75rem; color:#6d28d9; font-weight: 700; line-height: 1.4; margin-top: 0.2rem;">
-                    ${item.manager_comment ? `上長FB: ${item.manager_comment}` : '<span style="color:#94a3b8;">上長FB: 未記入</span>'}
+        commentAreaHtml += `</div>`;
+        
+        let primaryColHtml = hasPrimary ? `
+            <td style="padding: 0.8rem 1rem; width: 200px; vertical-align: middle;" class="eval-score-cell">
+                <div style="display: flex; gap: 0.25rem; justify-content: center;">
+                    ${primaryRadioHtml}
                 </div>
-            `;
-        }
+                <div class="eval-tooltip">
+                    <strong style="color:#a7f3d0;"><i class="fas fa-info-circle"></i> 基準説明:</strong><br>${item.description}
+                </div>
+            </td>
+        ` : '';
 
         itemsHtml += `
             <tr style="border-bottom: 1px solid #e2e8f0; background: white;">
                 <td style="padding: 0.8rem 1rem; width: 30%; vertical-align: middle;">
                     <div style="font-weight: 700; color: #1e293b; line-height: 1.4; display: flex; align-items: center;">
-                        ${item.title} ${titleSuffix}
+                        ${item.title} <span id="title-suffix-container-${item.item_id}">${titleSuffix}</span>
                     </div>
                 </td>
-                <td style="padding: 0.8rem 0.5rem; text-align: center; font-family: monospace; background: #f8fafc; width: 100px; vertical-align: middle;">
+                <td style="padding: 0.8rem 0.5rem; text-align: center; font-family: monospace; background: #f8fafc; width: 100px; vertical-align: middle;" id="diff-container-${item.item_id}">
                     ${diffHtml}
                 </td>
                 <td style="padding: 0.8rem 1rem; width: 200px; vertical-align: middle;" class="eval-score-cell">
@@ -2026,6 +2767,7 @@ function renderModalBody(container, mode) {
                         <strong style="color:#a7f3d0;"><i class="fas fa-info-circle"></i> 基準説明:</strong><br>${item.description}
                     </div>
                 </td>
+                ${primaryColHtml}
                 <td style="padding: 0.8rem 1rem; width: 200px; vertical-align: middle;" class="eval-score-cell">
                     <div style="display: flex; gap: 0.25rem; justify-content: center;">
                         ${managerRadioHtml}
@@ -2034,7 +2776,7 @@ function renderModalBody(container, mode) {
                         <strong style="color:#a7f3d0;"><i class="fas fa-info-circle"></i> 基準説明:</strong><br>${item.description}
                     </div>
                 </td>
-                <td style="padding: 0.8rem 1rem; vertical-align: middle;">
+                <td style="padding: 0.8rem; text-align: center; width: 80px; vertical-align: middle;">
                     ${commentAreaHtml}
                 </td>
             </tr>
@@ -2047,8 +2789,8 @@ function renderModalBody(container, mode) {
             <h5 style="margin: 0 0 0.5rem; color: #1e3a8a; font-weight: 800;"><i class="fas fa-info-circle"></i> 自動等級判定の条件目安 (給与基準表)</h5>
             <p style="margin: 0; font-size: 0.78rem; color: #1e40af; line-height: 1.5;">
                 ・点数合計に応じた等級連動判定が行われます。<br>
-                ・仮評価（9, 12, 3月）は結果公開と仮通知のみで給与には影響しません。<br>
-                ・本評価（6月）のみ新等級が7月から本反映されます。
+                ・仮評価は結果公開と仮通知のみで給与には影響しません。<br>
+                ・本評価のみ新等級が月から本反映されます。
             </p>
         </div>
     `;
@@ -2060,8 +2802,8 @@ function renderModalBody(container, mode) {
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem;">
                 <div class="glass-panel" style="padding: 1.2rem; background: white; border: 1px solid var(--border);">
                     <h5 style="margin: 0 0 0.6rem; color: #7c3aed; font-weight: 800;"><i class="fas fa-comments"></i> 上長面談時のメモ・記録</h5>
-                    ${isManagerMode ? `
-                        <textarea id="modal-interview-notes" rows="4" placeholder="面談で話し合った内容や育成方針を記入" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.85rem; font-family:inherit; resize:vertical;">${selectedEvalDetail.interview_notes || ''}</textarea>
+                    ${isInterviewMode ? `
+                        <textarea id="modal-interview-notes" rows="4" placeholder="面談で話し合った内容や育成方針を記入" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.85rem; font-family:inherit; resize:none; overflow-y:hidden;" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'">${selectedEvalDetail.interview_notes || ''}</textarea>
                         <div style="margin-top: 0.5rem;">
                             <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:0.2rem;">面談実施日</label>
                             <input type="date" id="modal-interview-date" value="${selectedEvalDetail.interview_date || ''}" style="padding:0.4rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.85rem;">
@@ -2074,7 +2816,7 @@ function renderModalBody(container, mode) {
                 <div class="glass-panel" style="padding: 1.2rem; background: white; border: 1px solid var(--border);">
                     <h5 style="margin: 0 0 0.6rem; color: #be123c; font-weight: 800;"><i class="fas fa-user-tie"></i> 社長フィードバック・総括</h5>
                     ${isPresidentMode ? `
-                        <textarea id="modal-president-comment" rows="4" placeholder="社長からのフィードバックコメントを入力" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.85rem; font-family:inherit; resize:vertical;">${selectedEvalDetail.president_comment || ''}</textarea>
+                        <textarea id="modal-president-comment" rows="4" placeholder="社長からのフィードバックコメントを入力" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.85rem; font-family:inherit; resize:none; overflow-y:hidden;" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'">${selectedEvalDetail.president_comment || ''}</textarea>
                         <div style="margin-top: 0.5rem; display:flex; gap:1rem; align-items:center;">
                             <div>
                                 <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:0.2rem;">社長査定・最終確定合計点</label>
@@ -2102,10 +2844,11 @@ function renderModalBody(container, mode) {
                 <thead>
                     <tr style="background:#f8fafc;">
                         <th style="text-align: left;">評価項目・基準説明</th>
-                        <th style="text-align: center; width: 100px;">過去との差分</th>
-                        <th style="text-align: center; width: 200px;">自己評価点</th>
-                        <th style="text-align: center; width: 200px; color:#7c3aed;">上長評価点</th>
-                        <th style="text-align: left;">評価理由・フィードバック</th>
+                        <th style="text-align: center; width: 100px;">過去評価</th>
+                        <th style="text-align: center; width: 200px;">自己</th>
+                        ${hasPrimary ? `<th style="text-align: center; width: 200px; color:#2563eb;">１次</th>` : ''}
+                        <th style="text-align: center; width: 200px; color:#7c3aed;">最終</th>
+                        <th style="text-align: center; width: 80px;">評価理由</th>
                     </tr>
                 </thead>
                 <tbody id="modal-eval-table-body">
@@ -2115,8 +2858,9 @@ function renderModalBody(container, mode) {
                     <tr style="background: #f8fafc; font-weight: 800; border-top: 2px solid var(--border);">
                         <td style="padding: 1rem; text-align: right;">合計点 (120点満点)</td>
                         <td style="padding: 1rem; text-align: center; color: #64748b;">-</td>
-                        <td style="padding: 1rem; text-align: center; font-size: 1.1rem; color: #2563eb;" id="sum-self-score">${selfTotal} 点</td>
-                        <td style="padding: 1rem; text-align: center; font-size: 1.1rem; color: #7c3aed;" id="sum-manager-score">${managerTotal} 点</td>
+                        <td style="padding: 1rem; text-align: center; font-size: 1.1rem; color: #2563eb;" id="sum-self-score">${(mode === 'self' || isSelfMode || allSubmitted || isAdmin) ? selfTotal : hiddenIconHtml}</td>
+                        ${hasPrimary ? `<td style="padding: 1rem; text-align: center; font-size: 1.1rem; color: #2563eb;" id="sum-primary-score">${(canEditPrimary || allSubmitted || isAdmin) ? primaryTotal : hiddenIconHtml}</td>` : ''}
+                        <td style="padding: 1rem; text-align: center; font-size: 1.1rem; color: #7c3aed;" id="sum-manager-score">${(canEditSecondary || isInterviewMode || allSubmitted || isAdmin) ? managerTotal : hiddenIconHtml}</td>
                         <td style="padding: 1rem;">-</td>
                     </tr>
                 </tfoot>
@@ -2134,25 +2878,40 @@ function renderModalBody(container, mode) {
 
         if (type === 'self') {
             item.self_score = score;
+        } else if (type === 'primary') {
+            item.primary_score = score;
         } else if (type === 'manager') {
             item.manager_score = score;
         }
 
         // DOM再レンダリングを介さず合計点のみ更新してパフォーマンスを稼ぐ
         let selfSum = 0;
+        let primarySum = 0;
         let managerSum = 0;
         selectedEvalDetail.items.forEach(it => {
             selfSum += it.self_score || 0;
+            primarySum += it.primary_score || 0;
             managerSum += it.manager_score || 0;
         });
 
         selectedEvalDetail.self_total_score = selfSum;
+        selectedEvalDetail.primary_total_score = primarySum;
         selectedEvalDetail.manager_total_score = managerSum;
 
         const sumSelfEl = document.getElementById('sum-self-score');
+        const sumPrimEl = document.getElementById('sum-primary-score');
         const sumMgrEl = document.getElementById('sum-manager-score');
-        if (sumSelfEl) sumSelfEl.textContent = `${selfSum} 点`;
-        if (sumMgrEl) sumMgrEl.textContent = `${managerSum} 点`;
+        if (type === 'self' && sumSelfEl) sumSelfEl.textContent = selfSum;
+        if (type === 'primary' && sumPrimEl) sumPrimEl.textContent = primarySum;
+        if (type === 'manager' && sumMgrEl) sumMgrEl.textContent = managerSum;
+
+        // 面談用ポップオーバーのテキスト更新と閉じる処理
+        const popoverTextEl = document.getElementById(`popover-score-text-${itemIdx}`);
+        if (popoverTextEl && type === 'manager') {
+            popoverTextEl.textContent = score;
+            const popoverEl = document.getElementById(`popover-score-${itemIdx}`);
+            if (popoverEl) popoverEl.style.display = 'none';
+        }
 
         // クリックしたボタンのスタイルだけを即時切り替え
         const rowEl = document.getElementById('modal-eval-table-body').children;
@@ -2160,7 +2919,11 @@ function renderModalBody(container, mode) {
         const targetTrs = Array.from(rowEl).filter(tr => tr.style.background === 'white');
         const tr = targetTrs[itemIdx];
         if (tr) {
-            const btnCellIdx = (type === 'self') ? 2 : 3;
+            const hasPrimary = !!(selectedEvalDetail.workflow && selectedEvalDetail.workflow.primary_evaluator);
+            let btnCellIdx = 2; // self
+            if (type === 'primary') btnCellIdx = 3;
+            else if (type === 'manager') btnCellIdx = hasPrimary ? 4 : 3;
+
             const buttons = tr.cells[btnCellIdx].querySelectorAll('.score-btn');
             buttons.forEach(btn => {
                 const btnScore = parseInt(btn.textContent.trim());
@@ -2177,8 +2940,51 @@ function renderModalBody(container, mode) {
         const item = selectedEvalDetail.items[itemIdx];
         if (item) {
             if (type === 'self') item.self_comment = val;
+            if (type === 'primary') item.primary_comment = val;
             if (type === 'manager') item.manager_comment = val;
         }
+        
+        // Re-render the table to reflect the new comment status
+        const detailContainer = document.getElementById('subordinate-detail-container');
+        const selfInlineContainer = document.getElementById('self-eval-inline-container');
+
+        if (window.currentEvalMode === 'self' && selfInlineContainer) {
+            renderEvalDetailInline(selfInlineContainer, selectedEvalDetail, 'self');
+        } else if (detailContainer) {
+            renderEvalDetailInline(detailContainer, selectedEvalDetail, window.currentEvalMode || 'manager');
+        }
+    };
+
+    window.openCommentModal = (idx, role) => {
+        const item = selectedEvalDetail.items[idx];
+        const currentVal = item[`${role}_comment`] || '';
+        
+        let roleName = 'フィードバック';
+        if (role === 'self') roleName = '自己理由';
+        else if (role === 'primary') roleName = '1次FB';
+        else if (role === 'manager') roleName = '最終FB';
+        
+        Swal.fire({
+            title: `${roleName}を入力`,
+            html: `
+                <div style="text-align: left; margin-bottom: 0.8rem;">
+                    <div style="font-size: 0.85rem; color: #475569; margin-bottom: 0.4rem;"><strong>評価項目:</strong> ${item.title}</div>
+                    <div style="font-size: 0.8rem; color: #64748b; background: #f8fafc; padding: 0.5rem; border-radius: 6px; border: 1px solid #e2e8f0;">${item.description}</div>
+                </div>
+                <textarea id="swal-input-comment" placeholder="${roleName}を詳しく入力してください" style="width: 100%; box-sizing: border-box; font-size: 0.95rem; min-height: 120px; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; margin: 0; font-family: inherit; resize: vertical; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);">${currentVal}</textarea>
+            `,
+            showCancelButton: true,
+            confirmButtonText: '保存',
+            cancelButtonText: 'キャンセル',
+            confirmButtonColor: '#7c3aed',
+            preConfirm: () => {
+                return document.getElementById('swal-input-comment').value;
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.updateComment(idx, role, result.value);
+            }
+        });
     };
 
     window.handleFinalScoreChange = async (val) => {
@@ -2191,50 +2997,95 @@ function renderModalBody(container, mode) {
         const prevEl = document.getElementById('modal-new-grade-preview');
         if (prevEl) prevEl.textContent = newGrade;
     };
+
+    // 面談用：ポップオーバー（吹き出し）の開閉ロジック
+    window.toggleScorePopover = (idx, event) => {
+        if (event) event.stopPropagation();
+        const popover = document.getElementById(`popover-score-${idx}`);
+        if (!popover) return;
+        
+        // 他のすべてのポップオーバーを閉じる
+        document.querySelectorAll('.eval-popover-menu').forEach(el => {
+            if (el.id !== `popover-score-${idx}`) el.style.display = 'none';
+        });
+
+        if (popover.style.display === 'none') {
+            popover.style.display = 'block';
+        } else {
+            popover.style.display = 'none';
+        }
+    };
+
+    // 領域外クリックでポップオーバーを閉じる
+    if (!window._evalPopoverListenerAdded) {
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.eval-popover-container')) {
+                document.querySelectorAll('.eval-popover-menu').forEach(el => {
+                    el.style.display = 'none';
+                });
+            }
+        });
+        window._evalPopoverListenerAdded = true;
+    }
 }
 
 function renderModalFooter(container, mode) {
     const status = selectedEvalDetail.status;
+    const role = window.appState.currentUser ? window.appState.currentUser.Role : '';
+    const myJobTitle = window.appState.currentUser ? window.appState.currentUser.JobTitle : '';
     
-    // 一般・被評価者
-    if (mode === 'self' && status === 'self_evaluating') {
+    container.innerHTML = '';
+    
+    if (mode === 'self' && ['evaluating', 'self_evaluating'].includes(status) && !selectedEvalDetail.is_self_submitted) {
         container.innerHTML = `
             <button class="btn" style="background: white; border: 1px solid #cbd5e1; color: var(--text-secondary); font-weight:700;" onclick="window.saveEvaluationDraft('self')">下書き保存</button>
             <button class="btn btn-primary" style="background:#2563eb; border-color:#2563eb; font-weight:800; padding:0.6rem 2rem;" onclick="window.submitSelfEvaluation()">自己評価を提出する</button>
         `;
     }
-    // 店長・上長
-    else if (mode === 'manager') {
-        if (status === 'self_submitted' || status === 'manager_evaluating') {
+    else if (mode === 'manager' && ['evaluating', 'self_evaluating', 'self_submitted', 'primary_evaluating', 'primary_submitted', 'manager_evaluating'].includes(status)) {
+        const wf = selectedEvalDetail.workflow || {};
+        const isPrimary = wf.primary_evaluator === myJobTitle;
+        const isSecondary = wf.secondary_evaluator === myJobTitle || (!wf.secondary_evaluator && (role === 'Manager' || role === '店長'));
+
+        let submitBtn = '';
+        if (isPrimary && !selectedEvalDetail.is_primary_submitted) {
+            submitBtn = `<button class="btn btn-primary" style="background:#7c3aed; border-color:#7c3aed; font-weight:800; padding:0.6rem 2rem;" onclick="window.submitManagerEvaluation('primary')">1次評価を提出</button>`;
+        } 
+        else if (isSecondary && !selectedEvalDetail.is_manager_submitted) {
+            submitBtn = `<button class="btn btn-primary" style="background:#7c3aed; border-color:#7c3aed; font-weight:800; padding:0.6rem 2rem;" onclick="window.submitManagerEvaluation('manager')">最終評価を提出</button>`;
+        }
+        
+        if (submitBtn || role === 'Admin') {
             container.innerHTML = `
                 <button class="btn" style="background: white; border: 1px solid #cbd5e1; color: var(--text-secondary); font-weight:700;" onclick="window.saveEvaluationDraft('manager')">評価を下書き保存</button>
-                <button class="btn btn-primary" style="background:#7c3aed; border-color:#7c3aed; font-weight:800; padding:0.6rem 2rem;" onclick="window.submitManagerEvaluation('interviewing')">評価を確定して面談待ちへ</button>
+                ${submitBtn}
             `;
-        } else if (status === 'interviewing') {
-            container.innerHTML = `
-                <button class="btn" style="background: white; border: 1px solid #cbd5e1; color: var(--text-secondary); font-weight:700;" onclick="window.saveEvaluationDraft('manager')">面談メモを下書き保存</button>
-                <button class="btn btn-primary" style="background:#a21caf; border-color:#a21caf; color:white; font-weight:800; padding:0.6rem 2rem;" onclick="window.submitManagerEvaluation('president_pending')">面談完了・社長へ最終提出</button>
-            `;
+        } else {
+            container.innerHTML = `<button class="btn" onclick="window.backToSubordinateList()" style="background:#f1f5f9; color:#475569; border:none; padding:0.5rem 1rem; border-radius:6px; font-weight:700;"><i class="fas fa-times"></i> 閉じる</button>`;
         }
     }
-    // 社長・承認者
+    else if (mode === 'interview' && status === 'interviewing') {
+        container.innerHTML = `
+            <button class="btn" style="background: white; border: 1px solid #cbd5e1; color: var(--text-secondary); font-weight:700;" onclick="window.saveEvaluationDraft('interview')">下書き保存 (評価・面談メモ)</button>
+            <button class="btn btn-primary" style="background:#059669; border-color:#059669; color:white; font-weight:800; padding:0.6rem 2rem;" onclick="window.submitManagerEvaluation('president_pending')">面談完了・社長へ最終提出</button>
+        `;
+    }
     else if (mode === 'president' && status === 'president_pending') {
         container.innerHTML = `
             <button class="btn btn-primary" style="background:#be123c; border-color:#be123c; font-weight:800; padding:0.6rem 2rem;" onclick="window.approvePresidentEvaluation()">社長査定を確定する</button>
         `;
     }
-    // 閲覧モード
     else {
         container.innerHTML = `
-            <button class="btn btn-secondary" onclick="document.getElementById('eval-detail-modal').style.display='none'">閉じる</button>
+            <button class="btn" onclick="window.closeEvaluationModal()" style="background:#f1f5f9; color:#475569; border:none; padding:0.5rem 1rem; border-radius:6px; font-weight:700;"><i class="fas fa-times"></i> 閉じる</button>
         `;
     }
 
-    // 1. 自己評価の下書き保存
+    // 1. 下書き保存
     window.saveEvaluationDraft = async (type) => {
         try {
             // テキストフィールドの値を同期
-            if (type === 'manager') {
+            if (type === 'manager' || type === 'interview') {
                 const notesEl = document.getElementById('modal-interview-notes');
                 const dateEl = document.getElementById('modal-interview-date');
                 if (notesEl) selectedEvalDetail.interview_notes = notesEl.value;
@@ -2242,14 +3093,16 @@ function renderModalFooter(container, mode) {
             }
 
             const docRef = doc(db, "t_evaluations", selectedEvalDetail.id);
-            await updateDoc(docRef, {
+            const updates = {
                 items: selectedEvalDetail.items,
-                self_total_score: selectedEvalDetail.self_total_score,
-                manager_total_score: selectedEvalDetail.manager_total_score,
+                self_total_score: selectedEvalDetail.self_total_score || 0,
+                primary_total_score: selectedEvalDetail.primary_total_score || 0,
+                manager_total_score: selectedEvalDetail.manager_total_score || 0,
                 interview_notes: selectedEvalDetail.interview_notes || '',
                 interview_date: selectedEvalDetail.interview_date || '',
                 updated_at: new Date().toISOString()
-            });
+            };
+            await updateDoc(docRef, updates);
             showAlert('下書き保存', '評価シートの内容を下書き保存しました！');
             await loadEvaluationData();
             renderActiveTabContent();
@@ -2269,29 +3122,73 @@ function renderModalFooter(container, mode) {
 
         showConfirm('自己評価の提出', '自己評価を提出します。提出後は変更ができなくなりますが、よろしいですか？', async () => {
             try {
+                const wf = selectedEvalDetail.workflow || {};
+                const hasPrimary = !!wf.primary_evaluator;
+                const isPrimarySub = selectedEvalDetail.is_primary_submitted || false;
+                const isManagerSub = selectedEvalDetail.is_manager_submitted || false;
+
+                let nextStatus = 'self_submitted';
+                if (hasPrimary && !isPrimarySub) {
+                    nextStatus = 'self_submitted'; // 1次評価待ち
+                } else if (!isManagerSub) {
+                    nextStatus = hasPrimary ? 'primary_submitted' : 'self_submitted'; // 最終評価待ち または 上長評価待ち
+                } else {
+                    nextStatus = 'interviewing'; // 全員提出済み
+                }
+
                 const docRef = doc(db, "t_evaluations", selectedEvalDetail.id);
                 await updateDoc(docRef, {
                     items: selectedEvalDetail.items,
                     self_total_score: selectedEvalDetail.self_total_score,
-                    status: 'self_submitted', // 提出完了
+                    status: nextStatus,
+                    is_self_submitted: true,
                     updated_at: new Date().toISOString()
                 });
-                document.getElementById('eval-detail-modal').style.display = 'none';
-                showAlert('提出完了', '自己評価の提出が完了しました！店長による評価と面談をお待ちください。');
-                await loadInitialSettingsAndData();
+                
+                // メモリ上のデータを更新
+                selectedEvalDetail.status = nextStatus;
+                selectedEvalDetail.is_self_submitted = true;
+                
+                const idx = activeEvaluations.findIndex(e => e.id === selectedEvalDetail.id);
+                if (idx !== -1) {
+                    activeEvaluations[idx].status = nextStatus;
+                    activeEvaluations[idx].is_self_submitted = true;
+                    activeEvaluations[idx].items = selectedEvalDetail.items;
+                    activeEvaluations[idx].self_total_score = selectedEvalDetail.self_total_score;
+                }
+
+                const modal = document.getElementById('eval-detail-modal');
+                if (modal && modal.style.display === 'block') {
+                    modal.style.display = 'none';
+                }
+                
+                // リロードせずにUIを即時反映
+                if (mode === 'self' && myEvaluation) {
+                    myEvaluation.status = nextStatus;
+                    myEvaluation.is_self_submitted = true;
+                    myEvaluation.items = selectedEvalDetail.items;
+                    myEvaluation.self_total_score = selectedEvalDetail.self_total_score;
+                }
+                renderActiveTabContent();
+
+                showAlert('提出完了', '提出が完了しました。上長から面談日についての連絡が来るまでお待ちください。');
             } catch(e) {
                 console.error(e);
-                showAlert('エラー', '提出処理に失敗しました。');
+                showAlert('エラー', `提出処理に失敗しました。<br><br><span style="font-size:0.8rem;color:#ef4444;word-break:break-all;">【システムエラー詳細】<br>${e.message || e.toString()}</span>`);
             }
         });
     };
 
     // 3. 上長評価の提出（面談待ちへ、または社長提出へ）
-    window.submitManagerEvaluation = (nextStatus) => {
-        // 点数バリデーション (面談待ちへ行く時点ですべて入力されている必要がある)
-        const incomplete = selectedEvalDetail.items.some(it => !it.manager_score);
-        if (incomplete) {
-            return showAlert('入力未完了', 'すべての評価項目（24項目）に上長評価点を入力してください。');
+    window.submitManagerEvaluation = (type) => {
+        const incompletePrimary = selectedEvalDetail.items.some(it => !it.primary_score);
+        const incompleteManager = selectedEvalDetail.items.some(it => !it.manager_score);
+        
+        if (type === 'primary' && incompletePrimary) {
+            return showAlert('入力未完了', 'すべての評価項目（24項目）に1次評価点を入力してください。');
+        }
+        if (type === 'manager' && incompleteManager) {
+            return showAlert('入力未完了', 'すべての評価項目（24項目）に最終評価点を入力してください。');
         }
 
         const notesEl = document.getElementById('modal-interview-notes');
@@ -2300,33 +3197,93 @@ function renderModalFooter(container, mode) {
         if (dateEl) selectedEvalDetail.interview_date = dateEl.value;
 
         // 社長へ提出する際は面談メモが必須
-        if (nextStatus === 'president_pending' && (!selectedEvalDetail.interview_notes || !selectedEvalDetail.interview_date)) {
-            return showAlert('入力未完了', '面談日および面談内容（記録）を記入してください。');
+        if (type === 'president_pending' && !selectedEvalDetail.interview_notes) {
+            return showAlert('入力未完了', '面談内容（記録）を記入してください。');
         }
 
-        const title = nextStatus === 'interviewing' ? '面談待ちへ移行' : '社長への最終提出';
-        const msg = nextStatus === 'interviewing' 
-            ? '評価を入力完了し、面談待ち状態にしますか？（この後部下と評価シートを見ながら面談を行ってください）'
-            : '面談記録を含めて評価を社長に提出します。提出後は変更できなくなりますが、よろしいですか？';
+        let title = '提出の確認';
+        let msg = '';
+        
+        const wf = selectedEvalDetail.workflow || {};
+        const hasPrimary = !!wf.primary_evaluator;
+        const isSelfSub = selectedEvalDetail.is_self_submitted || false;
+        let isPrimarySub = selectedEvalDetail.is_primary_submitted || false;
+        let isManagerSub = selectedEvalDetail.is_manager_submitted || false;
+        let nextStatus = selectedEvalDetail.status;
+
+        if (type === 'primary') {
+            title = '1次評価の提出';
+            msg = '1次評価を完了として提出しますか？<br>（全員の評価が完了するまでは面談待ちに進みません）';
+            isPrimarySub = true;
+        } else if (type === 'manager') {
+            title = '最終評価の提出';
+            msg = '最終評価を完了として提出しますか？<br>（全員の評価が完了するまでは面談待ちに進みません）';
+            isManagerSub = true;
+        } else if (type === 'president_pending') {
+            title = '社長への最終提出';
+            msg = '面談記録を含めて評価を社長に提出します。提出後は変更できなくなりますが、よろしいですか？';
+            nextStatus = 'president_pending';
+        }
+
+        if (type === 'primary' || type === 'manager') {
+            if (!isSelfSub) {
+                nextStatus = 'evaluating';
+            } else if (hasPrimary && !isPrimarySub) {
+                nextStatus = 'self_submitted';
+            } else if (!isManagerSub) {
+                nextStatus = 'primary_submitted';
+            } else {
+                nextStatus = 'interviewing';
+            }
+        }
 
         showConfirm(title, msg, async () => {
             try {
                 const docRef = doc(db, "t_evaluations", selectedEvalDetail.id);
-                await updateDoc(docRef, {
+                const updates = {
                     items: selectedEvalDetail.items,
-                    manager_total_score: selectedEvalDetail.manager_total_score,
+                    primary_total_score: selectedEvalDetail.primary_total_score || 0,
+                    manager_total_score: selectedEvalDetail.manager_total_score || 0,
                     interview_notes: selectedEvalDetail.interview_notes || '',
                     interview_date: selectedEvalDetail.interview_date || '',
                     status: nextStatus,
                     updated_at: new Date().toISOString()
-                });
+                };
                 
-                if (window.backToSubordinateList) window.backToSubordinateList();
-                showAlert('完了', nextStatus === 'interviewing' ? '評価を下書き保存し、面談待ちとしました。' : '社長への最終提出が完了しました！');
-                await loadInitialSettingsAndData();
+                if (type === 'primary') updates.is_primary_submitted = true;
+                if (type === 'manager') updates.is_manager_submitted = true;
+
+                await updateDoc(docRef, updates);
+                
+                // メモリ上のデータを即時更新
+                selectedEvalDetail.status = nextStatus;
+                if (type === 'primary') selectedEvalDetail.is_primary_submitted = true;
+                if (type === 'manager') selectedEvalDetail.is_manager_submitted = true;
+                
+                const idx = activeEvaluations.findIndex(e => e.id === selectedEvalDetail.id);
+                if (idx !== -1) {
+                    activeEvaluations[idx] = { ...activeEvaluations[idx], ...updates };
+                }
+
+                if (mode === 'interview' && window.backToInterviewList) window.backToInterviewList();
+                else if (window.backToSubordinateList) window.backToSubordinateList();
+                
+                let successMsg = '処理が完了しました。';
+                if (type === 'primary') {
+                    successMsg = '1次評価の提出が完了しました。店長から面談日についての連絡が来るまでお待ちください。（面談には同席していただきます）';
+                } else if (type === 'manager') {
+                    successMsg = '最終評価の提出が完了しました。部下および副店長（対象の場合）と連絡を取り、面談日程の調整を行ってください。';
+                } else if (type === 'president_pending') {
+                    successMsg = '社長への最終提出が完了しました！';
+                }
+                
+                // リロードせずにUIを即時反映
+                renderActiveTabContent();
+
+                showAlert('完了', successMsg);
             } catch(e) {
                 console.error(e);
-                showAlert('エラー', '送信処理に失敗しました。');
+                showAlert('エラー', `送信処理に失敗しました。<br><br><span style="font-size:0.8rem;color:#ef4444;word-break:break-all;">【システムエラー詳細】<br>${e.message || e.toString()}</span>`);
             }
         });
     };
@@ -2390,13 +3347,25 @@ async function lookupGradeByScore(score) {
     }
 }
 
-// 英語ステータスキーの日本語表示名マッピング
-function getStatusJpName(status) {
+function getStatusJpName(status, evalData = null) {
+    let hasPrimary = true;
+    if (evalData && evalData.workflow) {
+        hasPrimary = !!evalData.workflow.primary_evaluator;
+    }
+
+    if (!hasPrimary) {
+        if (status === 'self_submitted' || status === 'primary_submitted') return '上長評価待ち';
+        if (status === 'primary_evaluating' || status === 'manager_evaluating') return '上長評価中';
+    }
+
     const map = {
         'not_started': '未開始',
+        'evaluating': '評価入力中',
         'self_evaluating': '自己評価中',
         'self_submitted': '自己評価提出済',
-        'manager_evaluating': '上長評価中',
+        'primary_evaluating': '1次評価中',
+        'primary_submitted': '1次評価完了',
+        'manager_evaluating': '最終評価中',
         'interviewing': '面談待ち',
         'president_pending': '社長確認待ち',
         'approved': '確定済 (未公開)',
@@ -2537,6 +3506,11 @@ function loadActiveEditTemplate() {
     const template = editTemplates[activeEditTemplateId];
     activeEditItems = JSON.parse(JSON.stringify(template.items || []));
     activeEditItems.sort((a, b) => (a.display_order || 999) - (b.display_order || 999));
+    
+    const specialNoteEl = document.getElementById('editor-special-note');
+    if (specialNoteEl) {
+        specialNoteEl.value = template.special_note || '';
+    }
     
     renderTargetJobTitles();
     renderTemplateItems();
@@ -2712,6 +3686,159 @@ async function closeTemplateEditorModal() {
         closeAction();
     }
 }
+
+// ==========================================
+// 評価ルート（ワークフロー）設定
+// ==========================================
+window.openWorkflowEditorModal = async () => {
+    const container = document.getElementById('workflow-editor-container');
+    if (!container) return;
+    
+    // 他のエリアを隠す
+    document.getElementById('eval-main-content').style.display = 'none';
+    document.getElementById('eval-period-banner').style.display = 'none';
+    const tabsContainer = document.querySelector('.tabs-container');
+    if (tabsContainer) tabsContainer.style.display = 'none';
+    
+    container.style.display = 'block';
+    
+    await window.renderWorkflowSettings();
+};
+
+window.closeWorkflowEditor = () => {
+    const container = document.getElementById('workflow-editor-container');
+    if (container) {
+        container.style.display = 'none';
+        
+        // メインエリアを再表示
+        document.getElementById('eval-main-content').style.display = 'block';
+        document.getElementById('eval-period-banner').style.display = 'flex';
+        const tabsContainer = document.querySelector('.tabs-container');
+        if (tabsContainer) tabsContainer.style.display = 'flex';
+    }
+};
+
+window.renderWorkflowSettings = async () => {
+    const listContainer = document.getElementById('workflow-list-container');
+    if (!listContainer) return;
+    
+    listContainer.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-secondary);"><i class="fas fa-spinner fa-spin fa-2x"></i><br>読み込み中...</div>';
+
+    try {
+        // 等級マスタの読み込み
+        const gradesSnap = await getDocs(collection(db, "m_grades"));
+        let localGradesForWorkflow = [];
+        gradesSnap.forEach(doc => {
+            const data = doc.data();
+            if (data.job_title) {
+                // 重複排除（同じ役職名が複数等級にある場合を考慮）
+                if (!localGradesForWorkflow.find(g => g.job_title === data.job_title)) {
+                    localGradesForWorkflow.push({ id: doc.id, job_title: data.job_title, display_order: data.display_order || 999 });
+                }
+            }
+        });
+        localGradesForWorkflow.sort((a, b) => a.display_order - b.display_order);
+
+        // ルート設定の読み込み
+        const routesSnap = await getDocs(collection(db, "m_evaluation_routes"));
+        let localWorkflowSettings = {};
+        routesSnap.forEach(doc => {
+            localWorkflowSettings[doc.id] = doc.data();
+        });
+
+        // 役職の選択肢HTMLを生成
+        const roleOptions = `<option value="">-- スキップ (なし) --</option>` + 
+            localGradesForWorkflow.map(g => `<option value="${g.job_title}">${g.job_title}</option>`).join('');
+
+        let html = '';
+        localGradesForWorkflow.forEach(grade => {
+            const targetJob = grade.job_title;
+            const currentSetting = localWorkflowSettings[targetJob] || { primary_evaluator: '', secondary_evaluator: '店長' };
+            
+            html += `
+                <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.2rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                    <div style="width: 25%; font-weight: 800; color: #1e293b; font-size: 1.05rem;">
+                        <i class="fas fa-user-tag" style="color: #64748b; margin-right: 0.5rem;"></i>${targetJob}
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; gap: 0.8rem; flex: 1;">
+                        <!-- 本人 -->
+                        <div style="background: #f8fafc; padding: 0.6rem 1rem; border-radius: 6px; border: 1px dashed #cbd5e1; font-size: 0.85rem; font-weight: 700; color: #64748b; text-align: center;">
+                            本人<br><span style="font-size:0.7rem;">(自己評価)</span>
+                        </div>
+                        
+                        <i class="fas fa-arrow-right" style="color: #cbd5e1;"></i>
+                        
+                        <!-- 1次評価 -->
+                        <div style="flex: 1;">
+                            <div style="font-size: 0.75rem; color: #64748b; font-weight: 700; margin-bottom: 0.3rem;">1次評価者 (任意)</div>
+                            <select class="workflow-primary-select" data-job="${targetJob}" style="width: 100%; padding: 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1; font-family: inherit; font-size: 0.9rem; font-weight: 600; color: #1e293b;">
+                                ${roleOptions.replace(`value="${currentSetting.primary_evaluator}"`, `value="${currentSetting.primary_evaluator}" selected`)}
+                            </select>
+                        </div>
+                        
+                        <i class="fas fa-arrow-right" style="color: #cbd5e1;"></i>
+                        
+                        <!-- 2次評価 -->
+                        <div style="flex: 1;">
+                            <div style="font-size: 0.75rem; color: #64748b; font-weight: 700; margin-bottom: 0.3rem;">最終評価者 (面談担当)</div>
+                            <select class="workflow-secondary-select" data-job="${targetJob}" style="width: 100%; padding: 0.6rem; border-radius: 6px; border: 1px solid #cbd5e1; font-family: inherit; font-size: 0.9rem; font-weight: 600; color: #1e293b; background: #eff6ff; border-color: #bfdbfe;">
+                                ${roleOptions.replace(`value="${currentSetting.secondary_evaluator || '店長'}"`, `value="${currentSetting.secondary_evaluator || '店長'}" selected`)}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        listContainer.innerHTML = html;
+        
+    } catch (error) {
+        console.error("Error loading workflow settings:", error);
+        listContainer.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--danger); font-weight: bold;">設定の読み込みに失敗しました。</div>';
+    }
+};
+
+window.saveWorkflowSettings = async () => {
+    const btn = document.querySelector('#workflow-editor-container .btn-primary');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
+    btn.disabled = true;
+
+    try {
+        const batch = writeBatch(db);
+        
+        const primarySelects = document.querySelectorAll('.workflow-primary-select');
+        const secondarySelects = document.querySelectorAll('.workflow-secondary-select');
+        
+        for (let i = 0; i < primarySelects.length; i++) {
+            const targetJob = primarySelects[i].getAttribute('data-job');
+            const primary = primarySelects[i].value;
+            const secondary = secondarySelects[i].value;
+            
+            const docRef = doc(db, "m_evaluation_routes", targetJob);
+            batch.set(docRef, {
+                target_job: targetJob,
+                primary_evaluator: primary,
+                secondary_evaluator: secondary,
+                updated_at: new Date().toISOString()
+            }, { merge: true });
+        }
+        
+        await batch.commit();
+        showAlert('保存完了', '評価ルート（ワークフロー）の設定を保存しました。次回開始される評価から適用されます。');
+        window.closeWorkflowEditor();
+        
+    } catch (error) {
+        console.error("Error saving workflow settings:", error);
+        showAlert('エラー', '設定の保存に失敗しました。');
+    } finally {
+        if(btn) {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }
+};
 
 function addTemplateItem() {
     const nextOrder = activeEditItems.reduce((max, it) => Math.max(max, it.display_order || 0), 0) + 1;
@@ -2940,9 +4067,13 @@ window.saveActiveTemplate = async () => {
         const templateName = editTemplates[activeEditTemplateId]?.template_name || activeEditTemplateId;
         const targetJobTitles = editTemplates[activeEditTemplateId]?.target_job_titles || [];
         
+        const specialNoteEl = document.getElementById('editor-special-note');
+        const specialNote = specialNoteEl ? specialNoteEl.value.trim() : '';
+        
         await setDoc(docRef, {
             template_name: templateName,
             target_job_titles: targetJobTitles,
+            special_note: specialNote,
             items: activeEditItems.map((item, idx) => {
                 let fallbackId = '';
                 if (!item.item_id) {
