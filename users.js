@@ -1205,7 +1205,7 @@ function setupUploadModalLogic() {
             
         } catch (e) {
             console.error("Upload failed", e);
-            showAlert('エラー', 'アップロードに失敗しました');
+            showAlert('エラー', `アップロードに失敗しました: ${e.message}`);
         } finally {
             btnExecute.innerHTML = 'アップロードを実行';
             btnExecute.disabled = false;
