@@ -836,6 +836,7 @@ async function loadDailyData() {
 
         // 対象日のスタッフ取得（Storeフィールドで検索）
         const userSnap = await getDocs(query(collection(db, 'm_users'), where('Store', '==', storeNameForUserSearch)));
+        const idResolver = {};
         const staffList = [];
         userSnap.forEach(d => {
             const data = d.data();
@@ -843,12 +844,15 @@ async function loadDailyData() {
             if (data.Role === 'Tablet' || data.Role === '店舗タブレット') return;
 
             // あらゆる可能性を網羅するスマート・マッピング
-            const sId = data.EmployeeCode || data.staff_id || data.staff_code || data.UserId || data.id || d.id;
+            const canonicalId = String(data.EmployeeCode || d.id).trim();
+            const docId = String(d.id).trim();
+            idResolver[canonicalId] = canonicalId;
+            idResolver[docId] = canonicalId;
             const sName = data.Name || data.name || data.staff_name || data.DisplayName || data.name_kanji || '';
             
             // 文字列として確実に固定して保持
             staffList.push({ 
-                id: sId ? String(sId).trim() : String(d.id), 
+                id: canonicalId, 
                 name: (sName && String(sName).trim() !== 'undefined') ? String(sName).trim() : '(名前なし)',
                 data: data 
             });
@@ -1347,6 +1351,7 @@ async function loadMonthlyData() {
 
     try {
         const userSnap = await getDocs(collection(db, 'm_users'));
+        const idResolver = {};
         const staffMap = {};
         userSnap.forEach(d => {
             const data = d.data();
@@ -1354,7 +1359,11 @@ async function loadMonthlyData() {
             if (data.Role === 'Tablet' || data.Role === '店舗タブレット') return;
 
             // 日別データ表示 (line 292) と同様のより堅牢なスタッフ特定ロジックを採用
-            const sid = data.EmployeeCode || data.staff_id || data.staff_code || data.UserId || data.id || d.id;
+            const canonicalId = String(data.EmployeeCode || d.id).trim();
+            const docId = String(d.id).trim();
+            idResolver[canonicalId] = canonicalId;
+            idResolver[docId] = canonicalId;
+            const sid = canonicalId;
             const name = data.Name || data.name || data.staff_name || data.DisplayName || data.name_kanji || '(名前なし)';
             
             // ユーザーに紐付く店舗情報を特定
@@ -1385,8 +1394,10 @@ async function loadMonthlyData() {
         // 集計
         const staffGroup = {};
         punches.forEach(p => {
-            if (!staffGroup[p.staff_id]) staffGroup[p.staff_id] = [];
-            staffGroup[p.staff_id].push(p);
+            const rawSid = String(p.staff_id || "").trim();
+            const sid = idResolver[rawSid] || rawSid;
+            if (!staffGroup[sid]) staffGroup[sid] = [];
+            staffGroup[sid].push(p);
         });
 
         Object.keys(staffGroup).forEach(sid => {
@@ -1814,13 +1825,18 @@ async function loadIntegratedData() {
     try {
         // 1. スタッフマスターのロード（実績ある堅牢なマッピング）
         const userSnap = await getDocs(collection(db, 'm_users'));
+        const idResolver = {};
         const staffMap = {};
         userSnap.forEach(d => {
             const data = d.data();
             // 店舗タブレットアカウントは勤怠集計から完全に除外する
             if (data.Role === 'Tablet' || data.Role === '店舗タブレット') return;
 
-            const sid = data.EmployeeCode || data.staff_id || data.staff_code || data.UserId || data.id || d.id;
+            const canonicalId = String(data.EmployeeCode || d.id).trim();
+            const docId = String(d.id).trim();
+            idResolver[canonicalId] = canonicalId;
+            idResolver[docId] = canonicalId;
+            const sid = canonicalId;
             const name = data.Name || data.name || data.staff_name || data.DisplayName || data.name_kanji || '(名前なし)';
             const sName = data.Store || data.store_name || "";
             const matchedStore = cachedStores.find(st => 
@@ -1885,7 +1901,8 @@ async function loadIntegratedData() {
         // スタッフごとにグループ化
         const staffPunches = {};
         punches.forEach(p => {
-            const sid = String(p.staff_id || p.staff_code || p.EmployeeCode || "").trim();
+            const rawSid = String(p.staff_id || p.staff_code || p.EmployeeCode || "").trim();
+            const sid = idResolver[rawSid] || rawSid;
             if (!staffPunches[sid]) staffPunches[sid] = [];
             staffPunches[sid].push(p);
         });
@@ -2376,13 +2393,18 @@ async function handleIntTkcExport() {
     try {
         // 1. スタッフマスターのロード（実績ある堅牢なマッピング）
         const userSnap = await getDocs(collection(db, 'm_users'));
+        const idResolver = {};
         const staffMap = {};
         userSnap.forEach(d => {
             const data = d.data();
             // 店舗タブレットアカウントは勤怠集計から完全に除外する
             if (data.Role === 'Tablet' || data.Role === '店舗タブレット') return;
 
-            const sid = data.EmployeeCode || data.staff_id || data.staff_code || data.UserId || data.id || d.id;
+            const canonicalId = String(data.EmployeeCode || d.id).trim();
+            const docId = String(d.id).trim();
+            idResolver[canonicalId] = canonicalId;
+            idResolver[docId] = canonicalId;
+            const sid = canonicalId;
             const name = data.Name || data.name || data.staff_name || data.DisplayName || data.name_kanji || '(名前なし)';
             const sName = data.Store || data.store_name || "";
             const matchedStore = cachedStores.find(st => 
@@ -2486,7 +2508,8 @@ async function handleIntTkcExport() {
         // スタッフごとにグループ化
         const staffPunches = {};
         punches.forEach(p => {
-            const sid = String(p.staff_id || p.staff_code || p.EmployeeCode || "").trim();
+            const rawSid = String(p.staff_id || p.staff_code || p.EmployeeCode || "").trim();
+            const sid = idResolver[rawSid] || rawSid;
             if (!staffPunches[sid]) staffPunches[sid] = [];
             staffPunches[sid].push(p);
         });
@@ -2720,12 +2743,17 @@ async function handleIntMfExport() {
     try {
         // 1. スタッフマスターのロード（LastName, FirstNameもあわせて取得）
         const userSnap = await getDocs(collection(db, 'm_users'));
+        const idResolver = {};
         const staffMap = {};
         userSnap.forEach(d => {
             const data = d.data();
             if (data.Role === 'Tablet' || data.Role === '店舗タブレット') return;
 
-            const sid = data.EmployeeCode || data.staff_id || data.staff_code || data.UserId || data.id || d.id;
+            const canonicalId = String(data.EmployeeCode || d.id).trim();
+            const docId = String(d.id).trim();
+            idResolver[canonicalId] = canonicalId;
+            idResolver[docId] = canonicalId;
+            const sid = canonicalId;
             const name = data.Name || data.name || data.staff_name || data.DisplayName || data.name_kanji || '(名前なし)';
             const sName = data.Store || data.store_name || "";
             const matchedStore = cachedStores.find(st => 
@@ -2815,7 +2843,8 @@ async function handleIntMfExport() {
 
         const staffPunches = {};
         punches.forEach(p => {
-            const sid = String(p.staff_id || p.staff_code || p.EmployeeCode || "").trim();
+            const rawSid = String(p.staff_id || p.staff_code || p.EmployeeCode || "").trim();
+            const sid = idResolver[rawSid] || rawSid;
             if (!staffPunches[sid]) staffPunches[sid] = [];
             staffPunches[sid].push(p);
         });
