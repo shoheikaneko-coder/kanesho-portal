@@ -1205,11 +1205,18 @@ async function saveAttendanceEdits() {
             const normalizeId = (id) => String(id || "").trim().replace(/^0+/, '');
             const targetIdNorm = normalizeId(currentStaff.id);
 
+            let docIdNorm = targetIdNorm;
+            const uq = query(collection(db, 'm_users'), where('EmployeeCode', '==', currentStaff.id));
+            const uSnap = await getDocs(uq);
+            if (!uSnap.empty) {
+                docIdNorm = normalizeId(uSnap.docs[0].id);
+            }
+
             const processSnap = (snap) => {
                 snap.forEach(d => {
                     const data = d.data();
                     const pid = data.staff_id || data.EmployeeCode || d.id;
-                    if (normalizeId(pid) === targetIdNorm) {
+                    if (normalizeId(pid) === targetIdNorm || normalizeId(pid) === docIdNorm) {
                         batch.delete(d.ref);
                     }
                 });
@@ -1223,7 +1230,7 @@ async function saveAttendanceEdits() {
                     finalTs = p.timestamp + ':00+09:00';
                 }
 
-                const docId = `${p.staff_id}_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`;
+                const docId = `${currentStaff.id}_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`;
                 const docRef = doc(collection(db, 't_attendance'), docId);
                 
                 const data = {
@@ -1231,7 +1238,7 @@ async function saveAttendanceEdits() {
                     timestamp: finalTs,
                     store_id: String(p.store_id || "").trim(), 
                     labor_store_id: String(p.labor_store_id || p.store_id || "").trim(), 
-                    staff_id: String(p.staff_id || "").trim(),
+                    staff_id: String(currentStaff.id).trim(),
                     year_month: p.date.substring(0, 7),
                     modifiedBy: loginUser,
                     modifiedAt: serverTimestamp()
@@ -1291,7 +1298,7 @@ async function saveAttendanceEdits() {
                     return {
                         ...cleanP,
                         timestamp: finalTs,
-                        staff_id: String(p.staff_id || "").trim(),
+                        staff_id: String(currentStaff.id).trim(),
                         store_id: String(p.store_id || "").trim(),
                         deleteRequest: !!p.deleteRequest
                     };
