@@ -964,6 +964,13 @@ async function openStaffEdit(staffId, staffName, date) {
     switchView('edit');
 
     try {
+        let docId = staffId;
+        const uq = query(collection(db, 'm_users'), where('EmployeeCode', '==', staffId));
+        const uSnap = await getDocs(uq);
+        if (!uSnap.empty) {
+            docId = uSnap.docs[0].id;
+        }
+
         // インデックスエラー回避のため、日付範囲のみで取得し、JS側でスタッフIDをフィルタリング
         const nextDay = getNextDateStr(date);
         const q = query(collection(db, 't_attendance'), 
@@ -976,7 +983,7 @@ async function openStaffEdit(staffId, staffName, date) {
             const data = d.data();
             // 保存済みデータのID特定ロジック
             const pid = data.staff_id || data.staff_code || data.EmployeeCode || data.UserId || "";
-            if (String(pid).trim() === String(staffId).trim()) {
+            if (String(pid).trim() === String(staffId).trim() || String(pid).trim() === String(docId).trim()) {
                 // 正規化した状態で保持
                 currentEditPunches.push({ 
                     docId: d.id, 
