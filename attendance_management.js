@@ -989,6 +989,11 @@ async function openStaffEdit(staffId, staffName, date) {
                     docId: d.id, 
                     ...data,
                     staff_id: String(pid).trim(),
+                    type: data.type === '出勤' ? 'check_in' : 
+                          data.type === '退勤' ? 'check_out' : 
+                          data.type === '休憩開始' ? 'break_start' : 
+                          data.type === '休憩終了' ? 'break_end' : 
+                          (data.type || 'check_in'),
                     // Dashboardとの紐付け必須項目を確実に抽出
                     labor_store_id: data.labor_store_id || data.store_id || data.StoreID || "",
                     store_id: data.store_id || data.StoreID || ""
@@ -1127,7 +1132,7 @@ async function saveAttendanceEdits() {
     const confirmMsg = canDirectEdit ? 
         '勤怠データを更新しますか？\nこの操作は給与集計に直接反映されます。' : 
         '勤怠の修正申請を送信しますか？\n管理者の承認後に反映されます。';
-    if (!showConfirm('確認', confirmMsg)) return;
+    if (!(await showConfirm('確認', confirmMsg))) return;
 
     const btn = document.getElementById('btn-attn-save');
     btn.disabled = true;
