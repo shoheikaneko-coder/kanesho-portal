@@ -1408,7 +1408,7 @@ async function loadMonthlyData() {
         // 集計
         const staffGroup = {};
         punches.forEach(p => {
-            const rawSid = String(p.staff_id || "").trim();
+            const rawSid = String(p.staff_id || p.staff_code || p.EmployeeCode || p.UserId || "").trim();
             const sid = idResolver[rawSid] || rawSid;
             if (!staffGroup[sid]) staffGroup[sid] = [];
             staffGroup[sid].push(p);
@@ -1915,7 +1915,7 @@ async function loadIntegratedData() {
         // スタッフごとにグループ化
         const staffPunches = {};
         punches.forEach(p => {
-            const rawSid = String(p.staff_id || p.staff_code || p.EmployeeCode || "").trim();
+            const rawSid = String(p.staff_id || p.staff_code || p.EmployeeCode || p.UserId || "").trim();
             const sid = idResolver[rawSid] || rawSid;
             if (!staffPunches[sid]) staffPunches[sid] = [];
             staffPunches[sid].push(p);
@@ -2522,7 +2522,7 @@ async function handleIntTkcExport() {
         // スタッフごとにグループ化
         const staffPunches = {};
         punches.forEach(p => {
-            const rawSid = String(p.staff_id || p.staff_code || p.EmployeeCode || "").trim();
+            const rawSid = String(p.staff_id || p.staff_code || p.EmployeeCode || p.UserId || "").trim();
             const sid = idResolver[rawSid] || rawSid;
             if (!staffPunches[sid]) staffPunches[sid] = [];
             staffPunches[sid].push(p);
@@ -2857,7 +2857,7 @@ async function handleIntMfExport() {
 
         const staffPunches = {};
         punches.forEach(p => {
-            const rawSid = String(p.staff_id || p.staff_code || p.EmployeeCode || "").trim();
+            const rawSid = String(p.staff_id || p.staff_code || p.EmployeeCode || p.UserId || "").trim();
             const sid = idResolver[rawSid] || rawSid;
             if (!staffPunches[sid]) staffPunches[sid] = [];
             staffPunches[sid].push(p);
