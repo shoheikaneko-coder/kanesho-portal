@@ -1933,16 +1933,28 @@ async function loadIntegratedData() {
         yesterdayTime.setDate(yesterdayTime.getDate() - 1);
         const yesterdayYmd = yesterdayTime.toLocaleDateString('sv-SE');
 
+        const getBusinessDateStr = (timestampStr, storeId) => {
+            if (!timestampStr) return '';
+            const ts = new Date(timestampStr);
+            if (isNaN(ts.getTime())) return timestampStr.substring(0, 10);
+            
+            const store = cachedStores.find(st => (st.store_id || st.id) === storeId);
+            const dayChangeTime = store?.day_change_time !== undefined ? parseInt(store.day_change_time) : 5;
+            
+            const bDate = new Date(ts);
+            if (bDate.getHours() < dayChangeTime) {
+                bDate.setDate(bDate.getDate() - 1);
+            }
+            return `${bDate.getFullYear()}-${String(bDate.getMonth()+1).padStart(2,'0')}-${String(bDate.getDate()).padStart(2,'0')}`;
+        };
+
         const isCurrentOrOngoing = (errDate, staffStoreId) => {
             const storeInfo = cachedStores.find(st => (st.store_id || st.id) === staffStoreId);
             const dayChangeTime = storeInfo?.day_change_time !== undefined ? parseInt(storeInfo.day_change_time) : 5;
             
             const currentHour = nowTime.getHours();
-            if (currentHour < dayChangeTime) {
-                return errDate === todayYmd || errDate === yesterdayYmd;
-            } else {
-                return errDate === todayYmd;
-            }
+            const currentBizDate = currentHour < dayChangeTime ? yesterdayYmd : todayYmd;
+            return errDate === currentBizDate;
         };
 
         // 既存の計算アルゴリズムを 100% そのまま走らせて集計（インテリジェント・当月内フィルタリングを適用）
@@ -1961,7 +1973,7 @@ async function loadIntegratedData() {
 
                 if (type === 'check_in' || type === '出勤') {
                     if (lastIn) {
-                        const errDate = r.date || r.timestamp.substring(0,10);
+                        const errDate = getBusinessDateStr(r.timestamp, staffMap[sid].store_id) || r.date || r.timestamp.substring(0,10);
                         if (!isCurrentOrOngoing(errDate, staffMap[sid].store_id)) {
                             // ★当月内のエラーのみ今月のリストに登録
                             if (errDate >= startDate && errDate < nextMonthFirstDay) {
@@ -2020,7 +2032,7 @@ async function loadIntegratedData() {
                         lastIn = null;
                         breakSessions = [];
                     } else {
-                        const errDate = r.date || r.timestamp.substring(0,10);
+                        const errDate = getBusinessDateStr(r.timestamp, staffMap[sid].store_id) || r.date || r.timestamp.substring(0,10);
                         if (!isCurrentOrOngoing(errDate, staffMap[sid].store_id)) {
                             // ★当月内のエラーのみ今月のリストに登録
                             if (errDate >= startDate && errDate < nextMonthFirstDay) {
@@ -2036,7 +2048,7 @@ async function loadIntegratedData() {
             });
 
             if (lastIn) {
-                const errDate = lastIn.record.date || lastIn.record.timestamp.substring(0,10);
+                const errDate = getBusinessDateStr(lastIn.record.timestamp, staffMap[sid].store_id) || lastIn.record.date || lastIn.record.timestamp.substring(0,10);
                 if (!isCurrentOrOngoing(errDate, staffMap[sid].store_id)) {
                     // ★当月内のエラーのみ今月のリストに登録
                     if (errDate >= startDate && errDate < nextMonthFirstDay) {
