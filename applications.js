@@ -216,9 +216,18 @@ export const newHirePageHtml = `
                 <i class="fas fa-user-plus" style="color: #10b981;"></i>
                 新規アルバイト入社申請
             </h2>
-            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 2rem;">
+            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">
                 店舗に新しく入社するアルバイトスタッフの情報を本部に申請します。承認後、アカウントが発行可能になります。
             </p>
+
+            <!-- 1週間前ルールの案内 -->
+            <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+                <h3 style="margin-top: 0; margin-bottom: 0.5rem; color: #1e40af; font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-info-circle"></i> 入社申請のルール</h3>
+                <p style="color: #1e3a8a; font-size: 0.95rem; margin-bottom: 0; font-weight: 500; line-height: 1.5;">
+                    店長が申請を行ってから、管理者が給与システム（マネーフォワード等）へ登録し承認を行うまでにタイムラグが発生します。<br>
+                    そのため、原則として<span style="color: #b91c1c; font-weight: 800;">入社予定日（初出勤日）の１週間前までに</span>申請を完了させてください。
+                </p>
+            </div>
 
             <!-- 共有ボタン -->
             <div style="margin-bottom: 2rem; padding: 1.5rem; background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; text-align: center;">
@@ -297,6 +306,13 @@ export const newHirePageHtml = `
                         <label style="display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">入社予定日 <span style="color: red;">*</span></label>
                         <input type="date" id="nh-date" required class="form-input" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
                     </div>
+                </div>
+
+                <!-- 1週間未満の場合の理由入力エリア（デフォルト非表示） -->
+                <div id="nh-short-notice-container" style="display: none; background: #fff5f5; border: 1px solid #fecaca; padding: 1.5rem; border-radius: 8px;">
+                    <label style="display: block; font-weight: bold; color: #b91c1c; margin-bottom: 0.5rem; font-size: 0.95rem;"><i class="fas fa-exclamation-circle"></i> 入社予定日が1週間未満の理由 <span style="color: red;">*</span></label>
+                    <p style="font-size: 0.85rem; color: #b91c1c; margin-top: 0; margin-bottom: 0.8rem;">原則として申請は1週間前までに行う必要があります。やむを得ず1週間未満での入社となる場合は、その理由を必ず記載してください。</p>
+                    <textarea id="nh-short-notice-reason" placeholder="例: 急遽欠員が出たため、至急の補充が必要なため。" class="form-input" style="width: 100%; padding: 0.8rem; border: 1px solid #fca5a5; border-radius: 8px; min-height: 80px;"></textarea>
                 </div>
 
                 <!-- 外国人・留学生情報 -->
@@ -497,6 +513,43 @@ export async function initNewHirePage() {
         });
     }
 
+    // 1週間前ルールの判定ロジック
+    const nhDateInput = document.getElementById('nh-date');
+    const shortNoticeContainer = document.getElementById('nh-short-notice-container');
+    const shortNoticeReason = document.getElementById('nh-short-notice-reason');
+
+    const checkShortNotice = () => {
+        if (!nhDateInput || !shortNoticeContainer || !shortNoticeReason) return;
+        const selectedDateStr = nhDateInput.value;
+        if (!selectedDateStr) {
+            shortNoticeContainer.style.display = 'none';
+            shortNoticeReason.required = false;
+            return;
+        }
+        
+        const selectedDate = new Date(selectedDateStr);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // 今日の午前0時
+
+        // 7日後（1週間後）の日付を計算
+        const sevenDaysLater = new Date(today);
+        sevenDaysLater.setDate(today.getDate() + 7);
+
+        if (selectedDate < sevenDaysLater) {
+            shortNoticeContainer.style.display = 'block';
+            shortNoticeReason.required = true;
+        } else {
+            shortNoticeContainer.style.display = 'none';
+            shortNoticeReason.required = false;
+        }
+    };
+
+    if (nhDateInput) {
+        nhDateInput.addEventListener('change', checkShortNotice);
+        // 初期ロード時（編集画面用）にもチェックを実行
+        setTimeout(checkShortNotice, 100);
+    }
+
     form.onsubmit = async (e) => {
         e.preventDefault();
         const currentUser = window.appState?.currentUser;
@@ -565,6 +618,18 @@ export async function initNewHirePage() {
                 '28時間制限': limit28h,
                 '備考': notes || '-'
             };
+
+            // 1週間未満の特例理由があれば追加
+            const shortNoticeContainer = document.getElementById('nh-short-notice-container');
+            const shortNoticeReason = document.getElementById('nh-short-notice-reason');
+            if (shortNoticeContainer && shortNoticeContainer.style.display !== 'none' && shortNoticeReason) {
+                const reason = shortNoticeReason.value.trim();
+                if (!reason) {
+                    alert("1週間未満での入社となる理由を記入してください。");
+                    return; // 必須なのでここで止める
+                }
+                newDetails['特例申請理由'] = reason;
+            }
 
             if (editId) {
                 // 編集モードの場合（再申請）
