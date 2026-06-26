@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>ID移行・統合ツール</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .container { max-width: 800px; margin: 40px auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h1 { font-size: 1.5rem; margin-bottom: 20px; color: #333; }
+        .log-box { background: #f8fafc; border: 1px solid #cbd5e1; padding: 15px; border-radius: 6px; font-family: monospace; height: 300px; overflow-y: auto; margin-bottom: 20px; white-space: pre-wrap; }
+        .btn-group { display: flex; gap: 10px; }
+        .btn-danger { background: #ef4444; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-danger:disabled { background: #fca5a5; cursor: not-allowed; }
+        .btn-primary { background: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>勤怠データ ID移行ツール</h1>
+        <p>古い仮IDに紐づいている打刻データを、新しい正式な従業員コードに移動します。</p>
+        
+        <h3>移行対象リスト</h3>
+        <ul>
+            <li>x001 → 0000007 (ケシュ)</li>
+            <li>x002 → 0000008 (プラティック)</li>
+            <li>user_1781339400283 → 0000171 (ウインイイソー)</li>
+        </ul>
+
+        <h3>シミュレーション（ドライラン）ログ</h3>
+        <div id="logArea" class="log-box">ログを読み込み中...</div>
+
+        <div class="btn-group">
+            <button id="btnDryRun" class="btn-primary">シミュレーション再実行</button>
+            <button id="btnExecute" class="btn-danger" disabled>本番移行を実行する</button>
+        </div>
+        <div style="margin-top: 20px;">
+            <a href="index.html" style="color: #3b82f6; text-decoration: underline;">← ポータルに戻る</a>
+        </div>
+    </div>
+
+    <script type="module" src="id_migration_tool.js"></script>
+</body>
+</html>
