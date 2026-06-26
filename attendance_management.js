@@ -2459,9 +2459,12 @@ async function handleIntTkcExport() {
         // 2. 打刻データの取得（翌日分まで取得して夜勤に対応）
         const nextDay = new Date(new Date(endDate).getTime() + 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
         
+        // 前日のデータも取得して日またぎのペアを確実に拾う
+        const queryStartDate = new Date(new Date(startDate).getTime() - 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
+        
         // dateフィールドでフィルタ
         const q = query(collection(db, 't_attendance'), 
-            where('date', '>=', startDate),
+            where('date', '>=', queryStartDate),
             where('date', '<=', nextDay)
         );
         const punchSnap = await getDocs(q);
@@ -2557,26 +2560,27 @@ async function handleIntTkcExport() {
                 const time = new Date(p.timestamp);
 
                 if (type === 'check_in' || type === '出勤') {
-                    if (p.date < startDate || p.date > endDate) {
-                        lastIn = null;
-                        continue;
-                    }
                     if (lastIn) {
                         // エラー：連続出勤（未退勤）
-                        const errDate = p.date || p.timestamp.substring(0, 10);
-                        if (!isCurrentOrOngoing(errDate, staffMap[sid].store_id)) {
-                            exportErrors.push({
-                                staffName: staffMap[sid].name,
-                                staffCode: staffMap[sid].code,
-                                storeId: staffMap[sid].store_id,
-                                date: errDate,
-                                message: '退勤打刻がないまま、出勤打刻が連続して行われています。'
-                            });
+                        const sessionDate = lastIn.record.date || lastIn.record.timestamp.substring(0, 10);
+                        if (sessionDate >= startDate && sessionDate <= endDate) {
+                            if (!isCurrentOrOngoing(sessionDate, staffMap[sid].store_id)) {
+                                exportErrors.push({
+                                    staffName: staffMap[sid].name,
+                                    staffCode: staffMap[sid].code,
+                                    storeId: staffMap[sid].store_id,
+                                    date: sessionDate,
+                                    message: '退勤打刻がないまま、出勤打刻が連続して行われています。'
+                                });
+                            }
                         }
                     }
                     lastIn = { timestamp: time, record: p };
                     breakSessions = [];
-                    staffStats[sid].days.add(p.date);
+                    
+                    if (p.date >= startDate && p.date <= endDate) {
+                        staffStats[sid].days.add(p.date);
+                    }
                 } 
                 else if ((type === 'break_start' || type === '休憩開始') && lastIn) {
                     breakStart = time;
@@ -2591,13 +2595,16 @@ async function handleIntTkcExport() {
                         const totalShift = (time - lastIn.timestamp) / 3600000;
                         const netLabor = totalShift - totalBreaks;
                         
-                        if (netLabor > 0) {
-                            staffStats[sid].totalHours += netLabor;
-                            
-                            const rawLate = calculateOverlapLateNightHours(lastIn.timestamp, time);
-                            const lateBreaks = breakSessions.reduce((sum, s) => sum + calculateOverlapLateNightHours(s.start, s.end), 0);
-                            
-                            staffStats[sid].lateHours += Math.max(0, rawLate - lateBreaks);
+                        const sessionDate = lastIn.record.date || lastIn.record.timestamp.substring(0, 10);
+                        if (sessionDate >= startDate && sessionDate <= endDate) {
+                            if (netLabor > 0) {
+                                staffStats[sid].totalHours += netLabor;
+                                
+                                const rawLate = calculateOverlapLateNightHours(lastIn.timestamp, time);
+                                const lateBreaks = breakSessions.reduce((sum, s) => sum + calculateOverlapLateNightHours(s.start, s.end), 0);
+                                
+                                staffStats[sid].lateHours += Math.max(0, rawLate - lateBreaks);
+                            }
                         }
                         lastIn = null;
                         breakSessions = [];
@@ -2621,15 +2628,17 @@ async function handleIntTkcExport() {
 
             if (lastIn) {
                 // エラー：出勤はあるが退勤なし
-                const errDate = lastIn.record.date || lastIn.record.timestamp.substring(0, 10);
-                if (!isCurrentOrOngoing(errDate, staffMap[sid].store_id)) {
-                    exportErrors.push({
-                        staffName: staffMap[sid].name,
-                        staffCode: staffMap[sid].code,
-                        storeId: staffMap[sid].store_id,
-                        date: errDate,
-                        message: '出勤打刻はありますが、退勤打刻が行われていません。'
-                    });
+                const sessionDate = lastIn.record.date || lastIn.record.timestamp.substring(0, 10);
+                if (sessionDate >= startDate && sessionDate <= endDate) {
+                    if (!isCurrentOrOngoing(sessionDate, staffMap[sid].store_id)) {
+                        exportErrors.push({
+                            staffName: staffMap[sid].name,
+                            staffCode: staffMap[sid].code,
+                            storeId: staffMap[sid].store_id,
+                            date: sessionDate,
+                            message: '出勤打刻はありますが、退勤打刻が行われていません。'
+                        });
+                    }
                 }
             }
         }
@@ -2809,8 +2818,9 @@ async function handleIntMfExport() {
 
         // 2. 打刻データの取得
         const nextDay = new Date(new Date(endDate).getTime() + 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
+        const queryStartDate = new Date(new Date(startDate).getTime() - 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
         const q = query(collection(db, 't_attendance'), 
-            where('date', '>=', startDate),
+            where('date', '>=', queryStartDate),
             where('date', '<=', nextDay)
         );
         const punchSnap = await getDocs(q);
@@ -2892,25 +2902,26 @@ async function handleIntMfExport() {
                 const time = new Date(p.timestamp);
 
                 if (type === 'check_in' || type === '出勤') {
-                    if (p.date < startDate || p.date > endDate) {
-                        lastIn = null;
-                        continue;
-                    }
                     if (lastIn) {
-                        const errDate = p.date || p.timestamp.substring(0, 10);
-                        if (!isCurrentOrOngoing(errDate, staffMap[sid].store_id)) {
-                            exportErrors.push({
-                                staffName: staffMap[sid].name,
-                                staffCode: staffMap[sid].code,
-                                storeId: staffMap[sid].store_id,
-                                date: errDate,
-                                message: '退勤打刻がないまま、出勤打刻が連続して行われています。'
-                            });
+                        const sessionDate = lastIn.record.date || lastIn.record.timestamp.substring(0, 10);
+                        if (sessionDate >= startDate && sessionDate <= endDate) {
+                            if (!isCurrentOrOngoing(sessionDate, staffMap[sid].store_id)) {
+                                exportErrors.push({
+                                    staffName: staffMap[sid].name,
+                                    staffCode: staffMap[sid].code,
+                                    storeId: staffMap[sid].store_id,
+                                    date: sessionDate,
+                                    message: '退勤打刻がないまま、出勤打刻が連続して行われています。'
+                                });
+                            }
                         }
                     }
                     lastIn = { timestamp: time, record: p };
                     breakSessions = [];
-                    staffStats[sid].days.add(p.date);
+                    
+                    if (p.date >= startDate && p.date <= endDate) {
+                        staffStats[sid].days.add(p.date);
+                    }
                 } 
                 else if ((type === 'break_start' || type === '休憩開始') && lastIn) {
                     breakStart = time;
@@ -2925,13 +2936,16 @@ async function handleIntMfExport() {
                         const totalShift = (time - lastIn.timestamp) / 3600000;
                         const netLabor = totalShift - totalBreaks;
                         
-                        if (netLabor > 0) {
-                            staffStats[sid].totalHours += netLabor;
-                            
-                            const rawLate = calculateOverlapLateNightHours(lastIn.timestamp, time);
-                            const lateBreaks = breakSessions.reduce((sum, s) => sum + calculateOverlapLateNightHours(s.start, s.end), 0);
-                            
-                            staffStats[sid].lateHours += Math.max(0, rawLate - lateBreaks);
+                        const sessionDate = lastIn.record.date || lastIn.record.timestamp.substring(0, 10);
+                        if (sessionDate >= startDate && sessionDate <= endDate) {
+                            if (netLabor > 0) {
+                                staffStats[sid].totalHours += netLabor;
+                                
+                                const rawLate = calculateOverlapLateNightHours(lastIn.timestamp, time);
+                                const lateBreaks = breakSessions.reduce((sum, s) => sum + calculateOverlapLateNightHours(s.start, s.end), 0);
+                                
+                                staffStats[sid].lateHours += Math.max(0, rawLate - lateBreaks);
+                            }
                         }
                         lastIn = null;
                         breakSessions = [];
@@ -2953,15 +2967,17 @@ async function handleIntMfExport() {
             }
 
             if (lastIn) {
-                const errDate = lastIn.record.date || lastIn.record.timestamp.substring(0, 10);
-                if (!isCurrentOrOngoing(errDate, staffMap[sid].store_id)) {
-                    exportErrors.push({
-                        staffName: staffMap[sid].name,
-                        staffCode: staffMap[sid].code,
-                        storeId: staffMap[sid].store_id,
-                        date: errDate,
-                        message: '出勤打刻はありますが、退勤打刻が行われていません。'
-                    });
+                const sessionDate = lastIn.record.date || lastIn.record.timestamp.substring(0, 10);
+                if (sessionDate >= startDate && sessionDate <= endDate) {
+                    if (!isCurrentOrOngoing(sessionDate, staffMap[sid].store_id)) {
+                        exportErrors.push({
+                            staffName: staffMap[sid].name,
+                            staffCode: staffMap[sid].code,
+                            storeId: staffMap[sid].store_id,
+                            date: sessionDate,
+                            message: '出勤打刻はありますが、退勤打刻が行われていません。'
+                        });
+                    }
                 }
             }
         }
