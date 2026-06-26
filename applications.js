@@ -770,7 +770,14 @@ export async function initApplicationDetailPage() {
             ${detailsHtml}
             ${docsHtml}
 
-            <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px dashed #cbd5e1;">
+            <div style="margin-top: 2.5rem; background: #fffbeb; border: 1px solid #fcd34d; padding: 1.5rem; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <h3 style="margin: 0 0 1rem 0; color: #b45309; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-exclamation-triangle"></i> 承認前の必須入力</h3>
+                <label style="font-weight: 800; color: #92400e; display: block; margin-bottom: 0.5rem;">正式な従業員コード <span style="color: #ef4444;">*</span></label>
+                <input type="text" id="approve-employee-code" placeholder="例: 0000123" style="width: 100%; padding: 0.8rem; font-size: 1.1rem; border: 1px solid #fcd34d; border-radius: 6px; font-family: monospace;" required>
+                <p style="font-size: 0.85rem; color: #b45309; margin-top: 0.6rem; margin-bottom: 0; line-height: 1.4;">※給与システム（マネーフォワード等）と完全に一致させてください。<br>※ここで設定したコードは、承認後に従業員マスタへ反映され、以後変更できなくなります。</p>
+            </div>
+
+            <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px dashed #cbd5e1;">
                 <button class="btn btn-primary" onclick="window.approveNewHireFromDetail('${appId}')" style="width: 100%; padding: 1.5rem; background: #10b981; border-color: #10b981; font-size: 1.25rem; font-weight: bold; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.4);">
                     <i class="fas fa-check-circle" style="margin-right: 0.8rem;"></i> この内容を承認し、従業員マスタに登録する
                 </button>
@@ -786,6 +793,15 @@ export async function initApplicationDetailPage() {
 
 // 承認処理（詳細画面から発火する）
 window.approveNewHireFromDetail = async (appId) => {
+    const empCodeInput = document.getElementById('approve-employee-code');
+    const empCode = empCodeInput ? empCodeInput.value.trim() : '';
+    
+    if (!empCode) {
+        alert("【エラー】正式な従業員コードを入力してください。");
+        if (empCodeInput) empCodeInput.focus();
+        return;
+    }
+
     if (!confirm("この内容を承認し、従業員マスタに新規登録しますか？\\n※添付された書類も同時にマスタへ結合されます。")) return;
 
     try {
@@ -796,7 +812,7 @@ window.approveNewHireFromDetail = async (appId) => {
 
         // m_users へ登録するデータ構造を作成
         const newUserData = {
-            EmployeeCode: "", 
+            EmployeeCode: empCode, 
             Name: data.details['氏名'] || "",
             LastName: data.details['姓'] || "",
             FirstName: data.details['名'] || "",

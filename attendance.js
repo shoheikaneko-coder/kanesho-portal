@@ -300,6 +300,9 @@ export function renderUnclockedDropdown(extraStoreObj = null) {
 
     // フィルタリングロジック：同一店舗 OR 同一グループのCK
     const unclocked = allStaff.filter(s => {
+        // 従業員コードが設定されていないスタッフは打刻させない（表示しない）
+        if (!s.EmployeeCode || String(s.EmployeeCode).trim() === '') return false;
+
         const sid = String(s.EmployeeCode || s.id);
         if (activeSids.has(sid)) return false;
 

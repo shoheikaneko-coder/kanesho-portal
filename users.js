@@ -271,6 +271,7 @@ function renderFormView(container) {
                                     <div class="input-group" style="margin: 0;">
                                         <label style="font-weight: 700; color: #475569;">従業員コード <span style="color: #ef4444;">*</span></label>
                                         <input type="text" id="user-code" placeholder="例: 135" required style="font-family: monospace; font-size: 1.1rem;">
+                                        <p id="user-code-warning" style="font-size: 0.75rem; color: #b45309; margin-top: 0.3rem;">※従業員コードは一度登録すると変更できません。</p>
                                     </div>
                                     <div class="input-group" style="margin: 0;">
                                         <label style="font-weight: 700; color: #475569;">お名前 <span style="color: #ef4444;">*</span></label>
@@ -468,7 +469,15 @@ function renderFormView(container) {
 
     Promise.all([fetchStoreOptions(), fetchGradeOptions()]).then(() => {
         if (isEdit) {
-            document.getElementById('user-code').value = editingUserData.EmployeeCode || '';
+            const codeInput = document.getElementById('user-code');
+            codeInput.value = editingUserData.EmployeeCode || '';
+            if (editingUserData.EmployeeCode) {
+                codeInput.readOnly = true;
+                codeInput.style.background = '#f1f5f9';
+                codeInput.style.color = '#94a3b8';
+                codeInput.style.cursor = 'not-allowed';
+            }
+
             document.getElementById('user-name').value = editingUserData.Name || '';
             document.getElementById('user-lastname').value = editingUserData.LastName || '';
             document.getElementById('user-firstname').value = editingUserData.FirstName || '';
