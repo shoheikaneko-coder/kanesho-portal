@@ -426,17 +426,22 @@ function generateSubordinatesViewHtml() {
         </div>
     `;
     
-    if (mobileSubordinateUsers.length === 0) {
-        return html + `<div style="text-align:center; padding: 2rem; color: #94a3b8; font-size: 0.9rem;">対象の部下がいません</div>`;
-    }
-    
-    // Extract relevant active evaluations for subordinates
-    const subEvals = mobileSubordinateUsers.map(u => {
+    // Extract relevant active evaluations for subordinates and filter out non-targets
+    const targetUsers = [];
+    mobileSubordinateUsers.forEach(u => {
         const ev = mobileActiveEvaluations.find(e => e.user_id === u.id);
-        return { user: u, evaluation: ev };
+        if (!ev) return; // Exclude users without active evaluation document
+        if (ev.status === 'president_pending' || ev.status === 'approved' || ev.status === 'notified') {
+            return; // Exclude users who are already past the manager evaluation phase
+        }
+        targetUsers.push({ user: u, evaluation: ev });
     });
     
-    subEvals.forEach(item => {
+    if (targetUsers.length === 0) {
+        return html + `<div style="text-align:center; padding: 2rem; color: #94a3b8; font-size: 0.9rem;">現在、進行中の評価対象スタッフはいません</div>`;
+    }
+    
+    targetUsers.forEach(item => {
         const u = item.user;
         const ev = item.evaluation;
         let statusText = '未開始';
