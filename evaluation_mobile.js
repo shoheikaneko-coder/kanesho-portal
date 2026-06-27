@@ -421,9 +421,11 @@ async function loadInitialDataMobile() {
         const myStore = currentUser.StoreID || currentUser.StoreId;
         
         let myJobTitle = '';
+        window.appState.gradeMap = gradeMap;
         if (currentUser.GradeCode && gradeMap[currentUser.GradeCode]) {
             myJobTitle = gradeMap[currentUser.GradeCode].job_title || '';
         }
+        window.appState.myJobTitle = myJobTitle;
         
         const isAdmin = role === 'Admin' || role === '管理者';
         
@@ -630,8 +632,9 @@ function generateSubordinatesViewHtml() {
         
         if (ev) {
             const wf = ev.workflow || {};
-            const isPrimary = wf.primary_evaluator === window.appState.currentUser.JobTitle;
-            const isManager = wf.secondary_evaluator === window.appState.currentUser.JobTitle || (!wf.secondary_evaluator && (window.appState.currentUser.Role === 'Manager' || window.appState.currentUser.Role === '店長'));
+            const myJobTitle = window.appState.myJobTitle || window.appState.currentUser.JobTitle;
+            const isPrimary = wf.primary_evaluator === myJobTitle;
+            const isManager = wf.secondary_evaluator === myJobTitle || (!wf.secondary_evaluator && (window.appState.currentUser.Role === 'Manager' || window.appState.currentUser.Role === '店長'));
             
             let role = null;
             if (isPrimary && ['evaluating', 'self_evaluating', 'self_submitted', 'primary_evaluating', 'primary_submitted'].includes(ev.status)) role = 'primary';
@@ -718,7 +721,12 @@ function bindMobileActionButtons(container) {
                 if (evData) return openMobileInputView('interview', evData);
                 return;
             }
-            if (type === 'sub-view') msg = '【部下評価確認画面】へ遷移します。\n（※次回のステップで構築します）';
+            if (type === 'sub-view') {
+                const evalId = e.currentTarget.dataset.id;
+                const evData = mobileActiveEvaluations.find(ev => ev.id === evalId);
+                if (evData) return openMobileInputView('interview', evData, true);
+                return;
+            }
             
             showAlert('開発中', msg);
         });
@@ -730,7 +738,7 @@ function bindMobileActionButtons(container) {
 // Mobile Input View Logic
 // ==========================================
 
-function openMobileInputView(mode, evalData) {
+function openMobileInputView(mode, evalData, isReadOnly = false) {
     document.body.style.overflow = 'hidden';
     const inputScreen = document.getElementById('eval-mob-input-screen');
     document.body.appendChild(inputScreen);
@@ -738,10 +746,11 @@ function openMobileInputView(mode, evalData) {
     if (globalFab) globalFab.style.display = 'none';
     mobileEditingEval = JSON.parse(JSON.stringify(evalData)); // Deep copy for editing
     mobileEditingEval.currentMode = mode;
+    mobileEditingEval.isReadOnly = isReadOnly;
     const contentArea = document.getElementById('eval-mob-content-area');
     const headerArea = document.getElementById('eval-mob-header-wrapper');
     
-    inputScreen.innerHTML = generateInputHtml(mode);
+    inputScreen.innerHTML = generateInputHtml(mode, isReadOnly);
     inputScreen.style.display = 'block';
     contentArea.style.display = 'none';
     headerArea.style.display = 'none';
@@ -766,7 +775,7 @@ function closeMobileInputView() {
 }
 
 
-function generateInputHtml(mode) {
+function generateInputHtml(mode, isReadOnly = false) {
     let titleText = mobilePeriodSettings.active_period + '自己評価入力';
     let subtitleText = '';
     
@@ -873,20 +882,29 @@ function generateInputHtml(mode) {
             <div class="eval-mob-input-card" style="border: 2px solid #059669; padding-bottom: 2rem;">
                 <h4 style="color:#059669; font-weight:800; margin-bottom:1rem;"><i class="fas fa-edit"></i> 面談記録</h4>
                 <label style="font-size:0.8rem; font-weight:700; color:#475569; display:block; margin-bottom:0.3rem;">面談実施日</label>
-                <input type="date" id="mob-interview-date" value="${mobileEditingEval.interview_date || ''}" style="width:100%; padding:0.8rem; border:1px solid #cbd5e1; border-radius:8px; font-size:1rem; margin-bottom:1.2rem; font-family:inherit;">
+                <input type="date" id="mob-interview-date" value="${mobileEditingEval.interview_date || ''}" style="width:100%; padding:0.8rem; border:1px solid #cbd5e1; border-radius:8px; font-size:1rem; margin-bottom:1.2rem; font-family:inherit;" ${isReadOnly ? 'readonly' : ''}>
                 
                 <label style="font-size:0.8rem; font-weight:700; color:#475569; display:block; margin-bottom:0.3rem;">面談メモ（話し合った内容など）</label>
-                <textarea id="mob-interview-notes" rows="5" placeholder="面談で話し合った内容や育成方針を記入" style="width:100%; padding:0.8rem; border:1px solid #cbd5e1; border-radius:8px; font-size:0.95rem; font-family:inherit; resize:none;">${mobileEditingEval.interview_notes || ''}</textarea>
+                <textarea id="mob-interview-notes" rows="5" placeholder="面談で話し合った内容や育成方針を記入" style="width:100%; padding:0.8rem; border:1px solid #cbd5e1; border-radius:8px; font-size:0.95rem; font-family:inherit; resize:none;" ${isReadOnly ? 'readonly' : ''}>${mobileEditingEval.interview_notes || ''}</textarea>
             </div>
         `;
+        if (mobileEditingEval.president_comment) {
+            html += `
+                <div class="eval-mob-input-card" style="border: 2px solid #be123c; margin-top: 1rem;">
+                    <h4 style="color:#be123c; font-weight:800; margin-bottom:1rem;"><i class="fas fa-user-tie"></i> 社長フィードバック・総括</h4>
+                    <p style="font-size:0.9rem; color:#334155; white-space:pre-wrap; margin:0;">${mobileEditingEval.president_comment}</p>
+                </div>
+            `;
+        }
+
     }
     
     html += `
         </div>
         <div class="eval-mob-bottom-bar">
             ${mode === 'interview' ? `
-            <button class="eval-mob-btn-save" id="btn-mob-save-draft" style="flex:1;">下書き保存</button>
-            <button class="eval-mob-btn-submit" id="btn-mob-submit" style="flex:2; background:#059669; border-color:#059669;">面談完了・提出</button>
+            ${isReadOnly ? `<button class="eval-mob-btn-submit" id="btn-mob-close-only" style="flex:1; background:#64748b; border-color:#64748b;">閉じる</button>` : `<button class="eval-mob-btn-save" id="btn-mob-save-draft" style="flex:1;">下書き保存</button>
+            <button class="eval-mob-btn-submit" id="btn-mob-submit" style="flex:2; background:#059669; border-color:#059669;">面談完了・提出</button>`}
             ` : `
             <button class="eval-mob-btn-save" id="btn-mob-save-draft">下書き保存</button>
             <button class="eval-mob-btn-submit" id="btn-mob-submit">入力を完了する</button>
@@ -976,8 +994,15 @@ function bindMobileInputEvents(mode) {
         });
     });
 
+    // View Only Close
+    const btnCloseOnly = document.getElementById('btn-mob-close-only');
+    if (btnCloseOnly) {
+        btnCloseOnly.addEventListener('click', () => closeMobileInputView());
+    }
+
     // Save Draft
-    document.getElementById('btn-mob-save-draft').addEventListener('click', async () => {
+    const btnSaveDraft = document.getElementById('btn-mob-save-draft');
+    if (btnSaveDraft) btnSaveDraft.addEventListener('click', async () => {
         try {
             const btn = document.getElementById('btn-mob-save-draft');
             const originalText = btn.innerHTML;
@@ -1026,7 +1051,8 @@ function bindMobileInputEvents(mode) {
     });
     
     // Submit
-    document.getElementById('btn-mob-submit').addEventListener('click', async () => {
+    const btnSubmit = document.getElementById('btn-mob-submit');
+    if (btnSubmit) btnSubmit.addEventListener('click', async () => {
         let incomplete = false;
         let confirmMsg = '評価を提出します。提出後は変更ができなくなりますが、よろしいですか？';
         

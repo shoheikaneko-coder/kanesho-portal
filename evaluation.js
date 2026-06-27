@@ -1089,9 +1089,11 @@ async function loadInitialSettingsAndData() {
     
     // 現在のユーザーの役職を等級マスタから判定
     let myJobTitle = '';
+    window.appState.gradeMap = gradeMap;
     if (user.GradeCode && gradeMap[user.GradeCode]) {
         myJobTitle = gradeMap[user.GradeCode].job_title || '';
     }
+    window.appState.myJobTitle = myJobTitle;
 
     subordinateUsers = [];
     let hasSubordinates = false;
@@ -1278,7 +1280,7 @@ async function loadEvaluationData() {
 function updateTabBadges() {
     const user = window.appState.currentUser;
     const role = user.Role || '';
-    const myJobTitle = user.JobTitle || '';
+    const myJobTitle = window.appState.myJobTitle || user.JobTitle || '';
 
     // タブのPingアニメーションと文字色ハイライトを制御するヘルパー関数
     const updatePing = (tabId, hasPending) => {
