@@ -638,7 +638,8 @@ function generateSubordinatesViewHtml() {
             
             let role = null;
             if (isPrimary && ['evaluating', 'self_evaluating', 'self_submitted', 'primary_evaluating', 'primary_submitted'].includes(ev.status)) role = 'primary';
-            else if (isManager && ['evaluating', 'self_evaluating', 'self_submitted', 'primary_evaluating', 'primary_submitted', 'manager_evaluating'].includes(ev.status)) role = 'manager';
+            else if (isManager && ['evaluating', 'self_evaluating', 'self_submitted', 'primary_evaluating', 'primary_submitted', 'manager_evaluating', 'interviewing'].includes(ev.status)) role = 'manager';
+
             
             const isMySub = role === 'primary' ? ev.is_primary_submitted : ev.is_manager_submitted;
             const hasPrimary = !!wf.primary_evaluator;
