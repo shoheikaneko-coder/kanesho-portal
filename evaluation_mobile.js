@@ -605,13 +605,6 @@ function generateSubordinatesViewHtml() {
                 statusText = '評価完了';
                 actionBtnHtml = `<button class="eval-mob-sub-btn done action-mock-btn" data-type="sub-view" data-id="${ev.id}">確認</button>`;
             }
-        } else if (ev.status === 'manager_evaluating') {
-                statusText = '<span style="color:#ef4444;">店長評価 待ち</span>';
-                actionBtnHtml = `<button class="eval-mob-sub-btn action-mock-btn" data-type="sub-input">入力する</button>`;
-            } else {
-                statusText = '店長評価 完了';
-                actionBtnHtml = `<button class="eval-mob-sub-btn done action-mock-btn" data-type="sub-view">確認</button>`;
-            }
         }
         
         html += `
