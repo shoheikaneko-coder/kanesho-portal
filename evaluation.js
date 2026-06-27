@@ -1248,7 +1248,7 @@ async function loadEvaluationData() {
 
     activeEvaluations = [];
     myEvaluation = null;
-    subordinateUsers = [];
+    // subordinateUsers is populated in loadEvaluationApp
 
     if (!localPeriodSettings || localPeriodSettings.status !== 'open') return;
 
@@ -1268,10 +1268,8 @@ async function loadEvaluationData() {
         // 2. 自分の評価の抽出
         myEvaluation = activeEvaluations.find(e => e.user_id === user.id) || null;
 
-        // 3. 部下ユーザーのバッジ更新 (データは既にロード済み)
+        // 3. 部下ユーザーのバッジ更新
         updateTabBadges();
-            updateTabBadges();
-        }
     } catch (e) {
         console.error("Failed to load evaluation data:", e);
     }
