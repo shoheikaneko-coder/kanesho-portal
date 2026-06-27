@@ -859,10 +859,10 @@ function bindMobileInputEvents(mode) {
         }
         
         let confirmMsg = '評価を提出します。提出後は変更ができなくなりますが、よろしいですか？';
-        if (mode === 'primary') confirmMsg = '1次評価を完了として提出しますか？
-（全員の評価が完了するまでは面談待ちに進みません）';
-        else if (mode === 'manager') confirmMsg = '最終評価を完了として提出しますか？
-（全員の評価が完了するまでは面談待ちに進みません）';
+        if (mode === 'primary') confirmMsg = `1次評価を完了として提出しますか？
+（全員の評価が完了するまでは面談待ちに進みません）`;
+        else if (mode === 'manager') confirmMsg = `最終評価を完了として提出しますか？
+（全員の評価が完了するまでは面談待ちに進みません）`;
         else confirmMsg = '自己評価を提出します。提出後は変更ができなくなりますが、よろしいですか？';
         
         if (confirm(confirmMsg)) {
