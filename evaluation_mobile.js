@@ -595,14 +595,21 @@ function generateSubordinatesViewHtml() {
             if (isPrimary && ['evaluating', 'self_evaluating', 'self_submitted', 'primary_evaluating', 'primary_submitted'].includes(ev.status)) role = 'primary';
             else if (isManager && ['evaluating', 'self_evaluating', 'self_submitted', 'primary_evaluating', 'primary_submitted', 'manager_evaluating'].includes(ev.status)) role = 'manager';
             
-            if (ev.status === 'open' || ev.status === 'evaluating' || ev.status === 'self_evaluating') {
-                statusText = '本人入力待ち';
-                actionBtnHtml = `<button class="eval-mob-sub-btn done action-mock-btn" data-type="sub-view" data-id="${ev.id}">確認</button>`;
-            } else if (role && !['president_pending', 'approved', 'notified'].includes(ev.status)) {
-                statusText = '<span style="color:#ef4444;">評価入力 待ち</span>';
+            if (role) {
+                if (ev.status === 'open' || ev.status === 'evaluating' || ev.status === 'self_evaluating') {
+                    statusText = '本人入力待ち';
+                } else {
+                    statusText = '<span style="color:#ef4444;">評価入力 待ち</span>';
+                }
                 actionBtnHtml = `<button class="eval-mob-sub-btn action-mock-btn" data-type="sub-input" data-id="${ev.id}" data-role="${role}">入力する</button>`;
             } else {
-                statusText = '評価完了';
+                if (ev.status === 'open' || ev.status === 'evaluating' || ev.status === 'self_evaluating') {
+                    statusText = '本人入力待ち';
+                } else if (!['president_pending', 'approved', 'notified'].includes(ev.status)) {
+                    statusText = '他の評価者 入力待ち';
+                } else {
+                    statusText = '評価完了';
+                }
                 actionBtnHtml = `<button class="eval-mob-sub-btn done action-mock-btn" data-type="sub-view" data-id="${ev.id}">確認</button>`;
             }
         }
