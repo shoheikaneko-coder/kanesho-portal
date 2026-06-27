@@ -48,6 +48,7 @@ import { manualHubPageHtml, initManualHubPage, manualViewerPageHtml, initManualV
 import { gradesPageHtml, initGradesPage } from './grades.js';
 import { skillsPageHtml, initSkillsPage } from './skills.js';
 import { evaluationPageHtml, initEvaluationPage } from './evaluation.js';
+import { evaluationPageHtmlMobile, initEvaluationPageMobile } from './evaluation_mobile.js';
 import { myPageHtml, initMyPage } from './my_page.js';
 import { addressChangePageHtml, initAddressChangePage, newHirePageHtml, initNewHirePage, applicationDetailPageHtml, initApplicationDetailPage, myApplicationsPageHtml, initMyApplicationsPage } from './applications.js?v=1.6';
 
@@ -737,8 +738,13 @@ async function showPage(target) {
                 break;
             case 'evaluation':
                 updateHeaderTitle('スタッフ評価システム');
-                pageContent.innerHTML = evaluationPageHtml;
-                initEvaluationPage();
+                if (window.innerWidth < 768) {
+                    pageContent.innerHTML = evaluationPageHtmlMobile;
+                    initEvaluationPageMobile();
+                } else {
+                    pageContent.innerHTML = evaluationPageHtml;
+                    initEvaluationPage();
+                }
                 break;
             case 'my_page':
                 updateHeaderTitle('マイページ');
