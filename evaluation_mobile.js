@@ -255,21 +255,36 @@ async function loadInitialDataMobile() {
             mobilePeriodSettings = setSnap.data();
         }
         
-        // 2. Fetch subordinate users (to determine if user is a manager)
+        // 2. Fetch subordinate users (same logic as PC)
         mobileSubordinateUsers = [];
-        const uSnap = await getDocs(query(collection(db, "users"), where("Role", "in", ["subordinate", "manager", "primary_evaluator"])));
-        uSnap.forEach(d => {
-            const uData = d.data();
-            if (uData.id === currentUser.id) return;
-            // Primary evaluator or store manager logic (same as PC)
-            const isManagerForThisUser = (uData.PrimaryEvaluator === currentUser.id) || (!uData.PrimaryEvaluator && uData.StoreId === currentUser.StoreId && ["manager", "primary_evaluator", "admin"].includes(currentUser.Role));
-            if (isManagerForThisUser) {
-                mobileSubordinateUsers.push(uData);
+        const uSnap = await getDocs(collection(db, "users"));
+        const allUsers = [];
+        uSnap.forEach(d => allUsers.push({ id: d.id, ...d.data() }));
+        
+        const role = currentUser.Role || 'Staff';
+        const myStore = currentUser.StoreID || currentUser.StoreId;
+        const myJob = currentUser.JobTitle || '';
+        
+        mobileSubordinateUsers = allUsers.filter(u => {
+            if (u.id === currentUser.id && role !== 'Admin' && role !== '管理者') return false;
+            if (u.Status === 'retired' || u.Status === '退職済') return false;
+            if (role === 'Admin' || role === '管理者') return true;
+            
+            if ((u.StoreID || u.StoreId) !== myStore) return false;
+            
+            const uJob = u.JobTitle || '';
+            if (myJob !== '店長' && myJob !== '統括店長') {
+                if (uJob === '店長' || uJob === '統括店長') return false;
             }
+            if (myJob === '一般社員' || myJob === 'アルバイト' || myJob === '社員') {
+                if (uJob === '店長' || uJob === '統括店長' || uJob === '副店長') return false;
+            }
+            
+            return true;
         });
         
-        // Show segmented control if has subordinates or is admin
-        if (mobileSubordinateUsers.length > 0 || currentUser.Role === 'admin' || currentUser.Role === 'president') {
+        // Show segmented control if has subordinates (Admin/Managers)
+        if (mobileSubordinateUsers.length > 0) {
             document.getElementById('eval-mob-header-wrapper').style.display = 'block';
         }
         
