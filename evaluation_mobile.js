@@ -394,36 +394,69 @@ async function loadInitialDataMobile() {
             mobilePeriodSettings = setSnap.data();
         }
         
+
         // 2. Fetch subordinate users (same logic as PC)
         mobileSubordinateUsers = [];
+        
+        // マスタロード
+        let gradeMap = {};
+        let routeMap = {};
+        try {
+            const gradesSnap = await getDocs(collection(db, "m_grades"));
+            gradesSnap.forEach(d => {
+                const data = d.data();
+                if (data.grade_code) gradeMap[data.grade_code] = data;
+            });
+            const routesSnap = await getDocs(collection(db, "m_evaluation_routes"));
+            routesSnap.forEach(d => {
+                routeMap[d.id] = d.data();
+            });
+        } catch(e) { console.error("Failed to load grades or routes for mobile:", e); }
+
         const uSnap = await getDocs(collection(db, "m_users"));
         const allUsers = [];
         uSnap.forEach(d => allUsers.push({ id: d.id, ...d.data() }));
         
         const role = currentUser.Role || 'Staff';
         const myStore = currentUser.StoreID || currentUser.StoreId;
-        const myJob = currentUser.JobTitle || '';
         
-        const isManagerOrAdmin = role === 'Admin' || role === '管理者' || myJob === '店長' || myJob === '統括店長';
-        
-        mobileSubordinateUsers = [];
-        if (isManagerOrAdmin) {
-            mobileSubordinateUsers = allUsers.filter(u => {
-                if (u.id === currentUser.id && role !== 'Admin' && role !== '管理者') return false;
-                if (u.Status === 'retired' || u.Status === '退職済') return false;
-                if (role === 'Admin' || role === '管理者') return true;
-                
-                if ((u.StoreID || u.StoreId) !== myStore) return false;
-                
-                const uJob = u.JobTitle || '';
-                if (myJob !== '店長' && myJob !== '統括店長') {
-                    if (uJob === '店長' || uJob === '統括店長') return false;
-                }
-                
-                return true;
-            });
+        let myJobTitle = '';
+        if (currentUser.GradeCode && gradeMap[currentUser.GradeCode]) {
+            myJobTitle = gradeMap[currentUser.GradeCode].job_title || '';
         }
         
+        const isAdmin = role === 'Admin' || role === '管理者';
+        
+        if (isAdmin) {
+            mobileSubordinateUsers = allUsers.filter(u => {
+                if (u.id === currentUser.id) return true; // 管理者はテストのため自身も表示可能
+                if (u.Status === 'retired' || u.Status === '退職済') return false;
+                return true;
+            });
+        } else if (myJobTitle) {
+            mobileSubordinateUsers = allUsers.filter(u => {
+                if (u.id === currentUser.id) return false;
+                if (u.Status === 'retired' || u.Status === '退職済') return false;
+                if ((u.StoreID || u.StoreId) !== myStore) return false;
+                
+                if (!u.GradeCode || !gradeMap[u.GradeCode]) return false;
+                const uJobTitle = gradeMap[u.GradeCode].job_title;
+                if (!uJobTitle) return false;
+                
+                const uRoute = routeMap[uJobTitle];
+                if (!uRoute) return false;
+                
+                const isEvaluator = uRoute.primary_evaluator === myJobTitle || uRoute.secondary_evaluator === myJobTitle;
+                
+                if (myJobTitle === '店長' || myJobTitle === '統括店長') {
+                    if (uJobTitle === '店長' || uJobTitle === '統括店長') return false;
+                    return true;
+                }
+                
+                return isEvaluator;
+            });
+        }
+
         // Show segmented control if has subordinates (Admin/Managers)
         if (mobileSubordinateUsers.length > 0) {
             document.getElementById('eval-mob-header-wrapper').style.display = 'block';

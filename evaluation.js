@@ -1036,16 +1036,24 @@ async function loadInitialSettingsAndData() {
         });
     } catch(e) { console.error("Failed to load stores for eval:", e); }
 
-    // 等級マスタから役職（job_title）のロード
+
+    // --- 新しい動的部下判定ロジック用マスタロード ---
+    let gradeMap = {};
+    let routeMap = {};
     try {
         const gradesSnap = await getDocs(collection(db, "m_grades"));
-        const jobTitlesSet = new Set();
         gradesSnap.forEach(d => {
-            const jt = d.data().job_title;
-            if (jt) jobTitlesSet.add(jt);
+            const data = d.data();
+            if (data.grade_code) gradeMap[data.grade_code] = data;
         });
-        globalJobTitles = Array.from(jobTitlesSet).sort();
-    } catch(e) { console.error("Failed to load job titles for eval:", e); }
+        
+        const routesSnap = await getDocs(collection(db, "m_evaluation_routes"));
+        routesSnap.forEach(d => {
+            routeMap[d.id] = d.data();
+        });
+    } catch(e) { console.error("Failed to load grades or routes:", e); }
+    // ----------------------------------------------
+
 
     // 1. シードデータの確認・投入
     await verifyAndSeedTemplates();
@@ -1065,25 +1073,78 @@ async function loadInitialSettingsAndData() {
         console.error("Failed to load evaluation period settings:", e);
     }
 
-    // 3. 権限に基づくタブの表示制御
+
     const role = user.Role || 'Staff';
+    const myStore = user.StoreID || user.StoreId;
+    
+    // 全ユーザーを取得
+    const allUsers = [];
+    try {
+        const qUsers = query(collection(db, "m_users"));
+        const snapUsers = await getDocs(qUsers);
+        snapUsers.forEach(d => {
+            allUsers.push({ id: d.id, ...d.data() });
+        });
+    } catch(e) { console.error("Failed to load users:", e); }
+    
+    // 現在のユーザーの役職を等級マスタから判定
+    let myJobTitle = '';
+    if (user.GradeCode && gradeMap[user.GradeCode]) {
+        myJobTitle = gradeMap[user.GradeCode].job_title || '';
+    }
+
+    subordinateUsers = [];
+    let hasSubordinates = false;
+    const isAdmin = role === 'Admin' || role === '管理者';
+
+    if (isAdmin) {
+        hasSubordinates = true;
+        subordinateUsers = allUsers.filter(u => {
+            if (u.id === user.id) return true; // 管理者はテストのため自身も表示可能
+            if (u.Status === 'retired' || u.Status === '退職済') return false;
+            return true;
+        });
+    } else if (myJobTitle) {
+        // 同じ店舗の全従業員について判定
+        subordinateUsers = allUsers.filter(u => {
+            if (u.id === user.id) return false;
+            if (u.Status === 'retired' || u.Status === '退職済') return false;
+            if ((u.StoreID || u.StoreId) !== myStore) return false;
+            
+            // 相手の等級から役職を判定 (設定がない場合は完全除外)
+            if (!u.GradeCode || !gradeMap[u.GradeCode]) return false;
+            const uJobTitle = gradeMap[u.GradeCode].job_title;
+            if (!uJobTitle) return false;
+            
+            // 相手の評価ルートを取得
+            const uRoute = routeMap[uJobTitle];
+            if (!uRoute) return false;
+            
+            // 自分の役職が、相手の1次評価者または最終評価者であれば部下として扱う
+            const isEvaluator = uRoute.primary_evaluator === myJobTitle || uRoute.secondary_evaluator === myJobTitle;
+            
+            // 管理者特権: 自分が店長・統括店長の場合、評価ルートに関わらず自店舗のスタッフ（同格以上を除く）を表示する
+            if (myJobTitle === '店長' || myJobTitle === '統括店長') {
+                if (uJobTitle === '店長' || uJobTitle === '統括店長') return false;
+                return true;
+            }
+            
+            return isEvaluator;
+        });
+        
+        hasSubordinates = subordinateUsers.length > 0;
+    }
+    
     const tabSubordinates = document.getElementById('tab-subordinates');
     const tabInterview = document.getElementById('tab-interview');
     const tabPresident = document.getElementById('tab-president');
     const tabAdmin = document.getElementById('tab-admin');
 
-    if (role === 'Admin' || role === '管理者') {
-        try {
-            const usersSnap = await getDocs(collection(db, "m_users"));
-            allStaffUsersForAdmin = [];
-            usersSnap.forEach(d => {
-                const data = d.data();
-                const isRetired = data.Status === 'retired' || data.Status === '退職済';
-                if (!isRetired && data.Role !== 'Tablet' && data.Role !== '店舗タブレット') {
-                    allStaffUsersForAdmin.push({ id: d.id, ...data });
-                }
-            });
-        } catch(e) { console.error("Failed to load users for admin:", e); }
+    if (isAdmin) {
+        allStaffUsersForAdmin = allUsers.filter(u => {
+            return u.Status !== 'retired' && u.Status !== '退職済' && u.Role !== 'Tablet' && u.Role !== '店舗タブレット';
+        });
+
 
         if (tabAdmin) tabAdmin.style.display = 'block';
         if (tabSubordinates) tabSubordinates.style.display = 'block';
@@ -1114,7 +1175,7 @@ async function loadInitialSettingsAndData() {
         activeTab = 'admin'; // 管理者はダッシュボードをデフォルトに
         document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
         document.getElementById('tab-admin')?.classList.add('active');
-    } else if (role === 'Manager' || role === '店長') {
+    } else if (hasSubordinates) {
         if (tabSubordinates) tabSubordinates.style.display = 'block';
         if (tabInterview) tabInterview.style.display = 'block';
         activeTab = 'subordinates'; // 店長は部下評価をデフォルトに
@@ -1207,39 +1268,8 @@ async function loadEvaluationData() {
         // 2. 自分の評価の抽出
         myEvaluation = activeEvaluations.find(e => e.user_id === user.id) || null;
 
-        // 3. 店長の場合の部下のユーザーリストをロード
-        if (role === 'Manager' || role === '店長' || role === 'Admin' || role === '管理者') {
-            const qUsers = query(collection(db, "m_users"));
-            const snapUsers = await getDocs(qUsers);
-            const allUsers = [];
-            snapUsers.forEach(d => {
-                allUsers.push({ id: d.id, ...d.data() });
-            });
-
-            // 自身の所属店舗が一致する一般スタッフ、アルバイトを「部下」とする (Adminは全ユーザー)
-            const myStore = user.StoreID || user.StoreId;
-            const isManagerOrAdmin = role === 'Admin' || role === '管理者' || user.JobTitle === '店長' || user.JobTitle === '統括店長';
-            
-            subordinateUsers = [];
-            if (isManagerOrAdmin) {
-                subordinateUsers = allUsers.filter(u => {
-                    if (u.id === user.id && role !== 'Admin' && role !== '管理者') return false;
-                    if (u.Status === 'retired' || u.Status === '退職済') return false; 
-                    if (role === 'Admin' || role === '管理者') return true; 
-                    
-                    if (u.StoreID !== myStore) return false;
-                    const myJob = user.JobTitle || '';
-                    const uJob = u.JobTitle || '';
-                    
-                    if (myJob !== '店長' && myJob !== '統括店長') {
-                        if (uJob === '店長' || uJob === '統括店長') return false;
-                    }
-                    
-                    return true;
-                });
-            }
-
-            // バッジカウントの表示更新
+        // 3. 部下ユーザーのバッジ更新 (データは既にロード済み)
+        updateTabBadges();
             updateTabBadges();
         }
     } catch (e) {
