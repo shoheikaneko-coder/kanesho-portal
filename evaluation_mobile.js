@@ -496,18 +496,20 @@ function generateSelfViewHtml() {
         
         if (mobileMyEvaluation) {
             const st = mobileMyEvaluation.status;
+            const isSelfSub = mobileMyEvaluation.is_self_submitted || (mobileMyEvaluation.self_total_score > 0);
+            
             if (st === 'approved' || st === 'notified') {
                 statusText = '確定済';
                 badgeClass = 'badge-done';
                 btnHtml = `<button class="eval-mob-btn-secondary action-mock-btn" data-type="self-view">結果を確認</button>`;
-            } else if (st === 'president_review') {
+            } else if (st === 'president_review' || st === 'president_pending') {
                 statusText = '社長査定中';
                 btnHtml = `<button class="eval-mob-btn-secondary action-mock-btn" data-type="self-view">入力内容を確認</button>`;
             } else if (st === 'interviewing') {
                 statusText = '面談待ち';
                 badgeClass = 'badge-active';
                 btnHtml = `<button class="eval-mob-btn-secondary action-mock-btn" data-type="self-view">入力内容を確認</button>`;
-            } else if (mobileMyEvaluation.is_self_submitted || ['self_submitted', 'primary_evaluating', 'primary_submitted', 'manager_evaluating'].includes(st)) {
+            } else if (isSelfSub) {
                 statusText = '提出済';
                 badgeClass = 'badge-done';
                 btnHtml = `<button class="eval-mob-btn-secondary action-mock-btn" data-type="self-view">入力内容を確認</button>`;
@@ -782,7 +784,7 @@ function generateInputHtml(mode) {
             <div class="eval-mob-input-card" id="mob-card-${idx}">
                 <div class="eval-mob-cat-badge">${item.category}</div>
                 <div class="eval-mob-item-title">${item.title || ''}</div>
-                <div class="eval-mob-item-desc">${(item.description || '').replace(/\\n/g, '<br>')}</div>
+                <div class="eval-mob-item-desc">${(item.description || '').replace(/\n/g, '<br>')}</div>
         `;
         
         if (mode === 'interview') {
