@@ -687,8 +687,8 @@ function generateSelfInputHtml(mode) {
         html += `
             <div class="eval-mob-input-card" id="mob-card-${idx}">
                 <div class="eval-mob-cat-badge">${item.category}</div>
-                <div class="eval-mob-item-title">${item.sub_category}</div>
-                <div class="eval-mob-item-desc">${item.content.replace(/\n/g, '<br>')}</div>
+                <div class="eval-mob-item-title">${item.title || ''}</div>
+                <div class="eval-mob-item-desc">${(item.description || '').replace(/\n/g, '<br>')}</div>
                 
                 <div class="eval-mob-rating-group" data-idx="${idx}">
                     ${[1,2,3,4,5].map(score => `
