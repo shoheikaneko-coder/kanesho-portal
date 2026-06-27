@@ -200,7 +200,7 @@ export const evaluationPageHtmlMobile = `
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
             background: #f8fafc;
-            z-index: 1000;
+            z-index: 100000;
             overflow-y: auto;
             padding-bottom: 100px;
         }
@@ -305,6 +305,7 @@ export const evaluationPageHtmlMobile = `
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
             padding: 1rem;
+            padding-bottom: calc(1rem + env(safe-area-inset-bottom, 20px));
             box-shadow: 0 -4px 6px -1px rgba(0,0,0,0.05);
             display: flex;
             gap: 1rem;
@@ -639,6 +640,8 @@ function bindMobileActionButtons(container) {
 // ==========================================
 
 function openMobileInputView(mode, evalData) {
+    const globalFab = document.getElementById('fab-main-btn');
+    if (globalFab) globalFab.style.display = 'none';
     mobileEditingEval = JSON.parse(JSON.stringify(evalData)); // Deep copy for editing
     const inputScreen = document.getElementById('eval-mob-input-screen');
     const contentArea = document.getElementById('eval-mob-content-area');
@@ -655,6 +658,8 @@ function openMobileInputView(mode, evalData) {
 }
 
 function closeMobileInputView() {
+    const globalFab = document.getElementById('fab-main-btn');
+    if (globalFab) globalFab.style.display = '';
     const inputScreen = document.getElementById('eval-mob-input-screen');
     const contentArea = document.getElementById('eval-mob-content-area');
     const headerArea = document.getElementById('eval-mob-header-wrapper');
@@ -696,7 +701,7 @@ function generateSelfInputHtml(mode) {
                     `).join('')}
                 </div>
                 
-                <textarea class="eval-mob-comment" id="mob-comment-${idx}" placeholder="自己評価のコメントを入力（任意）">${item.self_comment || ''}</textarea>
+                <textarea class="eval-mob-comment" id="mob-comment-${idx}" placeholder="評価理由などを入力（任意）">${item.self_comment || ''}</textarea>
             </div>
         `;
     });
@@ -746,13 +751,7 @@ function bindMobileInputEvents(mode) {
                 mobileEditingEval.items[idx].self_score = score;
                 updateMobileProgress();
                 
-                // Auto-scroll to next card
-                const nextCard = document.getElementById(`mob-card-${idx + 1}`);
-                if (nextCard) {
-                    setTimeout(() => {
-                        nextCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }, 300); // Slight delay for the button animation
-                }
+
             });
         });
     });
