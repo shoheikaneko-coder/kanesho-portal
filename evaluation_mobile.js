@@ -800,7 +800,7 @@ function bindMobileInputEvents(mode) {
     document.getElementById('btn-mob-submit').addEventListener('click', async () => {
         const incomplete = mobileEditingEval.items.some(it => !it.self_score);
         if (incomplete) {
-            return showAlert('入力未完了', 'すべての評価項目の点数を入力してください。');
+            return showAlert('入力が完了していません', '未入力の評価項目があります。<br>すべての項目に点数をつけてから提出してください。');
         }
         
         if (confirm('自己評価を提出します。提出後は変更ができなくなりますが、よろしいですか？')) {
