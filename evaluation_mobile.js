@@ -646,7 +646,6 @@ function openMobileInputView(mode, evalData) {
     const globalFab = document.getElementById('fab-main-btn');
     if (globalFab) globalFab.style.display = 'none';
     mobileEditingEval = JSON.parse(JSON.stringify(evalData)); // Deep copy for editing
-    const inputScreen = document.getElementById('eval-mob-input-screen');
     const contentArea = document.getElementById('eval-mob-content-area');
     const headerArea = document.getElementById('eval-mob-header-wrapper');
     
