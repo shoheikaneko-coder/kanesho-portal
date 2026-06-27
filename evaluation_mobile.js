@@ -257,7 +257,7 @@ async function loadInitialDataMobile() {
         
         // 2. Fetch subordinate users (same logic as PC)
         mobileSubordinateUsers = [];
-        const uSnap = await getDocs(collection(db, "users"));
+        const uSnap = await getDocs(collection(db, "m_users"));
         const allUsers = [];
         uSnap.forEach(d => allUsers.push({ id: d.id, ...d.data() }));
         
