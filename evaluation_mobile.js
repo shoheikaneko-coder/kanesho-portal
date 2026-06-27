@@ -588,8 +588,8 @@ function generateSubordinatesViewHtml() {
         
         if (ev) {
             const wf = ev.workflow || {};
-            const isPrimary = wf.primary_evaluator === mobileCurrentUser.JobTitle;
-            const isManager = wf.secondary_evaluator === mobileCurrentUser.JobTitle || (!wf.secondary_evaluator && (mobileCurrentUser.Role === 'Manager' || mobileCurrentUser.Role === '店長'));
+            const isPrimary = wf.primary_evaluator === window.appState.currentUser.JobTitle;
+            const isManager = wf.secondary_evaluator === window.appState.currentUser.JobTitle || (!wf.secondary_evaluator && (window.appState.currentUser.Role === 'Manager' || window.appState.currentUser.Role === '店長'));
             
             let role = null;
             if (isPrimary && ['evaluating', 'self_evaluating', 'self_submitted', 'primary_evaluating', 'primary_submitted'].includes(ev.status)) role = 'primary';
