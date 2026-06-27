@@ -780,8 +780,7 @@ function generateInputHtml(mode) {
             <div class="eval-mob-input-card" id="mob-card-${idx}">
                 <div class="eval-mob-cat-badge">${item.category}</div>
                 <div class="eval-mob-item-title">${item.title || ''}</div>
-                <div class="eval-mob-item-desc">${(item.description || '').replace(/
-/g, '<br>')}</div>
+                <div class="eval-mob-item-desc">${(item.description || '').replace(/\\n/g, '<br>')}</div>
         `;
         
         if (mode === 'interview') {
