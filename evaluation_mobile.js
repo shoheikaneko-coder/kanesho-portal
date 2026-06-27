@@ -587,10 +587,25 @@ function generateSubordinatesViewHtml() {
         let actionBtnHtml = '';
         
         if (ev) {
-            if (ev.status === 'open' || ev.status === 'evaluating') {
+            const wf = ev.workflow || {};
+            const isPrimary = wf.primary_evaluator === mobileCurrentUser.JobTitle;
+            const isManager = wf.secondary_evaluator === mobileCurrentUser.JobTitle || (!wf.secondary_evaluator && (mobileCurrentUser.Role === 'Manager' || mobileCurrentUser.Role === '店長'));
+            
+            let role = null;
+            if (isPrimary && ['evaluating', 'self_evaluating', 'self_submitted', 'primary_evaluating', 'primary_submitted'].includes(ev.status)) role = 'primary';
+            else if (isManager && ['evaluating', 'self_evaluating', 'self_submitted', 'primary_evaluating', 'primary_submitted', 'manager_evaluating'].includes(ev.status)) role = 'manager';
+            
+            if (ev.status === 'open' || ev.status === 'evaluating' || ev.status === 'self_evaluating') {
                 statusText = '本人入力待ち';
-                actionBtnHtml = `<button class="eval-mob-sub-btn done action-mock-btn" data-type="sub-view">確認</button>`;
-            } else if (ev.status === 'manager_evaluating') {
+                actionBtnHtml = `<button class="eval-mob-sub-btn done action-mock-btn" data-type="sub-view" data-id="${ev.id}">確認</button>`;
+            } else if (role && !['president_pending', 'approved', 'notified'].includes(ev.status)) {
+                statusText = '<span style="color:#ef4444;">評価入力 待ち</span>';
+                actionBtnHtml = `<button class="eval-mob-sub-btn action-mock-btn" data-type="sub-input" data-id="${ev.id}" data-role="${role}">入力する</button>`;
+            } else {
+                statusText = '評価完了';
+                actionBtnHtml = `<button class="eval-mob-sub-btn done action-mock-btn" data-type="sub-view" data-id="${ev.id}">確認</button>`;
+            }
+        } else if (ev.status === 'manager_evaluating') {
                 statusText = '<span style="color:#ef4444;">店長評価 待ち</span>';
                 actionBtnHtml = `<button class="eval-mob-sub-btn action-mock-btn" data-type="sub-input">入力する</button>`;
             } else {
@@ -626,7 +641,13 @@ function bindMobileActionButtons(container) {
             if (type === 'self-input') return openMobileInputView('self', mobileMyEvaluation);
             if (type === 'self-view') msg = '【自己評価確認画面】へ遷移します。\n（※次回のステップで構築します）';
             if (type === 'history-view') msg = '【過去の履歴詳細画面】へ遷移します。\n（※次回のステップで構築します）';
-            if (type === 'sub-input') msg = '【一次評価（店長）入力画面】へ遷移します。\n（※次回のステップで構築します）';
+            if (type === 'sub-input') {
+                const evalId = e.currentTarget.dataset.id;
+                const role = e.currentTarget.dataset.role;
+                const evData = mobileActiveEvaluations.find(ev => ev.id === evalId);
+                if (evData) return openMobileInputView(role, evData);
+                return;
+            }
             if (type === 'sub-view') msg = '【部下評価確認画面】へ遷移します。\n（※次回のステップで構築します）';
             
             showAlert('開発中', msg);
@@ -646,10 +667,11 @@ function openMobileInputView(mode, evalData) {
     const globalFab = document.getElementById('fab-main-btn');
     if (globalFab) globalFab.style.display = 'none';
     mobileEditingEval = JSON.parse(JSON.stringify(evalData)); // Deep copy for editing
+    mobileEditingEval.currentMode = mode;
     const contentArea = document.getElementById('eval-mob-content-area');
     const headerArea = document.getElementById('eval-mob-header-wrapper');
     
-    inputScreen.innerHTML = generateSelfInputHtml(mode);
+    inputScreen.innerHTML = generateInputHtml(mode);
     inputScreen.style.display = 'block';
     contentArea.style.display = 'none';
     headerArea.style.display = 'none';
@@ -673,15 +695,28 @@ function closeMobileInputView() {
     mobileEditingEval = null;
 }
 
-function generateSelfInputHtml(mode) {
+
+function generateInputHtml(mode) {
+    let titleText = mobilePeriodSettings.active_period + '自己評価入力';
+    let subtitleText = '';
+    
+    if (mode === 'primary') {
+        titleText = mobilePeriodSettings.active_period + ' 1次評価入力';
+        subtitleText = `<div style="font-size:0.85rem; color:#be123c; font-weight:700; margin-bottom:0.2rem;">対象者: ${mobileEditingEval.user_name || '一般'}</div>`;
+    } else if (mode === 'manager') {
+        titleText = mobilePeriodSettings.active_period + ' 最終評価入力';
+        subtitleText = `<div style="font-size:0.85rem; color:#be123c; font-weight:700; margin-bottom:0.2rem;">対象者: ${mobileEditingEval.user_name || '一般'}</div>`;
+    }
+    
     let html = `
         <div class="eval-mob-input-header">
             <div style="flex:1;">
                 <button class="btn" style="background:none; border:none; color:#64748b; font-size:1.2rem; padding:0;" id="btn-mob-input-close"><i class="fas fa-times"></i></button>
             </div>
             <div style="flex:4; text-align:center;">
-                <div style="font-weight:900; color:#0f172a;">${mobilePeriodSettings.active_period} 自己評価入力</div>
-                <div style="font-size:0.75rem; color:#64748b;" id="mob-progress-text">0 / 24 項目完了</div>
+                ${subtitleText}
+                <div style="font-weight:900; color:#0f172a; font-size: 0.95rem;">${titleText}</div>
+                <div style="font-size:0.75rem; color:#64748b; margin-top:0.2rem;" id="mob-progress-text">0 / ${mobileEditingEval.items.length} 項目完了</div>
                 <div class="eval-mob-progress-container">
                     <div class="eval-mob-progress-fill" id="mob-progress-fill"></div>
                 </div>
@@ -692,6 +727,17 @@ function generateSelfInputHtml(mode) {
     `;
     
     mobileEditingEval.items.forEach((item, idx) => {
+        let currentScore = item.self_score;
+        let currentComment = item.self_comment || '';
+        
+        if (mode === 'primary') {
+            currentScore = item.primary_score;
+            currentComment = item.primary_comment || '';
+        } else if (mode === 'manager') {
+            currentScore = item.manager_score;
+            currentComment = item.manager_comment || '';
+        }
+        
         html += `
             <div class="eval-mob-input-card" id="mob-card-${idx}">
                 <div class="eval-mob-cat-badge">${item.category}</div>
@@ -700,11 +746,11 @@ function generateSelfInputHtml(mode) {
                 
                 <div class="eval-mob-rating-group" data-idx="${idx}">
                     ${[1,2,3,4,5].map(score => `
-                        <button class="eval-mob-rating-btn ${item.self_score === score ? 'selected' : ''}" data-score="${score}">${score}</button>
+                        <button class="eval-mob-rating-btn ${currentScore === score ? 'selected' : ''}" data-score="${score}">${score}</button>
                     `).join('')}
                 </div>
                 
-                <textarea class="eval-mob-comment" id="mob-comment-${idx}" placeholder="評価理由などを入力（任意）">${item.self_comment || ''}</textarea>
+                <textarea class="eval-mob-comment" id="mob-comment-${idx}" placeholder="評価理由などを入力（任意）">${currentComment}</textarea>
             </div>
         `;
     });
@@ -720,10 +766,14 @@ function generateSelfInputHtml(mode) {
     return html;
 }
 
+
 function updateMobileProgress() {
     if (!mobileEditingEval || !mobileEditingEval.items) return;
     const total = mobileEditingEval.items.length;
-    const answered = mobileEditingEval.items.filter(it => it.self_score > 0).length;
+    let answered = 0;
+    if (mobileEditingEval.currentMode === 'primary') answered = mobileEditingEval.items.filter(it => it.primary_score > 0).length;
+    else if (mobileEditingEval.currentMode === 'manager') answered = mobileEditingEval.items.filter(it => it.manager_score > 0).length;
+    else answered = mobileEditingEval.items.filter(it => it.self_score > 0).length;
     
     const textEl = document.getElementById('mob-progress-text');
     const fillEl = document.getElementById('mob-progress-fill');
@@ -746,15 +796,14 @@ function bindMobileInputEvents(mode) {
             btn.addEventListener('click', (e) => {
                 const score = parseInt(e.currentTarget.dataset.score);
                 
-                // Update UI visually
                 group.querySelectorAll('.eval-mob-rating-btn').forEach(b => b.classList.remove('selected'));
                 e.currentTarget.classList.add('selected');
                 
-                // Update state
-                mobileEditingEval.items[idx].self_score = score;
-                updateMobileProgress();
+                if (mode === 'primary') mobileEditingEval.items[idx].primary_score = score;
+                else if (mode === 'manager') mobileEditingEval.items[idx].manager_score = score;
+                else mobileEditingEval.items[idx].self_score = score;
                 
-
+                updateMobileProgress();
             });
         });
     });
@@ -764,7 +813,9 @@ function bindMobileInputEvents(mode) {
         const textarea = document.getElementById(`mob-comment-${idx}`);
         if (textarea) {
             textarea.addEventListener('change', (e) => {
-                mobileEditingEval.items[idx].self_comment = e.target.value;
+                if (mode === 'primary') mobileEditingEval.items[idx].primary_comment = e.target.value;
+                else if (mode === 'manager') mobileEditingEval.items[idx].manager_comment = e.target.value;
+                else mobileEditingEval.items[idx].self_comment = e.target.value;
             });
         }
     });
@@ -783,8 +834,15 @@ function bindMobileInputEvents(mode) {
                 updated_at: new Date().toISOString()
             });
             
-            // Sync to local memory
-            mobileMyEvaluation.items = mobileEditingEval.items;
+            // Sync to local memory if it's self eval
+            if (mode === 'self' && mobileMyEvaluation) {
+                mobileMyEvaluation.items = mobileEditingEval.items;
+            }
+            // Also sync back to mobileActiveEvaluations
+            const aIdx = mobileActiveEvaluations.findIndex(e => e.id === mobileEditingEval.id);
+            if (aIdx !== -1) {
+                mobileActiveEvaluations[aIdx].items = mobileEditingEval.items;
+            }
             
             btn.innerHTML = originalText;
             btn.disabled = false;
@@ -798,12 +856,23 @@ function bindMobileInputEvents(mode) {
     
     // Submit
     document.getElementById('btn-mob-submit').addEventListener('click', async () => {
-        const incomplete = mobileEditingEval.items.some(it => !it.self_score);
+        let incomplete = false;
+        if (mode === 'primary') incomplete = mobileEditingEval.items.some(it => !it.primary_score);
+        else if (mode === 'manager') incomplete = mobileEditingEval.items.some(it => !it.manager_score);
+        else incomplete = mobileEditingEval.items.some(it => !it.self_score);
+        
         if (incomplete) {
             return showAlert('入力が完了していません', '未入力の評価項目があります。<br>すべての項目に点数をつけてから提出してください。');
         }
         
-        if (confirm('自己評価を提出します。提出後は変更ができなくなりますが、よろしいですか？')) {
+        let confirmMsg = '評価を提出します。提出後は変更ができなくなりますが、よろしいですか？';
+        if (mode === 'primary') confirmMsg = '1次評価を完了として提出しますか？
+（全員の評価が完了するまでは面談待ちに進みません）';
+        else if (mode === 'manager') confirmMsg = '最終評価を完了として提出しますか？
+（全員の評価が完了するまでは面談待ちに進みません）';
+        else confirmMsg = '自己評価を提出します。提出後は変更ができなくなりますが、よろしいですか？';
+        
+        if (confirm(confirmMsg)) {
             try {
                 const btn = document.getElementById('btn-mob-submit');
                 const originalText = btn.innerHTML;
@@ -814,55 +883,92 @@ function bindMobileInputEvents(mode) {
                 const hasPrimary = !!wf.primary_evaluator;
                 const isPrimarySub = mobileEditingEval.is_primary_submitted || false;
                 const isManagerSub = mobileEditingEval.is_manager_submitted || false;
+                const isSelfSub = mobileEditingEval.is_self_submitted || false;
 
-                let nextStatus = 'self_submitted';
-                if (hasPrimary && !isPrimarySub) {
-                    nextStatus = 'self_submitted'; // 1次評価待ち
-                } else if (!isManagerSub) {
-                    nextStatus = hasPrimary ? 'primary_submitted' : 'self_submitted'; // 最終評価待ち または 上長評価待ち
-                } else {
-                    nextStatus = 'interviewing'; // 全員提出済み
-                }
+                let nextStatus = mobileEditingEval.status;
+                let updateData = {
+                    items: mobileEditingEval.items,
+                    updated_at: new Date().toISOString()
+                };
                 
                 // Calculate total
-                let selfSum = 0;
-                mobileEditingEval.items.forEach(it => selfSum += (it.self_score || 0));
+                let sum = 0;
                 
-                const docRef = doc(db, "t_evaluations", mobileEditingEval.id);
-                await updateDoc(docRef, {
-                    items: mobileEditingEval.items,
-                    self_total_score: selfSum,
-                    status: nextStatus,
-                    is_self_submitted: true,
-                    updated_at: new Date().toISOString()
-                });
-                
-                // Sync to local memory
-                mobileMyEvaluation.status = nextStatus;
-                mobileMyEvaluation.is_self_submitted = true;
-                mobileMyEvaluation.items = mobileEditingEval.items;
-                mobileMyEvaluation.self_total_score = selfSum;
-                
-                const idx = mobileActiveEvaluations.findIndex(e => e.id === mobileMyEvaluation.id);
-                if (idx !== -1) {
-                    mobileActiveEvaluations[idx] = JSON.parse(JSON.stringify(mobileMyEvaluation));
+                if (mode === 'self') {
+                    mobileEditingEval.items.forEach(it => sum += (it.self_score || 0));
+                    updateData.self_total_score = sum;
+                    updateData.is_self_submitted = true;
+                    
+                    if (hasPrimary && !isPrimarySub) nextStatus = 'self_submitted';
+                    else if (!isManagerSub) nextStatus = hasPrimary ? 'primary_submitted' : 'self_submitted';
+                    else nextStatus = 'interviewing';
+                } else if (mode === 'primary') {
+                    mobileEditingEval.items.forEach(it => sum += (it.primary_score || 0));
+                    updateData.primary_total_score = sum;
+                    updateData.is_primary_submitted = true;
+                    
+                    if (!isSelfSub) nextStatus = 'primary_evaluating'; // waiting for self
+                    else if (!isManagerSub) nextStatus = 'primary_submitted';
+                    else nextStatus = 'interviewing';
+                } else if (mode === 'manager') {
+                    mobileEditingEval.items.forEach(it => sum += (it.manager_score || 0));
+                    updateData.manager_total_score = sum;
+                    updateData.is_manager_submitted = true;
+                    
+                    if (!isSelfSub) nextStatus = 'manager_evaluating';
+                    else if (hasPrimary && !isPrimarySub) nextStatus = 'manager_evaluating';
+                    else nextStatus = 'interviewing';
                 }
                 
-                showAlert('提出完了', '提出が完了しました。');
-                closeMobileInputView();
-                renderMobileView(); // Re-render to show updated status
+                updateData.status = nextStatus;
                 
+                const docRef = doc(db, "t_evaluations", mobileEditingEval.id);
+                await updateDoc(docRef, updateData);
+                
+                // Sync to local memory
+                if (mode === 'self' && mobileMyEvaluation) {
+                    mobileMyEvaluation.status = nextStatus;
+                    mobileMyEvaluation.is_self_submitted = true;
+                    mobileMyEvaluation.items = mobileEditingEval.items;
+                    mobileMyEvaluation.self_total_score = sum;
+                }
+                
+                const idx = mobileActiveEvaluations.findIndex(e => e.id === mobileEditingEval.id);
+                if (idx !== -1) {
+                    mobileActiveEvaluations[idx] = { ...mobileActiveEvaluations[idx], ...updateData };
+                }
+                
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                
+                closeMobileInputView();
+                
+                // refresh views
+                if (document.getElementById('mob-tab-self').classList.contains('active')) {
+                    const contentArea = document.getElementById('eval-mob-content-area');
+                    if(contentArea && window.generateSelfModeHtml) {
+                       contentArea.innerHTML = window.generateSelfModeHtml();
+                       bindMobileActionButtons(contentArea);
+                    }
+                } else {
+                    const contentArea = document.getElementById('eval-mob-content-area');
+                    if(contentArea && window.generateSubordinatesViewHtml) {
+                       contentArea.innerHTML = window.generateSubordinatesViewHtml();
+                       bindMobileActionButtons(contentArea);
+                    }
+                }
+                
+                let successMsg = '提出が完了しました。';
+                if (mode === 'self') successMsg = '提出が完了しました。上長から面談日についての連絡が来るまでお待ちください。';
+                else if (mode === 'primary') successMsg = '1次評価の提出が完了しました。';
+                else if (mode === 'manager') successMsg = '最終評価の提出が完了しました。';
+                
+                showAlert('提出完了', successMsg);
             } catch (e) {
                 console.error(e);
-                showAlert('エラー', '提出に失敗しました。');
-                document.getElementById('btn-mob-submit').disabled = false;
+                showAlert('エラー', '提出処理に失敗しました。');
+                if(document.getElementById('btn-mob-submit')) document.getElementById('btn-mob-submit').disabled = false;
             }
         }
     });
 }
-
-// Since updateDoc from imported firebase is not globally available, we map it on window during init
-window.firebaseUpdateDoc = async (ref, data) => {
-    // Actually we need to import updateDoc or use it from the module.
-    // wait, we can just import updateDoc at the top.
-};
