@@ -698,6 +698,18 @@ export const evaluationPageHtml = `
 `;
 
 export async function initEvaluationPage() {
+    // Bind history buttons dynamically
+    document.body.addEventListener('click', (e) => {
+        const btn = e.target.closest('.history-btn');
+        if (btn) {
+            // Alert removed
+            try {
+                window.openEvaluationHistory(btn.dataset.userid, btn.dataset.username);
+            } catch(err) {
+                alert("エラーが発生しました: " + err.message);
+            }
+        }
+    });
     // 戻るボタン
     const btnBack = document.getElementById('btn-eval-back');
     if (btnBack) {
@@ -1206,28 +1218,26 @@ async function loadEvaluationData() {
 
             // 自身の所属店舗が一致する一般スタッフ、アルバイトを「部下」とする (Adminは全ユーザー)
             const myStore = user.StoreID || user.StoreId;
-            subordinateUsers = allUsers.filter(u => {
-                // 自分自身は除外（ただし管理者はテスト運用のため自分も表示する）
-                if (u.id === user.id && role !== 'Admin' && role !== '管理者') return false;
-                
-                if (u.Status === 'retired' || u.Status === '退職済') return false; // 退職者は除外
-                if (role === 'Admin' || role === '管理者') return true; // 管理者は全員
-                
-                // 店長の場合は同じ店舗のスタッフ・アルバイト・副店長を含める
-                if (u.StoreID !== myStore) return false;
-                const myJob = user.JobTitle || '';
-                const uJob = u.JobTitle || '';
-                
-                // 自分が店長でない場合、上位役職者は部下として表示しない
-                if (myJob !== '店長' && myJob !== '統括店長') {
-                    if (uJob === '店長' || uJob === '統括店長') return false;
-                }
-                if (myJob === '一般社員' || myJob === 'アルバイト' || myJob === '社員') {
-                    if (uJob === '店長' || uJob === '統括店長' || uJob === '副店長') return false;
-                }
-                
-                return true;
-            });
+            const isManagerOrAdmin = role === 'Admin' || role === '管理者' || user.JobTitle === '店長' || user.JobTitle === '統括店長';
+            
+            subordinateUsers = [];
+            if (isManagerOrAdmin) {
+                subordinateUsers = allUsers.filter(u => {
+                    if (u.id === user.id && role !== 'Admin' && role !== '管理者') return false;
+                    if (u.Status === 'retired' || u.Status === '退職済') return false; 
+                    if (role === 'Admin' || role === '管理者') return true; 
+                    
+                    if (u.StoreID !== myStore) return false;
+                    const myJob = user.JobTitle || '';
+                    const uJob = u.JobTitle || '';
+                    
+                    if (myJob !== '店長' && myJob !== '統括店長') {
+                        if (uJob === '店長' || uJob === '統括店長') return false;
+                    }
+                    
+                    return true;
+                });
+            }
 
             // バッジカウントの表示更新
             updateTabBadges();
@@ -1607,7 +1617,7 @@ function renderSubordinatesTab(container) {
                 actionBtn = `<button class="btn btn-secondary" onclick="window.showSubordinateDetail('${u.id}')" style="font-size:0.75rem; font-weight:700; padding: 0.4rem 0.8rem; border:1px solid #cbd5e1; background:white; color:var(--text-secondary);"><i class="fas fa-eye"></i> 閲覧</button>`;
             }
 
-            actionBtn += `<button class="btn btn-secondary" onclick="window.openEvaluationHistory('${u.id}', '${u.Name}')" style="font-size:0.75rem; font-weight:700; padding: 0.4rem 0.6rem; border:1px solid #cbd5e1; background:#f8fafc; color:#475569; margin-left:0.4rem;" title="過去の履歴を見る"><i class="fas fa-history"></i></button>`;
+            actionBtn += `<button class="btn btn-secondary history-btn" data-userid="${u.id}" data-username="${u.Name}" style="font-size:0.75rem; font-weight:700; padding: 0.4rem 0.6rem; border:1px solid #cbd5e1; background:#f8fafc; color:#475569; margin-left:0.4rem;" title="過去の履歴を見る"><i class="fas fa-history"></i></button>`;
 
             html += `
                 <tr style="border-bottom: 1px solid var(--border);">
@@ -2048,7 +2058,7 @@ function renderAdminTab(container) {
                                         <td style="padding: 0.75rem 1rem; text-align: center; font-weight: 600; color: #7c3aed;">${e.manager_total_score || '-'}</td>
                                         <td style="padding: 0.75rem 1rem; text-align: right;" class="no-print">
                                             <button class="btn btn-secondary" onclick="window.viewAdminEvaluationDetail('${e.id}')" style="font-size: 0.7rem; padding: 0.3rem 0.6rem; border: 1px solid #cbd5e1; background: white; color: var(--text-secondary);"><i class="fas fa-eye"></i> 閲覧</button>
-                                            <button class="btn btn-secondary" onclick="window.openEvaluationHistory('${e.user_id}', '${e.user_name || '一般'}')" style="font-size:0.7rem; padding: 0.3rem 0.6rem; border:1px solid #cbd5e1; background:#f8fafc; color:#475569; margin-left:0.3rem;" title="過去の履歴を見る"><i class="fas fa-history"></i></button>
+                                            <button class="btn btn-secondary history-btn" data-userid="${e.user_id}" data-username="${e.user_name || '一般'}" style="font-size:0.7rem; padding: 0.3rem 0.6rem; border:1px solid #cbd5e1; background:#f8fafc; color:#475569; margin-left:0.3rem;" title="過去の履歴を見る"><i class="fas fa-history"></i></button>
                                         </td>
                                     </tr>
                                 `).join('')}
@@ -2183,7 +2193,28 @@ function renderAdminTab(container) {
     window.viewAdminEvaluationDetail = (evalId) => {
         const evalData = activeEvaluations.find(e => e.id === evalId);
         if (evalData) {
-            openEvaluationDetailModal(evalData, 'admin');
+            // Admin用のコンテナがない場合はリストのすぐ下、もしくはeval-main-contentに直接描画するか、既存のモーダルを模倣する
+            // 全体管理タブでは、別の詳細画面用のコンテナを用意するか、subordinate-detail-containerを使い回す
+            let container = document.getElementById('admin-detail-container');
+            if (!container) {
+                // admin-list-containerの親(全体管理タブのルート)に作成
+                const adminList = document.querySelector('#eval-main-content > div > div');
+                if (adminList) {
+                    adminList.insertAdjacentHTML('afterend', '<div id="admin-detail-container"></div>');
+                    container = document.getElementById('admin-detail-container');
+                }
+            }
+            if (container) {
+                const listContainer = container.previousElementSibling;
+                if(listContainer) listContainer.style.display = 'none';
+                container.style.display = 'block';
+                
+                // Add a back button wrapper
+                container.innerHTML = '<div style="margin-bottom: 1rem;"><button class="btn" onclick="document.getElementById(\'admin-detail-container\').style.display=\'none\'; document.getElementById(\'admin-detail-container\').previousElementSibling.style.display=\'block\';" style="background: white; border: 1px solid #cbd5e1; color: #475569; padding: 0.5rem 1rem; border-radius: 6px; font-weight: 700;"><i class="fas fa-arrow-left"></i> 一覧へ戻る</button></div><div id="admin-detail-inner"></div>';
+                
+                renderEvalDetailInline(document.getElementById('admin-detail-inner'), evalData, 'admin');
+                window.scrollTo(0, 0);
+            }
         }
     };
     // イベントバインドはinitEvaluationに移動しました
@@ -2432,7 +2463,7 @@ async function renderEvalDetailInline(container, evalData, mode) {
                     </p>
                 </div>
                 <div style="display: flex; gap: 0.5rem;">
-                    <button class="btn btn-secondary" onclick="window.openEvaluationHistory('${userId}', '${selectedEvalDetail.user_name || '一般'}')" style="background:#fff; color:#475569; border:1px solid #cbd5e1; padding:0.5rem 1rem; border-radius:6px; font-weight:700;"><i class="fas fa-history"></i> 過去の履歴を見る</button>
+                    <button class="btn btn-secondary history-btn" data-userid="${userId}" data-username="${selectedEvalDetail.user_name || '一般'}" style="background:#fff; color:#475569; border:1px solid #cbd5e1; padding:0.5rem 1rem; border-radius:6px; font-weight:700;"><i class="fas fa-history"></i> 過去の履歴を見る</button>
                     ${mode !== 'self' ? `<button class="btn" onclick="window.backToSubordinateList()" style="background:#f1f5f9; color:#475569; border:none; padding:0.5rem 1rem; border-radius:6px; font-weight:700;"><i class="fas fa-arrow-left"></i> 一覧へ戻る</button>` : ''}
                 </div>
             </div>
@@ -4375,12 +4406,45 @@ window.saveLegacyImportData = async () => {
 
 window.cachedHistories = {};
 
+
 window.openEvaluationHistory = async (userId, userName) => {
-    const modal = document.getElementById('eval-history-modal');
-    const content = document.getElementById('history-content-area');
+    let modal = document.getElementById('eval-history-modal-dynamic');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'eval-history-modal-dynamic';
+        modal.style.display = 'none';
+        modal.style.position = 'fixed';
+        modal.style.inset = '0';
+        modal.style.background = 'rgba(15, 23, 42, 0.4)';
+        modal.style.zIndex = '999999';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+        modal.style.backdropFilter = 'blur(4px)';
+        modal.style.padding = '1rem';
+        modal.style.boxSizing = 'border-box';
+        
+        modal.innerHTML = `
+            <div class="glass-panel" style="background: white; width: 100%; max-width: 800px; max-height: 90vh; border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+                <div style="padding: 1.2rem 1.8rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+                    <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 0.6rem;">
+                        <i class="fas fa-history" style="color: var(--primary);"></i> 過去の評価履歴
+                    </h3>
+                    <button type="button" onclick="document.getElementById('eval-history-modal-dynamic').style.display='none';" style="background: transparent; border: none; font-size: 1.4rem; cursor: pointer; color: #94a3b8; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div style="padding: 1.5rem 1.8rem; overflow-y: auto; flex-grow: 1; background: #f8fafc;" id="history-content-area-dynamic">
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    const content = document.getElementById('history-content-area-dynamic');
     
     modal.style.display = 'flex';
     content.innerHTML = '<div style="text-align:center; padding:3rem;"><i class="fas fa-spinner fa-spin fa-2x" style="color:var(--text-secondary);"></i><div style="margin-top:1rem; color:var(--text-secondary); font-size:0.9rem; font-weight:700;">履歴を読み込んでいます...</div></div>';
+
     
     try {
         const q = query(collection(db, "t_evaluations"), where("user_id", "==", userId));
@@ -4443,11 +4507,55 @@ window.openEvaluationHistory = async (userId, userName) => {
     }
 };
 
+
 window.viewHistoryDetail = (evalId) => {
     const h = window.cachedHistories[evalId];
     if (!h) return;
+
+    let detailModal = document.getElementById('eval-history-detail-modal-dynamic');
+    if (!detailModal) {
+        detailModal = document.createElement('div');
+        detailModal.id = 'eval-history-detail-modal-dynamic';
+        detailModal.style.display = 'none';
+        detailModal.style.position = 'fixed';
+        detailModal.style.inset = '0';
+        detailModal.style.background = 'rgba(15, 23, 42, 0.4)';
+        detailModal.style.zIndex = '9999999'; // Higher than history modal
+        detailModal.style.alignItems = 'center';
+        detailModal.style.justifyContent = 'center';
+        detailModal.style.backdropFilter = 'blur(4px)';
+        detailModal.style.padding = '1rem';
+        detailModal.style.boxSizing = 'border-box';
+        
+        detailModal.innerHTML = `
+            <div class="glass-panel" style="background: white; width: 100%; max-width: 900px; max-height: 95vh; border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);">
+                <div style="padding: 1.2rem 1.8rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+                    <h3 id="history-detail-title-dynamic" style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 0.6rem;">
+                        評価詳細
+                    </h3>
+                    <button type="button" onclick="document.getElementById('eval-history-detail-modal-dynamic').style.display='none';" style="background: transparent; border: none; font-size: 1.4rem; cursor: pointer; color: #94a3b8; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div style="padding: 1.5rem 1.8rem; overflow-y: auto; flex-grow: 1; background: #f8fafc;">
+                    <table class="eval-table" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th style="width: 50%;">評価項目</th>
+                                <th style="width: 15%; text-align: center;">確定点</th>
+                                <th style="width: 35%;">コメント</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-detail-body-dynamic">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(detailModal);
+    }
     
-    document.getElementById('history-detail-title').innerHTML = `<i class="fas fa-file-alt" style="color:var(--primary);"></i> ${h.period}期 ${h.user_name} さんの評価詳細`;
+    document.getElementById('history-detail-title-dynamic').innerHTML = `<i class="fas fa-file-alt" style="color:var(--primary);"></i> ${h.period}期 ${h.user_name} さんの評価詳細`;
     
     let itemsHtml = '';
     const snapshotItems = h.template_snapshot || h.items || [];
@@ -4467,45 +4575,21 @@ window.viewHistoryDetail = (evalId) => {
                 <td style="padding: 0.8rem; text-align:center; font-weight:900; color:#7c3aed; font-size:1.2rem;">
                     ${managerScore}
                 </td>
+                <td style="padding: 0.8rem; font-size:0.85rem; color:#475569;">
+                    ${scoreData.manager_comment || scoreData.comment || '-'}
+                </td>
             </tr>
         `;
     });
     
-    const content = `
-        <div style="display:flex; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap;">
-            <div style="flex:1; background:white; padding:1.2rem; border-radius:12px; border:1px solid #cbd5e1; text-align:center; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
-                <div style="font-size:0.8rem; color:var(--text-secondary); font-weight:800;">最終総合点数</div>
-                <div style="font-size:1.8rem; font-weight:900; color:#be123c; margin-top:0.4rem;">${h.final_total_score || h.manager_total_score || h.self_total_score || '-'}</div>
-            </div>
-            <div style="flex:1; background:white; padding:1.2rem; border-radius:12px; border:1px solid #cbd5e1; text-align:center; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
-                <div style="font-size:0.8rem; color:var(--text-secondary); font-weight:800;">決定等級</div>
-                <div style="font-size:1.8rem; font-weight:900; font-family:monospace; color:#059669; margin-top:0.4rem;">${h.new_grade || '-'}</div>
-            </div>
-        </div>
-        
-        <div style="background:white; padding:1.2rem; border-radius:12px; border:1px solid #cbd5e1; margin-bottom:1.5rem; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
-            <div style="font-size:0.85rem; color:var(--text-secondary); font-weight:800; margin-bottom:0.6rem; border-bottom:1px solid #e2e8f0; padding-bottom:0.4rem;"><i class="fas fa-comment-dots" style="color:var(--primary);"></i> 総括コメント・面談メモ</div>
-            <div style="font-size:0.95rem; color:#1e293b; white-space:pre-wrap; line-height:1.6;">${h.manager_comment || h.president_comment || '<span style="color:#94a3b8; font-size:0.85rem;">（コメントの記録はありません）</span>'}</div>
-        </div>
-        
-        <div style="background:white; border-radius:12px; border:1px solid #cbd5e1; overflow:hidden; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
-            <table class="eval-table" style="margin:0;">
-                <thead>
-                    <tr>
-                        <th style="text-align:left;">評価項目</th>
-                        <th style="text-align:center; width:100px;">当時の点数</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${itemsHtml || '<tr><td colspan="2" style="text-align:center; padding:2rem;">詳細データがありません。</td></tr>'}
-                </tbody>
-            </table>
-        </div>
-    `;
+    if (snapshotItems.length === 0) {
+        itemsHtml = '<tr><td colspan="3" style="text-align:center; padding:2rem; color:#94a3b8;">詳細データがありません</td></tr>';
+    }
     
-    document.getElementById('history-detail-content').innerHTML = content;
-    document.getElementById('eval-history-detail-modal').style.display = 'flex';
+    document.getElementById('history-detail-body-dynamic').innerHTML = itemsHtml;
+    detailModal.style.display = 'flex';
 };
+
 
 // ==========================================
 // 7. 全自動公開・ロック処理

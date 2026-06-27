@@ -404,23 +404,25 @@ async function loadInitialDataMobile() {
         const myStore = currentUser.StoreID || currentUser.StoreId;
         const myJob = currentUser.JobTitle || '';
         
-        mobileSubordinateUsers = allUsers.filter(u => {
-            if (u.id === currentUser.id && role !== 'Admin' && role !== '管理者') return false;
-            if (u.Status === 'retired' || u.Status === '退職済') return false;
-            if (role === 'Admin' || role === '管理者') return true;
-            
-            if ((u.StoreID || u.StoreId) !== myStore) return false;
-            
-            const uJob = u.JobTitle || '';
-            if (myJob !== '店長' && myJob !== '統括店長') {
-                if (uJob === '店長' || uJob === '統括店長') return false;
-            }
-            if (myJob === '一般社員' || myJob === 'アルバイト' || myJob === '社員') {
-                if (uJob === '店長' || uJob === '統括店長' || uJob === '副店長') return false;
-            }
-            
-            return true;
-        });
+        const isManagerOrAdmin = role === 'Admin' || role === '管理者' || myJob === '店長' || myJob === '統括店長';
+        
+        mobileSubordinateUsers = [];
+        if (isManagerOrAdmin) {
+            mobileSubordinateUsers = allUsers.filter(u => {
+                if (u.id === currentUser.id && role !== 'Admin' && role !== '管理者') return false;
+                if (u.Status === 'retired' || u.Status === '退職済') return false;
+                if (role === 'Admin' || role === '管理者') return true;
+                
+                if ((u.StoreID || u.StoreId) !== myStore) return false;
+                
+                const uJob = u.JobTitle || '';
+                if (myJob !== '店長' && myJob !== '統括店長') {
+                    if (uJob === '店長' || uJob === '統括店長') return false;
+                }
+                
+                return true;
+            });
+        }
         
         // Show segmented control if has subordinates (Admin/Managers)
         if (mobileSubordinateUsers.length > 0) {
