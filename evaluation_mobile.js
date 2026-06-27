@@ -305,7 +305,7 @@ export const evaluationPageHtmlMobile = `
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
             padding: 1rem;
-            padding-bottom: calc(1rem + env(safe-area-inset-bottom, 20px));
+            padding-bottom: 35px;
             box-shadow: 0 -4px 6px -1px rgba(0,0,0,0.05);
             display: flex;
             gap: 1rem;
@@ -640,6 +640,9 @@ function bindMobileActionButtons(container) {
 // ==========================================
 
 function openMobileInputView(mode, evalData) {
+    document.body.style.overflow = 'hidden';
+    const inputScreen = document.getElementById('eval-mob-input-screen');
+    document.body.appendChild(inputScreen);
     const globalFab = document.getElementById('fab-main-btn');
     if (globalFab) globalFab.style.display = 'none';
     mobileEditingEval = JSON.parse(JSON.stringify(evalData)); // Deep copy for editing
@@ -658,6 +661,7 @@ function openMobileInputView(mode, evalData) {
 }
 
 function closeMobileInputView() {
+    document.body.style.overflow = '';
     const globalFab = document.getElementById('fab-main-btn');
     if (globalFab) globalFab.style.display = '';
     const inputScreen = document.getElementById('eval-mob-input-screen');
