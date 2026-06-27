@@ -343,17 +343,17 @@ function generateSelfViewHtml() {
             if (st === 'open' || st === 'evaluating') {
                 statusText = '自己評価 入力待ち';
                 badgeClass = 'badge-active';
-                btnHtml = \`<button class="eval-mob-btn-primary action-mock-btn" data-type="self-input">自己評価を入力する</button>\`;
+                btnHtml = `<button class="eval-mob-btn-primary action-mock-btn" data-type="self-input">自己評価を入力する</button>`;
             } else if (st === 'manager_evaluating') {
                 statusText = '一次評価中';
-                btnHtml = \`<button class="eval-mob-btn-secondary action-mock-btn" data-type="self-view">入力内容を確認</button>\`;
+                btnHtml = `<button class="eval-mob-btn-secondary action-mock-btn" data-type="self-view">入力内容を確認</button>`;
             } else if (st === 'president_review') {
                 statusText = '社長査定中';
-                btnHtml = \`<button class="eval-mob-btn-secondary action-mock-btn" data-type="self-view">入力内容を確認</button>\`;
+                btnHtml = `<button class="eval-mob-btn-secondary action-mock-btn" data-type="self-view">入力内容を確認</button>`;
             } else if (st === 'approved' || st === 'notified') {
                 statusText = '確定済';
                 badgeClass = 'badge-done';
-                btnHtml = \`<button class="eval-mob-btn-secondary action-mock-btn" data-type="self-view">結果を確認</button>\`;
+                btnHtml = `<button class="eval-mob-btn-secondary action-mock-btn" data-type="self-view">結果を確認</button>`;
             }
         } else {
             statusText = '対象外';
@@ -361,12 +361,12 @@ function generateSelfViewHtml() {
         
         html += `
             <div class="eval-mob-hero-card">
-                <div class="eval-mob-badge \${badgeClass}">\${statusText}</div>
-                <div class="eval-mob-hero-title">\${mobilePeriodSettings.active_period} 評価</div>
+                <div class="eval-mob-badge ${badgeClass}">${statusText}</div>
+                <div class="eval-mob-hero-title">${mobilePeriodSettings.active_period} 評価</div>
                 <div class="eval-mob-hero-info">
-                    提出期限: \${mobilePeriodSettings.deadline || '未定'}<br>
+                    提出期限: ${mobilePeriodSettings.deadline || '未定'}<br>
                 </div>
-                \${btnHtml}
+                ${btnHtml}
             </div>
         `;
     }
@@ -379,7 +379,7 @@ function generateSelfViewHtml() {
     `;
     
     if (mobileAllPastHistory.length === 0) {
-        html += \`<div style="text-align:center; padding: 2rem; color: #94a3b8; font-size: 0.9rem;">過去の評価履歴はありません</div>\`;
+        html += `<div style="text-align:center; padding: 2rem; color: #94a3b8; font-size: 0.9rem;">過去の評価履歴はありません</div>`;
     } else {
         mobileAllPastHistory.forEach(h => {
             const isLegacy = h.is_legacy_archive ? '<span style="background: #cbd5e1; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; margin-left: 0.4rem;">手入力</span>' : '';
@@ -389,11 +389,11 @@ function generateSelfViewHtml() {
             html += `
                 <div class="eval-mob-list-card action-mock-btn" data-type="history-view">
                     <div class="eval-mob-list-info">
-                        <h4>\${h.period}期 \${isLegacy}</h4>
-                        <p>スコア: \${score}点</p>
+                        <h4>${h.period}期 ${isLegacy}</h4>
+                        <p>スコア: ${score}点</p>
                     </div>
                     <div class="eval-mob-list-action" style="flex-direction: row; align-items: center; gap: 1rem;">
-                        <div class="eval-mob-grade">\${grade}</div>
+                        <div class="eval-mob-grade">${grade}</div>
                         <i class="fas fa-chevron-right eval-mob-chevron"></i>
                     </div>
                 </div>
@@ -412,7 +412,7 @@ function generateSubordinatesViewHtml() {
     `;
     
     if (mobileSubordinateUsers.length === 0) {
-        return html + \`<div style="text-align:center; padding: 2rem; color: #94a3b8; font-size: 0.9rem;">対象の部下がいません</div>\`;
+        return html + `<div style="text-align:center; padding: 2rem; color: #94a3b8; font-size: 0.9rem;">対象の部下がいません</div>`;
     }
     
     // Extract relevant active evaluations for subordinates
@@ -430,25 +430,25 @@ function generateSubordinatesViewHtml() {
         if (ev) {
             if (ev.status === 'open' || ev.status === 'evaluating') {
                 statusText = '本人入力待ち';
-                actionBtnHtml = \`<button class="eval-mob-sub-btn done action-mock-btn" data-type="sub-view">確認</button>\`;
+                actionBtnHtml = `<button class="eval-mob-sub-btn done action-mock-btn" data-type="sub-view">確認</button>`;
             } else if (ev.status === 'manager_evaluating') {
                 statusText = '<span style="color:#ef4444;">店長評価 待ち</span>';
-                actionBtnHtml = \`<button class="eval-mob-sub-btn action-mock-btn" data-type="sub-input">入力する</button>\`;
+                actionBtnHtml = `<button class="eval-mob-sub-btn action-mock-btn" data-type="sub-input">入力する</button>`;
             } else {
                 statusText = '店長評価 完了';
-                actionBtnHtml = \`<button class="eval-mob-sub-btn done action-mock-btn" data-type="sub-view">確認</button>\`;
+                actionBtnHtml = `<button class="eval-mob-sub-btn done action-mock-btn" data-type="sub-view">確認</button>`;
             }
         }
         
         html += `
             <div class="eval-mob-list-card">
                 <div class="eval-mob-list-info">
-                    <h4>\${u.Name}</h4>
-                    <p>\${u.StoreId || '所属なし'} / \${u.Department === 'sales' ? '営業' : '製造'}</p>
-                    <p style="margin-top: 0.3rem; font-weight: 700;">状態: \${statusText}</p>
+                    <h4>${u.Name}</h4>
+                    <p>${u.StoreId || '所属なし'} / ${u.Department === 'sales' ? '営業' : '製造'}</p>
+                    <p style="margin-top: 0.3rem; font-weight: 700;">状態: ${statusText}</p>
                 </div>
                 <div class="eval-mob-list-action">
-                    \${actionBtnHtml}
+                    ${actionBtnHtml}
                 </div>
             </div>
         `;
@@ -464,11 +464,11 @@ function bindMobileActionButtons(container) {
             const type = e.currentTarget.dataset.type;
             
             let msg = 'この画面は現在準備中です。PC版をご利用ください。';
-            if (type === 'self-input') msg = '【自己評価入力画面】へ遷移します。\\n（※次回のステップで構築します）';
-            if (type === 'self-view') msg = '【自己評価確認画面】へ遷移します。\\n（※次回のステップで構築します）';
-            if (type === 'history-view') msg = '【過去の履歴詳細画面】へ遷移します。\\n（※次回のステップで構築します）';
-            if (type === 'sub-input') msg = '【一次評価（店長）入力画面】へ遷移します。\\n（※次回のステップで構築します）';
-            if (type === 'sub-view') msg = '【部下評価確認画面】へ遷移します。\\n（※次回のステップで構築します）';
+            if (type === 'self-input') msg = '【自己評価入力画面】へ遷移します。\n（※次回のステップで構築します）';
+            if (type === 'self-view') msg = '【自己評価確認画面】へ遷移します。\n（※次回のステップで構築します）';
+            if (type === 'history-view') msg = '【過去の履歴詳細画面】へ遷移します。\n（※次回のステップで構築します）';
+            if (type === 'sub-input') msg = '【一次評価（店長）入力画面】へ遷移します。\n（※次回のステップで構築します）';
+            if (type === 'sub-view') msg = '【部下評価確認画面】へ遷移します。\n（※次回のステップで構築します）';
             
             showAlert('開発中', msg);
         });
