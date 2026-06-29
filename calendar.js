@@ -37,6 +37,43 @@ export const calendarAdminPageHtml = `
                     <div style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600; margin-bottom: 0.3rem;">確定営業日数</div>
                     <div id="cal-admin-counter" style="font-size: 2rem; font-weight: 800; color: var(--primary);">-- 日</div>
                 </div>
+                <div style="flex: 0 0 auto; display: flex; align-items: flex-end;">
+                    <button id="bulk-mode-toggle-btn" class="btn btn-secondary" onclick="window.toggleBulkMode()" style="white-space: nowrap; padding: 0.6rem 1.2rem; border-radius: 10px; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-layer-group"></i> 一括入力モード
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 一括入力モード バナー -->
+        <div id="bulk-mode-banner" style="display:none; background: linear-gradient(135deg, #fff7ed, #ffedd5); border: 2px solid #f97316; border-radius: 12px; padding: 1rem 1.5rem; margin-bottom: 1.5rem;">
+            <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; margin-bottom: 0.8rem;">
+                <div style="display: flex; align-items: center; gap: 0.6rem; font-weight: 800; color: #ea580c; font-size: 1rem;">
+                    <i class="fas fa-layer-group"></i> 一括入力モード中
+                </div>
+                <div style="color: #92400e; font-size: 0.82rem; font-weight: 600;">
+                    日付をクリックして複数選択 → 「N日に適用」ボタンを押してください
+                </div>
+                <div style="margin-left: auto; display: flex; align-items: center; gap: 0.3rem;">
+                    <span id="bulk-selection-count" style="font-weight: 800; color: #ea580c; font-size: 1.2rem;">0</span>
+                    <span style="font-size: 0.8rem; color: #9a3412; font-weight: 600;">日選択中</span>
+                </div>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 0.8rem;">
+                <span style="font-size: 0.78rem; font-weight: 700; color: #7c2d12; margin-right: 0.3rem;">曜日一括選択：</span>
+                <button class="btn" onclick="window.selectByDayOfWeek(0)" style="padding: 0.3rem 0.7rem; font-size: 0.78rem; background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; border-radius: 6px; font-weight: 700; cursor:pointer;">全日曜</button>
+                <button class="btn" onclick="window.selectByDayOfWeek(1)" style="padding: 0.3rem 0.7rem; font-size: 0.78rem; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 6px; font-weight: 700; cursor:pointer;">全月曜</button>
+                <button class="btn" onclick="window.selectByDayOfWeek(2)" style="padding: 0.3rem 0.7rem; font-size: 0.78rem; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 6px; font-weight: 700; cursor:pointer;">全火曜</button>
+                <button class="btn" onclick="window.selectByDayOfWeek(3)" style="padding: 0.3rem 0.7rem; font-size: 0.78rem; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 6px; font-weight: 700; cursor:pointer;">全水曜</button>
+                <button class="btn" onclick="window.selectByDayOfWeek(4)" style="padding: 0.3rem 0.7rem; font-size: 0.78rem; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 6px; font-weight: 700; cursor:pointer;">全木曜</button>
+                <button class="btn" onclick="window.selectByDayOfWeek(5)" style="padding: 0.3rem 0.7rem; font-size: 0.78rem; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 6px; font-weight: 700; cursor:pointer;">全金曜</button>
+                <button class="btn" onclick="window.selectByDayOfWeek(6)" style="padding: 0.3rem 0.7rem; font-size: 0.78rem; background: #fef9c3; color: #854d0e; border: 1px solid #fde68a; border-radius: 6px; font-weight: 700; cursor:pointer;">全土曜</button>
+                <button class="btn" onclick="window.clearBulkSelection()" style="padding: 0.3rem 0.7rem; font-size: 0.78rem; background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 700; cursor:pointer; margin-left: 0.5rem;">選択クリア</button>
+            </div>
+            <div style="display: flex; gap: 0.8rem; align-items: center; justify-content: flex-end;">
+                <button id="bulk-apply-btn" class="btn btn-primary" onclick="window.openBulkEditor()" disabled style="padding: 0.6rem 1.8rem; font-weight: 700; font-size: 0.9rem; opacity: 0.5;">
+                    <i class="fas fa-check-double"></i> <span id="bulk-apply-label">選択日に適用</span>
+                </button>
             </div>
         </div>
 
@@ -97,6 +134,49 @@ export const calendarAdminPageHtml = `
         </div>
     </div>
 
+    <!-- 一括編集モーダル -->
+    <div id="bulk-editor-modal" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:10000; align-items:center; justify-content:center; backdrop-filter: blur(4px);">
+        <div class="glass-panel animate-scale-in" style="width:100%; max-width:420px; padding:1.5rem; position:relative; max-height: 85vh; overflow-y: auto;">
+            <h4 id="bulk-editor-title" style="margin:0 0 0.8rem; font-size:1.1rem; color:var(--text-primary); border-bottom:1px solid var(--border); padding-bottom:0.8rem;">一括設定</h4>
+            <div style="margin-bottom: 1rem; padding: 0.6rem 0.9rem; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; font-size: 0.82rem; color: #9a3412; font-weight: 600;">
+                <i class="fas fa-exclamation-triangle" style="margin-right: 0.4rem;"></i>選択中の全日付に上書き適用されます
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:1.2rem;">
+                <!-- 祝日設定 -->
+                <div id="bulk-editor-holiday-row" style="display:flex; align-items:center; justify-content:space-between;">
+                    <label style="font-weight:600; font-size:0.9rem; color:var(--text-primary); cursor:pointer;" for="bulk-opt-is-holiday">祝日として表示</label>
+                    <input type="checkbox" id="bulk-opt-is-holiday" style="width:20px; height:20px; cursor:pointer;" onchange="window.onBulkHolidayChange()">
+                </div>
+
+                <!-- 祝日名 個別入力エリア（祝日チェック時のみ展開） -->
+                <div id="bulk-holiday-labels-area" style="display:none; background:#fafafa; border:1px solid var(--border); border-radius:8px; padding:0.8rem; max-height:200px; overflow-y:auto;">
+                    <div style="font-size:0.75rem; color:var(--text-secondary); font-weight:700; margin-bottom:0.6rem;">各日付の祝日名を入力してください（任意）</div>
+                    <div id="bulk-holiday-labels-list" style="display:flex; flex-direction:column; gap:0.5rem;"></div>
+                </div>
+
+                <!-- 市場休設定 -->
+                <div id="bulk-editor-market-row" style="display:flex; align-items:center; justify-content:space-between;">
+                    <label style="font-weight:600; font-size:0.9rem; color:var(--text-primary); cursor:pointer;" for="bulk-opt-is-market">市場休業日</label>
+                    <input type="checkbox" id="bulk-opt-is-market" style="width:20px; height:20px; cursor:pointer;">
+                </div>
+
+                <hr style="border:none; border-top:1px solid var(--border); margin:0;">
+
+                <!-- 店休日設定 -->
+                <div style="display:flex; align-items:center; justify-content:space-between;">
+                    <label style="font-weight:700; font-size:0.9rem; color:var(--primary); cursor:pointer;" for="bulk-opt-is-off">店の休業日</label>
+                    <input type="checkbox" id="bulk-opt-is-off" style="width:20px; height:20px; cursor:pointer;">
+                </div>
+            </div>
+
+            <div style="margin-top:2rem; display:flex; gap:0.8rem;">
+                <button class="btn btn-secondary" style="flex:1;" onclick="window.closeBulkEditor()">キャンセル</button>
+                <button class="btn btn-primary" style="flex:1;" onclick="window.saveBulkEditor()">一括適用</button>
+            </div>
+        </div>
+    </div>
+
     <style id="calendar-common-style">
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
         .calendar-day-header { background: #f8fafc; padding: 0.8rem; text-align: center; font-weight: 700; font-size: 0.85rem; color: var(--text-secondary); }
@@ -127,6 +207,11 @@ export const calendarAdminPageHtml = `
         .box-holiday { width: 16px; height: 16px; color: #e53e3e; font-weight: 800; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: 3px; background: #fff; }
         .box-holiday::after { content: "1"; font-size: 10px; }
         .box-market { width: 16px; height: 16px; background: #3b82f6; border-radius: 3px; }
+
+        /* 一括入力モード: 選択済みセル */
+        .calendar-day-cell.is-selected { outline: 3px solid #f97316 !important; outline-offset: -2px; background: #fff7ed !important; z-index: 1; }
+        .calendar-day-cell.is-selected:hover { background: #ffedd5 !important; }
+        .bulk-mode-active .calendar-day-cell:not(.empty) { cursor: crosshair; }
 
         /* モバイル専用プレミアムスタイル (PC版には影響しません) */
         @media (max-width: 1024px) {
@@ -264,6 +349,10 @@ let currentAdminState = {
 
 let editingDay = null;
 
+// --- 一括入力モード ---
+let bulkMode = false;
+let selectedDays = new Set();
+
 let currentViewState = {
     year: null,
     month: null,
@@ -300,6 +389,9 @@ export async function initCalendarAdminPage() {
         currentAdminState.year = parseInt(yearSel.value);
         currentAdminState.month = parseInt(monthSel.value);
         currentAdminState.storeId = storeSel.value;
+        // 月・店舗切替時に一括選択をリセット
+        selectedDays.clear();
+        updateBulkUI();
         
         const isMobile = window.innerWidth <= 1024;
         const monthText = `${currentAdminState.year}年${currentAdminState.month}月`;
@@ -407,6 +499,156 @@ export async function initCalendarAdminPage() {
         yearSel.value = y;
         monthSel.value = m;
         await refresh();
+    };
+
+    // --- 一括入力モード 関数群 ---
+
+    window.toggleBulkMode = () => {
+        bulkMode = !bulkMode;
+        selectedDays.clear();
+        const banner = document.getElementById('bulk-mode-banner');
+        const toggleBtn = document.getElementById('bulk-mode-toggle-btn');
+        if (bulkMode) {
+            if (banner) banner.style.display = 'block';
+            if (toggleBtn) {
+                toggleBtn.style.background = '#f97316';
+                toggleBtn.style.color = 'white';
+                toggleBtn.style.borderColor = '#f97316';
+            }
+        } else {
+            if (banner) banner.style.display = 'none';
+            if (toggleBtn) {
+                toggleBtn.style.background = '';
+                toggleBtn.style.color = '';
+                toggleBtn.style.borderColor = '';
+            }
+        }
+        updateBulkUI();
+        const actualYear = getActualYear(currentAdminState.year, currentAdminState.month);
+        renderCalendarGrid('calendar-admin-grid-container', currentAdminState.days, true, actualYear, currentAdminState.month);
+    };
+
+    window.toggleDaySelection = (day) => {
+        if (!bulkMode) return;
+        if (selectedDays.has(day)) {
+            selectedDays.delete(day);
+        } else {
+            selectedDays.add(day);
+        }
+        updateBulkUI();
+        const actualYear = getActualYear(currentAdminState.year, currentAdminState.month);
+        renderCalendarGrid('calendar-admin-grid-container', currentAdminState.days, true, actualYear, currentAdminState.month);
+    };
+
+    window.selectByDayOfWeek = (dow) => {
+        if (!bulkMode) return;
+        const actualYear = getActualYear(currentAdminState.year, currentAdminState.month);
+        currentAdminState.days.forEach(d => {
+            const date = new Date(actualYear, currentAdminState.month - 1, d.day);
+            if (date.getDay() === dow) selectedDays.add(d.day);
+        });
+        updateBulkUI();
+        renderCalendarGrid('calendar-admin-grid-container', currentAdminState.days, true, actualYear, currentAdminState.month);
+    };
+
+    window.clearBulkSelection = () => {
+        selectedDays.clear();
+        updateBulkUI();
+        const actualYear = getActualYear(currentAdminState.year, currentAdminState.month);
+        renderCalendarGrid('calendar-admin-grid-container', currentAdminState.days, true, actualYear, currentAdminState.month);
+    };
+
+    window.openBulkEditor = () => {
+        if (selectedDays.size === 0) return;
+        const isCommon = currentAdminState.storeId === 'common';
+
+        const title = document.getElementById('bulk-editor-title');
+        if (title) title.textContent = `${selectedDays.size}日分を一括設定`;
+
+        // チェックボックスを全てクリア
+        document.getElementById('bulk-opt-is-holiday').checked = false;
+        document.getElementById('bulk-opt-is-market').checked = false;
+        document.getElementById('bulk-opt-is-off').checked = false;
+
+        // 祝日名入力エリアをリセット
+        document.getElementById('bulk-holiday-labels-area').style.display = 'none';
+        document.getElementById('bulk-holiday-labels-list').innerHTML = '';
+
+        // 全社共通設定でなければ祝日・市場休はグレーアウト
+        const holidayRow = document.getElementById('bulk-editor-holiday-row');
+        const marketRow = document.getElementById('bulk-editor-market-row');
+        if (holidayRow) {
+            holidayRow.style.opacity = isCommon ? '1' : '0.4';
+            holidayRow.style.pointerEvents = isCommon ? 'auto' : 'none';
+        }
+        if (marketRow) {
+            marketRow.style.opacity = isCommon ? '1' : '0.4';
+            marketRow.style.pointerEvents = isCommon ? 'auto' : 'none';
+        }
+
+        document.getElementById('bulk-editor-modal').style.display = 'flex';
+    };
+
+    window.onBulkHolidayChange = () => {
+        const isChecked = document.getElementById('bulk-opt-is-holiday').checked;
+        const labelsArea = document.getElementById('bulk-holiday-labels-area');
+        const labelsList = document.getElementById('bulk-holiday-labels-list');
+        if (!labelsArea || !labelsList) return;
+        if (isChecked) {
+            labelsArea.style.display = 'block';
+            labelsList.innerHTML = '';
+            const actualYear = getActualYear(currentAdminState.year, currentAdminState.month);
+            const sortedDays = [...selectedDays].sort((a, b) => a - b);
+            sortedDays.forEach(day => {
+                const row = document.createElement('div');
+                row.style.cssText = 'display:flex; align-items:center; gap:0.6rem;';
+                row.innerHTML = `
+                    <span style="min-width:55px; font-size:0.82rem; font-weight:700; color:var(--text-secondary);">${actualYear}/${currentAdminState.month}/${day}</span>
+                    <input type="text" data-bulk-label-day="${day}" class="form-input" placeholder="祝日名（任意）" style="padding:0.3rem 0.5rem; font-size:0.82rem; flex:1;">
+                `;
+                labelsList.appendChild(row);
+            });
+        } else {
+            labelsArea.style.display = 'none';
+            labelsList.innerHTML = '';
+        }
+    };
+
+    window.closeBulkEditor = () => {
+        const modal = document.getElementById('bulk-editor-modal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    window.saveBulkEditor = () => {
+        const isCommon = currentAdminState.storeId === 'common';
+        const cbHoliday = document.getElementById('bulk-opt-is-holiday');
+        const cbMarket = document.getElementById('bulk-opt-is-market');
+        const cbOff = document.getElementById('bulk-opt-is-off');
+
+        selectedDays.forEach(day => {
+            const dObj = currentAdminState.days.find(d => d.day === day);
+            if (!dObj) return;
+
+            // 全社共通時のみ祝日・市場休・ラベルを反映
+            if (isCommon) {
+                dObj.is_holiday = cbHoliday.checked;
+                dObj.is_market_off = cbMarket.checked;
+                if (cbHoliday.checked) {
+                    const labelInput = document.querySelector(`[data-bulk-label-day="${day}"]`);
+                    dObj.label = labelInput ? labelInput.value : '';
+                } else {
+                    dObj.label = '';
+                }
+            }
+
+            // 店休はどちらのモードでも設定可能
+            dObj.type = cbOff.checked ? 'off' : 'work';
+        });
+
+        const actualYear = getActualYear(currentAdminState.year, currentAdminState.month);
+        renderCalendarGrid('calendar-admin-grid-container', currentAdminState.days, true, actualYear, currentAdminState.month);
+        updateCounter('cal-admin-counter', currentAdminState.days);
+        window.closeBulkEditor();
     };
 
     await refresh();
@@ -612,9 +854,18 @@ function renderCalendarGrid(containerId, days, editable, actualYear, month) {
         if (!editable) classes.push('readonly');
         if (d.type === 'off') classes.push('is-off'); // 背景赤
         if (d.is_holiday) classes.push('is-holiday'); // 文字赤
-        
+        // 一括モード中の選択済みセル
+        if (editable && bulkMode && selectedDays.has(d.day)) classes.push('is-selected');
+
+        // 一括モード中は toggleDaySelection、通常モードは openDayEditor
+        const clickHandler = editable
+            ? (bulkMode
+                ? `onclick="window.toggleDaySelection(${d.day})"`
+                : `onclick="window.openDayEditor(${d.day})"`)
+            : '';
+
         html += `
-            <div class="${classes.join(' ')}" data-day="${d.day}" ${editable ? 'onclick="window.openDayEditor('+d.day+')"' : ''}>
+            <div class="${classes.join(' ')}" data-day="${d.day}" ${clickHandler}>
                 <div class="day-num-container">
                     <div class="day-num">${d.day}</div>
                 </div>
@@ -628,12 +879,35 @@ function renderCalendarGrid(containerId, days, editable, actualYear, month) {
     
     html += '</div>';
     container.innerHTML = html;
+    // 一括モード中はコンテナにクラスを付与してカーソルを切り替え
+    if (editable && bulkMode) {
+        container.classList.add('bulk-mode-active');
+    } else {
+        container.classList.remove('bulk-mode-active');
+    }
 }
 
 function updateCounter(id, days) {
     const count = days.filter(d => d.type === 'work').length;
     const el = document.getElementById(id);
     if (el) el.textContent = `${count} 日`;
+}
+
+/**
+ * 一括モードUIの状態を更新（選択数カウンター・適用ボタンの有効化）
+ */
+function updateBulkUI() {
+    const countEl = document.getElementById('bulk-selection-count');
+    const applyBtn = document.getElementById('bulk-apply-btn');
+    const labelEl = document.getElementById('bulk-apply-label');
+    if (countEl) countEl.textContent = selectedDays.size;
+    if (applyBtn) {
+        applyBtn.disabled = selectedDays.size === 0;
+        applyBtn.style.opacity = selectedDays.size === 0 ? '0.5' : '1';
+    }
+    if (labelEl) {
+        labelEl.textContent = selectedDays.size > 0 ? `${selectedDays.size}日に適用` : '選択日に適用';
+    }
 }
 
 /**

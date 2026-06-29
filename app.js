@@ -30,7 +30,7 @@ import { dailySakesPageHtml, initDailySakesPage } from './daily_sakes.js?v=116';
 import { csvImportPageHtml, initCsvImportPage } from './csv_import.js?v=7';
 import { productAnalysisPageHtml, initProductAnalysisPage } from './product_analysis.js?v=31';
 import { notificationsPageHtml, initNotificationsPage } from './notifications.js?v=117';
-import { calendarAdminPageHtml, initCalendarAdminPage, calendarViewerPageHtml, initCalendarViewerPage } from './calendar.js?v=63';
+import { calendarAdminPageHtml, initCalendarAdminPage, calendarViewerPageHtml, initCalendarViewerPage } from './calendar.js?v=64';
 import { goalsAdminPageHtml, initGoalsAdminPage, goalsStorePageHtml, initGoalsStorePage } from './goals.js?v=7';
 import { homePageHtml, initHomePage } from './home.js?v=120';
 import { shiftSubmissionPageHtml, initShiftSubmissionPage, shiftAdminPageHtml, initShiftAdminPage, shiftViewerPageHtml, initShiftViewerPage, shiftViewerMobilePageHtml, initShiftViewerMobilePage, checkIfShiftPublished } from './shift.js';
