@@ -6,7 +6,6 @@ export default defineConfig({
   plugins: [react()],
   base: '/kaneshow-b1/sake/',
   build: {
-    outDir: '../kaneshow-b1/sake',
-    emptyOutDir: true,
+    outDir: 'dist/kaneshow-b1/sake'
   }
 })

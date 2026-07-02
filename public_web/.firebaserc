@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "kaneshow-portal"
+  },
+  "targets": {
+    "kaneshow-portal": {
+      "hosting": {
+        "official": [
+          "kaneshow-official"
+        ]
+      }
+    }
+  }
+}

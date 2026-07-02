@@ -1,0 +1,17 @@
+{
+  "hosting": {
+    "target": "official",
+    "public": "dist",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/kaneshow-b1/sake/**",
+        "destination": "/kaneshow-b1/sake/index.html"
+      }
+    ]
+  }
+}
