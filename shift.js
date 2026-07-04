@@ -3757,7 +3757,15 @@ export async function initShiftViewerPage() {
             .filter(s => String(s.storeId || s.StoreID) == String(sid) && s.status == "confirmed");
 
         // ヘルプスタッフの解決（自店舗以外からのシフトがある場合）
-        // ※ 余裕があれば実装。現状は storeId で絞っているため、他店舗から自店舗への応援のみ取得される。
+        periodShifts.forEach(shift => {
+            if (shift.userId && !allUsers.some(u => u.id === shift.userId)) {
+                allUsers.push({
+                    id: shift.userId,
+                    Name: shift.userName || '応援スタッフ',
+                    isHelp: true
+                });
+            }
+        });
 
         // 3. 描画
         renderShiftViewerGrid(viewerActiveSlot, allUsers, periodShifts, storeMap, me, isTablet);
@@ -4077,6 +4085,17 @@ export async function initShiftViewerMobilePage() {
         const periodShifts = shiftSnap.docs
             .map(d => d.data())
             .filter(s => String(s.storeId || s.StoreID) == String(sid) && s.status == "confirmed");
+
+        // ヘルプスタッフの抽出
+        periodShifts.forEach(shift => {
+            if (shift.userId && !users.some(u => u.id === shift.userId)) {
+                users.push({
+                    id: shift.userId,
+                    Name: shift.userName || '応援スタッフ',
+                    isHelp: true
+                });
+            }
+        });
 
         // 1. ユーザーフィルタリング
         const slotStartStr = formatDateJST(viewerActiveSlot.startDate);
