@@ -1322,24 +1322,24 @@ async function saveShiftsBulk() {
 export async function loadDailyMemos(sid, startDate, endDate) {
     if (!sid || !startDate || !endDate) return;
     dailyMemos = {};
-    
-    const dates = [];
-    let curr = new Date(startDate.getTime());
-    const end = endDate.getTime();
-    while (curr.getTime() <= end) {
-        dates.push(formatDateJST(curr));
-        curr.setDate(curr.getDate() + 1);
-    }
+
+    const startYMD = formatDateJST(startDate);
+    const endYMD = formatDateJST(endDate);
 
     try {
-        const promises = dates.map(async (ymd) => {
-            const docId = `${sid}_${ymd}`;
-            const snap = await getDoc(doc(db, "t_shift_daily_memos", docId));
-            if (snap.exists()) {
-                dailyMemos[ymd] = snap.data();
+        // 対策C: 1日ずつ個別取得 → 期間まとめて1回のクエリに変更（通信回数を最大15回→1回に削減）
+        const snap = await getDocs(query(
+            collection(db, "t_shift_daily_memos"),
+            where("storeId", "==", String(sid)),
+            where("date", ">=", startYMD),
+            where("date", "<=", endYMD)
+        ));
+        snap.forEach(d => {
+            const data = d.data();
+            if (data.date) {
+                dailyMemos[data.date] = data;
             }
         });
-        await Promise.all(promises);
     } catch (e) {
         console.error("Error loading daily memos:", e);
     }
@@ -3703,12 +3703,28 @@ export async function initShiftViewerPage() {
     // 2. データの取得 (カレンダー、店舗、全ユーザー、確定シフト)
     const loader = showLoader();
     try {
-        await fetchCalendarData(sid, viewerActiveSlot.startDate, viewerActiveSlot.endDate);
-        await loadDailyMemos(sid, viewerActiveSlot.startDate, viewerActiveSlot.endDate);
-        
+        // 対策B: 期間日付を先に計算し、並列取得できるタスクをまとめてスタート
+        const startYMD = formatDateJST(viewerActiveSlot.startDate);
+        const endYMD = formatDateJST(viewerActiveSlot.endDate);
+
+        const parallelTasks = [
+            fetchCalendarData(sid, viewerActiveSlot.startDate, viewerActiveSlot.endDate),
+            loadDailyMemos(sid, viewerActiveSlot.startDate, viewerActiveSlot.endDate),
+            getDocs(query(collection(db, "t_shifts"),
+                where("date", ">=", startYMD),
+                where("date", "<=", endYMD)
+            )),
+        ];
+        // マスタ未読込の場合は店舗一覧も並列で追加
         if (!viewerMasterDataLoaded) {
-            // 店舗リスト
-            const storeSnap = await getDocs(collection(db, "m_stores"));
+            parallelTasks.push(getDocs(collection(db, "m_stores")));
+        }
+
+        const results = await Promise.all(parallelTasks);
+        const shiftSnap = results[2];
+
+        if (!viewerMasterDataLoaded) {
+            const storeSnap = results[3];
             viewerCachedStores = storeSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
             // 店舗ユーザーリスト（表記揺れと型不一致に対応）
@@ -3735,14 +3751,6 @@ export async function initShiftViewerPage() {
         });
         const allUsers = [...viewerCachedUsers];
 
-        // 期間内のシフトを日付のみで取得（インデックスエラー回避のためメモリ内でフィルタ）
-        const startYMD = formatDateJST(viewerActiveSlot.startDate);
-        const endYMD = formatDateJST(viewerActiveSlot.endDate);
-        const shiftSnap = await getDocs(query(collection(db, "t_shifts"), 
-            where("date", ">=", startYMD),
-            where("date", "<=", endYMD)
-        ));
-        
         // メモリ内で「自店舗」かつ「確定済み」に絞り込み
         const periodShifts = shiftSnap.docs
             .map(d => d.data())
@@ -4024,12 +4032,28 @@ export async function initShiftViewerMobilePage() {
     label.textContent = `${viewerActiveSlot.year}年 ${viewerActiveSlot.label}`;
 
     try {
-        // データの取得
-        await fetchCalendarData(sid, viewerActiveSlot.startDate, viewerActiveSlot.endDate);
-        await loadDailyMemos(sid, viewerActiveSlot.startDate, viewerActiveSlot.endDate);
-        
+        // 対策B: 期間日付を先に計算し、並列取得できるタスクをまとめてスタート
+        const startYMD = formatDateJST(viewerActiveSlot.startDate);
+        const endYMD = formatDateJST(viewerActiveSlot.endDate);
+
+        const parallelTasks = [
+            fetchCalendarData(sid, viewerActiveSlot.startDate, viewerActiveSlot.endDate),
+            loadDailyMemos(sid, viewerActiveSlot.startDate, viewerActiveSlot.endDate),
+            getDocs(query(collection(db, "t_shifts"),
+                where("date", ">=", startYMD),
+                where("date", "<=", endYMD)
+            )),
+        ];
+        // マスタ未読込の場合は店舗一覧も並列で追加
         if (!viewerMasterDataLoaded) {
-            const storeSnap = await getDocs(collection(db, "m_stores"));
+            parallelTasks.push(getDocs(collection(db, "m_stores")));
+        }
+
+        const results = await Promise.all(parallelTasks);
+        const shiftSnap = results[2];
+
+        if (!viewerMasterDataLoaded) {
+            const storeSnap = results[3];
             viewerCachedStores = storeSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
             let userSnap = await getDocs(query(collection(db, "m_users"), where("StoreId", "==", sid)));
@@ -4050,12 +4074,6 @@ export async function initShiftViewerMobilePage() {
         });
         const users = [...viewerCachedUsers];
 
-        const startYMD = formatDateJST(viewerActiveSlot.startDate);
-        const endYMD = formatDateJST(viewerActiveSlot.endDate);
-        const shiftSnap = await getDocs(query(collection(db, "t_shifts"), 
-            where("date", ">=", startYMD),
-            where("date", "<=", endYMD)
-        ));
         const periodShifts = shiftSnap.docs
             .map(d => d.data())
             .filter(s => String(s.storeId || s.StoreID) == String(sid) && s.status == "confirmed");
