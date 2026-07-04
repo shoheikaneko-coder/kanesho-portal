@@ -494,6 +494,7 @@ export let dailyGoalSales = {};
 export let adminMode = false;
 export let calendarData = {}; 
 export let viewerActiveSlot = null; 
+export let viewerSelectedStoreId = null;
 export let showRejectedShifts = false; 
 export let dailyMemos = {};
 
@@ -3385,6 +3386,7 @@ export const shiftViewerPageHtml = `
                 <h3 id="viewer-current-period-label" style="margin: 0; font-size: 1.2rem; font-weight: 900; color: var(--text-primary);">読み込み中...</h3>
             </div>
             <div id="viewer-action-area" style="display: flex; align-items: center; gap: 1rem;">
+                <select id="viewer-store-selector" class="form-input" style="padding: 0.4rem; font-size: 0.85rem; border-radius: 6px; display: none; background-color: #f8fafc; font-weight: 700; max-width: 160px;"></select>
                 <button id="btn-viewer-ics" class="btn btn-primary" style="display: none; font-size: 0.85rem; font-weight: 800;"><i class="fas fa-calendar-plus"></i> カレンダーに追加</button>
             </div>
         </div>
@@ -3668,7 +3670,10 @@ export const shiftViewerMobilePageHtml = `
         <div class="viewer-mobile-nav">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
                 <h3 id="viewer-mobile-period-label" style="margin: 0; font-size: 1rem; font-weight: 900;">読み込み中...</h3>
-                <button id="btn-viewer-mobile-ics" class="btn btn-primary btn-sm" style="display: none; font-size: 0.7rem; padding: 0.3rem 0.6rem;"><i class="fas fa-calendar-plus"></i> カレンダー追加</button>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <select id="viewer-mobile-store-selector" class="form-input" style="padding: 0.2rem 0.4rem; font-size: 0.75rem; border-radius: 4px; display: none; max-width: 110px; font-weight: 700; background-color: #f8fafc;"></select>
+                    <button id="btn-viewer-mobile-ics" class="btn btn-primary btn-sm" style="display: none; font-size: 0.7rem; padding: 0.3rem 0.6rem;"><i class="fas fa-calendar-plus"></i> カレンダー追加</button>
+                </div>
             </div>
             <div style="display: flex; gap: 0.4rem;">
                 <button id="btn-viewer-mobile-prev" class="btn btn-secondary btn-sm" style="flex: 1; font-size: 0.75rem;"><i class="fas fa-chevron-left"></i> 前</button>
@@ -3692,7 +3697,7 @@ export async function initShiftViewerPage() {
     if (!me) return;
 
     const isTablet = (me.Role === 'Tablet' || me.Role === '店舗タブレット');
-    const sid = me.StoreID || me.StoreId || 'UNKNOWN';
+    const sid = viewerSelectedStoreId || me.StoreID || me.StoreId || 'UNKNOWN';
 
     // 1. スロット情報の準備
     const rollingSlots = getRollingSlots();
@@ -3757,15 +3762,30 @@ export async function initShiftViewerPage() {
             .filter(s => String(s.storeId || s.StoreID) == String(sid) && s.status == "confirmed");
 
         // ヘルプスタッフの解決（自店舗以外からのシフトがある場合）
+        const helpUserIds = [];
         periodShifts.forEach(shift => {
-            if (shift.userId && !allUsers.some(u => u.id === shift.userId)) {
-                allUsers.push({
-                    id: shift.userId,
-                    Name: shift.userName || '応援スタッフ',
-                    isHelp: true
-                });
+            if (shift.userId && !allUsers.some(u => u.id === shift.userId) && !helpUserIds.includes(shift.userId)) {
+                helpUserIds.push(shift.userId);
             }
         });
+
+        if (helpUserIds.length > 0) {
+            const helpPromises = helpUserIds.map(uid => getDoc(doc(db, "m_users", uid)));
+            const helpSnaps = await Promise.all(helpPromises);
+            helpSnaps.forEach(snap => {
+                if (snap.exists()) {
+                    const uData = snap.data();
+                    const newUser = {
+                        id: snap.id,
+                        Name: uData.Name,
+                        DisplayName: uData.DisplayName || uData.Name,
+                        isHelp: true
+                    };
+                    viewerCachedUsers.push(newUser);
+                    allUsers.push(newUser);
+                }
+            });
+        }
 
         // 3. 描画
         renderShiftViewerGrid(viewerActiveSlot, allUsers, periodShifts, storeMap, me, isTablet);
@@ -3936,8 +3956,22 @@ function setupShiftViewerEvents(slots, sid) {
     const prevBtn = document.getElementById('btn-viewer-prev');
     const nextBtn = document.getElementById('btn-viewer-next');
     const todayBtn = document.getElementById('btn-viewer-today');
+    const storeSelector = document.getElementById('viewer-store-selector');
 
     const currentIndex = slots.findIndex(s => s.id === viewerActiveSlot.id);
+
+    if (storeSelector && viewerCachedStores && viewerCachedStores.length > 0) {
+        storeSelector.style.display = 'block';
+        storeSelector.innerHTML = viewerCachedStores.map(st => 
+            `<option value="${st.id}" ${String(st.id) === String(sid) ? 'selected' : ''}>${st.store_name || st.name || '店舗名不明'}</option>`
+        ).join('');
+        
+        storeSelector.onchange = (e) => {
+            viewerSelectedStoreId = e.target.value;
+            viewerMasterDataLoaded = false;
+            initShiftViewerPage();
+        };
+    }
 
     if (prevBtn) {
         prevBtn.disabled = (currentIndex <= 0);
@@ -4026,7 +4060,7 @@ export async function initShiftViewerMobilePage() {
     const me = JSON.parse(localStorage.getItem('currentUser'));
     if (!me) return;
 
-    const sid = me.StoreID || me.StoreId || 'UNKNOWN';
+    const sid = viewerSelectedStoreId || me.StoreID || me.StoreId || 'UNKNOWN';
     const rollingSlots = getRollingSlots();
     if (!viewerActiveSlot) {
         viewerActiveSlot = rollingSlots.find(s => s.isCurrent) || rollingSlots[0];
@@ -4087,15 +4121,30 @@ export async function initShiftViewerMobilePage() {
             .filter(s => String(s.storeId || s.StoreID) == String(sid) && s.status == "confirmed");
 
         // ヘルプスタッフの抽出
+        const helpUserIds = [];
         periodShifts.forEach(shift => {
-            if (shift.userId && !users.some(u => u.id === shift.userId)) {
-                users.push({
-                    id: shift.userId,
-                    Name: shift.userName || '応援スタッフ',
-                    isHelp: true
-                });
+            if (shift.userId && !users.some(u => u.id === shift.userId) && !helpUserIds.includes(shift.userId)) {
+                helpUserIds.push(shift.userId);
             }
         });
+
+        if (helpUserIds.length > 0) {
+            const helpPromises = helpUserIds.map(uid => getDoc(doc(db, "m_users", uid)));
+            const helpSnaps = await Promise.all(helpPromises);
+            helpSnaps.forEach(snap => {
+                if (snap.exists()) {
+                    const uData = snap.data();
+                    const newUser = {
+                        id: snap.id,
+                        Name: uData.Name,
+                        DisplayName: uData.DisplayName || uData.Name,
+                        isHelp: true
+                    };
+                    viewerCachedUsers.push(newUser);
+                    users.push(newUser);
+                }
+            });
+        }
 
         // 1. ユーザーフィルタリング
         const slotStartStr = formatDateJST(viewerActiveSlot.startDate);
@@ -4218,7 +4267,7 @@ export async function initShiftViewerMobilePage() {
             }, 300);
         }
 
-        setupShiftViewerMobileEvents(rollingSlots);
+        setupShiftViewerMobileEvents(rollingSlots, sid);
 
     } catch (error) {
         console.error("Mobile Shift Viewer Error:", error);
@@ -4226,12 +4275,26 @@ export async function initShiftViewerMobilePage() {
     }
 }
 
-function setupShiftViewerMobileEvents(slots) {
+function setupShiftViewerMobileEvents(slots, sid) {
     const prevBtn = document.getElementById('btn-viewer-mobile-prev');
     const nextBtn = document.getElementById('btn-viewer-mobile-next');
     const todayBtn = document.getElementById('btn-viewer-mobile-today');
+    const storeSelector = document.getElementById('viewer-mobile-store-selector');
 
     const currentIndex = slots.findIndex(s => s.id === viewerActiveSlot.id);
+
+    if (storeSelector && viewerCachedStores && viewerCachedStores.length > 0) {
+        storeSelector.style.display = 'block';
+        storeSelector.innerHTML = viewerCachedStores.map(st => 
+            `<option value="${st.id}" ${String(st.id) === String(sid) ? 'selected' : ''}>${st.store_name || st.name || '店舗名不明'}</option>`
+        ).join('');
+        
+        storeSelector.onchange = (e) => {
+            viewerSelectedStoreId = e.target.value;
+            viewerMasterDataLoaded = false;
+            initShiftViewerMobilePage();
+        };
+    }
 
     if (prevBtn) {
         prevBtn.disabled = (currentIndex <= 0);
