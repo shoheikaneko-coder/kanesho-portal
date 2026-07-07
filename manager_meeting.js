@@ -54,7 +54,12 @@ async function renderArchiveView(container) {
         </div>
 
         <div class="mm-card no-print" style="margin-top: 1.5rem; border-radius: 6px;">
-            <h3 style="margin-top:0; font-size:1.1rem; color:var(--text-primary); font-weight:800; margin-bottom:1.5rem;">提出履歴一覧</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                <h3 style="margin:0; font-size:1.1rem; color:var(--text-primary); font-weight:800;">提出履歴一覧</h3>
+                <select id="mm-archive-filter-store" class="mm-input" style="width:auto; min-width:200px; padding:0.4rem 0.8rem; font-weight:700;">
+                    <option value="all">全店舗を表示</option>
+                </select>
+            </div>
             <div id="mm-archive-list" style="display: flex; flex-direction: column; gap: 1rem;">
                 <p style="text-align:center; padding: 3rem; color: var(--text-secondary);"><i class="fas fa-spinner fa-spin"></i> 履歴をロード中...</p>
             </div>
@@ -264,6 +269,10 @@ async function generateNewPDCAData(storeId, monthStr) {
 // フォームビュー (PDCAボード・最重要画面)
 // -------------------------------------------------------------
 async function renderFormView(container) {
+    const currentUser = window.appState ? window.appState.currentUser : null;
+    const isAdmin = currentUser && (currentUser.Role === 'Admin' || currentUser.Role === '管理者');
+    const isLocked = editingMeetingData.status === '提出済み' && !isAdmin;
+
     container.innerHTML = `
         <div class="mm-header no-print" style="margin-bottom: 2rem;">
             <button id="btn-back-archive" class="btn" style="background: white; border: 1px solid var(--border); font-weight: 700; border-radius: 10px; padding: 0.6rem 1.2rem;">
@@ -273,9 +282,11 @@ async function renderFormView(container) {
                 <button id="btn-print-meeting" class="btn" style="background: white; border: 1px solid var(--primary); color: var(--primary); font-weight: 700; border-radius: 10px; padding: 0.6rem 1.2rem;">
                     <i class="fas fa-print"></i> 印刷 / PDF保存
                 </button>
+                ${isLocked ? '' : `
                 <button id="btn-save-meeting" class="btn btn-primary" style="font-weight: 900; border-radius: 10px; padding: 0.6rem 1.8rem; box-shadow: 0 4px 12px rgba(230,57,70,0.2);">
                     <i class="fas fa-save"></i> 提出・保存
                 </button>
+                `}
             </div>
         </div>
 
@@ -318,15 +329,15 @@ async function renderFormView(container) {
                     <div style="display: flex; flex-direction: column; gap: 1.2rem; justify-content: space-between;">
                         <div class="input-group" style="margin:0;">
                             <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">人員計画</label>
-                            <textarea id="mm-input-rec" class="mm-input" rows="2" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.6rem 0.8rem; font-size:0.85rem;" placeholder="今月・来月の採用目標、充足状況など"></textarea>
+                            <textarea id="mm-input-rec" class="mm-input" rows="2" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.6rem 0.8rem; font-size:0.85rem;" placeholder="今月・来月の採用目標、充足状況など" ${isLocked ? 'disabled' : ''}></textarea>
                         </div>
                         <div class="input-group" style="margin:0;">
                             <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">退職懸念</label>
-                            <textarea id="mm-input-ret" class="mm-input" rows="2" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.6rem 0.8rem; font-size:0.85rem;" placeholder="スタッフの退職懸念・モチベーションなど"></textarea>
+                            <textarea id="mm-input-ret" class="mm-input" rows="2" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.6rem 0.8rem; font-size:0.85rem;" placeholder="スタッフの退職懸念・モチベーションなど" ${isLocked ? 'disabled' : ''}></textarea>
                         </div>
                         <div class="input-group" style="margin:0;">
                             <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">スタッフの教育計画</label>
-                            <textarea id="mm-input-train" class="mm-input" rows="2" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.6rem 0.8rem; font-size:0.85rem;" placeholder="サブ店長昇格候補、育成進捗など"></textarea>
+                            <textarea id="mm-input-train" class="mm-input" rows="2" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.6rem 0.8rem; font-size:0.85rem;" placeholder="サブ店長昇格候補、育成進捗など" ${isLocked ? 'disabled' : ''}></textarea>
                         </div>
                     </div>
 
@@ -337,7 +348,7 @@ async function renderFormView(container) {
                         <div id="mm-visa-warnings-container" style="margin-bottom:0.8rem; display:flex; flex-direction:column; gap:0.4rem;">
                             <span style="font-size:0.72rem; color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> VISA期限データを照合中...</span>
                         </div>
-                        <textarea id="mm-input-visa" class="mm-input" rows="6" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem; flex-grow:1;" placeholder="期限切れの近いスタッフへの対策を記入してください"></textarea>
+                        <textarea id="mm-input-visa" class="mm-input" rows="6" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem; flex-grow:1;" placeholder="期限切れの近いスタッフへの対策を記入してください" ${isLocked ? 'disabled' : ''}></textarea>
                     </div>
 
                     <!-- 右カラム: 在籍外国人従業員のVISA在留期限一覧 (自動フェッチ＆ソート表示) -->
@@ -362,9 +373,12 @@ async function renderFormView(container) {
         window.print();
     };
 
-    document.getElementById('btn-save-meeting').onclick = async () => {
-        await saveMeetingData();
-    };
+    const saveBtn = document.getElementById('btn-save-meeting');
+    if (saveBtn) {
+        saveBtn.onclick = async () => {
+            await saveMeetingData();
+        };
+    }
 
     // 定性目標などのフォーム復元
     if (editingMeetingData.hr_sharing) {
@@ -395,6 +409,10 @@ const TAX_RATE = 1.1;
 async function buildKpiPdcaBoards() {
     const container = document.getElementById('mm-kpi-boards-container');
     if (!container) return;
+
+    const currentUser = window.appState ? window.appState.currentUser : null;
+    const isAdmin = currentUser && (currentUser.Role === 'Admin' || currentUser.Role === '管理者');
+    const isLocked = editingMeetingData.status === '提出済み' && !isAdmin;
 
     const [year, monthStr] = editingMeetingData.target_month.split('-');
     const currentYear = parseInt(year);
@@ -859,11 +877,13 @@ async function buildKpiPdcaBoards() {
                     <h4 style="margin:0; font-size:0.9rem; font-weight:800; color:var(--text-secondary); display:flex; align-items:center; gap:0.4rem;">
                         <i class="fas fa-tasks"></i> 改善のための具体的な施策
                     </h4>
+                    ${isLocked ? '' : `
                     <button class="btn no-print" onclick="window.addNewActionClick('${key}')" style="font-size:0.75rem; padding:0.4rem 1.2rem; border-radius:20px; font-weight:800; border: 1.5px solid ${accentColor}; color: ${accentColor}; background: transparent; transition: all 0.2s;"
                             onmouseover="this.style.background='${accentColor}'; this.style.color='#ffffff';"
                             onmouseout="this.style.background='transparent'; this.style.color='${accentColor}';">
                         <i class="fas fa-plus"></i> 施策を追加
                     </button>
+                    `}
                 </div>
 
                 <div id="mm-actions-list-${key}" style="display:flex; flex-direction:column; gap:1rem;">
@@ -871,7 +891,7 @@ async function buildKpiPdcaBoards() {
                         <div style="text-align:center; padding: 1.5rem; background:rgba(0,0,0,0.01); border-radius:10px; border:1px dashed var(--border); font-size:0.8rem; color:var(--text-secondary);">
                             登録されている実行施策はありません。新規施策を追加してください。
                         </div>
-                    ` : kpiActions.map(act => renderActionRow(act)).join('')}
+                    ` : kpiActions.map(act => renderActionRow(act, isLocked)).join('')}
                 </div>
             </div>
             ` : ''}
@@ -1146,7 +1166,7 @@ function hexToRgba(hex, alpha) {
 // -------------------------------------------------------------
 // 個別のアクションカードのレンダリング (HTML)
 // -------------------------------------------------------------
-function renderActionRow(act) {
+function renderActionRow(act, isLocked = false) {
     const isCompleted = act.status === 'completed';
     return `
         <div class="mm-action-item-panel ${isCompleted ? 'completed' : ''}" id="action-panel-${act.id}">
@@ -1156,12 +1176,14 @@ function renderActionRow(act) {
                     <strong style="font-size:0.95rem; color:var(--text-primary); font-weight:800;">${act.action_name}</strong>
                 </div>
                 <div style="display:flex; align-items:center; gap:0.5rem;" class="no-print">
+                    ${isLocked ? '' : `
                     <button class="btn" onclick="window.toggleActionStatusClick('${act.id}')" style="background:${isCompleted ? '#f1f5f9' : '#ecfdf5'}; color:${isCompleted ? '#64748b' : '#10b981'}; font-size:0.7rem; padding:0.25rem 0.6rem; border-radius:6px; font-weight:800; border:none; display:flex; align-items:center; gap:0.2rem;">
                         <i class="fas ${isCompleted ? 'fa-undo' : 'fa-check'}"></i> ${isCompleted ? '振り返りを修正' : '完了・振り返る'}
                     </button>
                     <button class="btn" onclick="window.deleteActionClick('${act.id}')" style="background:#fff5f5; color:#f87171; font-size:0.7rem; padding:0.25rem 0.4rem; border-radius:6px; border:none;">
                         <i class="fas fa-trash-alt"></i>
                     </button>
+                    `}
                 </div>
             </div>
 
@@ -1403,14 +1425,21 @@ async function loadArchiveList() {
         const isAdmin = currentUser && (currentUser.Role === 'Admin' || currentUser.Role === '管理者');
 
         let html = '';
+        const storesMap = new Map(); // 追加: 店舗リスト保持用
+
         snap.forEach(docSnap => {
             const d = docSnap.data();
             const dateStr = d.updated_at ? new Date(d.updated_at).toLocaleDateString('ja-JP') : '-';
 
+            // 店舗リストの収集
+            if (d.store_id && d.store_name) {
+                storesMap.set(d.store_id, d.store_name);
+            }
+
             const deleteBtnHtml = isAdmin ? `<button onclick="window.deleteMeeting(event, '${docSnap.id}')" class="btn no-print" style="background:#fff5f5; color:#f87171; border:none; padding:0.35rem 0.6rem; border-radius:6px; margin-left:1rem; cursor:pointer; transition: all 0.2s;" onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fff5f5'" title="この記録を削除する"><i class="fas fa-trash-alt"></i></button>` : '';
 
             html += `
-                <div class="glass-panel" style="padding: 0.9rem 1.5rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s; border-radius: 6px;"
+                <div class="glass-panel mm-archive-item" data-store-id="${d.store_id}" style="padding: 0.9rem 1.5rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s; border-radius: 6px;"
                      onclick="window.openMeeting('${docSnap.id}')"
                      onmouseover="this.style.borderColor='var(--primary)'; this.style.boxShadow='var(--shadow-sm)';"
                      onmouseout="this.style.borderColor='var(--border)'; this.style.boxShadow='none';">
@@ -1433,6 +1462,39 @@ async function loadArchiveList() {
         });
         
         listContainer.innerHTML = html;
+
+        // プルダウンの生成とフィルタリングイベントのバインド
+        const filterSelect = document.getElementById('mm-archive-filter-store');
+        if (filterSelect) {
+            filterSelect.innerHTML = '<option value="all">全店舗を表示</option>';
+            storesMap.forEach((name, id) => {
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.textContent = name;
+                filterSelect.appendChild(opt);
+            });
+
+            filterSelect.onchange = (e) => {
+                const selected = e.target.value;
+                const items = listContainer.querySelectorAll('.mm-archive-item');
+                items.forEach(item => {
+                    if (selected === 'all' || item.getAttribute('data-store-id') === selected) {
+                        item.style.display = 'flex';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            };
+
+            // デフォルトで自店舗を選択（管理者以外）
+            if (currentUser && !isAdmin) {
+                const myStore = currentUser.StoreID || currentUser.StoreId;
+                if (myStore && storesMap.has(myStore)) {
+                    filterSelect.value = myStore;
+                    filterSelect.dispatchEvent(new Event('change')); // 初期表示の絞り込み実行
+                }
+            }
+        }
         
         window.openMeeting = async (docId) => {
             const docRef = await getDoc(doc(db, "t_manager_meetings", docId));
@@ -1609,6 +1671,17 @@ function initAutoResizeTextareas(extraIds = []) {
 async function saveMeetingData() {
     const btn = document.getElementById('btn-save-meeting');
     if (!btn) return;
+    
+    const user = window.appState ? window.appState.currentUser : null;
+    const isAdmin = user && (user.Role === 'Admin' || user.Role === '管理者');
+    if (editingMeetingData.status === '提出済み' && !isAdmin) {
+        if (typeof showAlert === 'function') {
+            showAlert("提出済みの資料は編集できません。", "danger");
+        } else {
+            alert("提出済みの資料は編集できません。");
+        }
+        return;
+    }
     
     const originalHtml = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
