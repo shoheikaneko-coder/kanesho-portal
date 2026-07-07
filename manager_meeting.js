@@ -1,5 +1,5 @@
 import { db } from './firebase.js';
-import { collection, getDocs, doc, setDoc, getDoc, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, getDocs, doc, setDoc, getDoc, deleteDoc, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { showConfirm, showAlert } from './ui_utils.js';
 
 let currentMeetingView = 'archive'; // 'archive' | 'form'
@@ -1399,10 +1399,15 @@ async function loadArchiveList() {
             return;
         }
 
+        const currentUser = window.appState ? window.appState.currentUser : null;
+        const isAdmin = currentUser && (currentUser.Role === 'Admin' || currentUser.Role === '管理者');
+
         let html = '';
         snap.forEach(docSnap => {
             const d = docSnap.data();
             const dateStr = d.updated_at ? new Date(d.updated_at).toLocaleDateString('ja-JP') : '-';
+
+            const deleteBtnHtml = isAdmin ? `<button onclick="window.deleteMeeting(event, '${docSnap.id}')" class="btn no-print" style="background:#fff5f5; color:#f87171; border:none; padding:0.35rem 0.6rem; border-radius:6px; margin-left:1rem; cursor:pointer; transition: all 0.2s;" onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fff5f5'" title="この記録を削除する"><i class="fas fa-trash-alt"></i></button>` : '';
 
             html += `
                 <div class="glass-panel" style="padding: 0.9rem 1.5rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s; border-radius: 6px;"
@@ -1417,10 +1422,11 @@ async function loadArchiveList() {
                             記入者: ${d.author_name} | 最終更新: ${dateStr}
                         </span>
                     </div>
-                    <div>
+                    <div style="display:flex; align-items:center;">
                         <span style="background:${d.status === '提出済み' ? 'var(--primary)' : '#e2e8f0'}; color:${d.status === '提出済み' ? 'white' : '#475569'}; padding:0.35rem 0.9rem; border-radius:20px; font-size:0.75rem; font-weight:800; border:1px solid rgba(0,0,0,0.02);">
                             ${d.status || '下書き'}
                         </span>
+                        ${deleteBtnHtml}
                     </div>
                 </div>
             `;
@@ -1436,6 +1442,20 @@ async function loadArchiveList() {
                 currentTargetMonth = editingMeetingData.target_month;
                 currentMeetingView = 'form';
                 renderMeetingView();
+            }
+        };
+
+        window.deleteMeeting = async (event, docId) => {
+            event.stopPropagation(); // 行全体のクリックイベント発火を防ぐ
+            if (confirm("本当にこの店舗PDCA資料を削除しますか？\\n※この操作は取り消せません。")) {
+                try {
+                    await deleteDoc(doc(db, "t_manager_meetings", docId));
+                    showAlert ? showAlert("PDCA資料を削除しました。") : alert("PDCA資料を削除しました。");
+                    loadArchiveList(); // 一覧を再描画
+                } catch(e) {
+                    console.error("Failed to delete PDCA:", e);
+                    alert("削除に失敗しました。");
+                }
             }
         };
 
