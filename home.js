@@ -1166,6 +1166,7 @@ function renderOperationCards(permissions, role) {
         { id: 'attendance', name: '勤怠入力', icon: 'fa-clock', desc: 'スタッフの出勤・退勤打刻、シフトの確認。' },
         { id: 'ops_hub_main', name: '在庫・調達', icon: 'fa-boxes-stacked', desc: '在庫チェック、移動、仕入れ、仕込みを一括管理' },
         { id: 'bottle_keep', name: 'ボトルキープ', icon: 'fa-wine-bottle', desc: 'お客様のキープボトル配置・期限管理を行います。' },
+        { id: 'daily_sakes', name: '日本酒管理', icon: 'fa-wine-glass-alt', desc: 'その日の日本酒のラインナップ・残量などを管理します。' },
         { id: 'recipe_viewer', name: 'レシピ閲覧', icon: 'fa-book-open', desc: '料理やドリンクの作り方、盛り付けを確認します。' },
         { id: 'goals_store', name: '月次計画(店長用)', icon: 'fa-tasks', desc: '月の目標値の按分シミュレーションと保存。' },
         { id: 'loans', name: '貸与物管理', icon: 'fa-key', desc: '従業員への制服、鍵、端末等の貸与状況を管理。' },
@@ -1184,10 +1185,23 @@ function renderOperationCards(permissions, role) {
         grid.className = 'ops-grid';
     }
 
+    const storeFeatures = window.appState ? (window.appState.storeFeatures || {}) : {};
+
     grid.innerHTML = cards
         .filter(c => {
+            // 店舗個別メニューのフィルタリング
+            if (c.id === 'daily_sakes' || c.id === 'bottle_keep') {
+                if (storeFeatures[c.id] !== true) return false;
+            }
+
             // 店舗タブレットの場合は、在庫・調達を強制的に表示する
             if (isTablet && c.id === 'ops_hub_main') return true;
+            
+            // 店舗タブレットの場合、個別機能がONなら権限を問わずクイックアクションに強制表示（現場の利便性のため）
+            if (isTablet && (c.id === 'daily_sakes' || c.id === 'bottle_keep')) {
+                return true; 
+            }
+
             return permissions.includes(c.id);
         })
         .map(c => {

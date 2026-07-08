@@ -1,6 +1,6 @@
 import { db, storage } from './firebase.js';
 import { 
-    collection, getDocs, addDoc, updateDoc, doc, 
+    collection, getDocs, addDoc, updateDoc, doc, deleteDoc,
     query, where, orderBy, serverTimestamp, getDoc, writeBatch 
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { 
@@ -41,6 +41,9 @@ export const dailySakesPageHtml = `
             </button>
             <button class="sake-tab-btn" data-tab="master">
                 <i class="fas fa-search"></i> 銘柄を探す・登録
+            </button>
+            <button class="sake-tab-btn" data-tab="archive">
+                <i class="fas fa-book"></i> 図鑑を編集
             </button>
         </div>
 
@@ -145,8 +148,10 @@ async function renderSakeAppTab() {
 
     if (window.sakeApp.activeTab === 'lineup') {
         await renderLineupTab(area);
-    } else {
+    } else if (window.sakeApp.activeTab === 'master') {
         await renderMasterTab(area);
+    } else if (window.sakeApp.activeTab === 'archive') {
+        await renderArchiveTab(area);
     }
 }
 
@@ -300,6 +305,86 @@ function renderTasteSection(type, label, items) {
     `;
 }
 
+// --- ARCHIVE TAB ---
+async function renderArchiveTab(container) {
+    container.innerHTML = `<div style="padding:4rem; text-align:center;"><i class="fas fa-spinner fa-spin fa-2x" style="color:var(--sake-primary);"></i></div>`;
+    try {
+        const storeId = window.appState?.currentUser?.StoreID || window.appState?.currentUser?.StoreId || 'honten';
+        const q = query(
+            collection(db, "daily_sake_slots"), 
+            where("store_id", "==", String(storeId)), 
+            where("is_deleted", "==", false), 
+            where("is_archived", "==", true)
+        );
+        const snap = await getDocs(q);
+        const archivedSlots = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // Sort by updated_at descending in memory
+        archivedSlots.sort((a, b) => {
+            const tA = a.updated_at?.toMillis() || 0;
+            const tB = b.updated_at?.toMillis() || 0;
+            return tB - tA;
+        });
+
+        if (archivedSlots.length === 0) {
+            container.innerHTML = `<div style="padding:5rem; text-align:center; color:var(--sake-text-sub); font-weight:700;">図鑑（履歴）データがありません</div>`;
+            return;
+        }
+
+        const mIds = [...new Set(archivedSlots.map(s => s.sake_id))];
+        const mMap = {};
+        if (mIds.length > 0) {
+            for (let i = 0; i < mIds.length; i += 10) {
+                const chunk = mIds.slice(i, i+10);
+                const mq = query(collection(db, "sake_master"), where("__name__", "in", chunk));
+                const s = await getDocs(mq);
+                s.forEach(d => mMap[d.id] = d.data());
+            }
+        }
+
+        container.innerHTML = `
+            <div style="margin-bottom:1.5rem; padding: 1.2rem; background: #fff8e1; color: #856404; border-radius: 12px; font-size: 0.9rem; font-weight: 700; border: 1.5px solid #ffeeba;">
+                <i class="fas fa-info-circle"></i> ここから「図鑑から削除」をすると、お客様向けページの過去履歴からは消えますが、銘柄データ自体は「銘柄を探す」に残ります。
+            </div>
+            ${archivedSlots.map(slot => {
+                const master = mMap[slot.sake_id];
+                if (!master) return '';
+                return `
+                    <div class="sake-master-card" style="align-items: center;">
+                        <img src="${master.image_url || 'https://via.placeholder.com/150'}" class="sake-thumb-md" style="width:80px; height:80px;">
+                        <div style="flex:1;">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                                <div>
+                                    <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:0.2rem;">
+                                        <h4 style="margin:0; font-weight:900; font-size:1.1rem;">${master.brand_name}</h4>
+                                        <span class="sake-taste-badge sake-taste-${master.default_taste_type || 'balanced'}">
+                                            ${master.default_taste_type === 'dry' ? '辛口' : master.default_taste_type === 'fruity' ? 'フルーティ' : 'バランス'}
+                                        </span>
+                                    </div>
+                                    <div style="font-size:0.8rem; font-weight:700; color:var(--sake-text-sub);">
+                                        提供終了: ${slot.updated_at ? slot.updated_at.toDate().toLocaleDateString('ja-JP') : '不明'}
+                                    </div>
+                                </div>
+                                <div style="display:flex; gap:0.6rem;">
+                                    <button class="sake-btn-action sake-btn-secondary" data-action="edit-master" data-id="${slot.sake_id}">
+                                        <i class="fas fa-edit"></i> 📝 編集
+                                    </button>
+                                    <button class="sake-btn-action sake-btn-danger-outline" data-action="delete-archived-slot" data-id="${slot.id}" data-name="${master.brand_name}">
+                                        <i class="fas fa-trash-alt"></i> 🗑️ 図鑑から削除
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        `;
+    } catch (e) {
+        console.error("Archive fetch error:", e);
+        container.innerHTML = `<div style="padding:2rem; background:#fee2e2; color:#b91c1c; border-radius:12px; margin-top:1rem;"><strong>エラー:</strong><br>${e.message}</div>`;
+    }
+}
+
 // --- MASTER TAB ---
 async function renderMasterTab(container) {
     container.innerHTML = `
@@ -395,8 +480,8 @@ window.sakeApp.openMasterForm = async (id = null) => {
     window.sakeApp.editingMasterId = id;
     let d = { 
         brand_name:'', brand_name_kana:'', brewery_name:'', prefecture:'', default_taste_type:'balanced', 
-        catch_copy:'', short_description:'', image_url:'', image_path:'',
-        detail_description:'', rice_type:'', sake_meter_value:'', polishing_ratio:'', alcohol_percentage:'', pairing_notes:'', tags:'', is_published: true
+        catch_copy:'', image_url:'', image_path:'',
+        detail_description:'', rice_type:'', sake_meter_value:'', sake_category:'', alcohol_percentage:'', tags:''
     };
     
     if (id) {
@@ -413,7 +498,19 @@ window.sakeApp.openMasterForm = async (id = null) => {
             </div>
             
             <form id="sake-form-el">
-                <!-- Section 1: Basic Information -->
+                <!-- Section 1: Label Image (Moved to Top) -->
+                <div class="sake-form-section">
+                    <div class="sake-form-section-title"><i class="fas fa-image"></i> ラベル画像</div>
+                    <div style="display:flex; gap:1.5rem; align-items:center; background:#f8fafc; padding:1.2rem; border-radius:16px; border:1.5px dashed var(--sake-border); margin-bottom: 1.2rem;">
+                        <img id="fm-prev" src="${d.image_url || 'https://via.placeholder.com/200'}" style="width:100px; height:100px; object-fit:cover; border-radius:12px; border:2px solid white; box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);">
+                        <div style="flex:1;">
+                            <label style="display:block; font-size:0.8rem; font-weight:800; margin-bottom:0.5rem;">ラベル画像を選択</label>
+                            <input type="file" id="fm-file" accept="image/*" style="font-size:0.85rem;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Basic Information -->
                 <div class="sake-form-section">
                     <div class="sake-form-section-title"><i class="fas fa-info-circle"></i> 基本プロファイル</div>
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin-bottom:1.2rem;">
@@ -438,23 +535,12 @@ window.sakeApp.openMasterForm = async (id = null) => {
                     </div>
                 </div>
 
-                <!-- Section 2: Visual & Copy -->
+                <!-- Section 3: Visual & Copy -->
                 <div class="sake-form-section">
-                    <div class="sake-form-section-title"><i class="fas fa-star"></i> キャッチコピー & 比率</div>
+                    <div class="sake-form-section-title"><i class="fas fa-star"></i> キャッチコピー</div>
                     <div class="sake-input-group">
                         <label>一言キャッチコピー (20〜50文字程度)</label>
                         <input type="text" id="fm-copy" value="${d.catch_copy || ''}" placeholder="究極の透明感がある純米大吟醸。ワイングラスで。">
-                    </div>
-                    <div class="sake-input-group">
-                        <label>簡易説明 (スタッフ説明用)</label>
-                        <textarea id="fm-short-desc" rows="2" placeholder="スタッフがお客様に説明する際のポイント">${d.short_description || ''}</textarea>
-                    </div>
-                    <div style="display:flex; gap:1.5rem; align-items:center; background:#f8fafc; padding:1.2rem; border-radius:16px; border:1.5px dashed var(--sake-border); margin-top:1rem;">
-                        <img id="fm-prev" src="${d.image_url || 'https://via.placeholder.com/200'}" style="width:100px; height:100px; object-fit:cover; border-radius:12px; border:2px solid white; box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);">
-                        <div style="flex:1;">
-                            <label style="display:block; font-size:0.8rem; font-weight:800; margin-bottom:0.5rem;">ラベル画像</label>
-                            <input type="file" id="fm-file" accept="image/*" style="font-size:0.85rem;">
-                        </div>
                     </div>
                 </div>
 
@@ -478,11 +564,11 @@ window.sakeApp.openMasterForm = async (id = null) => {
                         </div>
                         <div class="sake-input-group">
                             <label>日本酒度</label>
-                            <input type="number" step="0.5" id="fm-smv" value="${d.sake_meter_value || ''}">
+                            <input type="number" step="any" id="fm-smv" value="${d.sake_meter_value || ''}">
                         </div>
                         <div class="sake-input-group">
-                            <label>精米歩合(%)</label>
-                            <input type="number" id="fm-polish" value="${d.polishing_ratio || ''}">
+                            <label>種別 (純米大吟醸など)</label>
+                            <input type="text" id="fm-sake-category" value="${d.sake_category || ''}" placeholder="純米大吟醸">
                         </div>
                         <div class="sake-input-group">
                             <label>Alc(%)</label>
@@ -490,33 +576,10 @@ window.sakeApp.openMasterForm = async (id = null) => {
                         </div>
                     </div>
 
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin-top:1rem;">
-                         <div class="sake-input-group">
-                            <label>酸度</label>
-                            <input type="number" step="0.1" id="fm-acidity" value="${d.acidity || ''}">
-                        </div>
-                        <div class="sake-input-group">
-                            <label>おすすめ温度</label>
-                            <input type="text" id="fm-temp" value="${d.recommended_temp || ''}" placeholder="冷酒, ぬる燗">
-                        </div>
-                    </div>
-
-                    <div class="sake-input-group" style="margin-top:1rem;">
-                        <label>ペアリング (おすすめの料理)</label>
-                        <textarea id="fm-pairs" rows="2" placeholder="お刺身、白身魚の西京焼きなど">${d.pairing_notes || ''}</textarea>
-                    </div>
-                    
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin-top:1rem;">
+                    <div style="display:grid; grid-template-columns:1fr; gap:1.2rem; margin-top:1rem;">
                         <div class="sake-input-group">
                             <label>タグ (カンマ区切り)</label>
                             <input type="text" id="fm-tags" value="${d.tags || ''}" placeholder="スパークリング, 山廃, 生原酒">
-                        </div>
-                        <div class="sake-input-group">
-                            <label>公開状態</label>
-                            <select id="fm-pub">
-                                <option value="true" ${d.is_published?'selected':''}>公開</option>
-                                <option value="false" ${!d.is_published?'selected':''}>非公開</option>
-                            </select>
                         </div>
                     </div>
                     
@@ -584,18 +647,13 @@ window.sakeApp.openMasterForm = async (id = null) => {
                 prefecture: document.getElementById('fm-pref').value.trim(),
                 default_taste_type: document.getElementById('fm-taste-def').value,
                 catch_copy: document.getElementById('fm-copy').value.trim(),
-                short_description: document.getElementById('fm-short-desc').value.trim(),
                 
                 detail_description: document.getElementById('fm-detail-desc').value.trim(),
                 rice_type: document.getElementById('fm-rice').value.trim(),
                 sake_meter_value: parseFloat(document.getElementById('fm-smv').value) || null,
-                polishing_ratio: parseInt(document.getElementById('fm-polish').value) || null,
+                sake_category: document.getElementById('fm-sake-category').value.trim() || null,
                 alcohol_percentage: parseFloat(document.getElementById('fm-alc').value) || null,
-                acidity: parseFloat(document.getElementById('fm-acidity').value) || null,
-                recommended_temp: document.getElementById('fm-temp').value.trim(),
-                pairing_notes: document.getElementById('fm-pairs').value.trim(),
                 tags: document.getElementById('fm-tags').value.trim(),
-                is_published: document.getElementById('fm-pub').value === 'true',
                 
                 image_url: u,
                 image_path: p,
@@ -628,6 +686,16 @@ window.sakeApp.deleteMaster = (id) => {
             showAlert("成功", "削除しました");
             window.sakeApp.masterSakes = [];
             window.sakeApp.switchTab('master');
+        } catch (e) { showAlert("Error", e.message); }
+    });
+};
+
+window.sakeApp.deleteArchivedSlot = (slotId, brandName) => {
+    showConfirm("図鑑から削除", `「${brandName}」を図鑑（提供履歴）から削除しますか？\n（※銘柄のマスターデータは「銘柄を探す」に残ります）`, async () => {
+        try {
+            await deleteDoc(doc(db, "daily_sake_slots", slotId));
+            showAlert("成功", "図鑑から削除しました");
+            window.sakeApp.switchTab('archive');
         } catch (e) { showAlert("Error", e.message); }
     });
 };
@@ -666,6 +734,8 @@ async function setupSakeGlobalDelegation() {
             window.sakeApp.openMasterForm(id);
         } else if (action === 'commit-add') {
             handleCommitAdd(id, target.dataset.taste);
+        } else if (action === 'delete-archived-slot') {
+            window.sakeApp.deleteArchivedSlot(id, target.dataset.name);
         } else if (action === 'close-modal') {
             // 背景クリック（e.targetがtargetそのもの）か、ボタンのクリックであれば閉じる
             if (e.target === target || target.tagName === 'BUTTON') {

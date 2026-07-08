@@ -25,6 +25,7 @@ import { attendanceCheckPageHtml, initAttendanceCheckPage } from './attendance_c
 import { csvExportPageHtml, initCsvExportPage } from './csv_export.js?v=7';
 import { salesCorrectionPageHtml, initSalesCorrectionPage } from './sales_correction.js?v=7';
 import { rolePermissionsPageHtml, initRolePermissionsPage } from './role_permissions.js?v=20260428_01';
+import { storeFeaturesAdminPageHtml, initStoreFeaturesAdminPage } from './store_features_admin.js';
 import { menuOrderPageHtml, initMenuOrderPage } from './menu_order.js?v=7';
 import { dailySakesPageHtml, initDailySakesPage } from './daily_sakes.js?v=116';
 import { csvImportPageHtml, initCsvImportPage } from './csv_import.js?v=7';
@@ -337,9 +338,40 @@ async function renderSidebar(user) {
     let html = '';
     const categories = [...new Set(defaultMenuItems.map(item => item.category))];
     
+    // 店舗ごとの機能オンオフ状態を取得
+    let storeFeatures = {};
+    if (user && user.StoreID) {
+        try {
+            const storeDoc = await getDoc(doc(db, "m_stores", user.StoreID));
+            if (storeDoc.exists()) {
+                storeFeatures = storeDoc.data().store_features || {};
+            }
+        } catch (e) {
+            console.error("Failed to load store features for sidebar:", e);
+        }
+    }
+    
+    if (window.appState) {
+        window.appState.storeFeatures = storeFeatures;
+    }
+
     categories.forEach(cat => {
         const items = defaultMenuItems.filter(item => item.category === cat);
         const allowedItems = items.filter(item => {
+            // アルバイトの個別メニュー非表示セーフガード
+            if (role === 'PartTimer' || role === 'アルバイトスタッフ') {
+                if (item.id === 'daily_sakes' || item.id === 'bottle_keep') {
+                    return false;
+                }
+            } else {
+                // アルバイト以外の場合は、店舗の機能設定を確認
+                if (item.id === 'daily_sakes' || item.id === 'bottle_keep') {
+                    if (storeFeatures[item.id] !== true) {
+                        return false;
+                    }
+                }
+            }
+
             if (allowed.includes(item.id)) return true;
             // 勤怠管理の特例: サブ機能の権限（直接編集 or 修正申請）があれば表示を許可
             if (item.id === 'attendance_management') {
@@ -595,6 +627,11 @@ async function showPage(target) {
                 pageTitle.textContent = '権限振り分け設定';
                 pageContent.innerHTML = rolePermissionsPageHtml;
                 initRolePermissionsPage();
+                break;
+            case 'store_features_admin':
+                pageTitle.textContent = '店舗別メニュー設定';
+                pageContent.innerHTML = storeFeaturesAdminPageHtml;
+                initStoreFeaturesAdminPage();
                 break;
             case 'menu_order':
                 pageTitle.textContent = 'メニュー並び順設定';

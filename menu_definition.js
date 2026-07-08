@@ -71,6 +71,7 @@ export const MENU_DEFINITION = [
                     { id: 'users', name: 'ユーザー・従業員管理', icon: 'fa-users-cog', color: '#14b8a6', desc: '従業員アカウントの登録・編集' },
                     { id: 'invite_navi', name: '従業員への招待案内', icon: 'fa-paper-plane', color: '#3b82f6', desc: '新規スタッフへの招待メール送信・管理' },
                     { id: 'role_permissions', name: '権限振り分け設定', icon: 'fa-user-shield', color: '#ef4444', desc: 'ロール（役職）ごとのアクセス権限管理' },
+                    { id: 'store_features_admin', name: '店舗別メニュー設定', icon: 'fa-store-slash', color: '#8b5cf6', desc: '店舗ごとの機能オンオフ設定', showInSidebar: false },
                     { id: 'grades', name: '等級マスタ (給与テーブル)', icon: 'fa-table', color: '#f59e0b', desc: '等級別の給与テーブル管理' },
                     { id: 'org_chart', name: '組織図', icon: 'fa-network-wired', color: '#8b5cf6', isComingSoon: true, desc: '社内組織図の表示' }
                 ]

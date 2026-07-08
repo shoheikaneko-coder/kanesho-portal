@@ -155,10 +155,10 @@ function App() {
                     <span className="spec-value">{c.sake_meter_value}</span>
                   </div>
                 )}
-                {c.polishing_ratio && (
+                {(c.sake_category || c.polishing_ratio) && (
                   <div className="spec-item">
-                    <span className="spec-label"><i className="fas fa-percentage"></i> 精米歩合</span>
-                    <span className="spec-value">{c.polishing_ratio}</span>
+                    <span className="spec-label"><i className="fas fa-tag"></i> 種別</span>
+                    <span className="spec-value">{c.sake_category || (c.polishing_ratio ? c.polishing_ratio + '%' : '')}</span>
                   </div>
                 )}
                 {c.alcohol_percentage && (
@@ -247,7 +247,7 @@ function App() {
         <div className="header-top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px' }}>
           {/* 左側のロゴエリア（固定幅） */}
           <div style={{ width: '70px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-            <img src="/logo.png" alt="かね将ロゴ" style={{ width: '100%', height: 'auto', objectFit: 'contain' }} />
+            <img src={`${import.meta.env.BASE_URL}logo.png`} alt="かね将ロゴ" style={{ width: '100%', height: 'auto', objectFit: 'contain' }} />
           </div>
           
           {/* 中央のタイトルエリア */}
@@ -321,8 +321,8 @@ function App() {
                   {selectedArchive.master.sake_meter_value && (
                     <div className="spec-item"><span className="spec-label"><i className="fas fa-tachometer-alt"></i> 日本酒度</span><span className="spec-value">{selectedArchive.master.sake_meter_value}</span></div>
                   )}
-                  {selectedArchive.master.polishing_ratio && (
-                    <div className="spec-item"><span className="spec-label"><i className="fas fa-percentage"></i> 精米歩合</span><span className="spec-value">{selectedArchive.master.polishing_ratio}</span></div>
+                  {(selectedArchive.master.sake_category || selectedArchive.master.polishing_ratio) && (
+                    <div className="spec-item"><span className="spec-label"><i className="fas fa-tag"></i> 種別</span><span className="spec-value">{selectedArchive.master.sake_category || (selectedArchive.master.polishing_ratio ? selectedArchive.master.polishing_ratio + '%' : '')}</span></div>
                   )}
                   {selectedArchive.master.alcohol_percentage && (
                     <div className="spec-item"><span className="spec-label"><i className="fas fa-wine-glass"></i> 度数</span><span className="spec-value">{selectedArchive.master.alcohol_percentage}</span></div>

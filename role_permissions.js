@@ -22,6 +22,13 @@ export const rolePermissionsPageHtml = `
                     <button class="role-item" data-role="PartTimer">アルバイトスタッフ (PartTimer)</button>
                     <button class="role-item" data-role="Tablet">店舗タブレット (Tablet)</button>
                 </div>
+                
+                <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px dashed var(--border);">
+                    <button id="btn-goto-store-features" class="btn" style="width: 100%; background: #f8fafc; color: var(--text-primary); border: 1px solid var(--border); font-weight: 600; padding: 0.8rem;">
+                        <i class="fas fa-store-slash" style="color: var(--primary); margin-right: 0.5rem;"></i> 店舗別メニュー設定
+                    </button>
+                    <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; text-align: center;">各店舗の「日本酒管理」などの<br>機能オン/オフを設定します。</p>
+                </div>
             </div>
 
             <!-- 機能一覧（2カラム構成） -->
@@ -152,6 +159,13 @@ export async function initRolePermissionsPage() {
             await loadRolePermissions(selectedRole);
         };
     });
+
+    const gotoBtn = document.getElementById('btn-goto-store-features');
+    if (gotoBtn) {
+        gotoBtn.onclick = () => {
+            window.navigateTo('store_features_admin');
+        };
+    }
 
     const saveBtn = document.getElementById('save-permissions-btn');
     if (saveBtn) {
