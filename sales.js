@@ -428,10 +428,20 @@ function setupAbsenceUI(suffix, reportStoreIdGetter) {
             const sid = reportStoreIdGetter();
             if (staffSel) {
                 staffSel.innerHTML = '<option value="">スタッフを選択...</option>';
+                // 報告店舗の情報を特定（document ID / store_id / 店舗名で多段マッチ）
+                const reportedStore = allStoresCache.find(st =>
+                    st.id === sid || st.store_id === sid
+                );
+                const reportedStoreName = reportedStore
+                    ? (reportedStore.store_name || reportedStore['店舗名'] || '')
+                    : '';
                 const storeStaff = allStaffCache.filter(s => {
                     if (!s.EmployeeCode) return false;
-                    const sStoreId = s.StoreID || s.StoreId || s.store_id;
-                    return sStoreId === sid || s.Store === (allStoresCache.find(st => st.id === sid) || {}).store_name;
+                    const sStoreId = s.StoreID || s.StoreId || s.store_id || '';
+                    // document ID / store_idフィールド / 店舗名 の3段階でマッチ
+                    return sStoreId === sid ||
+                           (reportedStore && (sStoreId === reportedStore.store_id || sStoreId === reportedStore.id)) ||
+                           (reportedStoreName && s.Store === reportedStoreName);
                 });
                 storeStaff.forEach(s => {
                     const opt = document.createElement('option');

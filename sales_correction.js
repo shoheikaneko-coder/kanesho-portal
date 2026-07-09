@@ -457,13 +457,21 @@ function setupEditAbsenceForm(perfDocId, storeId, storeName) {
     rebind('btn-show-absence-add-form', () => {
         if (ownForm) {
             ownForm.style.display = 'flex';
-            // 報告店舗のスタッフをプルダウンにセット
+            // 報告店舗のスタッフをプルダウンにセット（多段マッチ）
             const staffSel2 = document.getElementById('edit-absence-staff-sel');
             if (staffSel2) {
                 staffSel2.innerHTML = '<option value="">スタッフを選択...</option>';
+                const reportedStore = editAbsenceStoresCache.find(st =>
+                    st.id === storeId || st.store_id === storeId
+                );
+                const reportedStoreName = reportedStore
+                    ? (reportedStore.store_name || reportedStore['店舗名'] || storeName)
+                    : storeName;
                 editAbsenceStaffCache.filter(s => {
-                    const sStoreId = s.StoreID || s.StoreId || s.store_id;
-                    return sStoreId === storeId || s.Store === storeName;
+                    const sStoreId = s.StoreID || s.StoreId || s.store_id || '';
+                    return sStoreId === storeId ||
+                           (reportedStore && (sStoreId === reportedStore.store_id || sStoreId === reportedStore.id)) ||
+                           s.Store === reportedStoreName;
                 }).forEach(s => {
                     const opt = document.createElement('option');
                     opt.value = s.id;
