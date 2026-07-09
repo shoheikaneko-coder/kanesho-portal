@@ -134,31 +134,19 @@ export const salesCorrectionPageHtml = `
                 <!-- 欠勤追加フォーム -->
                 <div id="edit-absence-add-btn-area" style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.4rem;">
                     <button type="button" id="btn-show-absence-add-form" class="btn" style="padding:0.35rem 0.8rem; font-size:0.8rem; border:1px dashed #94a3b8; color:#64748b; background:transparent;">
-                        <i class="fas fa-plus"></i> 欠勤者を追加
-                    </button>
-                    <button type="button" id="btn-show-help-absence-add-form" class="btn" style="padding:0.35rem 0.8rem; font-size:0.8rem; border:1px dashed #6366f1; color:#6366f1; background:transparent;">
-                        <i class="fas fa-exchange-alt"></i> ヘルプスタッフの欠勤
+                        <i class="fas fa-user-plus"></i> 欠勤者を追加
                     </button>
                 </div>
-                <!-- 自店舗スタッフ追加フォーム -->
-                <div id="edit-absence-own-form" style="display:none; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:0.7rem; flex-direction:column; gap:0.4rem;">
-                    <select id="edit-absence-staff-sel" style="width:100%; padding:0.5rem; border:1px solid var(--border); border-radius:6px; font-size:0.88rem;"><option value="">スタッフを選択...</option></select>
+                <!-- 欠勤スタッフ追加フォーム (統合版) -->
+                <div id="edit-absence-form" style="display:none; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:0.7rem; flex-direction:column; gap:0.4rem;">
+                    <label style="font-size:0.75rem; color:#64748b; font-weight:700;">所属店舗を選択</label>
+                    <select id="edit-absence-store" style="width:100%; padding:0.5rem; border:1px solid var(--border); border-radius:6px; font-size:0.88rem;"><option value="">店舗を選択...</option></select>
+                    <label style="font-size:0.75rem; color:#64748b; font-weight:700;">スタッフを選択</label>
+                    <select id="edit-absence-staff" style="width:100%; padding:0.5rem; border:1px solid var(--border); border-radius:6px; font-size:0.88rem;"><option value="">先に店舗を選択...</option></select>
                     <input type="text" id="edit-absence-reason" placeholder="欠勤理由（任意）" style="width:100%; padding:0.5rem; border:1px solid var(--border); border-radius:6px; font-size:0.88rem; box-sizing:border-box;">
                     <div style="display:flex; gap:0.4rem;">
                         <button type="button" id="btn-confirm-edit-absence" class="btn btn-primary" style="padding:0.4rem 0.9rem; font-size:0.82rem;">登録</button>
                         <button type="button" id="btn-cancel-edit-absence" class="btn" style="padding:0.4rem 0.7rem; font-size:0.82rem; background:#e2e8f0;">キャンセル</button>
-                    </div>
-                </div>
-                <!-- ヘルプスタッフ追加フォーム -->
-                <div id="edit-absence-help-form" style="display:none; background:#f0f0ff; border:1px solid #c7d2fe; border-radius:8px; padding:0.7rem; flex-direction:column; gap:0.4rem;">
-                    <label style="font-size:0.75rem; color:#6366f1; font-weight:700;">所属店舗を選択</label>
-                    <select id="edit-help-store-sel" style="width:100%; padding:0.5rem; border:1px solid var(--border); border-radius:6px; font-size:0.88rem;"><option value="">店舗を選択...</option></select>
-                    <label style="font-size:0.75rem; color:#6366f1; font-weight:700;">スタッフを選択</label>
-                    <select id="edit-help-staff-sel" style="width:100%; padding:0.5rem; border:1px solid var(--border); border-radius:6px; font-size:0.88rem;"><option value="">先に店舗を選択...</option></select>
-                    <input type="text" id="edit-help-absence-reason" placeholder="欠勤理由（任意）" style="width:100%; padding:0.5rem; border:1px solid var(--border); border-radius:6px; font-size:0.88rem; box-sizing:border-box;">
-                    <div style="display:flex; gap:0.4rem;">
-                        <button type="button" id="btn-confirm-edit-help-absence" class="btn btn-primary" style="padding:0.4rem 0.9rem; font-size:0.82rem; background:#6366f1; border:none;">登録</button>
-                        <button type="button" id="btn-cancel-edit-help-absence" class="btn" style="padding:0.4rem 0.7rem; font-size:0.82rem; background:#e2e8f0;">キャンセル</button>
                     </div>
                 </div>
             </div>
@@ -437,13 +425,10 @@ async function loadEditAbsences(perfDocId, storeId, storeName) {
 }
 
 function setupEditAbsenceForm(perfDocId, storeId, storeName) {
-    const ownForm = document.getElementById('edit-absence-own-form');
-    const helpForm = document.getElementById('edit-absence-help-form');
-    const staffSel = document.getElementById('edit-absence-staff-sel');
+    const form = document.getElementById('edit-absence-form');
+    const storeSel = document.getElementById('edit-absence-store');
+    const staffSel = document.getElementById('edit-absence-staff');
     const reasonInput = document.getElementById('edit-absence-reason');
-    const helpStoreSel = document.getElementById('edit-help-store-sel');
-    const helpStaffSel = document.getElementById('edit-help-staff-sel');
-    const helpReasonInput = document.getElementById('edit-help-absence-reason');
 
     // ボタンイベントのリバインド（クローンで重複防止）
     const rebind = (id, handler) => {
@@ -455,134 +440,75 @@ function setupEditAbsenceForm(perfDocId, storeId, storeName) {
     };
 
     rebind('btn-show-absence-add-form', () => {
-        if (ownForm) {
-            ownForm.style.display = 'flex';
-            // 報告店舗のスタッフをプルダウンにセット（多段マッチ）
-            const staffSel2 = document.getElementById('edit-absence-staff-sel');
-            if (staffSel2) {
-                staffSel2.innerHTML = '<option value="">スタッフを選択...</option>';
-                const sidStr = String(storeId).trim();
-                const reportedStore = editAbsenceStoresCache.find(st =>
-                    String(st.id).trim() === sidStr || String(st.store_id || '').trim() === sidStr
-                );
-                const reportedStoreName = reportedStore
-                    ? String(reportedStore.store_name || reportedStore['店舗名'] || storeName).trim()
-                    : String(storeName).trim();
-                    
-                editAbsenceStaffCache.filter(s => {
-                    const sStoreId = String(s.StoreID || s.StoreId || s.store_id || '').trim();
-                    const sStoreName = String(s.Store || '').trim();
-                    
-                    const stId = reportedStore ? String(reportedStore.id).trim() : '';
-                    const stStoreId = reportedStore ? String(reportedStore.store_id || '').trim() : '';
-
-                    return (sStoreId && sStoreId === sidStr) ||
-                           (reportedStore && sStoreId && (sStoreId === stStoreId || sStoreId === stId)) ||
-                           (reportedStoreName && sStoreName && sStoreName === reportedStoreName);
-                }).forEach(s => {
-                    const opt = document.createElement('option');
-                    opt.value = s.id;
-                    opt.dataset.code = s.EmployeeCode || s.id;
-                    opt.dataset.name = s.Name || s.name || '';
-                    opt.dataset.storeId = s.StoreID || '';
-                    opt.dataset.storeName = s.Store || '';
-                    opt.textContent = s.Name || s.name || '';
-                    staffSel2.appendChild(opt);
-                });
-            }
-        }
-        if (helpForm) helpForm.style.display = 'none';
-    });
-
-    rebind('btn-cancel-edit-absence', () => { if (ownForm) ownForm.style.display = 'none'; });
-
-    rebind('btn-show-help-absence-add-form', () => {
-        if (helpForm) {
-            helpForm.style.display = 'flex';
-            const helpStoreSel2 = document.getElementById('edit-help-store-sel');
-            const helpStaffSel2 = document.getElementById('edit-help-staff-sel');
-            if (helpStoreSel2) {
-                helpStoreSel2.innerHTML = '<option value="">所属店舗を選択...</option>';
-                editAbsenceStoresCache.filter(st => st.id !== storeId).forEach(st => {
+        if (form) {
+            form.style.display = 'flex';
+            
+            if (storeSel) {
+                storeSel.innerHTML = '<option value="">店舗を選択...</option>';
+                editAbsenceStoresCache.forEach(st => {
                     const opt = document.createElement('option');
                     opt.value = st.id;
                     opt.textContent = st.store_name || st.id;
-                    helpStoreSel2.appendChild(opt);
+                    storeSel.appendChild(opt);
                 });
-                if (helpStaffSel2) helpStaffSel2.innerHTML = '<option value="">先に店舗を選択...</option>';
+
+                // デフォルトで報告対象の店舗を選択
+                storeSel.value = storeId;
+                storeSel.dispatchEvent(new Event('change'));
             }
         }
-        if (ownForm) ownForm.style.display = 'none';
     });
 
-    rebind('btn-cancel-edit-help-absence', () => { if (helpForm) helpForm.style.display = 'none'; });
+    rebind('btn-cancel-edit-absence', () => { if (form) form.style.display = 'none'; });
 
-    // ヘルプ: 店舗選択→スタッフ
-    const helpStoreSelEl = document.getElementById('edit-help-store-sel');
-    if (helpStoreSelEl) {
-        helpStoreSelEl.onchange = () => {
-            const selStoreId = helpStoreSelEl.value;
-            const selStore = editAbsenceStoresCache.find(st => st.id === selStoreId);
-            const helpStaffSel2 = document.getElementById('edit-help-staff-sel');
-            if (!helpStaffSel2) return;
-            helpStaffSel2.innerHTML = '<option value="">スタッフを選択...</option>';
-            if (!selStoreId) return;
-            editAbsenceStaffCache.filter(s => {
-                const sStoreId = s.StoreID || s.StoreId || s.store_id;
-                return sStoreId === selStoreId || (selStore && s.Store === selStore.store_name);
-            }).forEach(s => {
+    // 店舗選択時のスタッフ絞り込み
+    if (storeSel && staffSel) {
+        storeSel.addEventListener('change', () => {
+            const selectedStoreId = storeSel.value;
+            staffSel.innerHTML = '<option value="">スタッフを選択...</option>';
+            if (!selectedStoreId) return;
+
+            const selectedStore = editAbsenceStoresCache.find(st => st.id === selectedStoreId);
+            
+            const filtered = editAbsenceStaffCache.filter(s => {
+                const sStoreId = String(s.StoreID || s.StoreId || s.store_id || '').trim();
+                const sStoreName = String(s.Store || '').trim();
+                
+                const stId = selectedStore ? String(selectedStore.id).trim() : '';
+                const stStoreId = selectedStore ? String(selectedStore.store_id || '').trim() : '';
+
+                return (sStoreId && sStoreId === String(selectedStoreId).trim()) ||
+                       (selectedStore && sStoreId && (sStoreId === stStoreId || sStoreId === stId)) ||
+                       (selectedStore && sStoreName && sStoreName === String(selectedStore.store_name || selectedStore['店舗名'] || '').trim());
+            });
+            
+            filtered.forEach(s => {
                 const opt = document.createElement('option');
                 opt.value = s.id;
                 opt.dataset.code = s.EmployeeCode || s.id;
                 opt.dataset.name = s.Name || s.name || '';
-                opt.dataset.storeId = selStoreId;
-                opt.dataset.storeName = selStore ? (selStore.store_name || '') : '';
+                opt.dataset.storeId = selectedStoreId;
+                opt.dataset.storeName = selectedStore ? (selectedStore.store_name || selectedStore['店舗名'] || '') : '';
                 opt.textContent = s.Name || s.name || '';
-                helpStaffSel2.appendChild(opt);
+                staffSel.appendChild(opt);
             });
-        };
+        });
     }
 
-    // 自店舗: 登録
     rebind('btn-confirm-edit-absence', async () => {
-        const staffSel2 = document.getElementById('edit-absence-staff-sel');
-        const reason2 = document.getElementById('edit-absence-reason');
-        const opt = staffSel2?.options[staffSel2?.selectedIndex];
+        if (!staffSel) return;
+        const opt = staffSel.options[staffSel.selectedIndex];
         if (!opt || !opt.value) return;
-        const dateVal = document.getElementById('edit-date').value;
-        try {
-            const dupCheck = await getDocs(query(
-                collection(db, 't_absences'),
-                where('date', '==', dateVal),
-                where('staff_id', '==', opt.dataset.code)
-            ));
-            if (!dupCheck.empty) { alert('この日付にこのスタッフの欠勤は既に登録されています。'); return; }
-            await addDoc(collection(db, 't_absences'), {
-                date: dateVal,
-                year_month: dateVal.substring(0, 7),
-                staff_id: opt.dataset.code,
-                staff_name: opt.dataset.name,
-                staff_store_id: opt.dataset.storeId || '',
-                staff_store_name: opt.dataset.storeName || '',
-                reported_store_id: storeId,
-                reported_store_name: storeName,
-                is_help_absence: false,
-                reason: reason2?.value.trim() || '',
-                performance_doc_id: perfDocId,
-                created_at: serverTimestamp()
-            });
-            if (ownForm) ownForm.style.display = 'none';
-            await loadEditAbsences(perfDocId, storeId, storeName);
-        } catch (err) { alert('登録エラー: ' + err.message); }
-    });
 
-    // ヘルプ: 登録
-    rebind('btn-confirm-edit-help-absence', async () => {
-        const helpStaffSel2 = document.getElementById('edit-help-staff-sel');
-        const helpReason2 = document.getElementById('edit-help-absence-reason');
-        const opt = helpStaffSel2?.options[helpStaffSel2?.selectedIndex];
-        if (!opt || !opt.value) return;
+        // 重複チェック (DOM上から簡易判定)
+        const currentAbsListEl = document.getElementById('edit-absence-list');
+        if (currentAbsListEl && currentAbsListEl.innerHTML.includes(opt.dataset.name)) {
+            alert('このスタッフは既に登録されている可能性があります。');
+        }
+
         const dateVal = document.getElementById('edit-date').value;
+        const isHelp = storeId !== opt.dataset.storeId;
+
         try {
             const dupCheck = await getDocs(query(
                 collection(db, 't_absences'),
@@ -590,6 +516,7 @@ function setupEditAbsenceForm(perfDocId, storeId, storeName) {
                 where('staff_id', '==', opt.dataset.code)
             ));
             if (!dupCheck.empty) { alert('この日付にこのスタッフの欠勤は既に登録されています。'); return; }
+
             await addDoc(collection(db, 't_absences'), {
                 date: dateVal,
                 year_month: dateVal.substring(0, 7),
@@ -599,13 +526,14 @@ function setupEditAbsenceForm(perfDocId, storeId, storeName) {
                 staff_store_name: opt.dataset.storeName || '',
                 reported_store_id: storeId,
                 reported_store_name: storeName,
-                is_help_absence: true,
-                reason: helpReason2?.value.trim() || '',
+                is_help_absence: isHelp,
+                reason: reasonInput ? reasonInput.value.trim() : '',
                 performance_doc_id: perfDocId,
                 created_at: serverTimestamp()
             });
-            if (helpForm) helpForm.style.display = 'none';
             await loadEditAbsences(perfDocId, storeId, storeName);
+            if (form) form.style.display = 'none';
+            if (reasonInput) reasonInput.value = '';
         } catch (err) { alert('登録エラー: ' + err.message); }
     });
 }

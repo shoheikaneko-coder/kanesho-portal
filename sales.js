@@ -128,28 +128,18 @@ const salesPageHtmlDesktop = `
                         <label class="field-label">欠勤者報告</label>
                         <div id="absence-tags-desktop" style="display:flex; flex-wrap:wrap; gap:0.5rem; min-height:2rem; margin-bottom:0.6rem;"></div>
                         <div id="absence-add-area-desktop" style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-                            <button type="button" id="btn-add-absence-desktop" class="btn" style="padding:0.4rem 0.8rem; font-size:0.82rem; border:1px dashed #94a3b8; color:#64748b; background:transparent;"><i class="fas fa-plus"></i> 欠勤者を追加</button>
-                            <button type="button" id="btn-add-help-absence-desktop" class="btn" style="padding:0.4rem 0.8rem; font-size:0.82rem; border:1px dashed #6366f1; color:#6366f1; background:transparent;"><i class="fas fa-exchange-alt"></i> ヘルプスタッフの欠勤</button>
+                            <button type="button" id="btn-add-absence-desktop" class="btn" style="padding:0.4rem 0.8rem; font-size:0.82rem; border:1px dashed #94a3b8; color:#64748b; background:transparent;"><i class="fas fa-user-plus"></i> 欠勤者を追加</button>
                         </div>
-                        <!-- 自店舗スタッフ追加フォーム -->
-                        <div id="absence-form-own-desktop" style="display:none; margin-top:0.6rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:0.8rem; display:flex; flex-direction:column; gap:0.5rem;">
-                            <select id="absence-staff-select-desktop" class="form-input" style="font-size:0.9rem;"><option value="">スタッフを選択...</option></select>
+                        <!-- 欠勤スタッフ追加フォーム (統合版) -->
+                        <div id="absence-form-desktop" style="display:none; margin-top:0.6rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:0.8rem; flex-direction:column; gap:0.5rem;">
+                            <label class="field-label" style="color:#64748b;">所属店舗を選択</label>
+                            <select id="absence-store-desktop" class="form-input" style="font-size:0.9rem;"><option value="">店舗を選択...</option></select>
+                            <label class="field-label" style="color:#64748b;">スタッフを選択</label>
+                            <select id="absence-staff-desktop" class="form-input" style="font-size:0.9rem;"><option value="">先に店舗を選択...</option></select>
                             <input type="text" id="absence-reason-desktop" class="form-input" placeholder="欠勤理由（任意）" style="font-size:0.9rem;">
                             <div style="display:flex; gap:0.5rem;">
                                 <button type="button" id="btn-confirm-absence-desktop" class="btn btn-primary" style="padding:0.4rem 1rem; font-size:0.85rem;">登録</button>
                                 <button type="button" id="btn-cancel-absence-desktop" class="btn" style="padding:0.4rem 0.8rem; font-size:0.85rem; background:#e2e8f0;">キャンセル</button>
-                            </div>
-                        </div>
-                        <!-- ヘルプスタッフ追加フォーム -->
-                        <div id="absence-form-help-desktop" style="display:none; margin-top:0.6rem; background:#f0f0ff; border:1px solid #c7d2fe; border-radius:10px; padding:0.8rem; flex-direction:column; gap:0.5rem;">
-                            <label class="field-label" style="color:#6366f1;">所属店舗を選択</label>
-                            <select id="absence-help-store-desktop" class="form-input" style="font-size:0.9rem;"><option value="">店舗を選択...</option></select>
-                            <label class="field-label" style="color:#6366f1;">スタッフを選択</label>
-                            <select id="absence-help-staff-desktop" class="form-input" style="font-size:0.9rem;"><option value="">先に店舗を選択...</option></select>
-                            <input type="text" id="absence-help-reason-desktop" class="form-input" placeholder="欠勤理由（任意）" style="font-size:0.9rem;">
-                            <div style="display:flex; gap:0.5rem;">
-                                <button type="button" id="btn-confirm-help-absence-desktop" class="btn btn-primary" style="padding:0.4rem 1rem; font-size:0.85rem; background:#6366f1; border:none;">登録</button>
-                                <button type="button" id="btn-cancel-help-absence-desktop" class="btn" style="padding:0.4rem 0.8rem; font-size:0.85rem; background:#e2e8f0;">キャンセル</button>
                             </div>
                         </div>
                     </div>
@@ -330,24 +320,18 @@ const salesPageHtmlMobile = `
                     <label class="field-label">欠勤者報告</label>
                     <div id="absence-tags-mobile" style="display:flex; flex-wrap:wrap; gap:0.4rem; min-height:1.6rem; margin-bottom:0.5rem;"></div>
                     <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
-                        <button type="button" id="btn-add-absence-mobile" class="btn" style="padding:0.35rem 0.7rem; font-size:0.78rem; border:1px dashed #94a3b8; color:#64748b; background:white;"><i class="fas fa-plus"></i> 追加</button>
-                        <button type="button" id="btn-add-help-absence-mobile" class="btn" style="padding:0.35rem 0.7rem; font-size:0.78rem; border:1px dashed #6366f1; color:#6366f1; background:white;"><i class="fas fa-exchange-alt"></i> ヘルプ欠勤</button>
+                        <button type="button" id="btn-add-absence-mobile" class="btn" style="padding:0.35rem 0.7rem; font-size:0.78rem; border:1px dashed #94a3b8; color:#64748b; background:white;"><i class="fas fa-user-plus"></i> 欠勤者を追加</button>
                     </div>
-                    <div id="absence-form-own-mobile" style="display:none; margin-top:0.5rem; flex-direction:column; gap:0.4rem;">
-                        <select id="absence-staff-select-mobile" class="form-input" style="font-size:0.88rem; background:white;"><option value="">スタッフを選択...</option></select>
+                    <!-- 欠勤スタッフ追加フォーム (統合版) -->
+                    <div id="absence-form-mobile" style="display:none; margin-top:0.5rem; flex-direction:column; gap:0.4rem;">
+                        <label class="field-label" style="color:#64748b; margin-bottom:0;">所属店舗を選択</label>
+                        <select id="absence-store-mobile" class="form-input" style="font-size:0.88rem; background:white;"><option value="">店舗を選択...</option></select>
+                        <label class="field-label" style="color:#64748b; margin-bottom:0;">スタッフを選択</label>
+                        <select id="absence-staff-mobile" class="form-input" style="font-size:0.88rem; background:white;"><option value="">先に店舗を選択...</option></select>
                         <input type="text" id="absence-reason-mobile" class="form-input" placeholder="欠勤理由（任意）" style="font-size:0.88rem; background:white;">
                         <div style="display:flex; gap:0.4rem;">
                             <button type="button" id="btn-confirm-absence-mobile" class="btn btn-primary" style="flex:1; padding:0.5rem; font-size:0.85rem;">登録</button>
                             <button type="button" id="btn-cancel-absence-mobile" class="btn" style="padding:0.5rem 0.8rem; font-size:0.85rem; background:#e2e8f0;">✕</button>
-                        </div>
-                    </div>
-                    <div id="absence-form-help-mobile" style="display:none; margin-top:0.5rem; flex-direction:column; gap:0.4rem;">
-                        <select id="absence-help-store-mobile" class="form-input" style="font-size:0.88rem; background:white;"><option value="">所属店舗を選択...</option></select>
-                        <select id="absence-help-staff-mobile" class="form-input" style="font-size:0.88rem; background:white;"><option value="">先に店舗を選択...</option></select>
-                        <input type="text" id="absence-help-reason-mobile" class="form-input" placeholder="欠勤理由（任意）" style="font-size:0.88rem; background:white;">
-                        <div style="display:flex; gap:0.4rem;">
-                            <button type="button" id="btn-confirm-help-absence-mobile" class="btn btn-primary" style="flex:1; padding:0.5rem; font-size:0.85rem; background:#6366f1; border:none;">登録</button>
-                            <button type="button" id="btn-cancel-help-absence-mobile" class="btn" style="padding:0.5rem 0.8rem; font-size:0.85rem; background:#e2e8f0;">✕</button>
                         </div>
                     </div>
                 </div>
@@ -409,160 +393,107 @@ function renderAbsenteeTags(suffix) {
 
 function setupAbsenceUI(suffix, reportStoreIdGetter) {
     const btnAdd = document.getElementById(`btn-add-absence-${suffix}`);
-    const btnAddHelp = document.getElementById(`btn-add-help-absence-${suffix}`);
-    const formOwn = document.getElementById(`absence-form-own-${suffix}`);
-    const formHelp = document.getElementById(`absence-form-help-${suffix}`);
-    const staffSel = document.getElementById(`absence-staff-select-${suffix}`);
+    const form = document.getElementById(`absence-form-${suffix}`);
+    const storeSel = document.getElementById(`absence-store-${suffix}`);
+    const staffSel = document.getElementById(`absence-staff-${suffix}`);
     const reasonInput = document.getElementById(`absence-reason-${suffix}`);
-    const helpStoreSel = document.getElementById(`absence-help-store-${suffix}`);
-    const helpStaffSel = document.getElementById(`absence-help-staff-${suffix}`);
-    const helpReasonInput = document.getElementById(`absence-help-reason-${suffix}`);
+    const btnConfirm = document.getElementById(`btn-confirm-absence-${suffix}`);
+    const btnCancel = document.getElementById(`btn-cancel-absence-${suffix}`);
 
     if (!btnAdd) return;
 
-    // 自店舗追加フォームを開く
+    // 追加フォームを開く
     btnAdd.onclick = () => {
-        if (formOwn) {
-            formOwn.style.display = 'flex';
-            // 報告店舗に所属するスタッフをフィルタリング
-            const sid = reportStoreIdGetter();
-            if (staffSel) {
-                staffSel.innerHTML = '<option value="">スタッフを選択...</option>';
-                const sidStr = String(sid).trim();
-                // 報告店舗の情報を特定
-                const reportedStore = allStoresCache.find(st =>
-                    String(st.id).trim() === sidStr || String(st.store_id || '').trim() === sidStr
-                );
-                const reportedStoreName = reportedStore
-                    ? String(reportedStore.store_name || reportedStore['店舗名'] || '').trim()
-                    : '';
-                const storeStaff = allStaffCache.filter(s => {
-                    if (!s.EmployeeCode) return false;
-                    const sStoreId = String(s.StoreID || s.StoreId || s.store_id || '').trim();
-                    const sStoreName = String(s.Store || '').trim();
-                    
-                    const stId = reportedStore ? String(reportedStore.id).trim() : '';
-                    const stStoreId = reportedStore ? String(reportedStore.store_id || '').trim() : '';
-
-                    return (sStoreId && sStoreId === sidStr) ||
-                           (reportedStore && sStoreId && (sStoreId === stStoreId || sStoreId === stId)) ||
-                           (reportedStoreName && sStoreName && sStoreName === reportedStoreName);
-                });
-                storeStaff.forEach(s => {
+        if (form) {
+            form.style.display = 'flex';
+            
+            // 店舗プルダウンの初期化
+            if (storeSel) {
+                storeSel.innerHTML = '<option value="">店舗を選択...</option>';
+                allStoresCache.forEach(st => {
                     const opt = document.createElement('option');
-                    opt.value = s.id;
-                    opt.dataset.code = s.EmployeeCode || s.id;
-                    opt.dataset.name = s.Name || s.name || '';
-                    opt.dataset.storeId = s.StoreID || s.StoreId || s.store_id || '';
-                    opt.dataset.storeName = s.Store || '';
-                    opt.textContent = s.Name || s.name || '';
-                    staffSel.appendChild(opt);
+                    opt.value = st.id;
+                    opt.textContent = st.store_name || st.id;
+                    storeSel.appendChild(opt);
                 });
-            }
-        }
-        if (formHelp) formHelp.style.display = 'none';
-    };
 
-    // ヘルプ追加フォームを開く
-    if (btnAddHelp) {
-        btnAddHelp.onclick = () => {
-            if (formHelp) {
-                formHelp.style.display = 'flex';
-                // 全店舗をセット（報告店舗以外）
-                if (helpStoreSel) {
-                    const curSid = reportStoreIdGetter();
-                    helpStoreSel.innerHTML = '<option value="">所属店舗を選択...</option>';
-                    allStoresCache.filter(st => st.id !== curSid).forEach(st => {
-                        const opt = document.createElement('option');
-                        opt.value = st.id;
-                        opt.textContent = st.store_name || st.id;
-                        helpStoreSel.appendChild(opt);
-                    });
-                    helpStaffSel.innerHTML = '<option value="">先に店舗を選択...</option>';
+                // 報告店舗をデフォルト選択
+                const currentReportStoreId = reportStoreIdGetter();
+                if (currentReportStoreId) {
+                    storeSel.value = currentReportStoreId;
+                    // changeイベントを発火させてスタッフリストを更新
+                    storeSel.dispatchEvent(new Event('change'));
+                } else {
+                    if (staffSel) staffSel.innerHTML = '<option value="">先に店舗を選択...</option>';
                 }
             }
-            if (formOwn) formOwn.style.display = 'none';
-        };
-    }
+        }
+    };
 
-    // ヘルプ: 店舗選択→スタッフ絞り込み
-    if (helpStoreSel && helpStaffSel) {
-        helpStoreSel.onchange = () => {
-            const selectedStoreId = helpStoreSel.value;
-            const selectedStore = allStoresCache.find(st => st.id === selectedStoreId);
-            helpStaffSel.innerHTML = '<option value="">スタッフを選択...</option>';
+    // 店舗選択時のスタッフ絞り込み
+    if (storeSel && staffSel) {
+        storeSel.onchange = () => {
+            const selectedStoreId = storeSel.value;
+            staffSel.innerHTML = '<option value="">スタッフを選択...</option>';
             if (!selectedStoreId) return;
+
+            const selectedStore = allStoresCache.find(st => st.id === selectedStoreId);
             const filtered = allStaffCache.filter(s => {
                 if (!s.EmployeeCode) return false;
-                const sStoreId = s.StoreID || s.StoreId || s.store_id;
-                return sStoreId === selectedStoreId || (selectedStore && s.Store === selectedStore.store_name);
+                const sStoreId = String(s.StoreID || s.StoreId || s.store_id || '').trim();
+                const sStoreName = String(s.Store || '').trim();
+                
+                const stId = selectedStore ? String(selectedStore.id).trim() : '';
+                const stStoreId = selectedStore ? String(selectedStore.store_id || '').trim() : '';
+
+                return (sStoreId && sStoreId === String(selectedStoreId).trim()) ||
+                       (selectedStore && sStoreId && (sStoreId === stStoreId || sStoreId === stId)) ||
+                       (selectedStore && sStoreName && sStoreName === String(selectedStore.store_name || selectedStore['店舗名'] || '').trim());
             });
+            
             filtered.forEach(s => {
                 const opt = document.createElement('option');
                 opt.value = s.id;
                 opt.dataset.code = s.EmployeeCode || s.id;
                 opt.dataset.name = s.Name || s.name || '';
                 opt.dataset.storeId = selectedStoreId;
-                opt.dataset.storeName = selectedStore ? (selectedStore.store_name || '') : '';
+                opt.dataset.storeName = selectedStore ? (selectedStore.store_name || selectedStore['店舗名'] || '') : '';
                 opt.textContent = s.Name || s.name || '';
-                helpStaffSel.appendChild(opt);
+                staffSel.appendChild(opt);
             });
         };
     }
 
-    // 自店舗: 登録ボタン
-    const btnConfirm = document.getElementById(`btn-confirm-absence-${suffix}`);
+    // 登録ボタン
     if (btnConfirm && staffSel) {
         btnConfirm.onclick = () => {
             const opt = staffSel.options[staffSel.selectedIndex];
             if (!opt || !opt.value) return;
+            
             const alreadyExists = absenteeList.some(a => a.staff_id === opt.dataset.code);
             if (alreadyExists) { showAlert('確認', 'このスタッフは既に登録されています。'); return; }
+            
+            // レポート対象の店舗と異なる場合は自動的にヘルプ扱いにする
+            const isHelp = reportStoreIdGetter() !== opt.dataset.storeId;
+
             absenteeList.push({
                 staff_id: opt.dataset.code,
                 staff_name: opt.dataset.name,
                 staff_store_id: opt.dataset.storeId,
                 staff_store_name: opt.dataset.storeName,
-                is_help_absence: false,
+                is_help_absence: isHelp,
                 reason: reasonInput ? reasonInput.value.trim() : ''
             });
+            
             renderAbsenteeTags('desktop');
             renderAbsenteeTags('mobile');
-            if (formOwn) formOwn.style.display = 'none';
+            if (form) form.style.display = 'none';
             if (reasonInput) reasonInput.value = '';
         };
     }
 
-    // 自店舗: キャンセル
-    const btnCancel = document.getElementById(`btn-cancel-absence-${suffix}`);
-    if (btnCancel) btnCancel.onclick = () => { if (formOwn) formOwn.style.display = 'none'; };
-
-    // ヘルプ: 登録ボタン
-    const btnConfirmHelp = document.getElementById(`btn-confirm-help-absence-${suffix}`);
-    if (btnConfirmHelp && helpStaffSel) {
-        btnConfirmHelp.onclick = () => {
-            const opt = helpStaffSel.options[helpStaffSel.selectedIndex];
-            if (!opt || !opt.value) return;
-            const alreadyExists = absenteeList.some(a => a.staff_id === opt.dataset.code);
-            if (alreadyExists) { showAlert('確認', 'このスタッフは既に登録されています。'); return; }
-            absenteeList.push({
-                staff_id: opt.dataset.code,
-                staff_name: opt.dataset.name,
-                staff_store_id: opt.dataset.storeId,
-                staff_store_name: opt.dataset.storeName,
-                is_help_absence: true,
-                reason: helpReasonInput ? helpReasonInput.value.trim() : ''
-            });
-            renderAbsenteeTags('desktop');
-            renderAbsenteeTags('mobile');
-            if (formHelp) formHelp.style.display = 'none';
-            if (helpReasonInput) helpReasonInput.value = '';
-        };
-    }
-
-    // ヘルプ: キャンセル
-    const btnCancelHelp = document.getElementById(`btn-cancel-help-absence-${suffix}`);
-    if (btnCancelHelp) btnCancelHelp.onclick = () => { if (formHelp) formHelp.style.display = 'none'; };
+    // キャンセルボタン
+    if (btnCancel) btnCancel.onclick = () => { if (form) form.style.display = 'none'; };
 }
 
 export async function initSalesPage() {
