@@ -461,17 +461,24 @@ function setupEditAbsenceForm(perfDocId, storeId, storeName) {
             const staffSel2 = document.getElementById('edit-absence-staff-sel');
             if (staffSel2) {
                 staffSel2.innerHTML = '<option value="">スタッフを選択...</option>';
+                const sidStr = String(storeId).trim();
                 const reportedStore = editAbsenceStoresCache.find(st =>
-                    st.id === storeId || st.store_id === storeId
+                    String(st.id).trim() === sidStr || String(st.store_id || '').trim() === sidStr
                 );
                 const reportedStoreName = reportedStore
-                    ? (reportedStore.store_name || reportedStore['店舗名'] || storeName)
-                    : storeName;
+                    ? String(reportedStore.store_name || reportedStore['店舗名'] || storeName).trim()
+                    : String(storeName).trim();
+                    
                 editAbsenceStaffCache.filter(s => {
-                    const sStoreId = s.StoreID || s.StoreId || s.store_id || '';
-                    return sStoreId === storeId ||
-                           (reportedStore && (sStoreId === reportedStore.store_id || sStoreId === reportedStore.id)) ||
-                           s.Store === reportedStoreName;
+                    const sStoreId = String(s.StoreID || s.StoreId || s.store_id || '').trim();
+                    const sStoreName = String(s.Store || '').trim();
+                    
+                    const stId = reportedStore ? String(reportedStore.id).trim() : '';
+                    const stStoreId = reportedStore ? String(reportedStore.store_id || '').trim() : '';
+
+                    return (sStoreId && sStoreId === sidStr) ||
+                           (reportedStore && sStoreId && (sStoreId === stStoreId || sStoreId === stId)) ||
+                           (reportedStoreName && sStoreName && sStoreName === reportedStoreName);
                 }).forEach(s => {
                     const opt = document.createElement('option');
                     opt.value = s.id;
