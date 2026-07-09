@@ -96,6 +96,7 @@ export const attendanceManagementPageHtml = `
                             <th style="padding: 1rem; text-align: right;">出勤日数</th>
                             <th style="padding: 1rem; text-align: right;">総労働時間</th>
                             <th style="padding: 1rem; text-align: right;">深夜時間</th>
+                            <th style="padding: 1rem; text-align: right; color: var(--danger);">欠勤数</th>
                             <th style="padding: 1rem; text-align: center;">操作</th>
                         </tr>
                     </thead>
@@ -352,6 +353,7 @@ export const attendanceManagementPageHtml = `
                                     <th style="width: 150px; text-align: right;">出勤日数</th>
                                     <th style="width: 180px; text-align: right;">総実労働時間</th>
                                     <th style="width: 180px; text-align: right;">総深夜時間</th>
+                                    <th style="width: 120px; text-align: right; color: var(--danger);">欠勤数</th>
                                     <th style="text-align: center;">操作</th>
                                 </tr>
                             </thead>
@@ -1457,8 +1459,27 @@ async function loadMonthlyData() {
             filtered = filtered.filter(s => String(s.store_id) === String(storeId));
         }
 
+        // 【新規追加】t_absences から月間欠勤数を取得
+        const absenceCountMap = {};
+        try {
+            const absSnap = await getDocs(query(
+                collection(db, 't_absences'),
+                where('year_month', '==', month)
+            ));
+            absSnap.forEach(d => {
+                const sid = String(d.data().staff_id);
+                absenceCountMap[sid] = (absenceCountMap[sid] || 0) + 1;
+            });
+        } catch (absErr) {
+            console.error('欠勤データ取得失敗（月別集計）:', absErr);
+        }
+
         body.innerHTML = '';
         filtered.sort((a,b) => a.code.localeCompare(b.code)).forEach(s => {
+            const absCount = absenceCountMap[String(s.code)] || 0;
+            const absCellContent = absCount > 0
+                ? `<span style="background:var(--danger); color:white; padding:0.15rem 0.5rem; border-radius:10px; font-size:0.8rem; font-weight:700;">${absCount}回</span>`
+                : '<span style="color:#94a3b8;">-</span>';
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${s.code}</td>
@@ -1467,6 +1488,7 @@ async function loadMonthlyData() {
                 <td style="text-align:right;">${s.days.size}日</td>
                 <td style="text-align:right; font-weight:700;">${s.totalHours.toFixed(1)}h</td>
                 <td style="text-align:right; color:var(--primary);">${s.lateHours.toFixed(1)}h</td>
+                <td style="text-align:right;">${absCellContent}</td>
                 <td style="text-align:center;">
                     <button class="btn" style="padding:0.3rem 0.6rem; font-size:0.8rem; background:#e2e8f0;" onclick="window.switchToDailyFromMonthly('${s.store_name}', '${month}-01')">
                         <i class="fas fa-search"></i> 日別
@@ -2065,12 +2087,28 @@ async function loadIntegratedData() {
         // 3. 承認待ちデータの取得（リアルタイムリスナーのキャッシュ window.__pendingAttnRequests からの連携）
         const pendingRequests = window.__pendingAttnRequests || [];
 
+        // 3b. 【新規追加】t_absences から月間欠勤数を取得
+        const absenceCountMap = {};
+        try {
+            const absSnap = await getDocs(query(
+                collection(db, 't_absences'),
+                where('year_month', '==', month)
+            ));
+            absSnap.forEach(d => {
+                const sid = String(d.data().staff_id);
+                absenceCountMap[sid] = (absenceCountMap[sid] || 0) + 1;
+            });
+        } catch (absErr) {
+            console.error('欠勤データ取得失敗（統合ダッシュボード月別）:', absErr);
+        }
+
         // 4. キャッシュに格納
         lastLoadedIntData = {
             staffMap: staffMap,
             staffMonthlyStats: staffMonthlyStats,
             staffSessions: staffSessions,
             pendingRequests: pendingRequests,
+            absenceCountMap: absenceCountMap,
             month: month,
             date: date,
             storeId: storeId
@@ -2174,9 +2212,11 @@ function renderIntMonthly() {
     body.innerHTML = '';
 
     if (activeStaff.length === 0) {
-        body.innerHTML = '<tr><td colspan="7" style="padding:3rem; text-align:center; color:var(--text-secondary);">該当店舗の従業員データがありません。</td></tr>';
+        body.innerHTML = '<tr><td colspan="8" style="padding:3rem; text-align:center; color:var(--text-secondary);">該当店舗の従業員データがありません。</td></tr>';
         return;
     }
+
+    const absCountMap = data.absenceCountMap || {};
 
     activeStaff.sort((a,b) => a.code.localeCompare(b.code)).forEach(s => {
         const stats = data.staffMonthlyStats[s.code];
@@ -2191,6 +2231,11 @@ function renderIntMonthly() {
             lateCount = stats.lateHours;
         }
 
+        const absCount = absCountMap[String(s.code)] || 0;
+        const absCellContent = absCount > 0
+            ? `<span style="background:var(--danger); color:white; padding:0.15rem 0.5rem; border-radius:10px; font-size:0.8rem; font-weight:700;">${absCount}回</span>`
+            : '<span style="color:#94a3b8;">-</span>';
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td style="font-family: monospace; font-size: 0.85rem;">${s.code}</td>
@@ -2199,6 +2244,7 @@ function renderIntMonthly() {
             <td style="text-align: right; font-weight: 600; color: #475569;">${daysCount}日</td>
             <td style="text-align: right; font-weight: 700; color: var(--text-primary); font-size: 0.9rem;">${hoursCount.toFixed(2)}h</td>
             <td style="text-align: right; font-weight: 700; color: var(--primary); font-size: 0.9rem;">${lateCount.toFixed(2)}h</td>
+            <td style="text-align: right;">${absCellContent}</td>
             <td style="text-align: center;">
                 <button class="btn" style="padding: 0.35rem 0.8rem; font-size: 0.8rem; background: #f1f5f9; color: #475569; border: 1px solid var(--border); border-radius: 6px; font-weight: 700;" onclick="window.switchToDailyFromIntMonthly('${s.store_name}', '${data.month}-01')">
                     <i class="fas fa-search"></i> 日別で表示
