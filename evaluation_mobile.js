@@ -15,7 +15,7 @@ export const evaluationPageHtmlMobile = `
     <style>
         .eval-mob-container {
             background-color: #f8fafc;
-            min-height: calc(100vh - 60px);
+            min-height: calc(100dvh - 60px);
             padding-bottom: 80px; /* Space for bottom nav if any */
             font-family: 'Inter', sans-serif;
         }

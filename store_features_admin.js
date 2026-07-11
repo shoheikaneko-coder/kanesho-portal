@@ -9,7 +9,7 @@ const SPECIAL_FEATURES = [
 ];
 
 export const storeFeaturesAdminPageHtml = `
-    <div class="animate-fade-in" style="max-width: 1200px; margin: 0 auto; padding-bottom: 3rem; height: calc(100vh - 100px); display: flex; flex-direction: column;">
+    <div class="animate-fade-in app-container-fill" style="max-width: 1200px; margin: 0 auto; padding-bottom: 3rem; display: flex; flex-direction: column;">
         
         <!-- Header -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-shrink: 0;">

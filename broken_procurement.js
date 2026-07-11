@@ -10,7 +10,7 @@ import { showAlert, showConfirm } from './ui_utils.js';
  */
 
 export const procurementMobilePageHtml = `
-    <div id="procurement-app" class="animate-fade-in" style="display: flex; flex-direction: column; height: calc(100vh - 80px); overflow: hidden; background: #f8fafc;">
+    <div id="procurement-app" class="animate-fade-in app-container-fill" style="display: flex; flex-direction: column; overflow: hidden; background: #f8fafc;">
         
         <!-- Compact Header: Scope & Category Switcher -->
         <div style="background: white; border-bottom: 1px solid #e2e8f0; padding: 0.6rem 1rem; flex-shrink: 0; display: flex; flex-direction: column; gap: 0.6rem;">

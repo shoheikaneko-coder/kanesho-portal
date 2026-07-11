@@ -6,7 +6,7 @@ import { MENU_DEFINITION } from './menu_definition.js?v=20260710_02';
  * HubページのHTMLテンプレートを生成する
  */
 export const hubPageHtml = (title, description) => `
-    <div class="hub-page animate-fade-in" style="max-width: 1200px; margin: 0 auto; padding-bottom: 5rem; padding-top: 1.5rem;">
+    <div class="hub-page animate-fade-in" style="width: 100%; max-width: 1200px; margin: 0 auto; padding-bottom: 5rem; padding-top: 1.5rem;">
         <div id="hub-content-container">
             <!-- Content will be injected here (either grid or sections) -->
         </div>

@@ -13,7 +13,7 @@ let expandedAreas = new Set();
 let searchQuery = "";
 
 export const bottleKeepPageHtml = `
-    <div id="bottle-keep-container" class="animate-fade-in" style="display: flex; flex-direction: column; height: calc(100vh - 120px); overflow: hidden;">
+    <div id="bottle-keep-container" class="animate-fade-in app-container-fill" style="display: flex; flex-direction: column; overflow: hidden;">
         
         <!-- Top Toolbar -->
         <div class="glass-panel" style="padding: 1rem 1.5rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; z-index: 100;">

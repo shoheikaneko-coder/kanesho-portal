@@ -4,7 +4,7 @@ import { calculateAllTheoreticalStocks } from './stock_logic.js';
 import { showAlert } from './ui_utils.js';
 
 export const inventoryPageHtml = `
-    <div id="inventory-app" class="animate-fade-in" style="display: flex; height: calc(100vh - 120px); gap: 1rem; overflow: hidden; padding: 0 1rem;">
+    <div id="inventory-app" class="animate-fade-in app-container-fill" style="display: flex; gap: 1rem; overflow: hidden; padding: 0 1rem;">
         
         <!-- Sidebar: Store & Timing Selection -->
         <aside id="inv-sidebar" class="glass-panel" style="width: 260px; display: flex; flex-direction: column; gap: 1rem; padding: 1.2rem; flex-shrink: 0;">

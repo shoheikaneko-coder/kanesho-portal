@@ -11,7 +11,7 @@ export const invoicesPageHtml = `
 .invoice-container {
     display: flex;
     gap: 1.5rem;
-    height: calc(100vh - 100px);
+    /* height: calc(100vh - 100px); 削除：100vhバグ回避のためapp-container-fillに一任 */
     padding: 1rem;
     box-sizing: border-box;
 }
@@ -302,7 +302,7 @@ export const invoicesPageHtml = `
 }
 </style>
 
-<div class="invoice-container animate-fade-in">
+<div class="invoice-container animate-fade-in app-container-fill">
     <!-- 左側：リストペイン -->
     <div class="invoice-list-pane">
         <div class="list-header">
@@ -357,12 +357,13 @@ export const invoicesPageHtml = `
             <div style="flex:1.2; display:flex; flex-direction:column; gap:1.2rem;">
                 <div class="input-group" style="margin:0;">
                     <label style="font-weight:800; color:#475569;">取引先名</label>
-                    <input type="text" id="inv-supplier" placeholder="例：〇〇株式会社" required style="font-size:1rem; padding:0.8rem;">
+                    <input type="text" id="inv-supplier" placeholder="例：〇〇株式会社" autocomplete="off" required style="font-size:1rem; padding:0.8rem;">
+                    <datalist id="supplier-list"></datalist>
                 </div>
                 <div style="input-group" style="margin:0; display:flex; gap:1rem;">
                     <div style="flex:1;">
                         <label style="font-weight:800; color:#475569; display:block; margin-bottom:0.4rem;">請求金額（税込）</label>
-                        <input type="number" id="inv-amount" placeholder="例：50000" required style="width:100%; font-size:1rem; padding:0.8rem; border:1px solid #cbd5e1; border-radius:8px;">
+                        <input type="text" inputmode="numeric" id="inv-amount" placeholder="例：50,000" required style="width:100%; font-size:1rem; padding:0.8rem; border:1px solid #cbd5e1; border-radius:8px;">
                     </div>
                     <div style="flex:1;">
                         <label style="font-weight:800; color:#475569; display:block; margin-bottom:0.4rem;">支払期限</label>
@@ -721,6 +722,32 @@ function bindEvents() {
         selectedWorkflowId = null;
         renderHistoryTable();
     });
+
+    // 請求金額のカンマ自動挿入リスナー
+    const amountInput = document.getElementById('inv-amount');
+    if (amountInput) {
+        amountInput.addEventListener('input', (e) => {
+            let val = e.target.value.replace(/[^\d]/g, ''); // 数字以外を除去
+            if (val) {
+                e.target.value = Number(val).toLocaleString('ja-JP');
+            } else {
+                e.target.value = '';
+            }
+        });
+    }
+
+    // 取引先名サジェストの表示制御（入力時のみ表示）
+    const supplierInput = document.getElementById('inv-supplier');
+    if (supplierInput) {
+        supplierInput.removeAttribute('list'); // 初期状態は紐付け解除
+        supplierInput.addEventListener('input', (e) => {
+            if (e.target.value.length > 0) {
+                e.target.setAttribute('list', 'supplier-list');
+            } else {
+                e.target.removeAttribute('list');
+            }
+        });
+    }
 }
 
 function handleFileSelect(file) {
@@ -738,6 +765,32 @@ function openNewModal() {
     document.getElementById('inv-amount').value = '';
     document.getElementById('inv-deadline').value = '';
     document.getElementById('inv-note').value = '';
+
+    // 取引先サジェストの更新
+    updateSupplierDatalist();
+}
+
+function updateSupplierDatalist() {
+    const datalist = document.getElementById('supplier-list');
+    if (!datalist) return;
+    datalist.innerHTML = '';
+    
+    // 過去のワークフローから取引先名を抽出して重複排除
+    const suppliers = new Set();
+    if (typeof currentWorkflows !== 'undefined' && Array.isArray(currentWorkflows)) {
+        currentWorkflows.forEach(wf => {
+            if (wf.payload && wf.payload.supplier) {
+                suppliers.add(wf.payload.supplier);
+            }
+        });
+    }
+    
+    // オプション要素を追加
+    suppliers.forEach(sup => {
+        const option = document.createElement('option');
+        option.value = sup;
+        datalist.appendChild(option);
+    });
 }
 
 function closeNewModal() {
@@ -803,7 +856,7 @@ function renderList() {
             <div style="font-weight:800; color:#1e293b; margin-bottom:0.3rem;">${wf.payload.supplier}</div>
             <div style="display:flex; justify-content:space-between; font-size:0.85rem; color:#64748b;">
                 <span><i class="fas fa-yen-sign"></i> ${Number(wf.payload.amount).toLocaleString()}</span>
-                <span style="${new Date(wf.payload?.deadline) < new Date() ? 'color:#ef4444;font-weight:bold;' : ''}"><i class="far fa-calendar-alt"></i> ${wf.payload?.deadline || '未設定'}</span>
+                <span style="${new Date(wf.payload?.deadline) < new Date() ? 'color:#ef4444;font-weight:bold;' : ''}"><i class="far fa-calendar-alt"></i> 振込期限: ${wf.payload?.deadline || '未設定'}</span>
             </div>
         `;
         card.addEventListener('click', () => {
@@ -987,6 +1040,59 @@ async function submitNewInvoice() {
         return;
     }
 
+    const rawAmount = amount.replace(/,/g, '');
+    const numAmount = Number(rawAmount);
+
+    // 重複チェック
+    let duplicateLinksHtml = '';
+    if (typeof currentWorkflows !== 'undefined' && Array.isArray(currentWorkflows)) {
+        const duplicates = currentWorkflows.filter(wf => {
+            return wf.payload &&
+                   wf.payload.supplier === supplier &&
+                   Number(wf.payload.amount) === numAmount &&
+                   wf.payload.deadline === deadline;
+        });
+
+        if (duplicates.length > 0) {
+            let links = duplicates.map((wf, idx) => {
+                const url = wf.attachments?.[0] || '#';
+                const dateStr = new Date(wf.createdAt || Date.now()).toLocaleDateString('ja-JP');
+                return `<a href="${url}" target="_blank" style="display:block; color:#2563eb; text-decoration:underline; margin-bottom:0.4rem;">🔗 過去のファイル ${idx + 1}（${dateStr} 申請分）</a>`;
+            }).join('');
+
+            duplicateLinksHtml = `
+                <div style="color: #991b1b; margin-bottom: 1rem; border: 1px solid #f87171; padding: 1rem; background: #fef2f2; border-radius: 8px;">
+                    <div style="font-weight: 800; display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;">
+                        <i class="fas fa-exclamation-triangle"></i> 【警告】二重支払いの可能性があります
+                    </div>
+                    <p style="margin:0 0 0.8rem 0; font-size:0.85rem;">過去に同じ内容（取引先名、請求金額、支払期限）の申請が存在します。以下のファイルを開き、今回申請する内容と同一でないかご確認ください。</p>
+                    <div style="font-size:0.85rem; padding-left:0.5rem;">
+                        ${links}
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    // --- 確認ダイアログの表示 ---
+    const formattedAmount = numAmount.toLocaleString('ja-JP');
+    const confirmHtml = `
+        ${duplicateLinksHtml}
+        <div style="text-align: left; background: #f8fafc; padding: 1rem; border-radius: 8px; font-size: 0.9rem;">
+            <p style="margin: 0.2rem 0;"><strong>取引先名:</strong> ${supplier}</p>
+            <p style="margin: 0.2rem 0;"><strong>請求金額:</strong> ${formattedAmount} 円 (税込)</p>
+            <p style="margin: 0.2rem 0;"><strong>支払期限:</strong> ${deadline}</p>
+            <p style="margin: 0.2rem 0;"><strong>ファイル:</strong> ${currentFile.name}</p>
+            ${note ? `<p style="margin: 0.5rem 0 0.2rem 0;"><strong>備考:</strong><br>${note.replace(/\n/g, '<br>')}</p>` : ''}
+        </div>
+        <p style="margin-top:1.5rem; text-align:center; font-weight:800; color:var(--text-primary);">この内容で申請してもよろしいですか？</p>
+    `;
+
+    const isConfirmed = await showConfirm('申請内容の確認', confirmHtml);
+    if (!isConfirmed) {
+        return; // キャンセルされた場合は中断
+    }
+
     const btn = document.getElementById('btn-submit-new');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 送信中...';
@@ -1000,7 +1106,7 @@ async function submitNewInvoice() {
 
         const payload = {
             supplier,
-            amount: Number(amount),
+            amount: numAmount,
             deadline,
             note,
             fileName: currentFile.name
@@ -1025,6 +1131,7 @@ async function submitNewInvoice() {
     } catch (error) {
         console.error(error);
         showAlert('申請に失敗しました。', 'error');
+    } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-paper-plane"></i> 申請する';
     }

@@ -3556,7 +3556,8 @@ export const shiftViewerMobilePageHtml = `
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 120px);
+            flex: 1;
+            min-height: 0;
         }
         .viewer-mobile-nav {
             padding: 1rem;

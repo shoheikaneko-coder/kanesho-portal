@@ -10,7 +10,7 @@ import { showAlert, showConfirm } from './ui_utils.js';
  */
 
 export const stocktakePageHtml = `
-    <div id="stocktake-app" class="animate-fade-in" style="height: calc(100vh - 120px); display: flex; flex-direction: column; gap: 1rem; overflow: hidden; padding: 0 1rem;">
+    <div id="stocktake-app" class="animate-fade-in app-container-fill" style="display: flex; flex-direction: column; gap: 1rem; overflow: hidden; padding: 0 1rem;">
 
         <!-- Main Header -->
         <div id="st-header" style="padding: 1rem 1.5rem; border-bottom: 2px solid var(--border); background: var(--surface-darker); display: flex; justify-content: space-between; align-items: center; border-radius: 12px 12px 0 0; margin-bottom: 0;">

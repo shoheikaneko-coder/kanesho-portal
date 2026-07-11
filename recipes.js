@@ -7,7 +7,7 @@ import { collection, getDocs, query, where } from "https://www.gstatic.com/fireb
  */
 
 export const recipesViewerPageHtml = `
-    <div class="rv-container animate-fade-in">
+    <div class="rv-container app-container-fill animate-fade-in">
         <style>
             :root {
                 --rv-sidebar-width: 380px;
@@ -22,7 +22,7 @@ export const recipesViewerPageHtml = `
 
             .rv-container {
                 display: flex;
-                height: calc(100vh - 100px);
+                /* height: calc(100vh - 100px); 削除：100vhバグ回避 */
                 margin: -1rem; /* Adjust for parent padding */
                 background: var(--rv-bg);
                 overflow: hidden;

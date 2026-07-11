@@ -4,7 +4,7 @@ import { procurementPageHtml, initProcurementPage } from './procurement.js';
 import { procurementMobilePageHtml, initProcurementMobilePage } from './procurement_mobile.js';
 
 export const opsHubMainPageHtml = `
-    <div id="ops-hub-main-container" class="animate-fade-in" style="display: flex; flex-direction: column; height: calc(100vh - 80px); overflow: hidden;">
+    <div id="ops-hub-main-container" class="animate-fade-in app-container-fill" style="display: flex; flex-direction: column; overflow: hidden;">
         <!-- Top Tab Navigation -->
         <div class="ops-hub-tabs glass" style="display: flex; gap: 0.5rem; padding: 0.8rem 1.5rem; background: rgba(255,255,255,0.6); border-bottom: 1px solid var(--border); overflow-x: auto; flex-shrink: 0;">
             <button class="ops-tab-btn active" data-tab="inventory" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.7rem 1.2rem; border-radius: 12px; border: 1px solid var(--border); background: white; cursor: pointer; font-weight: 800; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap;">

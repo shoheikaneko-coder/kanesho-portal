@@ -10,7 +10,7 @@ import { showAlert, showConfirm } from './ui_utils.js';
  */
 
 export const procurementPageHtml = `
-    <div id="procurement-app" class="animate-fade-in" style="display: flex; height: calc(100vh - 120px); gap: 1rem; overflow: hidden; padding: 0 1rem;">
+    <div id="procurement-app" class="animate-fade-in app-container-fill" style="display: flex; gap: 1rem; overflow: hidden; padding: 0 1rem;">
         
         <!-- Sidebar: Vendor Selection -->
         <aside id="proc-sidebar" class="glass-panel" style="width: 260px; display: flex; flex-direction: column; gap: 1.5rem; padding: 1.2rem; flex-shrink: 0;">

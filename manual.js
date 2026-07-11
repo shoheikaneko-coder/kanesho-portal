@@ -954,7 +954,8 @@ export const manualViewerPageHtml = `
         .manual-toc-column {
             position: sticky;
             top: 100px; /* ヘッダー分空ける */
-            height: calc(100vh - 140px);
+            max-height: calc(100dvh - 140px);
+            height: auto;
             overflow-y: auto;
             background: rgba(255, 255, 255, 0.65);
             backdrop-filter: blur(10px);

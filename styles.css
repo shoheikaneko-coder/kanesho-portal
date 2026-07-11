@@ -364,6 +364,14 @@ p { color: var(--text-secondary); line-height: 1.5; }
   overscroll-behavior-y: contain;
 }
 
+/* 新設：100vhに代わる、余白をぴったり埋めるためのコンテナクラス */
+.app-container-fill {
+  /* ヘッダーと余白の高さを差し引いた残りの画面領域を正確に確保 */
+  height: calc(100vh - 150px); /* フォールバック */
+  height: calc(100dvh - 150px);
+  min-height: 400px;
+}
+
 /* Dashboard Cards */
 .grid-cards {
   display: grid;
