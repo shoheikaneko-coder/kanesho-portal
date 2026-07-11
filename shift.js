@@ -2047,7 +2047,11 @@ window.openDailyMemoModal = (ymd) => {
             try {
                 await saveDailyMemo(sid, ymd, '', me.Name);
                 modal.style.display = 'none';
-                renderAdminGrid();
+                
+                // DOMを直接更新して全体の再描画（レイアウト崩れ）を防ぐ
+                const cell = document.getElementById(`memo-cell-${ymd}`);
+                if (cell) cell.innerHTML = `<span class="daily-memo-preview empty">＋入力</span>`;
+                
             } catch (e) {
                 showAlert('エラー', 'メモの削除に失敗しました。');
             } finally {
@@ -2064,7 +2068,15 @@ window.openDailyMemoModal = (ymd) => {
         try {
             await saveDailyMemo(sid, ymd, text, me.Name);
             modal.style.display = 'none';
-            renderAdminGrid();
+            
+            // DOMを直接更新して全体の再描画（レイアウト崩れ）を防ぐ
+            const cell = document.getElementById(`memo-cell-${ymd}`);
+            if (cell) {
+                cell.innerHTML = text 
+                    ? `<span class="daily-memo-preview has-memo">📝 ${text}</span>` 
+                    : `<span class="daily-memo-preview empty">＋入力</span>`;
+            }
+            
         } catch (e) {
             showAlert('エラー', 'メモの保存に失敗しました。');
         } finally {
