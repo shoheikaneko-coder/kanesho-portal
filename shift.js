@@ -2135,41 +2135,45 @@ window.hideViewerMemoTooltip = () => {
 };
 
 window.openTimeInput = async (date, uid) => {
-    if (window.innerWidth < 768 && typeof window.openTimeInputMobile === 'function') {
-        window.openTimeInputMobile(date, uid);
-        return;
-    }
-    const isMobile = window.innerWidth <= 1024;
-    window.currentEditingUid = uid;
-    window.currentEditingDate = date;
-
-    if (isBulkMode) {
-        const cellId = `cell-${uid}-${date}`;
-        const cardMobileId = `card-mobile-${uid}-${date}`;
-        const el = document.getElementById(cellId);
-        const cardEl = document.getElementById(cardMobileId);
-        
-        const idx = selectedCells.findIndex(x => x.uid === uid && x.date === date);
-        if (idx > -1) {
-            selectedCells.splice(idx, 1);
-            if (el) el.classList.remove('selected-shift-cell');
-            if (cardEl) cardEl.classList.remove('selected-shift-card');
-        } else {
-            selectedCells.push({ uid, date });
-            if (el) el.classList.add('selected-shift-cell');
-            if (cardEl) cardEl.classList.add('selected-shift-card');
+    try {
+        if (window.innerWidth < 768 && typeof window.openTimeInputMobile === 'function') {
+            window.openTimeInputMobile(date, uid);
+            return;
         }
-        
-        // モバイルUIの更新
-        updateBulkModeUI();
+        const isMobile = window.innerWidth <= 1024;
+        window.currentEditingUid = uid;
+        window.currentEditingDate = date;
 
-        const bulkBtn = document.getElementById('btn-bulk-mode') || document.getElementById('btn-bulk-mode-staff');
-        if (bulkBtn) bulkBtn.innerHTML = `<i class="fas fa-save"></i> 選択完了 (${selectedCells.length}件)`;
-        return;
-    }
+        if (isBulkMode) {
+            const cellId = `cell-${uid}-${date}`;
+            const cardMobileId = `card-mobile-${uid}-${date}`;
+            const el = document.getElementById(cellId);
+            const cardEl = document.getElementById(cardMobileId);
+            
+            const idx = selectedCells.findIndex(x => x.uid === uid && x.date === date);
+            if (idx > -1) {
+                selectedCells.splice(idx, 1);
+                if (el) el.classList.remove('selected-shift-cell');
+                if (cardEl) cardEl.classList.remove('selected-shift-card');
+            } else {
+                selectedCells.push({ uid, date });
+                if (el) el.classList.add('selected-shift-cell');
+                if (cardEl) cardEl.classList.add('selected-shift-card');
+            }
+            
+            // モバイルUIの更新
+            updateBulkModeUI();
 
-    const user = [...allStoreUsers, ...helpUsers].find(u => u.id === uid) || (uid === currentTargetUser?.id ? currentTargetUser : null);
-    if (!user) return;
+            const bulkBtn = document.getElementById('btn-bulk-mode') || document.getElementById('btn-bulk-mode-staff');
+            if (bulkBtn) bulkBtn.innerHTML = `<i class="fas fa-save"></i> 選択完了 (${selectedCells.length}件)`;
+            return;
+        }
+
+        const user = [...allStoreUsers, ...helpUsers].find(u => u.id === uid) || (uid === currentTargetUser?.id ? currentTargetUser : null);
+        if (!user) {
+            alert('対象のスタッフ情報が見つかりません。画面を再読み込みしてください。');
+            return;
+        }
     
     const sData = currentShifts[uid]?.[date] || { start: '17:00', end: '22:00', breakMin: 0, note: '' };
 
@@ -2386,6 +2390,10 @@ window.openTimeInput = async (date, uid) => {
     }
 
     document.getElementById('shift-input-modal').style.display = 'flex';
+    } catch (e) {
+        console.error("Error in openTimeInput:", e);
+        alert('シフト入力画面の表示中にエラーが発生しました。\n' + e.message);
+    }
 };
 
 window.closeAdminBottomSheet = () => {

@@ -740,6 +740,7 @@ function bindEvents() {
     const supplierInput = document.getElementById('inv-supplier');
     if (supplierInput) {
         supplierInput.removeAttribute('list'); // 初期状態は紐付け解除
+        supplierInput.setAttribute('autocomplete', 'off'); // ブラウザのオートコンプリートを無効化
         supplierInput.addEventListener('input', (e) => {
             if (e.target.value.length > 0) {
                 e.target.setAttribute('list', 'supplier-list');
@@ -766,6 +767,29 @@ function openNewModal() {
     document.getElementById('inv-deadline').value = '';
     document.getElementById('inv-note').value = '';
 
+    const supplierInput = document.getElementById('inv-supplier');
+    if (supplierInput) {
+        supplierInput.setAttribute('autocomplete', 'off');
+        supplierInput.removeAttribute('list');
+    }
+
+    // 取引先サジェストの更新
+    updateSupplierDatalist();
+}
+
+function openEditModal(data) {
+    // (既存の初期化処理...)
+    document.getElementById('inv-supplier').value = data.supplier || '';
+    document.getElementById('inv-amount').value = data.amount || '';
+    document.getElementById('inv-deadline').value = data.deadline || '';
+    document.getElementById('inv-note').value = data.note || '';
+
+    const supplierInput = document.getElementById('inv-supplier');
+    if (supplierInput) {
+        supplierInput.setAttribute('autocomplete', 'off');
+        supplierInput.removeAttribute('list'); // モーダルを開いたときはリストを外す
+    }
+    
     // 取引先サジェストの更新
     updateSupplierDatalist();
 }
