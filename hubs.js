@@ -1,6 +1,6 @@
 import { db } from './firebase.js';
 import { collection, getDocs, query, where, orderBy, getDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-import { MENU_DEFINITION } from './menu_definition.js';
+import { MENU_DEFINITION } from './menu_definition.js?v=20260710_02';
 
 /**
  * HubページのHTMLテンプレートを生成する

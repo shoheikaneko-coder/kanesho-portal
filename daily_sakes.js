@@ -82,12 +82,12 @@ export const dailySakesPageHtml = `
             #daily-sakes-root .sake-brand-title { font-size: 1.4rem; font-weight: 900; color: var(--sake-text-main); margin: 0; line-height: 1.2; }
             #daily-sakes-root .sake-brand-sm { font-size: 1.1rem; font-weight: 800; color: var(--sake-text-main); margin: 0; }
             
-            #daily-sakes-root .sake-catch-copy-lg { font-size: 1rem; font-weight: 700; color: var(--sake-primary); margin: 0.6rem 0; padding: 0.4rem 0.8rem; background: rgba(var(--sake-primary-rgb), 0.05); border-radius: 8px; display: inline-block; }
+            #daily-sakes-root .sake-catch-copy-lg { font-size: 1rem; font-weight: 700; color: var(--sake-primary); margin: 0.6rem 0; padding: 0.4rem 0.8rem; background: rgba(var(--sake-primary-rgb), 0.05); border-radius: 8px; display: block; }
             #daily-sakes-root .sake-catch-copy-sm { font-size: 0.85rem; font-weight: 600; color: var(--sake-text-sub); margin: 0.4rem 0; }
 
             #daily-sakes-root .sake-order-badge { background: #f1f5f9; color: #475569; padding: 0.3rem 0.7rem; border-radius: 8px; font-size: 0.75rem; font-weight: 900; display: inline-flex; align-items: center; gap: 0.3rem; }
             
-            #daily-sakes-root .sake-btn-action { padding: 0.6rem 1rem; border-radius: 10px; font-size: 0.85rem; font-weight: 800; border: none; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.4rem; }
+            #daily-sakes-root .sake-btn-action { padding: 0.6rem 0.5rem; border-radius: 10px; font-size: 0.85rem; font-weight: 800; border: none; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.4rem; white-space: nowrap; }
             #daily-sakes-root .sake-btn-primary { background: var(--sake-primary); color: white; }
             #daily-sakes-root .sake-btn-secondary { background: #f1f5f9; color: #64748b; }
             #daily-sakes-root .sake-btn-secondary:hover { background: #e2e8f0; color: #1e293b; }
@@ -198,9 +198,11 @@ async function renderLineupTab(container) {
         });
 
         container.innerHTML = `
-            ${renderTasteSection('dry', '辛口 (Dry)', groups.dry)}
-            ${renderTasteSection('balanced', 'バランス (Balanced)', groups.balanced)}
-            ${renderTasteSection('fruity', 'フルーティ (Fruity)', groups.fruity)}
+            <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; align-items: start;">
+                <div>${renderTasteSection('dry', '辛口 (Dry)', groups.dry)}</div>
+                <div>${renderTasteSection('balanced', 'バランス (Balanced)', groups.balanced)}</div>
+                <div>${renderTasteSection('fruity', 'フルーティ (Fruity)', groups.fruity)}</div>
+            </div>
         `;
     } catch (e) {
         console.error("Lineup fetch error:", e);
@@ -242,12 +244,12 @@ function renderTasteSection(type, label, items) {
             ${cur ? `
                 <div class="sake-card-current" style="border: 1px solid transparent; background: linear-gradient(white, white) padding-box, linear-gradient(135deg, var(--sake-primary) 0%, #ff6b6b 100%) border-box; box-shadow: 0 15px 35px -12px rgba(var(--sake-primary-rgb), 0.2);">
                     <img src="${cur.master?.image_url || 'https://via.placeholder.com/200'}" class="sake-thumb-xl" style="border: 3px solid white; box-shadow: 0 8px 16px -4px rgba(0,0,0,0.1);">
-                    <div style="flex:1;">
-                        <h4 class="sake-brand-title" style="font-size: 1.4rem; letter-spacing: -0.02em;">${cur.master?.brand_name}</h4>
+                    <div style="flex:1; min-width:0;">
+                        <h4 class="sake-brand-title" style="font-size: 1.4rem; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${cur.master?.brand_name}">${cur.master?.brand_name}</h4>
                         <div style="font-size:0.9rem; color:var(--sake-text-sub); margin:0.4rem 0; font-weight:700;">
                             ${cur.master?.brewery_name} <span style="margin:0 0.4rem; opacity:0.3;">|</span> ${cur.master?.prefecture}
                         </div>
-                        <div class="sake-catch-copy-lg" style="background: rgba(var(--sake-primary-rgb), 0.05); color: var(--sake-primary); border-radius: 12px; font-style: italic;">
+                        <div class="sake-catch-copy-lg" style="background: rgba(var(--sake-primary-rgb), 0.05); color: var(--sake-primary); border-radius: 12px; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${cur.master?.catch_copy || ''}">
                             “ ${cur.master?.catch_copy || '究極の味わいを、今。'} ”
                         </div>
                         <div style="margin-top:1.5rem; display:flex; gap:0.8rem;">
@@ -267,17 +269,17 @@ function renderTasteSection(type, label, items) {
                     <div class="sake-card-queued">
                         <div style="display:flex; gap:1.2rem; align-items:start;">
                             <img src="${item.master?.image_url || 'https://via.placeholder.com/150'}" class="sake-thumb-md">
-                            <div style="flex:1;">
+                            <div style="flex:1; min-width:0;">
                                 <div style="display:flex; justify-content:space-between; align-items:start;">
-                                    <div style="flex:1;">
-                                        <div style="display:flex; align-items:center; gap:0.5rem;">
-                                            <span class="sake-order-badge">
+                                    <div style="flex:1; min-width:0;">
+                                        <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom: 0.2rem;">
+                                            <span class="sake-order-badge" style="flex-shrink:0;">
                                                 <i class="fas fa-sort-numeric-down"></i> ${item.display_order}番目
                                                 ${idx === 0 ? '<span style="color:var(--sake-primary); margin-left:0.3rem;">(次候補)</span>' : ''}
                                             </span>
-                                            <h5 class="sake-brand-sm">${item.master?.brand_name}</h5>
+                                            <h5 class="sake-brand-sm" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin:0;" title="${item.master?.brand_name}">${item.master?.brand_name}</h5>
                                         </div>
-                                        <div class="sake-catch-copy-sm">${item.master?.catch_copy || ''}</div>
+                                        <div class="sake-catch-copy-sm" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${item.master?.catch_copy || ''}">${item.master?.catch_copy || ''}</div>
                                     </div>
                                     <div style="display:flex; gap:0.5rem;">
                                         <button class="sake-btn-order" data-action="move" data-id="${item.id}" data-dir="up" ${idx === 0 ? 'disabled style="opacity:0.2; cursor:not-allowed;"' : ''}>
@@ -444,27 +446,37 @@ function renderMasterListArea() {
         return;
     }
 
-    list.innerHTML = filtered.map(s => `
-        <div class="sake-master-card">
-            <img src="${s.image_url || 'https://via.placeholder.com/150'}" class="sake-thumb-md" style="width:100px; height:100px;">
-            <div style="flex:1;">
+    const groups = { dry: [], balanced: [], fruity: [] };
+    filtered.forEach(s => {
+        if (s.default_taste_type === 'dry') groups.dry.push(s);
+        else if (s.default_taste_type === 'fruity') groups.fruity.push(s);
+        else groups.balanced.push(s);
+    });
+
+    const renderCard = s => `
+        <div class="sake-master-card" style="margin-bottom: 1rem;">
+            <img src="${s.image_url || 'https://via.placeholder.com/150'}" class="sake-thumb-md" style="width:100px; height:100px; flex-shrink:0;">
+            <div style="flex:1; min-width:0;">
                 <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                    <div>
+                    <div style="min-width:0; width:100%;">
                         <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:0.2rem;">
-                            <h4 style="margin:0; font-weight:900; font-size:1.1rem;">${s.brand_name}</h4>
-                            <span class="sake-taste-badge sake-taste-${s.default_taste_type || 'balanced'}">
+                            <h4 style="margin:0; font-weight:900; font-size:1.1rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${s.brand_name}">${s.brand_name}</h4>
+                            <span class="sake-taste-badge sake-taste-${s.default_taste_type || 'balanced'}" style="display:none;">
                                 ${s.default_taste_type === 'dry' ? '辛口' : s.default_taste_type === 'fruity' ? 'フルーティ' : 'バランス'}
                             </span>
                         </div>
-                        <div style="font-size:0.8rem; font-weight:700; color:var(--sake-text-sub);">${s.brewery_name} (${s.prefecture})</div>
+                        <div style="font-size:0.8rem; font-weight:700; color:var(--sake-text-sub); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.brewery_name} (${s.prefecture})</div>
                     </div>
                 </div>
-                <div style="margin:0.8rem 0; font-size:0.85rem; font-weight:700; color:var(--sake-primary); background:rgba(var(--sake-primary-rgb), 0.05); padding:0.4rem 0.8rem; border-radius:8px;">
+                <div style="margin:0.8rem 0; font-size:0.85rem; font-weight:700; color:var(--sake-primary); background:rgba(var(--sake-primary-rgb), 0.05); padding:0.4rem 0.8rem; border-radius:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${s.catch_copy || ''}">
                     ${s.catch_copy || '（キャッチコピー未登録）'}
                 </div>
-                <div style="display:flex; gap:0.6rem; margin-top:1rem;">
+                <div style="display:flex; gap:0.4rem; margin-top:1rem;">
                     <button class="sake-btn-action sake-btn-primary" style="flex:2;" data-action="add-to-lineup" data-id="${s.id}">
-                        <i class="fas fa-layer-plus"></i> ラインナップに入れる
+                        <i class="fas fa-layer-plus"></i> 追加
+                    </button>
+                    <button class="sake-btn-action sake-btn-secondary" style="flex:1;" data-action="copy-master" data-id="${s.id}">
+                        <i class="fas fa-copy"></i> 複製
                     </button>
                     <button class="sake-btn-action sake-btn-secondary" style="flex:1;" data-action="edit-master" data-id="${s.id}">
                         <i class="fas fa-edit"></i> 編集
@@ -472,12 +484,29 @@ function renderMasterListArea() {
                 </div>
             </div>
         </div>
-    `).join('');
+    `;
+
+    list.innerHTML = `
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; align-items: start;">
+            <div>
+                <h3 style="text-align:center; padding-bottom: 12px; margin-bottom: 16px; border-bottom: 2px solid var(--sake-border); color:var(--sake-text);">辛口 (Dry)</h3>
+                ${groups.dry.length > 0 ? groups.dry.map(renderCard).join('') : '<div style="padding:2rem; text-align:center; color:var(--sake-text-sub); font-weight:700;">なし</div>'}
+            </div>
+            <div>
+                <h3 style="text-align:center; padding-bottom: 12px; margin-bottom: 16px; border-bottom: 2px solid var(--sake-border); color:var(--sake-text);">バランス (Balanced)</h3>
+                ${groups.balanced.length > 0 ? groups.balanced.map(renderCard).join('') : '<div style="padding:2rem; text-align:center; color:var(--sake-text-sub); font-weight:700;">なし</div>'}
+            </div>
+            <div>
+                <h3 style="text-align:center; padding-bottom: 12px; margin-bottom: 16px; border-bottom: 2px solid var(--sake-border); color:var(--sake-text);">フルーティ (Fruity)</h3>
+                ${groups.fruity.length > 0 ? groups.fruity.map(renderCard).join('') : '<div style="padding:2rem; text-align:center; color:var(--sake-text-sub); font-weight:700;">なし</div>'}
+            </div>
+        </div>
+    `;
 }
 
 // --- MODALS & FORMS ---
-window.sakeApp.openMasterForm = async (id = null) => {
-    window.sakeApp.editingMasterId = id;
+window.sakeApp.openMasterForm = async (id = null, isCopy = false) => {
+    window.sakeApp.editingMasterId = isCopy ? null : id;
     let d = { 
         brand_name:'', brand_name_kana:'', brewery_name:'', prefecture:'', default_taste_type:'balanced', 
         catch_copy:'', image_url:'', image_path:'',
@@ -493,7 +522,7 @@ window.sakeApp.openMasterForm = async (id = null) => {
     area.innerHTML = `
         <div class="glass-panel" style="max-width:800px; margin:0 auto; padding:2rem; background:white; border-radius:24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.15);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem; border-bottom:1px solid #f1f5f9; padding-bottom:1rem;">
-                <h2 style="margin:0; font-weight:900;"><i class="fas fa-pen-nib"></i> ${id ? '銘柄を編集' : '新規銘柄を登録'}</h2>
+                <h2 style="margin:0; font-weight:900;"><i class="fas fa-pen-nib"></i> ${(id && !isCopy) ? '銘柄を編集' : '新規銘柄を登録'}</h2>
                 <button class="sake-btn-order" onclick="window.sakeApp.switchTab('master')"><i class="fas fa-times"></i></button>
             </div>
             
@@ -732,6 +761,8 @@ async function setupSakeGlobalDelegation() {
             handleOpenAddModal(id);
         } else if (action === 'edit-master') {
             window.sakeApp.openMasterForm(id);
+        } else if (action === 'copy-master') {
+            window.sakeApp.openMasterForm(id, true);
         } else if (action === 'commit-add') {
             handleCommitAdd(id, target.dataset.taste);
         } else if (action === 'delete-archived-slot') {

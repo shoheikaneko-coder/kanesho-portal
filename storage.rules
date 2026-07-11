@@ -3,7 +3,13 @@ service firebase.storage {
   match /b/{bucket}/o {
     match /{allPaths=**} {
       // 応急処置：期限なしで全公開。
+      // 既存のファイル（全公開の応急処置）
       allow read, write: if true;
+    }
+    
+    match /invoices/{fileName} {
+      // 請求書ファイルは認証済みユーザーのみ
+      allow read, write: if request.auth != null;
     }
   }
 }

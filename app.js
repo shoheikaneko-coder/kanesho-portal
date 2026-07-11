@@ -1,6 +1,7 @@
 import { auth, db, collection, getDocs, query, where, getDoc, doc, updateDoc, serverTimestamp, onSnapshot } from './firebase.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { MENU_DEFINITION, getPageParentMap, getAllPermissionIds } from './menu_definition.js';
+import { MENU_DEFINITION, getPageParentMap, getAllPermissionIds } from './menu_definition.js?v=20260710_02';
+import { roleMasterService } from './role_master_service.js';
 
 // 各ページのインポート
 // import { dashboardPageHtml, initDashboardPage } from './dashboard.js?v=118'; // 動的インポートに変更
@@ -8,7 +9,7 @@ import { MENU_DEFINITION, getPageParentMap, getAllPermissionIds } from './menu_d
 import { attendancePageHtml, initAttendancePage } from './attendance.js?v=110';
 import { salesPageHtml, initSalesPage } from './sales.js?v=110';
 import { storesPageHtml, initStoresPage } from './stores.js?v=31';
-import { usersPageHtml, initUsersPage } from './users.js?v=31';
+import { usersPageHtml, initUsersPage } from './users.js?v=20260710_06';
 import { inventoryPageHtml, initInventoryPage } from './inventory.js?v=33';
 import { inventoryMobilePageHtml, initInventoryMobilePage } from './inventory_mobile.js';
 import { procurementPageHtml, initProcurementPage } from './procurement.js?v=20260508_v4';
@@ -24,20 +25,22 @@ import { recipesViewerPageHtml, initRecipesViewerPage } from './recipes.js?v=202
 import { attendanceCheckPageHtml, initAttendanceCheckPage } from './attendance_check.js?v=7';
 import { csvExportPageHtml, initCsvExportPage } from './csv_export.js?v=7';
 import { salesCorrectionPageHtml, initSalesCorrectionPage } from './sales_correction.js?v=7';
-import { rolePermissionsPageHtml, initRolePermissionsPage } from './role_permissions.js?v=20260428_01';
+import { rolePermissionsPageHtml, initRolePermissionsPage } from './role_permissions.js?v=20260710_02';
 import { storeFeaturesAdminPageHtml, initStoreFeaturesAdminPage } from './store_features_admin.js';
+import { rolesAdminHtml, initRolesAdminPage } from './roles_admin.js?v=20260710_08';
 import { menuOrderPageHtml, initMenuOrderPage } from './menu_order.js?v=7';
 import { dailySakesPageHtml, initDailySakesPage } from './daily_sakes.js?v=116';
 import { csvImportPageHtml, initCsvImportPage } from './csv_import.js?v=7';
 import { productAnalysisPageHtml, initProductAnalysisPage } from './product_analysis.js?v=31';
 import { notificationsPageHtml, initNotificationsPage } from './notifications.js?v=117';
+import { invoicesPageHtml, initInvoicesPage } from './invoices.js?v=20260710_14';
 import { calendarAdminPageHtml, initCalendarAdminPage, calendarViewerPageHtml, initCalendarViewerPage } from './calendar.js?v=64';
 import { goalsAdminPageHtml, initGoalsAdminPage, goalsStorePageHtml, initGoalsStorePage } from './goals.js?v=7';
 import { homePageHtml, initHomePage } from './home.js?v=120';
 import { shiftSubmissionPageHtml, initShiftSubmissionPage, shiftAdminPageHtml, initShiftAdminPage, shiftViewerPageHtml, initShiftViewerPage, shiftViewerMobilePageHtml, initShiftViewerMobilePage, checkIfShiftPublished } from './shift.js';
 import { shiftAdminMobilePageHtml, initShiftAdminMobilePage } from './shift_mobile.js';
 import { loansPageHtml, initLoansPage } from './loans.js?v=116';
-import { hubPageHtml, initHubPage } from './hubs.js?v=20260428_02';
+import { hubPageHtml, initHubPage } from './hubs.js?v=20260710_05';
 import { inviteNaviPageHtml, initInviteNaviPage } from './invite_navi.js';
 import { attendanceManagementPageHtml, initAttendanceManagementPage } from './attendance_management.js';
 import { bottleKeepPageHtml, initBottleKeepPage } from './bottle_keep.js';
@@ -195,7 +198,17 @@ async function loginSuccess(rawData) {
     const avatarEl = document.getElementById('display-user-avatar');
 
     if (nameEl) nameEl.textContent = user.Name || 'ユーザー';
-    if (roleEl) roleEl.textContent = user.Role || '一般';
+    if (roleEl) {
+        let roleName = user.Role || '一般';
+        if (roleName.startsWith('role_')) {
+            try {
+                const roles = await roleMasterService.getRoles();
+                const rObj = roles.find(r => r.id === roleName);
+                if (rObj) roleName = rObj.label;
+            } catch(e) { console.error('Failed to load role name', e); }
+        }
+        roleEl.textContent = roleName;
+    }
     if (avatarEl) avatarEl.textContent = (user.Name || 'U').substring(0, 1).toUpperCase();
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -628,6 +641,11 @@ async function showPage(target) {
                 pageContent.innerHTML = rolePermissionsPageHtml;
                 initRolePermissionsPage();
                 break;
+            case 'roles_admin':
+                pageTitle.textContent = '権限・役職マスタ';
+                pageContent.innerHTML = rolesAdminHtml;
+                initRolesAdminPage();
+                break;
             case 'store_features_admin':
                 pageTitle.textContent = '店舗別メニュー設定';
                 pageContent.innerHTML = storeFeaturesAdminPageHtml;
@@ -647,6 +665,11 @@ async function showPage(target) {
                 pageTitle.textContent = '営業実績修正';
                 pageContent.innerHTML = salesCorrectionPageHtml;
                 initSalesCorrectionPage();
+                break;
+            case 'invoice_workflows':
+                pageTitle.textContent = '振り込み依頼 (請求書)';
+                pageContent.innerHTML = invoicesPageHtml;
+                initInvoicesPage();
                 break;
             case 'product_analysis':
                 pageTitle.textContent = '商品分析（4つの窓）';

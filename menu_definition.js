@@ -155,6 +155,13 @@ export const MENU_DEFINITION = [
                 items: [
                     { id: 'new_hire_application', name: '新規アルバイト入社申請', icon: 'fa-user-plus', color: '#10b981', desc: '新規スタッフの採用・入社手続き申請' }
                 ]
+            },
+            {
+                title: '経理',
+                icon: 'fa-calculator',
+                items: [
+                    { id: 'invoice_workflows', name: '振り込み依頼', icon: 'fa-file-invoice-dollar', color: '#e63946', desc: '請求書の振り込み申請とステータス確認' }
+                ]
             }
         ]
     },
@@ -193,6 +200,7 @@ export const MENU_DEFINITION = [
             { id: 'sales_correction', name: '営業実績修正', icon: 'fa-edit', color: '#4b5563', desc: '過去の確定実績データの修正' },
             { id: 'csv_export', name: 'CSV出力', icon: 'fa-file-csv', color: '#4b5563', desc: '各種データのCSVダウンロード' },
             { id: 'csv_import', name: 'CSVインポート', icon: 'fa-file-import', color: '#4b5563', desc: 'データの一括インポート' },
+            { id: 'roles_admin', name: '権限・役職マスタ', icon: 'fa-user-tag', color: '#14b8a6', desc: 'システム内の権限・役職の作成・管理' },
             { id: 'calendar_admin', name: '営業カレンダー作成', icon: 'fa-calendar-plus', color: '#4b5563', desc: '年間休日・イベント設定' },
             { id: 'goals_admin', name: '目標設定 (社長用)', icon: 'fa-bullseye', color: '#4b5563', desc: '全社・店舗別の年間目標値設定' },
             { id: 'product_analysis', name: '商品分析（4つの窓）', icon: 'fa-chart-pie', color: '#4b5563', desc: '売上データのABC分析（4つの窓）' }

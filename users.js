@@ -2,10 +2,12 @@ import { db, storage, arrayUnion } from './firebase.js';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { ref, uploadString, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
 import { showConfirm, showAlert } from './ui_utils.js';
+import { roleMasterService } from './role_master_service.js';
 
 let currentView = 'list';
 let editingUserData = null;
 let cachedUsers = [];
+let cachedRoles = [];
 let currentPage = 1;
 const pageSize = 30;
 let activeScrollSpyListener = null;
@@ -102,7 +104,7 @@ export const usersPageHtml = `
     </div>
 `;
 
-function renderView() {
+async function renderView() {
     // 既存のスクロールスパイリスナーがあればクリーンアップ
     const scrollContainer = document.querySelector('.page-content');
     if (scrollContainer && activeScrollSpyListener) {
@@ -114,7 +116,7 @@ function renderView() {
     if (!container) return;
 
     if (currentView === 'form') {
-        renderFormView(container);
+        await renderFormView(container);
     } else {
         renderListView(container);
     }
@@ -217,7 +219,7 @@ function renderListView(container) {
     renderTable();
 }
 
-function renderFormView(container) {
+async function renderFormView(container) {
     const isEdit = !!editingUserData;
     container.innerHTML = `
         <div class="glass-panel animate-fade-in" style="max-width: 1000px; margin: 0 auto; padding: 0; overflow: hidden;">
@@ -329,11 +331,7 @@ function renderFormView(container) {
                                 <div class="input-group" style="margin: 0;">
                                     <label style="font-weight: 700; color: #475569;">権限レベル <span style="color: #ef4444;">*</span></label>
                                     <select id="user-role" required style="background: white; font-weight: 600;">
-                                        <option value="Staff">一般社員</option>
-                                        <option value="PartTimer">アルバイトスタッフ</option>
-                                        <option value="Tablet">店舗タブレット</option>
-                                        <option value="Manager">店長</option>
-                                        <option value="Admin">管理者</option>
+                                        <option value="" disabled selected>読み込み中...</option>
                                     </select>
                                 </div>
                                 <div class="input-group" style="margin: 0;">
@@ -517,6 +515,27 @@ function renderFormView(container) {
             toggleResDate(); // 初期表示用
         }
     });
+
+    // 権限レベルを動的にロード
+    try {
+        const roles = await roleMasterService.getRoles();
+        cachedRoles = roles;
+        const roleSelect = document.getElementById('user-role');
+        roleSelect.innerHTML = '<option value="" disabled selected>選択してください</option>';
+        roles.forEach(role => {
+            const opt = document.createElement('option');
+            opt.value = role.id;
+            opt.textContent = role.label;
+            roleSelect.appendChild(opt);
+        });
+        
+        // 編集モードなら反映
+        if (editingUserData && editingUserData.Role) {
+            roleSelect.value = editingUserData.Role;
+        }
+    } catch (e) {
+        console.error("Failed to load roles", e);
+    }
 
     setupFormLogic();
 
@@ -813,10 +832,11 @@ export async function initUsersPage() {
     }
 
     try {
+        cachedRoles = await roleMasterService.getRoles();
         await fetchUsersData();
         currentView = 'list';
         currentPage = 1;
-        renderView();
+        await renderView();
     } catch (error) {
         console.error("Failed to load users data:", error);
         if (container) {
@@ -957,9 +977,9 @@ function renderTable(filter = "") {
         }
 
         itemsToShow.forEach((item, index) => {
-            const roleNameMap = {
-                'Admin': '管理者', 'Manager': '店長', 'Staff': '一般社員', 'PartTimer': 'アルバイト', 'Tablet': '店舗タブレット'
-            };
+            const roleNameMap = {};
+            cachedRoles.forEach(r => roleNameMap[r.id] = r.label);
+            
             const role = item['Role'] || 'Staff';
             const status = item['Status'] || 'active';
             const statusMap = { 'active': '在職', 'resigning': '退職手続中', 'retired': '退職' };

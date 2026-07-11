@@ -1,6 +1,7 @@
 import { db } from './firebase.js';
 import { collection, getDocs, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-import { MENU_DEFINITION } from './menu_definition.js';
+import { MENU_DEFINITION } from './menu_definition.js?v=20260710_02';
+import { roleMasterService } from './role_master_service.js';
 
 export const rolePermissionsPageHtml = `
     <div class="animate-fade-in">
@@ -16,11 +17,7 @@ export const rolePermissionsPageHtml = `
             <div class="glass-panel" style="padding: 1.5rem; height: fit-content;">
                 <h3 style="font-size: 1rem; margin-bottom: 1.5rem; color: var(--text-secondary);">ロール選択</h3>
                 <div id="role-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
-                    <button class="role-item active" data-role="Admin">管理者 (Admin)</button>
-                    <button class="role-item" data-role="Manager">店長 (Manager)</button>
-                    <button class="role-item" data-role="Staff">一般社員 (Staff)</button>
-                    <button class="role-item" data-role="PartTimer">アルバイトスタッフ (PartTimer)</button>
-                    <button class="role-item" data-role="Tablet">店舗タブレット (Tablet)</button>
+                    <div style="text-align: center; color: var(--text-secondary); padding: 1rem;"><i class="fas fa-spinner fa-spin"></i> 読み込み中...</div>
                 </div>
                 
                 <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px dashed var(--border);">
@@ -147,6 +144,30 @@ let selectedRole = 'Admin';
 
 export async function initRolePermissionsPage() {
     renderPermissions();
+    
+    // ロール一覧の動的生成
+    const roleListContainer = document.getElementById('role-list');
+    try {
+        const roles = await roleMasterService.getRoles();
+        roleListContainer.innerHTML = ''; // クリア
+        
+        roles.forEach((role, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'role-item';
+            if (index === 0) {
+                btn.classList.add('active');
+                selectedRole = role.id;
+            }
+            btn.dataset.role = role.id;
+            btn.textContent = role.label;
+            roleListContainer.appendChild(btn);
+        });
+    } catch (e) {
+        console.error(e);
+        roleListContainer.innerHTML = '<div style="color:red; padding:1rem;">読み込みエラー</div>';
+    }
+
+    document.getElementById('current-role-title').textContent = `${document.querySelector('.role-item.active')?.textContent || ''} の権限設定`;
     await loadRolePermissions(selectedRole);
 
     const roleBtns = document.querySelectorAll('.role-item');

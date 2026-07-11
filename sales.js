@@ -44,12 +44,10 @@ const salesPageHtmlDesktop = `
                         <div>
                             <label class="field-label">売上金額 (税込)</label>
                             <input type="text" id="report-amount" required placeholder="0" class="form-input num-input" style="font-size: 1.2rem; font-weight: 700;">
-                            <input type="hidden" id="raw-amount">
                         </div>
                         <div>
                             <label class="field-label">来客数</label>
                             <input type="text" id="report-customers" required placeholder="0" class="form-input num-input">
-                            <input type="hidden" id="raw-customers">
                         </div>
                     </div>
 
@@ -62,7 +60,6 @@ const salesPageHtmlDesktop = `
                                 <option value="-1">-</option>
                             </select>
                             <input type="text" id="report-diff" required value="0" class="form-input num-input" style="text-align: right; flex: 1;" placeholder="金額を入力">
-                            <input type="hidden" id="raw-diff" value="0">
                         </div>
                     </div>
 
@@ -71,7 +68,6 @@ const salesPageHtmlDesktop = `
                         <div>
                             <label class="field-label">受け取りチップ</label>
                             <input type="text" id="report-tip" placeholder="0" class="form-input num-input">
-                            <input type="hidden" id="raw-tip">
                         </div>
                         <div>
                             <label class="field-label">天気１</label>
@@ -99,7 +95,6 @@ const salesPageHtmlDesktop = `
                         <div>
                             <label class="field-label">小口現金使用</label>
                             <input type="text" id="report-petty-cash" placeholder="0" class="form-input num-input">
-                            <input type="hidden" id="raw-petty-cash" value="0">
                         </div>
                         <div id="petty-note-row" style="display: none;">
                             <label class="field-label">使用用途</label>
@@ -107,26 +102,12 @@ const salesPageHtmlDesktop = `
                         </div>
                     </div>
 
-                    <!-- 自動計算項目 -->
-                    <div class="glass" style="padding: 1rem; border-radius: 12px; background: rgba(0,0,0,0.03); display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
-                        <div>
-                            <label class="field-label" style="font-size: 0.7rem;">回転数</label>
-                            <div id="calc-turnover" class="calc-val">-</div>
-                        </div>
-                        <div>
-                            <label class="field-label" style="font-size: 0.7rem;">売上（税抜）</label>
-                            <div id="calc-ex-tax" class="calc-val">-</div>
-                        </div>
-                        <div>
-                            <label class="field-label" style="font-size: 0.7rem;">客単価</label>
-                            <div id="calc-avg-spend" class="calc-val">-</div>
-                        </div>
-                    </div>
+
 
                     <!-- 欠勤者報告 -->
                     <div id="absence-section-desktop">
                         <label class="field-label">欠勤者報告</label>
-                        <div id="absence-tags-desktop" style="display:flex; flex-wrap:wrap; gap:0.5rem; min-height:2rem; margin-bottom:0.6rem;"></div>
+                        <div id="absence-tags-desktop" style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.6rem;"></div>
                         <div id="absence-add-area-desktop" style="display:flex; gap:0.5rem; flex-wrap:wrap;">
                             <button type="button" id="btn-add-absence-desktop" class="btn" style="padding:0.4rem 0.8rem; font-size:0.82rem; border:1px dashed #94a3b8; color:#64748b; background:transparent;"><i class="fas fa-user-plus"></i> 欠勤者を追加</button>
                         </div>
@@ -203,102 +184,78 @@ const salesPageHtmlMobile = `
             <form id="sales-form" style="display: flex; flex-direction: column; gap: 1.2rem;">
                 <input type="hidden" id="sales-doc-id">
                 
-                <!-- 日付・店舗 -->
-                <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 0.8rem;">
-                    <div>
-                        <label class="field-label">日付</label>
-                        <input type="date" id="report-date" required class="form-input" style="padding: 0.7rem; font-size: 0.9rem;">
-                    </div>
+                <!-- 店舗・日付 -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;">
                     <div>
                         <label class="field-label">店舗</label>
-                        <select id="report-store" required class="form-input" style="padding: 0.7rem; font-size: 0.9rem;">
+                        <select id="report-store" required class="form-input" style="padding: 0.7rem; font-size: 0.9rem; height: 3.2rem; box-sizing: border-box;">
                             <option value="">選択...</option>
                         </select>
+                    </div>
+                    <div>
+                        <label class="field-label">日付</label>
+                        <input type="date" id="report-date" required class="form-input" style="padding: 0.7rem; font-size: 0.9rem; height: 3.2rem; box-sizing: border-box;">
                     </div>
                 </div>
 
                 <!-- 実績セクション -->
                 <div style="background: rgba(230,57,70,0.03); border-radius: 16px; padding: 1rem; border: 1px solid rgba(230,57,70,0.1);">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-bottom: 0.8rem;">
-                        <div>
-                            <label class="field-label" style="color: var(--primary);">売上金額 (税込)</label>
-                            <div style="position: relative;">
-                                <input type="text" id="report-amount" required placeholder="0" class="form-input num-input" style="font-size: 1.4rem; font-weight: 950; color: var(--primary); padding: 0.8rem 1.8rem 0.8rem 0.6rem;" inputmode="decimal">
-                                <span style="position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); font-weight: 800; color: #94a3b8; font-size: 0.75rem;">円</span>
-                            </div>
-                            <input type="hidden" id="raw-amount">
+                    <div style="margin-bottom: 0.8rem;">
+                        <label class="field-label" style="color: var(--primary);">売上金額 (税込)</label>
+                        <div style="position: relative;">
+                            <input type="text" id="report-amount" required placeholder="0" class="form-input num-input" style="font-size: 1.6rem; font-weight: 950; color: var(--primary); padding: 0.8rem 1.8rem 0.8rem 0.6rem; text-align: right;" inputmode="decimal">
+                            <span style="position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); font-weight: 800; color: #94a3b8; font-size: 0.85rem;">円</span>
                         </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;">
                         <div>
                             <label class="field-label">来客数</label>
                             <div style="position: relative;">
-                                <input type="text" id="report-customers" required placeholder="0" class="form-input num-input" style="font-size: 1.4rem; font-weight: 950; color: #1e293b; padding: 0.8rem 1.8rem 0.8rem 0.6rem;" inputmode="decimal">
+                                <input type="text" id="report-customers" required placeholder="0" class="form-input num-input" style="font-size: 1.4rem; font-weight: 950; color: #1e293b; padding: 0.8rem 1.8rem 0.8rem 0.6rem; text-align: right; height: 3.5rem; box-sizing: border-box;" inputmode="decimal">
                                 <span style="position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%); font-weight: 800; color: #94a3b8; font-size: 0.75rem;">名</span>
                             </div>
-                            <input type="hidden" id="raw-customers">
                         </div>
-                    </div>
-                    
-                    <!-- 自動計算ミニHUD -->
-                    <div style="display: flex; justify-content: space-between; border-top: 1px dashed #e2e8f0; padding-top: 0.6rem;">
-                        <div style="text-align:center; flex:1;">
-                            <div style="font-size: 0.6rem; color: #64748b; font-weight: 700;">客単価</div>
-                            <div id="calc-avg-spend" style="font-weight: 900; color: #1e293b; font-size: 0.9rem;">-</div>
+                        <div>
+                            <label class="field-label">現金過不足</label>
+                            <div style="display: flex; align-items: stretch; gap: 0.4rem; height: 3.5rem; box-sizing: border-box;">
+                                <div id="mobile-diff-sign-toggle" style="display: flex; flex-direction: column; background: #f1f5f9; border-radius: 8px; padding: 2px;">
+                                    <button type="button" class="sign-btn active" data-sign="1" style="padding: 0 0.6rem; border:none; border-radius:6px; font-weight:900; font-size: 1.1rem; background:white; color: #10b981; transition: 0.2s; flex: 1;">+</button>
+                                    <button type="button" class="sign-btn" data-sign="-1" style="padding: 0 0.6rem; border:none; border-radius:6px; font-weight:900; font-size: 1.1rem; background:transparent; color: #64748b; transition: 0.2s; flex: 1;">-</button>
+                                </div>
+                                <select id="report-diff-sign" style="display:none;">
+                                    <option value="1" selected>+</option>
+                                    <option value="-1">-</option>
+                                </select>
+                                <input type="text" id="report-diff" required value="0" class="form-input num-input" style="text-align: right; flex: 1; font-size: 1.2rem; font-weight: 950; background: white; height: 3.5rem; box-sizing: border-box;" placeholder="金額" inputmode="decimal">
+                            </div>
                         </div>
-                        <div style="text-align:center; flex:1; border-left: 1px solid #f1f5f9;">
-                            <div style="font-size: 0.6rem; color: #64748b; font-weight: 700;">回転数</div>
-                            <div id="calc-turnover" style="font-weight: 900; color: #1e293b; font-size: 0.9rem;">-</div>
-                        </div>
-                        <div style="border-left: 1px solid #f1f5f9; padding-left: 5px; min-width: 80px;">
-                            <div style="font-size: 0.55rem; color: #64748b; font-weight: 700;">売上(税抜)</div>
-                            <div id="calc-ex-tax" style="font-weight: 900; color: #1e293b; font-size: 0.85rem;">-</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 現金過不足 -->
-                <div>
-                    <label class="field-label">現金過不足</label>
-                    <div style="display: flex; align-items: stretch; gap: 0.5rem; height: 50px;">
-                        <div id="mobile-diff-sign-toggle" style="display: flex; background: #f1f5f9; border-radius: 12px; padding: 3px; min-width: 100px;">
-                            <button type="button" class="sign-btn active" data-sign="1" style="flex:1; border:none; border-radius:9px; font-weight:900; font-size: 1.1rem; background:white; color: #10b981; transition: 0.2s;">+</button>
-                            <button type="button" class="sign-btn" data-sign="-1" style="flex:1; border:none; border-radius:9px; font-weight:900; font-size: 1.1rem; background:transparent; color: #64748b; transition: 0.2s;">-</button>
-                        </div>
-                        <select id="report-diff-sign" style="display:none;">
-                            <option value="1" selected>+</option>
-                            <option value="-1">-</option>
-                        </select>
-                        <input type="text" id="report-diff" required value="0" class="form-input num-input" style="text-align: right; flex: 1; font-size: 1.3rem; font-weight: 950; background: white;" placeholder="金額" inputmode="decimal">
-                        <input type="hidden" id="raw-diff" value="0">
                     </div>
                 </div>
 
                 <!-- チップ・天気 -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.6rem;">
                     <div>
-                        <label class="field-label">受け取りチップ</label>
-                        <input type="text" id="report-tip" placeholder="0" class="form-input num-input" style="padding: 0.8rem; font-weight: 800; font-size: 1.1rem;" inputmode="decimal">
-                        <input type="hidden" id="raw-tip">
+                        <label class="field-label" style="font-size:0.75rem;">チップ</label>
+                        <input type="text" id="report-tip" placeholder="0" class="form-input num-input" style="padding: 0.8rem 0.5rem; font-weight: 800; font-size: 1.1rem; text-align: right; height: 3.2rem; box-sizing: border-box;" inputmode="decimal">
                     </div>
-                    <div style="display: flex; gap: 0.4rem;">
-                        <div style="flex:1;">
-                            <label class="field-label">天気1</label>
-                            <select id="report-weather1" class="form-input" style="padding: 0.8rem; font-size: 0.8rem;">
-                                <option value="晴れ">☀️ 晴</option>
-                                <option value="曇り">☁️ 曇</option>
-                                <option value="雨">☔ 雨</option>
-                                <option value="雪">❄️ 雪</option>
-                            </select>
-                        </div>
-                        <div style="flex:1;">
-                            <label class="field-label">天気2</label>
-                            <select id="report-weather2" class="form-input" style="padding: 0.8rem; font-size: 0.8rem;">
-                                <option value="-">-</option>
-                                <option value="晴れ">☀️ 晴</option>
-                                <option value="曇り">☁️ 曇</option>
-                                <option value="雨">☔ 雨</option>
-                                <option value="雪">❄️ 雪</option>
-                            </select>
-                        </div>
+                    <div>
+                        <label class="field-label" style="font-size:0.75rem; margin-bottom:0.2rem;">天気1</label>
+                        <select id="report-weather1" class="form-input" style="padding: 0.8rem 0.5rem; font-size: 0.9rem; height: 3.2rem; box-sizing: border-box;">
+                            <option value="晴れ">☀️ 晴</option>
+                            <option value="曇り">☁️ 曇</option>
+                            <option value="雨">☔ 雨</option>
+                            <option value="雪">❄️ 雪</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="field-label" style="font-size:0.75rem; margin-bottom:0.2rem;">天気2</label>
+                        <select id="report-weather2" class="form-input" style="padding: 0.8rem 0.5rem; font-size: 0.9rem; height: 3.2rem; box-sizing: border-box;">
+                            <option value="-">-</option>
+                            <option value="晴れ">☀️ 晴</option>
+                            <option value="曇り">☁️ 曇</option>
+                            <option value="雨">☔ 雨</option>
+                            <option value="雪">❄️ 雪</option>
+                        </select>
                     </div>
                 </div>
 
@@ -306,8 +263,7 @@ const salesPageHtmlMobile = `
                 <div style="background: #f8fafc; border-radius: 16px; padding: 0.8rem;">
                     <div style="margin-bottom: 0.6rem;">
                         <label class="field-label">小口現金使用</label>
-                        <input type="text" id="report-petty-cash" placeholder="0" class="form-input num-input" style="font-weight: 800; font-size: 1.2rem; background: white;" inputmode="decimal">
-                        <input type="hidden" id="raw-petty-cash" value="0">
+                        <input type="text" id="report-petty-cash" placeholder="0" class="form-input num-input" style="font-weight: 800; font-size: 1.2rem; background: white; text-align: right;" inputmode="decimal">
                     </div>
                     <div id="petty-note-row" style="display: none;">
                         <label class="field-label">使用用途</label>
@@ -318,7 +274,7 @@ const salesPageHtmlMobile = `
                 <!-- 欠勤者報告 -->
                 <div id="absence-section-mobile" style="background:#f8fafc; border-radius:16px; padding:0.8rem;">
                     <label class="field-label">欠勤者報告</label>
-                    <div id="absence-tags-mobile" style="display:flex; flex-wrap:wrap; gap:0.4rem; min-height:1.6rem; margin-bottom:0.5rem;"></div>
+                    <div id="absence-tags-mobile" style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:0.5rem;"></div>
                     <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
                         <button type="button" id="btn-add-absence-mobile" class="btn" style="padding:0.35rem 0.7rem; font-size:0.78rem; border:1px dashed #94a3b8; color:#64748b; background:white;"><i class="fas fa-user-plus"></i> 欠勤者を追加</button>
                     </div>
@@ -558,45 +514,23 @@ export async function initSalesPage() {
     const numInputs = ['report-amount', 'report-customers', 'report-diff', 'report-tip', 'report-petty-cash'];
     numInputs.forEach(id => {
         const el = document.getElementById(id);
-        const rawEl = document.getElementById(id.replace('report-', 'raw-'));
         if (el) {
             el.oninput = (e) => {
                 let val = e.target.value.replace(/[^0-9]/g, ''); 
                 if (val === '') {
-                    if (rawEl) rawEl.value = 0;
                     return;
                 }
                 const num = parseInt(val);
                 e.target.value = num.toLocaleString();
-                
-                if (id === 'report-diff') {
-                    const sign = parseInt(document.getElementById('report-diff-sign').value) || 1;
-                    if (rawEl) rawEl.value = num * sign;
-                } else {
-                    if (rawEl) rawEl.value = num;
-                }
-                
-                updateCalculations();
             };
             el.onblur = (e) => {
                 if (e.target.value === '') {
                     e.target.value = '0';
-                    if (rawEl) rawEl.value = 0;
                 }
-                updateCalculations();
             };
         }
     });
 
-    const diffSign = document.getElementById('report-diff-sign');
-    if (diffSign) {
-        diffSign.onchange = () => {
-            const val = parseInt(document.getElementById('report-diff').value.replace(/,/g, '')) || 0;
-            const sign = parseInt(diffSign.value) || 1;
-            document.getElementById('raw-diff').value = val * sign;
-            updateCalculations();
-        };
-    }
 
     // モバイル用符号トグルUIの連動
     if (isMobile) {
@@ -616,10 +550,6 @@ export async function initSalesPage() {
                 
                 if (hiddenSign) {
                     hiddenSign.value = sign;
-                    // 同期
-                    const val = parseInt(document.getElementById('report-diff').value.replace(/,/g, '')) || 0;
-                    document.getElementById('raw-diff').value = val * parseInt(sign);
-                    updateCalculations();
                 }
             };
         });
@@ -634,42 +564,7 @@ export async function initSalesPage() {
         });
     }
 
-    const storeSel = document.getElementById('report-store');
-    if (storeSel) {
-        storeSel.onchange = async () => {
-            const sid = storeSel.value;
-            if (sid) {
-                const docSnap = await getDoc(doc(db, "m_stores", sid));
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    currentSeats = data.seat_count || data.席数 || 0;
-                }
-            } else {
-                currentSeats = 0;
-            }
-            updateCalculations();
-        };
-    }
 
-    window.adjustDiff = () => {};
-
-    function updateCalculations() {
-        const amount = parseInt(document.getElementById('raw-amount')?.value) || 0;
-        const customers = parseInt(document.getElementById('raw-customers')?.value) || 0;
-        const diff = parseInt(document.getElementById('raw-diff')?.value) || 0;
-
-        const turnover = currentSeats > 0 ? (customers / currentSeats).toFixed(2) : '-';
-        const exTax = Math.round((amount + diff) / 1.1);
-        const avgSpend = customers > 0 ? Math.round(exTax / customers) : '-';
-
-        const turnoverEl = document.getElementById('calc-turnover');
-        const exTaxEl = document.getElementById('calc-ex-tax');
-        const avgSpendEl = document.getElementById('calc-avg-spend');
-
-        if (turnoverEl) turnoverEl.textContent = turnover;
-        if (exTaxEl) exTaxEl.textContent = exTax.toLocaleString();
-        if (avgSpendEl) avgSpendEl.textContent = avgSpend === '-' ? '-' : avgSpend.toLocaleString();
-    }
 
     const form = document.getElementById('sales-form');
     if (form) {
@@ -686,9 +581,24 @@ export async function initSalesPage() {
             const sSel = document.getElementById('report-store');
             const sName = sSel.options[sSel.selectedIndex].text;
             
-            const amount = parseInt(document.getElementById('raw-amount').value) || 0;
-            const customers = parseInt(document.getElementById('raw-customers').value) || 0;
-            const diff = parseInt(document.getElementById('raw-diff').value) || 0;
+            const amount = parseInt(document.getElementById('report-amount').value.replace(/,/g, '')) || 0;
+            const customers = parseInt(document.getElementById('report-customers').value.replace(/,/g, '')) || 0;
+            const diffSignStr = document.getElementById('report-diff-sign') ? document.getElementById('report-diff-sign').value : "1";
+            const diffVal = parseInt(document.getElementById('report-diff').value.replace(/,/g, '')) || 0;
+            const diff = diffVal * (parseInt(diffSignStr) || 1);
+            
+            // 席数の取得
+            let submissionSeats = 0;
+            try {
+                const docSnap = await getDoc(doc(db, "m_stores", sid));
+                if (docSnap.exists()) {
+                    const storeData = docSnap.data();
+                    submissionSeats = storeData.seat_count || storeData.席数 || 0;
+                }
+            } catch (e) {
+                console.error("席数取得エラー:", e);
+            }
+
             const exTax = Math.round((amount + diff) / 1.1);
 
             const data = {
@@ -698,16 +608,16 @@ export async function initSalesPage() {
                 amount: amount,
                 customer_count: customers,
                 cash_diff: diff,
-                tip: parseInt(document.getElementById('raw-tip').value) || 0,
+                tip: parseInt(document.getElementById('report-tip').value.replace(/,/g, '')) || 0,
                 weather_1: document.getElementById('report-weather1').value,
                 weather_2: document.getElementById('report-weather2').value,
-                petty_cash: parseInt(document.getElementById('raw-petty-cash').value) || 0,
+                petty_cash: parseInt(document.getElementById('report-petty-cash').value.replace(/,/g, '')) || 0,
                 petty_cash_note: document.getElementById('report-petty-note')?.value || '',
                 note: document.getElementById('report-note').value,
                 other_notes: document.getElementById('report-other-notes')?.value || '',
                 year_month: date.substring(0, 7),
                 amount_ex_tax: exTax,
-                turnover_rate: currentSeats > 0 ? Number((customers / currentSeats).toFixed(2)) : 0,
+                turnover_rate: submissionSeats > 0 ? Number((customers / submissionSeats).toFixed(2)) : 0,
                 customer_unit_price: customers > 0 ? Math.round(exTax / customers) : 0
             };
 
@@ -803,7 +713,6 @@ export async function initSalesPage() {
                 renderAbsenteeTags('desktop');
                 renderAbsenteeTags('mobile');
                 form.reset();
-                updateCalculations();
                 if (!isMobile) fetchHistory();
             } catch (err) { showAlert('エラー', err.message); }
         };
@@ -838,7 +747,6 @@ ${data.other_notes ? '\n■その他連絡\n' + data.other_notes : ''}`;
         resetBtn.onclick = () => {
             if (confirm("入力内容をリセットしますか？")) {
                 form.reset();
-                updateCalculations();
                 absenteeList = [];
                 renderAbsenteeTags('desktop');
                 renderAbsenteeTags('mobile');

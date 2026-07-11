@@ -59,7 +59,6 @@ function renderListView(container) {
                         <th style="padding: 1.2rem; font-weight: 600;">Dinii店舗ID</th>
                         <th style="padding: 1.2rem; font-weight: 600;">グループ</th>
                         <th style="padding: 1.2rem; font-weight: 600;">席数</th>
-                        <th style="padding: 1.2rem; font-weight: 600;">席数</th>
                         <th style="padding: 1.2rem; font-weight: 600;">リセット</th>
                         <th style="padding: 1.2rem; text-align: right; font-weight: 600;">操作</th>
                     </tr>
@@ -293,7 +292,7 @@ function renderTable(filter = "") {
         renderPagination(totalPages, filter);
 
         if (itemsToShow.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 4rem; color: var(--text-secondary);">該当する店舗が見つかりません</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 4rem; color: var(--text-secondary);">該当する店舗が見つかりません</td></tr>';
             return;
         }
 
@@ -307,7 +306,6 @@ function renderTable(filter = "") {
                 <td style="padding: 1.2rem;"><span class="badge" style="background: ${s.store_type==='CK'?'#8B5CF6':'var(--primary-light)'}; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">${s.store_type==='CK'?'CK':'店舗'}</span></td>
                 <td style="padding: 1.2rem; font-family: monospace; font-size: 0.75rem; color: var(--text-secondary);">${s.dinii_store_id || '-'}</td>
                 <td style="padding: 1.2rem; color: var(--text-secondary);">${s.group_name || '-'}</td>
-                <td style="padding: 1.2rem;">${s.seat_count || '-'}</td>
                 <td style="padding: 1.2rem;">${s.seat_count || '-'}</td>
                 <td style="padding: 1.2rem; font-family: monospace; color: var(--text-secondary);">${s.reset_time || '05:00'}</td>
                 <td style="padding: 1.2rem; text-align: right;">
