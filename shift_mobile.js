@@ -9,7 +9,7 @@ import {
     openHelpStaffModal, applyFixedSchedules, calculateSlot, getRollingSlots,
     setShiftState, showRejectedShifts, dailyMemos, getExtendedRange,
     applyShiftUpdate, checkDoubleBooking, saveDailyMemo
-} from './shift.js';
+} from './shift.js?v=20260711_04';
 
 export const shiftAdminMobilePageHtml = `
     <div class="animate-fade-in" id="shift-admin-container-mobile" style="max-width: 100%; margin: 0 auto; padding-bottom: 80px;">
