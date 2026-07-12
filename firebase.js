@@ -19,7 +19,8 @@ import {
     arrayUnion,
     arrayRemove,
     deleteField,
-    increment
+    increment,
+    documentId
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { getStorage } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
@@ -50,7 +51,8 @@ export {
     arrayUnion,
     arrayRemove,
     deleteField,
-    increment
+    increment,
+    documentId
 };
 
 console.log("Firebase initialized successfully.");
