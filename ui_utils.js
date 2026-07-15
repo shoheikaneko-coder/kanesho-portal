@@ -34,7 +34,7 @@ export function showAlert(title, message) {
     };
 }
 
-export function showConfirm(title, message, onConfirm) {
+export function showConfirm(title, message, onConfirm, cancelText = 'キャンセル', okText = '確定') {
     return new Promise((resolve) => {
         const modalId = 'ui-confirm-modal';
         let modal = document.getElementById(modalId);
@@ -51,8 +51,8 @@ export function showConfirm(title, message, onConfirm) {
                 <h3 style="margin-top:0; color:var(--text-primary); text-align:center; font-size: 1.2rem;">${title}</h3>
                 <p style="color:var(--text-secondary); margin-bottom:1.5rem; text-align:center; line-height: 1.5;">${message}</p>
                 <div style="display:flex; gap:1rem;">
-                    <button id="confirm-cancel-btn" class="btn" style="flex:1; background:var(--surface-darker); font-size: 0.9rem;">キャンセル</button>
-                    <button id="confirm-ok-btn" class="btn btn-primary" style="flex:1; background:#ef4444; font-size: 0.9rem;">確定</button>
+                    <button id="confirm-cancel-btn" class="btn" style="flex:1; background:var(--surface-darker); font-size: 0.9rem;">${cancelText}</button>
+                    <button id="confirm-ok-btn" class="btn btn-primary" style="flex:1; background:#ef4444; font-size: 0.9rem;">${okText}</button>
                 </div>
             </div>
         `;

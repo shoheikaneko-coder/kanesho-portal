@@ -1099,19 +1099,11 @@ async function loadInitialSettingsAndData() {
     let hasSubordinates = false;
     const isAdmin = role === 'Admin' || role === '管理者';
 
-    if (isAdmin) {
-        hasSubordinates = true;
-        subordinateUsers = allUsers.filter(u => {
-            if (u.id === user.id) return true; // 管理者はテストのため自身も表示可能
-            if (u.Status === 'retired' || u.Status === '退職済') return false;
-            return true;
-        });
-    } else if (myJobTitle) {
+    if (myJobTitle || isAdmin) {
         // 同じ店舗の全従業員について判定
         subordinateUsers = allUsers.filter(u => {
             if (u.id === user.id) return false;
             if (u.Status === 'retired' || u.Status === '退職済') return false;
-            if ((u.StoreID || u.StoreId) !== myStore) return false;
             
             // 相手の等級から役職を判定 (設定がない場合は完全除外)
             if (!u.GradeCode || !gradeMap[u.GradeCode]) return false;
@@ -1122,19 +1114,38 @@ async function loadInitialSettingsAndData() {
             const uRoute = routeMap[uJobTitle];
             if (!uRoute) return false;
             
-            // 自分の役職が、相手の1次評価者または最終評価者であれば部下として扱う
+            // 自分が本来の評価者であるか
             const isEvaluator = uRoute.primary_evaluator === myJobTitle || uRoute.secondary_evaluator === myJobTitle;
+            // 管理者が「社長」を代行しているか
+            const isAdminEvaluator = isAdmin && (uRoute.primary_evaluator === '社長' || uRoute.secondary_evaluator === '社長');
             
-            // 管理者特権: 自分が店長・統括店長の場合、評価ルートに関わらず自店舗のスタッフ（同格以上を除く）を表示する
-            if (myJobTitle === '店長' || myJobTitle === '統括店長') {
-                if (uJobTitle === '店長' || uJobTitle === '統括店長') return false;
-                return true;
+            if (isEvaluator || isAdminEvaluator) {
+                // 自店舗の場合は常に許可
+                if ((u.StoreID || u.StoreId) === myStore) return true;
+                
+                // 他店舗の場合は、社長・統括店長・管理者のみ越境評価を許可
+                if (isAdmin || myJobTitle === '社長' || myJobTitle === '統括店長') return true;
             }
             
-            return isEvaluator;
+            // 【自店舗のフォールバック】店長・統括店長は評価ルート未設定の一般スタッフも強制表示
+            if ((u.StoreID || u.StoreId) === myStore) {
+                if (myJobTitle === '店長' || myJobTitle === '統括店長') {
+                    if (uJobTitle !== '店長' && uJobTitle !== '統括店長' && uJobTitle !== '社長') return true;
+                }
+            }
+            
+            return false;
         });
         
         hasSubordinates = subordinateUsers.length > 0;
+    }
+    
+    if (isAdmin) {
+        hasSubordinates = true;
+        if (!subordinateUsers.some(u => u.id === user.id)) {
+            const me = allUsers.find(u => u.id === user.id);
+            if (me) subordinateUsers.push(me);
+        }
     }
     
     const tabSubordinates = document.getElementById('tab-subordinates');
@@ -1317,8 +1328,8 @@ function updateTabBadges() {
             if (role === 'Admin' || role === '管理者') return true;
 
             const wf = e.workflow || {};
-            const isPrimary = wf.primary_evaluator === myJobTitle;
-            const isSecondary = wf.secondary_evaluator === myJobTitle || (!wf.secondary_evaluator && (role === 'Manager' || role === '店長'));
+            const isPrimary = wf.primary_evaluator === myJobTitle || (isAdmin && wf.primary_evaluator === '社長');
+            const isSecondary = wf.secondary_evaluator === myJobTitle || (!wf.secondary_evaluator && (role === 'Manager' || role === '店長')) || (isAdmin && wf.secondary_evaluator === '社長');
             
             let amISubmitted = false;
             if (isPrimary) amISubmitted = e.is_primary_submitted;
@@ -1567,7 +1578,8 @@ function renderSubordinatesTab(container) {
 
     const user = window.appState.currentUser;
     const role = user.Role || '';
-    const myJobTitle = user.JobTitle || '';
+    const myJobTitle = window.appState.myJobTitle || user.JobTitle || '';
+    const isAdmin = role === 'Admin' || role === '管理者';
 
     const sectionA = []; // あなたの評価待ち
     const sectionB = []; // 他者の入力待ち
@@ -1576,8 +1588,8 @@ function renderSubordinatesTab(container) {
     targetUsers.forEach(u => {
         const evalData = activeEvaluations.find(e => e.user_id === u.id);
         const wf = evalData.workflow || {};
-        const isPrimary = wf.primary_evaluator === myJobTitle;
-        const isSecondary = wf.secondary_evaluator === myJobTitle || (!wf.secondary_evaluator && (role === 'Manager' || role === '店長'));
+        const isPrimary = wf.primary_evaluator === myJobTitle || (isAdmin && wf.primary_evaluator === '社長');
+        const isSecondary = wf.secondary_evaluator === myJobTitle || (!wf.secondary_evaluator && (role === 'Manager' || role === '店長')) || (isAdmin && wf.secondary_evaluator === '社長');
 
         if (['evaluating', 'self_evaluating', 'self_submitted', 'primary_evaluating', 'primary_submitted', 'manager_evaluating'].includes(evalData.status)) {
             const isEvaluator = isPrimary || isSecondary;
@@ -1591,7 +1603,7 @@ function renderSubordinatesTab(container) {
                     amISubmitted = evalData.is_manager_submitted;
                 }
                 
-                if (!amISubmitted || role === 'Admin') {
+                if (!amISubmitted) {
                     sectionA.push(u);
                 } else {
                     sectionB.push(u);
@@ -1627,8 +1639,8 @@ function renderSubordinatesTab(container) {
             const resultGrade = evalData ? (evalData.new_grade || '-') : '-';
             const wf = evalData && evalData.workflow ? evalData.workflow : {};
             
-            const isPrimary = wf.primary_evaluator === myJobTitle;
-            const isSecondary = wf.secondary_evaluator === myJobTitle || (!wf.secondary_evaluator && (role === 'Manager' || role === '店長'));
+            const isPrimary = wf.primary_evaluator === myJobTitle || (isAdmin && wf.primary_evaluator === '社長');
+            const isSecondary = wf.secondary_evaluator === myJobTitle || (!wf.secondary_evaluator && (role === 'Manager' || role === '店長')) || (isAdmin && wf.secondary_evaluator === '社長');
 
             let actionBtn = '';
             if (['evaluating', 'self_evaluating', 'self_submitted', 'primary_evaluating', 'primary_submitted', 'manager_evaluating'].includes(status)) {
@@ -1636,7 +1648,7 @@ function renderSubordinatesTab(container) {
                 if (isPrimary) amISubmitted = evalData.is_primary_submitted;
                 else if (isSecondary) amISubmitted = evalData.is_manager_submitted;
                 
-                if (!amISubmitted || role === 'Admin') {
+                if (!amISubmitted) {
                     actionBtn = `<button class="btn btn-primary" onclick="window.showSubordinateDetail('${u.id}')" style="font-size:0.75rem; font-weight:800; background:#7c3aed; border-color:#7c3aed; padding: 0.4rem 0.8rem;">評価を入力</button>`;
                 } else {
                     actionBtn = `<button class="btn btn-secondary" onclick="window.showSubordinateDetail('${u.id}')" style="font-size:0.75rem; font-weight:700; padding: 0.4rem 0.8rem; border:1px solid #cbd5e1; background:white; color:var(--text-secondary);"><i class="fas fa-check"></i> 入力済</button>`;
@@ -1729,9 +1741,7 @@ function renderSubordinatesTab(container) {
     };
 
     window.backToSubordinateList = () => {
-        document.getElementById('subordinate-detail-container').style.display = 'none';
-        document.getElementById('subordinate-detail-container').innerHTML = '';
-        document.getElementById('subordinate-list-container').style.display = 'block';
+        renderSubordinatesTab(container);
     };
 }
 
@@ -1839,9 +1849,7 @@ function renderInterviewTab(container) {
     };
 
     window.backToInterviewList = () => {
-        document.getElementById('interview-detail-container').style.display = 'none';
-        document.getElementById('interview-detail-container').innerHTML = '';
-        document.getElementById('interview-list-container').style.display = 'block';
+        renderInterviewTab(container);
     };
 }
 
@@ -2611,9 +2619,11 @@ function renderModalBody(container, mode) {
 
     const wf = selectedEvalDetail.workflow || {};
     const hasPrimary = !!wf.primary_evaluator;
-    const myJobTitle = window.appState.currentUser ? window.appState.currentUser.JobTitle : '';
-    const isPrimary = wf.primary_evaluator === myJobTitle;
-    const isSecondary = wf.secondary_evaluator === myJobTitle || (!wf.secondary_evaluator && (window.appState.currentUser.Role === 'Manager' || window.appState.currentUser.Role === '店長'));
+    const myJobTitle = window.appState.myJobTitle || (window.appState.currentUser ? window.appState.currentUser.JobTitle : '');
+    const role = window.appState.currentUser ? window.appState.currentUser.Role : '';
+    const isAdmin = role === 'Admin' || role === '管理者';
+    const isPrimary = wf.primary_evaluator === myJobTitle || (isAdmin && wf.primary_evaluator === '社長');
+    const isSecondary = wf.secondary_evaluator === myJobTitle || (!wf.secondary_evaluator && (role === 'Manager' || role === '店長')) || (isAdmin && wf.secondary_evaluator === '社長');
 
     const canEditPrimary = isManagerMode && isPrimary && ['evaluating', 'self_evaluating', 'self_submitted', 'primary_evaluating', 'primary_submitted'].includes(status);
     const canEditSecondary = isManagerMode && isSecondary && ['evaluating', 'self_evaluating', 'self_submitted', 'primary_evaluating', 'primary_submitted', 'manager_evaluating'].includes(status);
@@ -2622,8 +2632,7 @@ function renderModalBody(container, mode) {
     const allSubmitted = selectedEvalDetail.is_self_submitted && 
                          (!hasPrimary || selectedEvalDetail.is_primary_submitted) && 
                          selectedEvalDetail.is_manager_submitted;
-    const role = window.appState.currentUser ? window.appState.currentUser.Role : '';
-    const isAdmin = role === 'Admin';
+    
     const hiddenIconHtml = `<div style="text-align: center; width: 100%;"><i class="fas fa-lock" style="color: #94a3b8; font-size: 0.9rem;" title="全員の評価が完了するまで非公開です"></i></div>`;
 
     // 項目ごとの行を構築
@@ -3182,7 +3191,8 @@ function renderModalBody(container, mode) {
 function renderModalFooter(container, mode) {
     const status = selectedEvalDetail.status;
     const role = window.appState.currentUser ? window.appState.currentUser.Role : '';
-    const myJobTitle = window.appState.currentUser ? window.appState.currentUser.JobTitle : '';
+    const myJobTitle = window.appState.myJobTitle || (window.appState.currentUser ? window.appState.currentUser.JobTitle : '');
+    const isAdmin = role === 'Admin' || role === '管理者';
     
     container.innerHTML = '';
     
@@ -3194,8 +3204,8 @@ function renderModalFooter(container, mode) {
     }
     else if (mode === 'manager' && ['evaluating', 'self_evaluating', 'self_submitted', 'primary_evaluating', 'primary_submitted', 'manager_evaluating'].includes(status)) {
         const wf = selectedEvalDetail.workflow || {};
-        const isPrimary = wf.primary_evaluator === myJobTitle;
-        const isSecondary = wf.secondary_evaluator === myJobTitle || (!wf.secondary_evaluator && (role === 'Manager' || role === '店長'));
+        const isPrimary = wf.primary_evaluator === myJobTitle || (isAdmin && wf.primary_evaluator === '社長');
+        const isSecondary = wf.secondary_evaluator === myJobTitle || (!wf.secondary_evaluator && (role === 'Manager' || role === '店長')) || (isAdmin && wf.secondary_evaluator === '社長');
 
         let submitBtn = '';
         if (isPrimary && !selectedEvalDetail.is_primary_submitted) {
@@ -3203,6 +3213,9 @@ function renderModalFooter(container, mode) {
         } 
         else if (isSecondary && !selectedEvalDetail.is_manager_submitted) {
             submitBtn = `<button class="btn btn-primary" style="background:#7c3aed; border-color:#7c3aed; font-weight:800; padding:0.6rem 2rem;" onclick="window.submitManagerEvaluation('manager')">最終評価を提出</button>`;
+        }
+        else if (isSecondary && selectedEvalDetail.is_manager_submitted && wf.primary_evaluator && !selectedEvalDetail.is_primary_submitted) {
+            submitBtn = `<button class="btn btn-primary" style="background:#ef4444; border-color:#ef4444; font-weight:800; padding:0.6rem 2rem;" onclick="window.submitManagerEvaluation('skip_primary')">1次評価を強制スキップして面談に進む</button>`;
         }
         
         if (submitBtn || role === 'Admin') {
@@ -3361,6 +3374,33 @@ function renderModalFooter(container, mode) {
         let isManagerSub = selectedEvalDetail.is_manager_submitted || false;
         let nextStatus = selectedEvalDetail.status;
 
+        if (type === 'skip_primary') {
+            showConfirm('1次評価の強制スキップ', '現在未提出の1次評価をスキップし、このスタッフの評価を全員完了（面談待ち）に進めます。よろしいですか？', async () => {
+                try {
+                    const docRef = doc(db, "t_evaluations", selectedEvalDetail.id);
+                    const updates = {
+                        is_primary_submitted: true,
+                        status: 'interviewing',
+                        updated_at: new Date().toISOString()
+                    };
+                    await updateDoc(docRef, updates);
+                    
+                    selectedEvalDetail.is_primary_submitted = true;
+                    selectedEvalDetail.status = 'interviewing';
+                    
+                    const idx = activeEvaluations.findIndex(e => e.id === selectedEvalDetail.id);
+                    if (idx !== -1) {
+                        activeEvaluations[idx] = { ...activeEvaluations[idx], ...updates };
+                    }
+                    window.backToSubordinateList();
+                    showAlert('スキップ完了', '1次評価をスキップして面談待ちに進めました。');
+                } catch(e) {
+                    showAlert('エラー', 'エラーが発生しました: ' + e.message);
+                }
+            });
+            return;
+        }
+
         if (type === 'primary') {
             title = '1次評価の提出';
             msg = '1次評価を完了として提出しますか？<br>（全員の評価が完了するまでは面談待ちに進みません）';
@@ -3375,20 +3415,37 @@ function renderModalFooter(container, mode) {
             nextStatus = 'president_pending';
         }
 
-        if (type === 'primary' || type === 'manager') {
-            if (!isSelfSub) {
-                nextStatus = 'evaluating';
-            } else if (hasPrimary && !isPrimarySub) {
-                nextStatus = 'self_submitted';
-            } else if (!isManagerSub) {
-                nextStatus = 'primary_submitted';
-            } else {
-                nextStatus = 'interviewing';
-            }
-        }
-
         showConfirm(title, msg, async () => {
             try {
+                // 1次評価スキップの2段確認
+                let finalType = type;
+                if (type === 'manager' && hasPrimary && !isPrimarySub) {
+                    const skipConfirmed = await showConfirm(
+                        '1次評価スキップの確認',
+                        '現在、1次評価（副店長等）が未完了です。<br><br>1次評価をスキップして全員完了（面談待ち）に進めますか？<br>※「待機する」を選ぶと、あなたの評価は保存された上で1次評価者の入力を待ちます。',
+                        null,
+                        '待機する',
+                        'スキップして完了'
+                    );
+                    
+                    if (skipConfirmed) {
+                        isPrimarySub = true;
+                        nextStatus = 'interviewing';
+                    } else {
+                        nextStatus = 'self_submitted';
+                    }
+                } else if (type === 'primary' || type === 'manager') {
+                    if (!isSelfSub) {
+                        nextStatus = 'evaluating';
+                    } else if (hasPrimary && !isPrimarySub) {
+                        nextStatus = 'self_submitted';
+                    } else if (!isManagerSub) {
+                        nextStatus = 'primary_submitted';
+                    } else {
+                        nextStatus = 'interviewing';
+                    }
+                }
+
                 const docRef = doc(db, "t_evaluations", selectedEvalDetail.id);
                 const updates = {
                     items: selectedEvalDetail.items,
@@ -3400,14 +3457,14 @@ function renderModalFooter(container, mode) {
                     updated_at: new Date().toISOString()
                 };
                 
-                if (type === 'primary') updates.is_primary_submitted = true;
+                if (type === 'primary' || isPrimarySub) updates.is_primary_submitted = true;
                 if (type === 'manager') updates.is_manager_submitted = true;
 
                 await updateDoc(docRef, updates);
                 
                 // メモリ上のデータを即時更新
                 selectedEvalDetail.status = nextStatus;
-                if (type === 'primary') selectedEvalDetail.is_primary_submitted = true;
+                if (type === 'primary' || isPrimarySub) selectedEvalDetail.is_primary_submitted = true;
                 if (type === 'manager') selectedEvalDetail.is_manager_submitted = true;
                 
                 const idx = activeEvaluations.findIndex(e => e.id === selectedEvalDetail.id);
