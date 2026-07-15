@@ -521,6 +521,32 @@ async function buildKpiPdcaBoards() {
         }
     });
 
+    // マスタデータ一括取得 (CKスタッフの判定等に使用)
+    let storeMap = {};
+    let userMap = {};
+    try {
+        const [allStoresSnap, allUsersSnap] = await Promise.all([
+            getDocs(collection(db, "m_stores")),
+            getDocs(collection(db, "m_users"))
+        ]);
+        allStoresSnap.forEach(d => {
+            const data = d.data();
+            const sid = data.store_id || data.StoreID || data['店舗ID'];
+            if (sid) storeMap[String(sid)] = { ...data, id: d.id };
+            storeMap[d.id] = { ...data, id: d.id };
+        });
+        allUsersSnap.forEach(d => {
+            const data = d.data();
+            userMap[String(d.id).trim()] = data;
+            const code = data.EmployeeCode || data.staff_code || "";
+            if (code) userMap[String(code).trim()] = data;
+            const name = data.staff_name || data.name || "";
+            if (name) userMap[name.trim()] = data;
+        });
+    } catch(e) {
+        console.error("Failed to load masters:", e);
+    }
+
     try {
         // 営業実績集計
         const pSnap = await getDocs(query(collection(db, "t_performance"), where("store_id", "==", storeId)));
@@ -545,21 +571,89 @@ async function buildKpiPdcaBoards() {
 
         // 勤怠人時集計
         const aSnap = await getDocs(collection(db, "t_attendance"));
+        
+        // ユーザーごとに打刻データを整理
+        const perStaff = {};
         aSnap.forEach(docSnap => {
             const d = docSnap.data();
-            const sid = String(d.store_id || d.StoreID || "").trim();
-            if (sid !== storeId) return;
+            const rawSid = String(d.store_id || d.StoreID || "").trim();
+            const si = storeMap[rawSid];
+            const normSid = (si && si.id) ? si.id : rawSid;
+            
+            // 対象店舗のデータ、またはインポートデータも含めるため広く拾う
+            const staffId = String(d.staff_id || d.staff_code || d.EmployeeCode || d.staff_name || d.name || "unknown").trim();
+            const key = staffId; 
+            if (!perStaff[key]) perStaff[key] = [];
+            perStaff[key].push({ ...d, normalized_sid: normSid });
+        });
 
-            const isImported = (d.total_labor_hours !== undefined || d.TotalLaborHours !== undefined);
-            if (!isImported) return;
+        Object.values(perStaff).forEach(recs => {
+            const first = recs[0];
+            const staffKey = String(first.staff_id || first.staff_code || first.EmployeeCode || first.staff_name || first.name || "").trim();
+            const staffData = userMap[staffKey] || {};
+            const staffStoreId = String(staffData.StoreID || staffData.StoreId || staffData.store_id || "").trim();
+            const homeStore = storeMap[staffStoreId];
+            
+            // ユーザー指定の判定基準: store_type が "CK" ならCK所属
+            const isCKStaff = homeStore && String(homeStore.store_type || "").trim() === 'CK';
 
-            const rawYm = d.year_month || d.YearMonth || String(d.timestamp || d.date).substring(0, 7);
-            const ym = String(rawYm).replace(/\//g, '-');
+            // 営業社員（非CK所属）のみ営業労働hにカウント
+            if (isCKStaff) return;
 
-            if (laborMap[ym] !== undefined) {
-                const h = Number(String(d.total_labor_hours || d.TotalLaborHours || '0').replace(/,/g, '')) || 0;
-                laborMap[ym] += h;
-            }
+            // 全打刻/インポートデータを日付順に処理
+            recs.sort((a,b) => new Date(a.timestamp || a.date || 0) - new Date(b.timestamp || b.date || 0));
+            let inT = null, breakStartT = null, totalBreakMs = 0, currentNormalizedSid = "", inDate = null;
+
+            recs.forEach(r => {
+                const ts = r.timestamp || r.date || r.Date || "";
+                if (!ts) return;
+                const type = String(r.type || r.Type || '').toLowerCase();
+                const sid = r.normalized_sid;
+                const isImported = (r.total_labor_hours !== undefined || r.TotalLaborHours !== undefined);
+
+                if (isImported) {
+                    // インポートデータ(集計済み)の処理
+                    const fallbackSid = (staffData ? (staffData.StoreID || staffData.StoreId) : '') || 'unknown';
+                    const finalSid = sid || fallbackSid;
+                    if (finalSid === storeId) {
+                        const h = Number(String(r.total_labor_hours || r.TotalLaborHours || '0').replace(/,/g, '')) || 0;
+                        const rawYm = r.year_month || r.YearMonth || String(ts).substring(0, 7);
+                        const ym = String(rawYm).replace(/\//g, '-');
+                        if (laborMap[ym] !== undefined) {
+                            laborMap[ym] += h;
+                        }
+                    }
+                } else {
+                    // アプリからのリアルタイム打刻データの処理
+                    if (type === 'in' || type.includes('check_in') || type.includes('出勤')) {
+                        inT = new Date(ts);
+                        totalBreakMs = 0; breakStartT = null; currentNormalizedSid = sid;
+                        const jstInT = new Date(inT.getTime() + (9 * 60 * 60 * 1000));
+                        inDate = r.date || jstInT.toISOString().substring(0, 10);
+                    } else if (type.includes('break_start') || type.includes('休憩開始')) {
+                        breakStartT = new Date(ts);
+                    } else if ((type.includes('break_end') || type.includes('休憩終了')) && breakStartT) {
+                        totalBreakMs += (new Date(ts) - breakStartT);
+                        breakStartT = null;
+                    } else if ((type === 'out' || type.includes('check_out') || type.includes('退勤')) && inT) {
+                        const outT = new Date(ts);
+                        const netMs = Math.max(0, (outT - inT) - totalBreakMs);
+                        const h = netMs / 3600000;
+                        
+                        const shiftDate = inDate || r.date || new Date(inT.getTime() + (9 * 60 * 60 * 1000)).toISOString().substring(0, 10);
+                        const ym = shiftDate.substring(0, 7).replace(/\//g, '-');
+                        const finalSid = currentNormalizedSid || sid;
+
+                        const fallbackSid = (staffData ? (staffData.StoreID || staffData.StoreId) : '') || 'unknown';
+                        const sidToUse = finalSid || fallbackSid;
+                        
+                        if (sidToUse === storeId && laborMap[ym] !== undefined) {
+                            laborMap[ym] += h;
+                        }
+                        inT = null; totalBreakMs = 0; breakStartT = null; inDate = null;
+                    }
+                }
+            });
         });
     } catch(e) {
         console.error("Error aggregating performance data:", e);
@@ -713,12 +807,12 @@ async function buildKpiPdcaBoards() {
             sales: { actual: `${currentMonth}月度日次売上平均`, target: '目標平均売上' },
             customers: { actual: `${currentMonth}月度日次客数平均`, target: '目標平均来客数' },
             spend: { actual: `${currentMonth}月度客単価実績`, target: '目標客単価' },
-            productivity: { actual: `${currentMonth}月度日次人時売上平均`, target: '目標営業人時売上' }
+            productivity: { actual: `${currentMonth}月度実績`, target: '目標営業人時売上' }
         };
         const labels = labelNames[key] || { actual: '当月実績', target: '定量目標' };
 
         // 単位サフィックス (/日 など) の判定
-        const dailySuffix = (key === 'sales' || key === 'customers' || key === 'productivity') ? ' /日' : '';
+        const dailySuffix = (key === 'sales' || key === 'customers') ? ' /日' : '';
 
         // 1. 当月バッジ (当月 - 前月)
         const diffVal = val - kpi.prev;
