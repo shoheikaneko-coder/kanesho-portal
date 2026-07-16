@@ -578,8 +578,8 @@ function renderFormViewMobile(container) {
                         <div>
                             <label style="display: block; font-size: 0.7rem; color: #475569; font-weight: 800; margin-bottom: 0.4rem;">1食ポーション量</label>
                             <div style="display: flex; align-items: center; gap: 0.5rem; background: #f1f5f9; border: 1px solid #e2e8f0; padding: 0.4rem; border-radius: 14px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);">
-                                <input type="number" id="proto-portion" value="${isEdit ? (editingPrototype.portion_amount || '') : ''}" style="flex: 2; border: none; background: transparent; padding: 0.6rem 0.8rem; font-weight: 800; text-align: left; font-size: 1.1rem; color: #1e293b;" inputmode="decimal" placeholder="量を入力">
-                                <div style="flex: 1; border-left: 2px solid #e2e8f0; padding-left: 0.5rem;">
+                                <input type="number" id="proto-portion" value="${isEdit ? (editingPrototype.portion_amount || '') : ''}" style="flex: 1.2; width: 100%; min-width: 0; border: none; background: transparent; padding: 0.6rem 0.8rem; font-weight: 800; text-align: left; font-size: 1.1rem; color: #1e293b;" inputmode="decimal" placeholder="量を入力">
+                                <div style="flex: 1; min-width: 80px; border-left: 2px solid #e2e8f0; padding-left: 0.5rem;">
                                     ${renderUnitSelect('proto-unit', isEdit ? editingPrototype.unit : '')}
                                 </div>
                             </div>
@@ -587,8 +587,8 @@ function renderFormViewMobile(container) {
                         <div>
                             <label style="display: block; font-size: 0.7rem; color: #475569; font-weight: 800; margin-bottom: 0.4rem;">出来高 (自家製時)</label>
                             <div style="display: flex; align-items: center; gap: 0.5rem; background: #f1f5f9; border: 1px solid #e2e8f0; padding: 0.4rem; border-radius: 14px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);">
-                                <input type="number" id="proto-yield" value="${isEdit ? (editingPrototype.yield_amount || 1) : 1}" style="flex: 2; border: none; background: transparent; padding: 0.6rem 0.8rem; font-weight: 800; text-align: left; font-size: 1.1rem; color: #1e293b;" inputmode="decimal" placeholder="出来高を入力">
-                                <div style="flex: 1; border-left: 2px solid #e2e8f0; padding-left: 0.5rem;">
+                                <input type="number" id="proto-yield" value="${isEdit ? (editingPrototype.yield_amount || 1) : 1}" style="flex: 1.2; width: 100%; min-width: 0; border: none; background: transparent; padding: 0.6rem 0.8rem; font-weight: 800; text-align: left; font-size: 1.1rem; color: #1e293b;" inputmode="decimal" placeholder="出来高を入力">
+                                <div style="flex: 1; min-width: 80px; border-left: 2px solid #e2e8f0; padding-left: 0.5rem;">
                                     ${renderUnitSelect('proto-yield-unit', isEdit ? editingPrototype.yield_unit : '')}
                                 </div>
                             </div>
