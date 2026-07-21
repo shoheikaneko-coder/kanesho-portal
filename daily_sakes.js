@@ -622,7 +622,7 @@ window.sakeApp.openMasterForm = async (id = null, isCopy = false) => {
                     <button type="submit" class="sake-btn-action sake-btn-primary" style="padding:1.2rem; font-size:1.1rem; border-radius:16px;">
                         <i class="fas fa-save"></i> マスタに保存する
                     </button>
-                    ${id ? `
+                    ${(id && !isCopy) ? `
                         <button type="button" id="fm-delete-btn" class="sake-btn-action sake-btn-danger-outline" style="padding:0.8rem;">
                             <i class="fas fa-trash-alt"></i> この銘柄をマスタから削除
                         </button>
@@ -643,7 +643,7 @@ window.sakeApp.openMasterForm = async (id = null, isCopy = false) => {
         }
     };
 
-    if (id) {
+    if (id && !isCopy) {
         document.getElementById('fm-delete-btn').onclick = () => window.sakeApp.deleteMaster(id);
     }
 
@@ -689,8 +689,8 @@ window.sakeApp.openMasterForm = async (id = null, isCopy = false) => {
                 updated_at: serverTimestamp()
             };
 
-            if (id) {
-                await updateDoc(doc(db, "sake_master", id), m);
+            if (window.sakeApp.editingMasterId) {
+                await updateDoc(doc(db, "sake_master", window.sakeApp.editingMasterId), m);
             } else {
                 m.created_at = serverTimestamp();
                 m.is_deleted = false;
@@ -760,9 +760,13 @@ async function setupSakeGlobalDelegation() {
         } else if (action === 'add-to-lineup') {
             handleOpenAddModal(id);
         } else if (action === 'edit-master') {
-            window.sakeApp.openMasterForm(id);
+            showConfirm("編集の確認", "この銘柄の情報を編集して上書きします。よろしいですか？", () => {
+                window.sakeApp.openMasterForm(id);
+            });
         } else if (action === 'copy-master') {
-            window.sakeApp.openMasterForm(id, true);
+            showConfirm("複製の確認", "この銘柄をコピーして新たに別銘柄を登録します。よろしいですか？", () => {
+                window.sakeApp.openMasterForm(id, true);
+            });
         } else if (action === 'commit-add') {
             handleCommitAdd(id, target.dataset.taste);
         } else if (action === 'delete-archived-slot') {
