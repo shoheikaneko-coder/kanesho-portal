@@ -786,6 +786,15 @@ function closeMobileInputView() {
     const headerArea = document.getElementById('eval-mob-header-wrapper');
     
     inputScreen.style.display = 'none';
+    contentArea.style.display = 'block';
+    headerArea.style.display = 'block';
+    mobileEditingEval = null;
+}
+
+function closeMobileHistoryView() {
+    document.body.style.overflow = '';
+    const globalFab = document.getElementById('fab-main-btn');
+    if (globalFab) globalFab.style.display = '';
     const historyScreen = document.getElementById('eval-mob-history-screen');
     const contentArea = document.getElementById('eval-mob-content-area');
     const headerArea = document.getElementById('eval-mob-header-wrapper');
