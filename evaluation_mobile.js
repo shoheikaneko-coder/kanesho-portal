@@ -791,7 +791,47 @@ function closeMobileInputView() {
     mobileEditingEval = null;
 }
 
-function closeMobileHistoryView() {
+window.openMobileHistoryView = function(evalDataOrId) {
+    let h = evalDataOrId;
+    if (typeof evalDataOrId === 'string') {
+        h = mobileAllPastHistory.find(e => e.id === evalDataOrId);
+    }
+    if (!h) return;
+    
+    window.currentMobileHistoryEval = h;
+
+    document.body.style.overflow = 'hidden';
+    
+    let historyScreen = document.getElementById('eval-mob-history-screen');
+    if (!historyScreen) {
+        historyScreen = document.createElement('div');
+        historyScreen.id = 'eval-mob-history-screen';
+        historyScreen.style.position = 'fixed';
+        historyScreen.style.inset = '0';
+        historyScreen.style.background = '#f8fafc';
+        historyScreen.style.zIndex = '999999';
+        historyScreen.style.overflowY = 'auto';
+        historyScreen.style.display = 'none';
+        document.body.appendChild(historyScreen);
+    }
+    
+    const globalFab = document.getElementById('fab-main-btn');
+    if (globalFab) globalFab.style.display = 'none';
+    
+    const contentArea = document.getElementById('eval-mob-content-area');
+    const headerArea = document.getElementById('eval-mob-header-wrapper');
+    
+    historyScreen.innerHTML = generateHistoryHtml(h);
+    historyScreen.style.display = 'block';
+    
+    if (contentArea) contentArea.style.display = 'none';
+    if (headerArea) headerArea.style.display = 'none';
+    
+    document.getElementById('btn-mob-history-close').addEventListener('click', window.closeMobileHistoryView);
+    window.scrollTo(0, 0);
+}
+
+window.closeMobileHistoryView = function() {
     document.body.style.overflow = '';
     const globalFab = document.getElementById('fab-main-btn');
     if (globalFab) globalFab.style.display = '';
@@ -820,7 +860,7 @@ function generateHistoryHtml(e) {
         </div>
         <div style="padding: 1.5rem 1rem; padding-bottom: 5rem;">
             
-            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.2rem; margin-bottom: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.2rem; margin-bottom: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
                 <div style="text-align: center; margin-bottom: 1rem;">
                     <div style="font-size: 0.85rem; color: #64748b; font-weight: 700; margin-bottom: 0.3rem;">最終確定等級</div>
                     <div style="font-family: monospace; font-size: 2rem; font-weight: 900; color: #059669;">${e.new_grade || '-'}</div>
@@ -842,38 +882,64 @@ function generateHistoryHtml(e) {
             </div>
     `;
 
+    if (e.interview_notes || e.president_comment) {
+        html += `
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.2rem; margin-bottom: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                <h4 style="margin: 0 0 1rem; color: #1e293b; font-size: 1rem; font-weight: 800; border-bottom: 2px solid #f1f5f9; padding-bottom: 0.5rem;"><i class="fas fa-comments" style="color: #6366f1; margin-right: 0.5rem;"></i>総括・面談メモ</h4>
+        `;
+        if (e.interview_notes) {
+            html += `
+                <div style="margin-bottom: ${e.president_comment ? '1rem' : '0'};">
+                    <div style="font-size: 0.75rem; color: #64748b; font-weight: 700; margin-bottom: 0.4rem;">上長面談時のメモ・記録</div>
+                    <div style="font-size: 0.85rem; color: #334155; line-height: 1.6; background: #f8fafc; padding: 0.8rem; border-radius: 8px; white-space: pre-wrap;">${e.interview_notes}</div>
+                </div>
+            `;
+        }
+        if (e.president_comment) {
+            html += `
+                <div>
+                    <div style="font-size: 0.75rem; color: #be123c; font-weight: 700; margin-bottom: 0.4rem;">社長フィードバック・総括</div>
+                    <div style="font-size: 0.85rem; color: #9f1239; line-height: 1.6; background: #fff1f2; padding: 0.8rem; border-radius: 8px; white-space: pre-wrap;">${e.president_comment}</div>
+                </div>
+            `;
+        }
+        html += `</div>`;
+    }
+
     const items = e.items || [];
     items.forEach((item, idx) => {
+        const hasComment = !!(item.self_comment || item.primary_comment || item.manager_comment);
         html += `
             <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.2rem; margin-bottom: 1rem; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
                 <div style="display: inline-block; background: #f1f5f9; color: #475569; font-size: 0.7rem; font-weight: 800; padding: 0.2rem 0.6rem; border-radius: 4px; margin-bottom: 0.5rem;">${item.category}</div>
-                <div style="font-weight: 800; color: #1e293b; font-size: 0.95rem; margin-bottom: 0.3rem;">${item.item_name}</div>
+                <div style="font-weight: 800; color: #1e293b; font-size: 0.95rem; margin-bottom: 0.3rem;">${item.title || item.item_name || ''}</div>
                 <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem; line-height: 1.5;">${(item.description || '').replace(/\n/g, '<br>')}</div>
                 
-                <div style="background: #f8fafc; border-radius: 8px; padding: 0.8rem; margin-bottom: 0.5rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-                        <span style="font-size: 0.75rem; font-weight: 700; color: #475569;"><i class="fas fa-user" style="color: #94a3b8; margin-right:4px;"></i>自己評価</span>
-                        <span style="font-weight: 900; color: #0f172a;">${item.self_score || '-'}点</span>
+                <div style="display: flex; gap: 0.5rem; position: relative;">
+                    <div style="flex: 1; background: #f8fafc; border-radius: 8px; padding: 0.8rem; text-align: center;">
+                        <div style="font-size: 0.7rem; font-weight: 700; color: #475569; margin-bottom: 0.2rem;"><i class="fas fa-user" style="color: #94a3b8; margin-right:4px;"></i>自己評価</div>
+                        <div style="font-weight: 900; color: #0f172a; font-size: 1.1rem;">${item.self_score || '-'}点</div>
                     </div>
-                    ${item.self_comment ? `<div style="font-size: 0.8rem; color: #334155; line-height: 1.4; padding-top: 0.4rem; border-top: 1px dashed #cbd5e1;">${item.self_comment.replace(/\n/g, '<br>')}</div>` : ''}
-                </div>
-                
-                ${e.primary_evaluator_name ? `
-                <div style="background: #f8fafc; border-radius: 8px; padding: 0.8rem; margin-bottom: 0.5rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-                        <span style="font-size: 0.75rem; font-weight: 700; color: #475569;"><i class="fas fa-user-tie" style="color: #94a3b8; margin-right:4px;"></i>1次評価</span>
-                        <span style="font-weight: 900; color: #0f172a;">${item.primary_score || '-'}点</span>
+                    
+                    ${e.primary_evaluator_name ? `
+                    <div style="flex: 1; background: #f8fafc; border-radius: 8px; padding: 0.8rem; text-align: center;">
+                        <div style="font-size: 0.7rem; font-weight: 700; color: #475569; margin-bottom: 0.2rem;"><i class="fas fa-user-tie" style="color: #94a3b8; margin-right:4px;"></i>1次評価</div>
+                        <div style="font-weight: 900; color: #0f172a; font-size: 1.1rem;">${item.primary_score || '-'}点</div>
                     </div>
-                    ${item.primary_comment ? `<div style="font-size: 0.8rem; color: #334155; line-height: 1.4; padding-top: 0.4rem; border-top: 1px dashed #cbd5e1;">${item.primary_comment.replace(/\n/g, '<br>')}</div>` : ''}
-                </div>
-                ` : ''}
-                
-                <div style="background: #fff1f2; border-radius: 8px; padding: 0.8rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-                        <span style="font-size: 0.75rem; font-weight: 800; color: #be123c;"><i class="fas fa-crown" style="color: #fb7185; margin-right:4px;"></i>最終評価</span>
-                        <span style="font-weight: 900; color: #be123c;">${item.manager_score || '-'}点</span>
+                    ` : ''}
+                    
+                    <div style="flex: 1; background: #fff1f2; border-radius: 8px; padding: 0.8rem; text-align: center;">
+                        <div style="font-size: 0.7rem; font-weight: 800; color: #be123c;"><i class="fas fa-crown" style="color: #fb7185; margin-right:4px;"></i>最終評価</div>
+                        <div style="font-weight: 900; color: #be123c; font-size: 1.1rem;">${item.manager_score || '-'}点</div>
                     </div>
-                    ${item.manager_comment ? `<div style="font-size: 0.8rem; color: #9f1239; line-height: 1.4; padding-top: 0.4rem; border-top: 1px dashed #fecdd3;">${item.manager_comment.replace(/\n/g, '<br>')}</div>` : ''}
+                    
+                    ${hasComment ? `
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+                        <button onclick="window.showEvalItemCommentModal(${idx})" style="background: #10b981; color: white; border: none; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 6px rgba(0,0,0,0.15); cursor: pointer;" title="コメントを確認">
+                            <i class="fas fa-comment-dots"></i>
+                        </button>
+                    </div>
+                    ` : ''}
                 </div>
             </div>
         `;
@@ -1336,3 +1402,72 @@ function bindMobileInputEvents(mode) {
         }
     });
 }
+
+// グローバル関数: 評価項目のコメントをモーダルで表示
+window.showEvalItemCommentModal = function(idx) {
+    if (!window.currentMobileHistoryEval) return;
+    const item = window.currentMobileHistoryEval.items[idx];
+    if (!item) return;
+
+    const modalId = 'eval-mob-item-comment-modal';
+    let modal = document.getElementById(modalId);
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = modalId;
+        modal.style.position = 'fixed';
+        modal.style.inset = '0';
+        modal.style.background = 'rgba(15, 23, 42, 0.5)';
+        modal.style.zIndex = '9999999';
+        modal.style.display = 'flex';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+        modal.style.padding = '1rem';
+        modal.style.backdropFilter = 'blur(4px)';
+        document.body.appendChild(modal);
+    }
+    
+    let html = `
+        <div style="background: white; border-radius: 16px; width: 100%; max-width: 400px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+            <div style="padding: 1rem 1.2rem; border-bottom: 1px solid #e2e8f0; background: #f8fafc; display: flex; justify-content: space-between; align-items: center;">
+                <h4 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: #1e293b;"><i class="fas fa-comment-dots" style="color: #10b981; margin-right: 0.4rem;"></i>コメント</h4>
+                <button onclick="document.getElementById('${modalId}').style.display='none'" style="background: none; border: none; font-size: 1.2rem; color: #94a3b8; cursor: pointer;"><i class="fas fa-times"></i></button>
+            </div>
+            <div style="padding: 1.2rem; max-height: 60vh; overflow-y: auto;">
+    `;
+    
+    if (item.self_comment) {
+        html += `
+            <div style="margin-bottom: 1rem;">
+                <div style="font-size: 0.75rem; color: #64748b; font-weight: 700; margin-bottom: 0.3rem;"><i class="fas fa-user" style="color: #94a3b8; margin-right: 4px;"></i>自己評価コメント</div>
+                <div style="background: #f1f5f9; padding: 0.8rem; border-radius: 8px; font-size: 0.85rem; line-height: 1.5; color: #334155; white-space: pre-wrap;">${item.self_comment}</div>
+            </div>
+        `;
+    }
+    if (item.primary_comment) {
+        html += `
+            <div style="margin-bottom: 1rem;">
+                <div style="font-size: 0.75rem; color: #64748b; font-weight: 700; margin-bottom: 0.3rem;"><i class="fas fa-user-tie" style="color: #94a3b8; margin-right: 4px;"></i>1次評価コメント</div>
+                <div style="background: #f1f5f9; padding: 0.8rem; border-radius: 8px; font-size: 0.85rem; line-height: 1.5; color: #334155; white-space: pre-wrap;">${item.primary_comment}</div>
+            </div>
+        `;
+    }
+    if (item.manager_comment) {
+        html += `
+            <div style="margin-bottom: 0;">
+                <div style="font-size: 0.75rem; color: #be123c; font-weight: 700; margin-bottom: 0.3rem;"><i class="fas fa-crown" style="color: #fb7185; margin-right: 4px;"></i>最終評価コメント</div>
+                <div style="background: #fff1f2; padding: 0.8rem; border-radius: 8px; font-size: 0.85rem; line-height: 1.5; color: #9f1239; white-space: pre-wrap;">${item.manager_comment}</div>
+            </div>
+        `;
+    }
+    
+    html += `
+            </div>
+            <div style="padding: 1rem; border-top: 1px solid #e2e8f0; text-align: center; background: #f8fafc;">
+                <button onclick="document.getElementById('${modalId}').style.display='none'" class="btn" style="background: white; border: 1px solid #cbd5e1; color: #475569; padding: 0.6rem 1.5rem; font-weight: 700; border-radius: 8px;">閉じる</button>
+            </div>
+        </div>
+    `;
+    
+    modal.innerHTML = html;
+    modal.style.display = 'flex';
+};

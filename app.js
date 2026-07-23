@@ -51,9 +51,10 @@ import { PullToRefresh } from './ptr_logic.js';
 import { manualHubPageHtml, initManualHubPage, manualViewerPageHtml, initManualViewerPage } from './manual.js';
 import { gradesPageHtml, initGradesPage } from './grades.js';
 import { skillsPageHtml, initSkillsPage } from './skills.js';
-import { evaluationPageHtml, initEvaluationPage } from './evaluation.js';
-import { evaluationPageHtmlMobile, initEvaluationPageMobile } from './evaluation_mobile.js';
-import { myPageHtml, initMyPage } from './my_page.js';
+import { evaluationPageHtml, initEvaluationPage } from './evaluation.js?v=20260723_05';
+import { evaluationPageHtmlMobile, initEvaluationPageMobile } from './evaluation_mobile.js?v=20260723_05';
+import { myPageHtml, initMyPage } from './my_page.js?v=20260723_05';
+import { myPageHtmlMobile, initMyPageMobile } from './my_page_mobile.js?v=20260723_05';
 import { addressChangePageHtml, initAddressChangePage, newHirePageHtml, initNewHirePage, applicationDetailPageHtml, initApplicationDetailPage, myApplicationsPageHtml, initMyApplicationsPage } from './applications.js?v=1.6';
 
 
@@ -808,8 +809,13 @@ async function showPage(target) {
                 break;
             case 'my_page':
                 updateHeaderTitle('マイページ');
-                pageContent.innerHTML = myPageHtml;
-                initMyPage();
+                if (window.innerWidth < 768) {
+                    pageContent.innerHTML = myPageHtmlMobile;
+                    initMyPageMobile();
+                } else {
+                    pageContent.innerHTML = myPageHtml;
+                    initMyPage();
+                }
                 break;
             case 'address_change':
                 updateHeaderTitle('住所変更申請');

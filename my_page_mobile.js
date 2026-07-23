@@ -6,7 +6,7 @@ let myPastEvaluations = [];  // 過去の自分の確定評価データリスト
 let myGradeConfig = null;    // 現在等級のマスタ設定
 let activeChartInstance = null; // Chart.jsのインスタンス保持用
 
-export const myPageHtml = `
+export const myPageHtmlMobile = `
     <div id="mypage-page-container" class="animate-fade-in" style="padding: 1rem 1.5rem; max-width: 1200px; margin: 0 auto; box-sizing: border-box; font-family: inherit;">
         
         <!-- マイページトップ情報 -->
@@ -34,8 +34,8 @@ export const myPageHtml = `
             </div>
         </div>
 
-        <!-- 2カラムスプリット -->
-        <div style="display: grid; grid-template-columns: 1fr 380px; gap: 1.5rem; align-items: start;">
+        <!-- 1カラム (スマホ向け) -->
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
             
             <!-- 左カラム: 等級・評価履歴、推移グラフ -->
             <div style="display: flex; flex-direction: column; gap: 1.5rem;">
@@ -146,7 +146,7 @@ export const myPageHtml = `
     </div>
 `;
 
-export async function initMyPage() {
+export async function initMyPageMobile(appState) {
     const user = window.appState.currentUser;
     if (!user) return;
 
