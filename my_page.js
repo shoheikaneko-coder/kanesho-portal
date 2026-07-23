@@ -40,46 +40,16 @@ export const myPageHtml = `
             <!-- 左カラム: 等級・評価履歴、推移グラフ -->
             <div style="display: flex; flex-direction: column; gap: 1.5rem;">
                 
-                <!-- 評価推移グラフ -->
+                <!-- 過去の評価履歴リスト -->
                 <div class="glass-panel" style="padding: 1.5rem; background: white; border: 1px solid var(--border); border-radius: 16px;">
                     <h3 style="margin-top: 0; margin-bottom: 1.2rem; font-size: 1.05rem; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 0.5rem; border-bottom: 2px solid #f1f5f9; padding-bottom: 0.6rem;">
-                        <i class="fas fa-chart-line" style="color: #3b82f6;"></i>
-                        評価スコア推移トレンド (直近4期)
+                        <i class="fas fa-history" style="color: #64748b;"></i>
+                        過去の人事評価シート履歴
                     </h3>
-                    <div style="position: relative; height: 260px; width: 100%;">
-                        <canvas id="eval-trend-chart"></canvas>
-                    </div>
-                </div>
-
-                <!-- 過去の評価履歴リスト -->
-                <div class="glass-panel" style="padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 16px; background: white;">
-                    <div style="padding: 1rem 1.2rem; border-bottom: 1px solid var(--border); background: #f8fafc;">
-                        <h3 style="margin: 0; font-size: 1.05rem; font-weight: 800; color: #1e293b;">
-                            <i class="fas fa-history" style="color: #64748b; margin-right: 0.4rem;"></i>
-                            過去の人事評価シート履歴
-                        </h3>
-                    </div>
-                    <div style="overflow-x: auto;">
-                        <table class="eval-table">
-                            <thead>
-                                <tr>
-                                    <th style="text-align: left;">評価期</th>
-                                    <th style="text-align: left;">評価区分</th>
-                                    <th style="text-align: center; width: 100px;">自己点</th>
-                                    <th style="text-align: center; width: 100px;">上長点</th>
-                                    <th style="text-align: center; width: 100px;">確定点数</th>
-                                    <th style="text-align: center; width: 100px;">判定等級</th>
-                                    <th style="text-align: right; width: 120px;" class="no-print">操作</th>
-                                </tr>
-                            </thead>
-                            <tbody id="mypage-eval-history-body">
-                                <tr>
-                                    <td colspan="7" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
-                                        履歴をロードしています...
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <div id="mypage-eval-history-container" style="display: flex; flex-direction: column; gap: 0.8rem;">
+                        <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                            履歴をロードしています...
+                        </div>
                     </div>
                 </div>
 
@@ -196,8 +166,7 @@ export async function initMyPage() {
     // 2. 過去の評価データのロード
     await fetchPastEvaluations(user.id);
     
-    // 3. グラフの描画
-    renderScoreTrendChart();
+    // 3. グラフの描画 (削除済)
 
     // 4. 申請ボタンモーダルのバインド
     setupMockModalSubmit();
@@ -205,8 +174,8 @@ export async function initMyPage() {
 
 // 過去の確定評価（公開・通知済）レコードをロードする
 async function fetchPastEvaluations(userId) {
-    const tbody = document.getElementById('mypage-eval-history-body');
-    if (!tbody) return;
+    const container = document.getElementById('mypage-eval-history-container');
+    if (!container) return;
 
     try {
         const q = query(
@@ -222,36 +191,45 @@ async function fetchPastEvaluations(userId) {
             myPastEvaluations.push({ id: d.id, ...d.data() });
         });
 
-        tbody.innerHTML = '';
+        container.innerHTML = '';
 
         if (myPastEvaluations.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="7" style="text-align: center; padding: 3rem; color: var(--text-secondary); font-weight: 600;">
-                        公開済みの人事評価履歴はまだ登録されていません。
-                    </td>
-                </tr>
+            container.innerHTML = `
+                <div style="text-align: center; padding: 3rem; color: var(--text-secondary); font-weight: 600;">
+                    公開済みの人事評価履歴はまだ登録されていません。
+                </div>
             `;
             return;
         }
 
         myPastEvaluations.forEach((e, idx) => {
-            const tr = document.createElement('tr');
-            tr.style.borderBottom = '1px solid var(--border)';
-            tr.innerHTML = `
-                <td style="padding: 0.9rem 1rem; font-weight: 800; color: #1e293b;">${e.period}期</td>
-                <td style="padding: 0.9rem 1rem; color: var(--text-secondary); font-weight: 600;">${e.is_provisional ? '仮評価' : '本評価'}</td>
-                <td style="padding: 0.9rem 1rem; text-align: center; font-weight: 600;">${e.self_total_score || 0}</td>
-                <td style="padding: 0.9rem 1rem; text-align: center; font-weight: 600;">${e.manager_total_score || 0}</td>
-                <td style="padding: 0.9rem 1rem; text-align: center; font-weight: 800; color: #be123c;">${e.final_total_score || e.manager_total_score || 0}</td>
-                <td style="padding: 0.9rem 1rem; text-align: center; font-family: monospace; font-weight: 900; color: #059669;">${e.new_grade || '-'}</td>
-                <td style="padding: 0.9rem 1rem; text-align: right;" class="no-print">
-                    <button class="btn btn-secondary" onclick="window.viewPastEvaluationSnapshot(${idx})" style="font-size:0.75rem; font-weight:700; padding:0.4rem 0.8rem; background:white; border:1px solid #cbd5e1; color:var(--text-secondary);">
-                        シート表示
-                    </button>
-                </td>
+            const isLegacy = e.is_legacy_archive ? '<span style="background: #cbd5e1; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; margin-left: 0.4rem;">手入力</span>' : '';
+            const score = e.final_total_score || e.manager_total_score || e.self_total_score || '-';
+            const grade = e.new_grade || '-';
+            const evaluator = e.evaluator_name || '管理者(記録なし)';
+            
+            const card = document.createElement('div');
+            card.className = "action-mock-btn"; // Added for hover effects if any
+            card.style.cssText = "display: flex; flex-direction: column; padding: 1.2rem; align-items: stretch; gap: 0.8rem; background: white; border: 1px solid var(--border); border-radius: 12px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: all 0.2s;";
+            card.onmouseover = () => { card.style.borderColor = "var(--primary)"; card.style.backgroundColor = "#f8fafc"; };
+            card.onmouseout = () => { card.style.borderColor = "var(--border)"; card.style.backgroundColor = "white"; };
+            card.onclick = () => window.viewPastEvaluationSnapshot(idx);
+            
+            card.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
+                    <div style="font-weight: 800; color: #1e293b; font-size: 1.05rem;"><i class="fas fa-clock" style="color:#94a3b8; margin-right:4px;"></i> ${e.period}期 ${isLegacy}</div>
+                    <div style="font-family: monospace; font-size: 1.2rem; font-weight: 900; color: #059669;">${grade}</div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="font-size: 0.85rem; color: #64748b; font-weight: 600;">
+                        最終評価者: <span style="color:#1e293b;">${evaluator}</span>
+                    </div>
+                    <div style="font-size: 0.9rem; font-weight: 700; color: #be123c;">
+                        <span style="font-size:0.75rem; color:#94a3b8; font-weight:600;">確定点数 </span>${score}点
+                    </div>
+                </div>
             `;
-            tbody.appendChild(tr);
+            container.appendChild(card);
         });
 
         // 過去スナップショット詳細表示の紐付け

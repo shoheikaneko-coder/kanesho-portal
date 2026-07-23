@@ -484,8 +484,9 @@ async function loadInitialDataMobile() {
         histSnap.forEach(d => {
             const hData = { id: d.id, ...d.data() };
             if (hData.status === 'approved' || hData.status === 'notified' || hData.is_legacy_archive) {
-                // If it's not the current period, add to history
-                if (!mobilePeriodSettings || hData.period !== mobilePeriodSettings.active_period) {
+                // If the period is not closed, the active period is shown at the top, so exclude it from history
+                const isCurrentActive = mobilePeriodSettings && mobilePeriodSettings.status !== 'closed' && hData.period === mobilePeriodSettings.active_period;
+                if (!isCurrentActive) {
                     mobileAllPastHistory.push(hData);
                 }
             }
@@ -583,16 +584,21 @@ function generateSelfViewHtml() {
             const isLegacy = h.is_legacy_archive ? '<span style="background: #cbd5e1; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; margin-left: 0.4rem;">手入力</span>' : '';
             const score = h.final_total_score || h.manager_total_score || h.self_total_score || '-';
             const grade = h.new_grade || '-';
+            const evaluator = h.evaluator_name || '管理者(記録なし)';
             
             html += `
-                <div class="eval-mob-list-card action-mock-btn" data-type="history-view">
-                    <div class="eval-mob-list-info">
-                        <h4>${h.period}期 ${isLegacy}</h4>
-                        <p>スコア: ${score}点</p>
+                <div class="eval-mob-list-card action-mock-btn" data-type="history-view" style="display: flex; flex-direction: column; padding: 1.2rem; align-items: stretch; gap: 0.8rem; background: white; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 0.8rem; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
+                        <div style="font-weight: 800; color: #1e293b; font-size: 1.05rem;"><i class="fas fa-clock" style="color:#94a3b8; margin-right:4px;"></i> ${h.period}期 ${isLegacy}</div>
+                        <div style="font-family: monospace; font-size: 1.2rem; font-weight: 900; color: #059669;">${grade}</div>
                     </div>
-                    <div class="eval-mob-list-action" style="flex-direction: row; align-items: center; gap: 1rem;">
-                        <div class="eval-mob-grade">${grade}</div>
-                        <i class="fas fa-chevron-right eval-mob-chevron"></i>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="font-size: 0.85rem; color: #64748b; font-weight: 600;">
+                            最終評価者: <span style="color:#1e293b;">${evaluator}</span>
+                        </div>
+                        <div style="font-size: 0.9rem; font-weight: 700; color: #be123c;">
+                            <span style="font-size:0.75rem; color:#94a3b8; font-weight:600;">確定点数 </span>${score}点
+                        </div>
                     </div>
                 </div>
             `;

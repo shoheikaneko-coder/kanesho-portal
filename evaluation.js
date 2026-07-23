@@ -3459,6 +3459,12 @@ function renderModalFooter(container, mode) {
                 
                 if (type === 'primary' || isPrimarySub) updates.is_primary_submitted = true;
                 if (type === 'manager') updates.is_manager_submitted = true;
+                
+                const currentUser = window.appState?.currentUser;
+                if (type === 'manager' || type === 'president_pending') {
+                    updates.evaluator_name = currentUser?.Name || '';
+                    updates.evaluator_id = currentUser?.id || '';
+                }
 
                 await updateDoc(docRef, updates);
                 
