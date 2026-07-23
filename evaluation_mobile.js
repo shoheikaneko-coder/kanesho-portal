@@ -587,7 +587,7 @@ function generateSelfViewHtml() {
             const evaluator = h.evaluator_name || '管理者(記録なし)';
             
             html += `
-                <div class="eval-mob-list-card action-mock-btn" data-type="history-view" style="display: flex; flex-direction: column; padding: 1.2rem; align-items: stretch; gap: 0.8rem; background: white; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 0.8rem; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                <div class="eval-mob-list-card action-mock-btn" data-type="history-view" data-id="${h.id}" style="display: flex; flex-direction: column; padding: 1.2rem; align-items: stretch; gap: 0.8rem; background: white; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 0.8rem; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
                     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
                         <div style="font-weight: 800; color: #1e293b; font-size: 1.05rem;"><i class="fas fa-clock" style="color:#94a3b8; margin-right:4px;"></i> ${h.period}期 ${isLegacy}</div>
                         <div style="font-family: monospace; font-size: 1.2rem; font-weight: 900; color: #059669;">${grade}</div>
@@ -714,7 +714,17 @@ function bindMobileActionButtons(container) {
             let msg = 'この画面は現在準備中です。PC版をご利用ください。';
             if (type === 'self-input') return openMobileInputView('self', mobileMyEvaluation);
             if (type === 'self-view') msg = '【自己評価確認画面】へ遷移します。\n（※次回のステップで構築します）';
-            if (type === 'history-view') msg = '【過去の履歴詳細画面】へ遷移します。\n（※次回のステップで構築します）';
+            if (type === 'history-view') {
+                const evalId = e.currentTarget.dataset.id;
+                if (window.viewHistoryDetail) {
+                    window.viewHistoryDetail(evalId);
+                    const modal = document.getElementById('eval-history-detail-modal-dynamic') || document.getElementById('eval-history-detail-modal');
+                    if (modal) {
+                        modal.style.display = 'flex';
+                    }
+                }
+                return;
+            }
             if (type === 'sub-input') {
                 const evalId = e.currentTarget.dataset.id;
                 const role = e.currentTarget.dataset.role;

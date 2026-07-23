@@ -240,7 +240,7 @@ async function fetchPastEvaluations(userId) {
 
     } catch (e) {
         console.error("Failed to load past evaluations:", e);
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--danger); font-weight:700;">評価履歴のロードに失敗しました。</td></tr>`;
+        if (container) container.innerHTML = `<div style="text-align: center; padding: 2rem; color: var(--danger); font-weight:700;">評価履歴のロードに失敗しました。</div>`;
     }
 }
 
