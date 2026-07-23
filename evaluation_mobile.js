@@ -468,7 +468,13 @@ async function loadInitialDataMobile() {
         mobileActiveEvaluations = [];
         mobileMyEvaluation = null;
         if (mobilePeriodSettings && mobilePeriodSettings.status !== 'closed' && mobilePeriodSettings.active_period) {
-            const eSnap = await getDocs(query(collection(db, "t_evaluations"), where("period", "==", mobilePeriodSettings.active_period)));
+            let eSnap;
+            // 管理者（部下がいる）場合は従来通り期全体のデータを取得、一般社員は自分の分だけ取得
+            if (mobileSubordinateUsers.length > 0) {
+                eSnap = await getDocs(query(collection(db, "t_evaluations"), where("period", "==", mobilePeriodSettings.active_period)));
+            } else {
+                eSnap = await getDocs(query(collection(db, "t_evaluations"), where("period", "==", mobilePeriodSettings.active_period), where("user_id", "==", currentUser.id)));
+            }
             eSnap.forEach(d => {
                 const eData = { id: d.id, ...d.data() };
                 mobileActiveEvaluations.push(eData);
@@ -716,13 +722,7 @@ function bindMobileActionButtons(container) {
             if (type === 'self-view') msg = '【自己評価確認画面】へ遷移します。\n（※次回のステップで構築します）';
             if (type === 'history-view') {
                 const evalId = e.currentTarget.dataset.id;
-                if (window.viewHistoryDetail) {
-                    window.viewHistoryDetail(evalId);
-                    const modal = document.getElementById('eval-history-detail-modal-dynamic') || document.getElementById('eval-history-detail-modal');
-                    if (modal) {
-                        modal.style.display = 'flex';
-                    }
-                }
+                openMobileHistoryView(evalId);
                 return;
             }
             if (type === 'sub-input') {
@@ -786,11 +786,116 @@ function closeMobileInputView() {
     const headerArea = document.getElementById('eval-mob-header-wrapper');
     
     inputScreen.style.display = 'none';
-    contentArea.style.display = 'block';
-    headerArea.style.display = 'block';
-    mobileEditingEval = null;
+    const historyScreen = document.getElementById('eval-mob-history-screen');
+    const contentArea = document.getElementById('eval-mob-content-area');
+    const headerArea = document.getElementById('eval-mob-header-wrapper');
+    
+    if (historyScreen) historyScreen.style.display = 'none';
+    if (contentArea) contentArea.style.display = 'block';
+    if (headerArea) headerArea.style.display = 'block';
 }
 
+function generateHistoryHtml(e) {
+    const isLegacy = e.is_legacy_archive ? '<span style="background: #cbd5e1; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; margin-left: 0.4rem;">手入力</span>' : '';
+    const score = e.final_total_score || e.manager_total_score || e.self_total_score || '-';
+    let html = `
+        <div class="eval-mob-input-header" style="position: sticky; top: 0; background: white; z-index: 10; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <div style="flex:1;">
+                <button class="btn" style="background:none; border:none; color:#64748b; font-size:1.2rem; padding:0;" id="btn-mob-history-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div style="flex:4; text-align:center;">
+                <div style="font-size:0.85rem; color:#be123c; font-weight:700; margin-bottom:0.2rem;">${e.period}期 ${e.is_provisional ? '仮評価' : '本評価'}結果</div>
+                <div style="font-weight:900; color:#0f172a; font-size: 0.95rem;">評価履歴詳細</div>
+            </div>
+            <div style="flex:1;"></div>
+        </div>
+        <div style="padding: 1.5rem 1rem; padding-bottom: 5rem;">
+            
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.2rem; margin-bottom: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                <div style="text-align: center; margin-bottom: 1rem;">
+                    <div style="font-size: 0.85rem; color: #64748b; font-weight: 700; margin-bottom: 0.3rem;">最終確定等級</div>
+                    <div style="font-family: monospace; font-size: 2rem; font-weight: 900; color: #059669;">${e.new_grade || '-'}</div>
+                </div>
+                <div style="display: flex; justify-content: space-between; border-top: 1px solid #f1f5f9; padding-top: 0.8rem; margin-top: 0.8rem;">
+                    <div style="text-align: center; flex: 1;">
+                        <div style="font-size: 0.75rem; color: #64748b;">自己点</div>
+                        <div style="font-weight: 800; color: #1e293b;">${e.self_total_score || '-'}点</div>
+                    </div>
+                    <div style="text-align: center; flex: 1; border-left: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9;">
+                        <div style="font-size: 0.75rem; color: #64748b;">1次点</div>
+                        <div style="font-weight: 800; color: #1e293b;">${e.primary_total_score || '-'}点</div>
+                    </div>
+                    <div style="text-align: center; flex: 1;">
+                        <div style="font-size: 0.75rem; color: #be123c; font-weight: 700;">確定点</div>
+                        <div style="font-weight: 900; color: #be123c;">${score}点</div>
+                    </div>
+                </div>
+            </div>
+    `;
+
+    const items = e.items || [];
+    items.forEach((item, idx) => {
+        html += `
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.2rem; margin-bottom: 1rem; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                <div style="display: inline-block; background: #f1f5f9; color: #475569; font-size: 0.7rem; font-weight: 800; padding: 0.2rem 0.6rem; border-radius: 4px; margin-bottom: 0.5rem;">${item.category}</div>
+                <div style="font-weight: 800; color: #1e293b; font-size: 0.95rem; margin-bottom: 0.3rem;">${item.item_name}</div>
+                <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem; line-height: 1.5;">${(item.description || '').replace(/\n/g, '<br>')}</div>
+                
+                <div style="background: #f8fafc; border-radius: 8px; padding: 0.8rem; margin-bottom: 0.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                        <span style="font-size: 0.75rem; font-weight: 700; color: #475569;"><i class="fas fa-user" style="color: #94a3b8; margin-right:4px;"></i>自己評価</span>
+                        <span style="font-weight: 900; color: #0f172a;">${item.self_score || '-'}点</span>
+                    </div>
+                    ${item.self_comment ? `<div style="font-size: 0.8rem; color: #334155; line-height: 1.4; padding-top: 0.4rem; border-top: 1px dashed #cbd5e1;">${item.self_comment.replace(/\n/g, '<br>')}</div>` : ''}
+                </div>
+                
+                ${e.primary_evaluator_name ? `
+                <div style="background: #f8fafc; border-radius: 8px; padding: 0.8rem; margin-bottom: 0.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                        <span style="font-size: 0.75rem; font-weight: 700; color: #475569;"><i class="fas fa-user-tie" style="color: #94a3b8; margin-right:4px;"></i>1次評価</span>
+                        <span style="font-weight: 900; color: #0f172a;">${item.primary_score || '-'}点</span>
+                    </div>
+                    ${item.primary_comment ? `<div style="font-size: 0.8rem; color: #334155; line-height: 1.4; padding-top: 0.4rem; border-top: 1px dashed #cbd5e1;">${item.primary_comment.replace(/\n/g, '<br>')}</div>` : ''}
+                </div>
+                ` : ''}
+                
+                <div style="background: #fff1f2; border-radius: 8px; padding: 0.8rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                        <span style="font-size: 0.75rem; font-weight: 800; color: #be123c;"><i class="fas fa-crown" style="color: #fb7185; margin-right:4px;"></i>最終評価</span>
+                        <span style="font-weight: 900; color: #be123c;">${item.manager_score || '-'}点</span>
+                    </div>
+                    ${item.manager_comment ? `<div style="font-size: 0.8rem; color: #9f1239; line-height: 1.4; padding-top: 0.4rem; border-top: 1px dashed #fecdd3;">${item.manager_comment.replace(/\n/g, '<br>')}</div>` : ''}
+                </div>
+            </div>
+        `;
+    });
+    
+    // Interview memo
+    if (e.interview_comment || e.interview_next_goals) {
+        html += `
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.2rem; margin-top: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                <h4 style="margin: 0 0 1rem 0; font-size: 1rem; font-weight: 800; color: #0f172a; border-bottom: 2px solid #f1f5f9; padding-bottom: 0.5rem;"><i class="fas fa-comments" style="color: #3b82f6; margin-right: 0.4rem;"></i>面談フィードバック</h4>
+                
+                ${e.interview_comment ? `
+                <div style="margin-bottom: 1.2rem;">
+                    <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 0.4rem;">総評・フィードバック</div>
+                    <div style="font-size: 0.85rem; color: #334155; line-height: 1.6; background: #f8fafc; padding: 0.8rem; border-radius: 8px;">${e.interview_comment.replace(/\n/g, '<br>')}</div>
+                </div>
+                ` : ''}
+                
+                ${e.interview_next_goals ? `
+                <div>
+                    <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 0.4rem;">来期に向けた目標・課題</div>
+                    <div style="font-size: 0.85rem; color: #334155; line-height: 1.6; background: #f8fafc; padding: 0.8rem; border-radius: 8px;">${e.interview_next_goals.replace(/\n/g, '<br>')}</div>
+                </div>
+                ` : ''}
+            </div>
+        `;
+    }
+
+    html += `</div>`;
+    return html;
+}
 
 function generateInputHtml(mode, isReadOnly = false) {
     let titleText = mobilePeriodSettings.active_period + '自己評価入力';

@@ -180,16 +180,20 @@ async function fetchPastEvaluations(userId) {
     try {
         const q = query(
             collection(db, "t_evaluations"),
-            where("user_id", "==", userId),
-            where("status", "==", "notified"), // 公開済みのもののみ
-            orderBy("period", "desc")
+            where("user_id", "==", userId)
         );
 
         const snap = await getDocs(q);
         myPastEvaluations = [];
         snap.forEach(d => {
-            myPastEvaluations.push({ id: d.id, ...d.data() });
+            const data = { id: d.id, ...d.data() };
+            if (data.status === "notified") {
+                myPastEvaluations.push(data);
+            }
         });
+        
+        // JS側で降順に並び替え
+        myPastEvaluations.sort((a, b) => b.period.localeCompare(a.period));
 
         container.innerHTML = '';
 
