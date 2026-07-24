@@ -757,6 +757,9 @@ export async function initAttendanceManagementPage() {
 }
 
 function switchView(viewName) {
+    if (viewName !== 'edit') {
+        window.__previousAttnView = viewName;
+    }
     document.querySelectorAll('.view-section').forEach(v => v.style.display = 'none');
     const target = document.getElementById(`attn-${viewName}-view`);
     if (target) {
@@ -1014,11 +1017,12 @@ async function openStaffEdit(staffId, staffName, date) {
 function handleAttnEditCancel() {
     if (window.__fromIntegratedDashboard) {
         delete window.__fromIntegratedDashboard;
-        switchToIntegratedDashboard();
+        switchToIntegratedDashboard(true);
         // 戻った際、ダッシュボード側のデータを最新状態に再読込
         loadIntegratedData();
     } else {
-        switchView('daily');
+        const backView = window.__previousAttnView || 'daily';
+        switchView(backView);
     }
 }
 
@@ -1339,11 +1343,13 @@ async function saveAttendanceEdits() {
 
         if (window.__fromIntegratedDashboard) {
             delete window.__fromIntegratedDashboard;
-            switchToIntegratedDashboard();
+            switchToIntegratedDashboard(true);
             loadIntegratedData();
         } else {
-            switchView('daily');
-            loadDailyData();
+            const backView = window.__previousAttnView || 'daily';
+            switchView(backView);
+            if (backView === 'monthly') loadMonthlyData();
+            else if (backView === 'daily') loadDailyData();
         }
     } catch (e) {
         console.error(e);
@@ -1766,16 +1772,18 @@ window.processAttnApproval = async (requestId, action) => {
 // =========================================================================
 
 // 統合ダッシュボードの表示切り替え
-function switchToIntegratedDashboard() {
+function switchToIntegratedDashboard(keepTab = false) {
     document.querySelectorAll('.view-section').forEach(v => v.style.display = 'none');
     const dbView = document.getElementById('attn-integrated-dashboard-view');
     if (dbView) {
         dbView.style.display = 'block';
     }
     // タブ状態の初期化
-    activeIntTab = 'daily';
+    if (!keepTab) {
+        activeIntTab = 'daily';
+    }
     document.querySelectorAll('.attn-int-tab').forEach(b => {
-        b.classList.toggle('active', b.dataset.tab === 'daily');
+        b.classList.toggle('active', b.dataset.tab === activeIntTab);
     });
     const dateFilterGroup = document.getElementById('attn-int-date-filter-group');
     if (dateFilterGroup) dateFilterGroup.style.display = 'block';
@@ -1995,14 +2003,14 @@ async function loadIntegratedData() {
 
                 if (type === 'check_in' || type === '出勤') {
                     if (lastIn) {
-                        const errDate = getBusinessDateStr(r.timestamp, staffMap[sid].store_id) || r.date || r.timestamp.substring(0,10);
+                        const errDate = getBusinessDateStr(lastIn.record.timestamp, staffMap[sid].store_id) || lastIn.record.date || lastIn.record.timestamp.substring(0,10);
                         if (!isCurrentOrOngoing(errDate, staffMap[sid].store_id)) {
                             // ★当月内のエラーのみ今月のリストに登録
                             if (errDate >= startDate && errDate < nextMonthFirstDay) {
                                 staffMonthlyStats[sid].errors.push({
                                     date: errDate,
                                     type: 'double_check_in',
-                                    message: '退勤打刻がないまま、出勤打刻が連続して行われています。'
+                                    message: `前回の出勤（${errDate}）に対する退勤打刻がないまま、今回の出勤打刻が行われています。`
                                 });
                             }
                         }
@@ -2616,7 +2624,7 @@ async function handleIntTkcExport() {
                                     staffCode: staffMap[sid].code,
                                     storeId: staffMap[sid].store_id,
                                     date: sessionDate,
-                                    message: '退勤打刻がないまま、出勤打刻が連続して行われています。'
+                                    message: `前回の出勤（${sessionDate}）に対する退勤打刻がないまま、今回の出勤打刻が行われています。`
                                 });
                             }
                         }
@@ -2957,7 +2965,7 @@ async function handleIntMfExport() {
                                     staffCode: staffMap[sid].code,
                                     storeId: staffMap[sid].store_id,
                                     date: sessionDate,
-                                    message: '退勤打刻がないまま、出勤打刻が連続して行われています。'
+                                    message: `前回の出勤（${sessionDate}）に対する退勤打刻がないまま、今回の出勤打刻が行われています。`
                                 });
                             }
                         }

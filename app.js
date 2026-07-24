@@ -42,7 +42,7 @@ import { shiftAdminMobilePageHtml, initShiftAdminMobilePage } from './shift_mobi
 import { loansPageHtml, initLoansPage } from './loans.js?v=116';
 import { hubPageHtml, initHubPage } from './hubs.js?v=20260710_05';
 import { inviteNaviPageHtml, initInviteNaviPage } from './invite_navi.js';
-import { attendanceManagementPageHtml, initAttendanceManagementPage } from './attendance_management.js';
+import { attendanceManagementPageHtml, initAttendanceManagementPage } from './attendance_management.js?v=20260724_01';
 import { bottleKeepPageHtml, initBottleKeepPage } from './bottle_keep.js?v=20260711_03';
 import { prototypeMenuPageHtml, initPrototypeMenuPage } from './prototype_menu.js?v=141';
 import { competitorListPageHtml, initCompetitorListPage } from './competitor_list.js';
