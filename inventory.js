@@ -244,10 +244,10 @@ export const inventoryPageHtml = `
     </style>
 
     <!-- Item Detail Settings Modal -->
-    <div id="inv-item-modal" class="modal-overlay">
-        <div class="glass-panel animate-scale-in" style="width: 520px; padding: 0; overflow: hidden; border: 1px solid var(--border); box-shadow: var(--shadow-lg);">
+    <div id="inv-item-modal" class="modal-overlay" style="align-items: flex-start; overflow-y: auto; padding: 0;">
+        <div class="glass-panel animate-scale-in" style="width: 520px; margin: 5vh auto; padding: 0; border: 1px solid var(--border); box-shadow: var(--shadow-lg); display: flex; flex-direction: column; border-radius: 16px;">
             <!-- Modal Header -->
-            <div style="padding: 1rem 1.5rem; background: var(--surface-darker); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+            <div style="padding: 1rem 1.5rem; background: var(--surface-darker); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
                 <div style="display: flex; align-items: center; gap: 0.8rem;">
                     <i class="fas fa-cog" style="color: var(--primary); font-size: 1.1rem;"></i>
                     <h3 style="margin: 0; font-size: 1.1rem; font-weight: 900; color: var(--text-primary);" id="modal-item-name">品目設定</h3>
@@ -256,7 +256,7 @@ export const inventoryPageHtml = `
             </div>
 
             <!-- Modal Body -->
-            <div style="padding: 1.2rem; display: flex; flex-direction: column; gap: 1rem; max-height: 85vh; overflow-y: auto;">
+            <div style="padding: 1.2rem; display: flex; flex-direction: column; gap: 1rem;">
                 
                 <!-- Section 1: 基本設定 -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;">

@@ -2,6 +2,7 @@ import { inventoryPageHtml, initInventoryPage } from './inventory.js';
 import { inventoryMobilePageHtml, initInventoryMobilePage } from './inventory_mobile.js';
 import { procurementPageHtml, initProcurementPage } from './procurement.js';
 import { procurementMobilePageHtml, initProcurementMobilePage } from './procurement_mobile.js';
+import { stocktakePageHtml, initStocktakePage } from './stocktake.js';
 
 export const opsHubMainPageHtml = `
     <div id="ops-hub-main-container" class="animate-fade-in app-container-fill" style="display: flex; flex-direction: column; overflow: hidden;">
@@ -21,6 +22,9 @@ export const opsHubMainPageHtml = `
             </button>
             <button class="ops-tab-btn" data-tab="ck_prep" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.7rem 1.2rem; border-radius: 12px; border: 1px solid var(--border); background: white; cursor: pointer; font-weight: 800; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap;">
                 <i class="fas fa-industry"></i> CK仕込み
+            </button>
+            <button class="ops-tab-btn" data-tab="stocktake" style="display: flex; align-items: center; gap: 0.6rem; padding: 0.7rem 1.2rem; border-radius: 12px; border: 1px solid var(--border); background: white; cursor: pointer; font-weight: 800; font-size: 0.85rem; transition: all 0.2s; white-space: nowrap;">
+                <i class="fas fa-clipboard-list"></i> 棚卸
             </button>
             
             <!-- Shortcut to Master -->
@@ -218,6 +222,10 @@ async function switchTab(tabId) {
             await initInventoryMobilePage(currentUser);
             if (window.showMasterSettings) window.showMasterSettings();
         }
+    }
+    else if (tabId === 'stocktake') {
+        content.innerHTML = stocktakePageHtml;
+        await initStocktakePage(currentUser);
     }
     else {
         // PC版の個別タブ（transfer, purchase, store_prep, ck_prep）
