@@ -6,6 +6,8 @@ let currentMeetingView = 'archive'; // 'archive' | 'form'
 let editingMeetingData = null;
 let currentTargetMonth = '';
 let currentTargetStore = '';
+let isLatestSheet = false; // 現在開いているシートが店舗の最新月かどうか
+const latestMonthMap = new Map(); // store_id => 最新 target_month
 
 // 施策カテゴリの標準リスト
 const ACTION_CATEGORIES = [
@@ -142,6 +144,9 @@ async function renderArchiveView(container) {
                 // 新規作成＆自動引き継ぎ処理
                 editingMeetingData = await generateNewPDCAData(store, month);
             }
+
+            // 新規作成時も最新月判定を更新
+            isLatestSheet = (!latestMonthMap.has(store) || latestMonthMap.get(store) <= month);
             
             currentMeetingView = 'form';
             modal.style.display = 'none';
@@ -271,17 +276,55 @@ async function generateNewPDCAData(storeId, monthStr) {
 async function renderFormView(container) {
     const currentUser = window.appState ? window.appState.currentUser : null;
     const isAdmin = currentUser && (currentUser.Role === 'Admin' || currentUser.Role === '管理者');
-    const isLocked = editingMeetingData.status === '提出済み' && !isAdmin;
+    const status = editingMeetingData.status || '下書き';
+    const isLocked = status === '提出済み' && !isAdmin;
+    const isRequestPending = status === '差し戻し申請中';
+    // 管理者かつ提出済み or 申請中かつ最新月 → 差し戻しボタン表示
+    const showRejectBtn = isAdmin && isLatestSheet && (status === '提出済み' || status === '差し戻し申請中');
+    // 一般ユーザーかつ提出済みかつ最新月 → 差し戻し申請ボタン表示
+    const showRequestReturnBtn = !isAdmin && isLatestSheet && (status === '提出済み' || status === '差し戻し申請中');
+    // 下書き保存ボタン: ロック中（一般ユーザーかつ提出済み）以外は表示
+    const showDraftBtn = !isLocked;
+    // ステータスバッジの色
+    const statusColor = status === '提出済み' ? 'var(--primary)'
+                      : status === '差し戻し申請中' ? '#f97316'
+                      : '#64748b';
+
+    // 差し戻しコメントバナー
+    const rejectionBanner = (editingMeetingData.rejection_note && editingMeetingData.rejection_note.trim())
+        ? `<div class="mm-rejection-banner">
+            <span class="banner-icon">⚠️</span>
+            <div><strong>管理者より差し戻しコメント</strong>${editingMeetingData.rejection_note}</div>
+           </div>` : '';
+
+    // 差し戻し申請中バナー（一般ユーザー向け）
+    const returnRequestBanner = isRequestPending
+        ? `<div class="mm-return-request-banner">
+            <span class="banner-icon">🔄</span>
+            <div><strong>差し戻し申請中</strong>管理者が確認後、差し戻しを行います。しばらくお待ちください。</div>
+           </div>` : '';
 
     container.innerHTML = `
         <div class="mm-header no-print" style="margin-bottom: 2rem;">
             <button id="btn-back-archive" class="btn" style="background: white; border: 1px solid var(--border); font-weight: 700; border-radius: 10px; padding: 0.6rem 1.2rem;">
                 <i class="fas fa-arrow-left"></i> 戻る
             </button>
-            <div style="display: flex; gap: 1rem;">
+            <div style="display: flex; gap: 0.8rem; flex-wrap: wrap;">
                 <button id="btn-print-meeting" class="btn" style="background: white; border: 1px solid var(--primary); color: var(--primary); font-weight: 700; border-radius: 10px; padding: 0.6rem 1.2rem;">
                     <i class="fas fa-print"></i> 印刷 / PDF保存
                 </button>
+                ${showRejectBtn ? `
+                <button id="btn-reject-meeting" class="btn-reject">
+                    <i class="fas fa-undo-alt"></i> 差し戻す
+                </button>` : ''}
+                ${showRequestReturnBtn ? `
+                <button id="btn-request-return" class="btn-request-return${isRequestPending ? ' requested' : ''}" ${isRequestPending ? 'disabled' : ''}>
+                    <i class="fas fa-hand-paper"></i> ${isRequestPending ? '申請済み' : '差し戻し申請'}
+                </button>` : ''}
+                ${showDraftBtn ? `
+                <button id="btn-draft-meeting" class="btn-draft">
+                    <i class="fas fa-cloud"></i> 下書き保存
+                </button>` : ''}
                 ${isLocked ? '' : `
                 <button id="btn-save-meeting" class="btn btn-primary" style="font-weight: 900; border-radius: 10px; padding: 0.6rem 1.8rem; box-shadow: 0 4px 12px rgba(230,57,70,0.2);">
                     <i class="fas fa-save"></i> 提出・保存
@@ -290,9 +333,37 @@ async function renderFormView(container) {
             </div>
         </div>
 
+        <!-- 差し戻しモーダル（管理者専用） -->
+        <div id="mm-reject-modal" class="mm-modal-overlay">
+            <div class="mm-modal-box">
+                <h3><i class="fas fa-undo-alt" style="color:#f97316; margin-right:0.5rem;"></i>このシートを差し戻しますか？</h3>
+                <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.8rem;">差し戻すと、ステータスが「下書き」に戻り、記入者が再編集できるようになります。</p>
+                <label style="font-size:0.8rem; font-weight:700; color:var(--text-secondary); display:block; margin-bottom:0.4rem;">差し戻し理由・コメント（任意）</label>
+                <textarea id="mm-reject-note" placeholder="例: 施策の根拠をより詳しく記入してください。"></textarea>
+                <div class="mm-modal-footer">
+                    <button class="btn-cancel-modal" id="btn-cancel-reject">キャンセル</button>
+                    <button id="btn-confirm-reject" class="btn" style="background:#f97316; color:white; font-weight:800; border-radius:8px; padding:0.6rem 1.4rem; border:none; cursor:pointer;">差し戻す</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 差し戻し申請モーダル（一般ユーザー専用） -->
+        <div id="mm-return-request-modal" class="mm-modal-overlay">
+            <div class="mm-modal-box">
+                <h3><i class="fas fa-hand-paper" style="color:#f59e0b; margin-right:0.5rem;"></i>差し戻しを申請する</h3>
+                <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.8rem;">管理者に差し戻しを申請します。申請後、管理者が確認・承認すると再編集できるようになります。</p>
+                <label style="font-size:0.8rem; font-weight:700; color:var(--text-secondary); display:block; margin-bottom:0.4rem;">申請理由（任意）</label>
+                <textarea id="mm-return-request-note" placeholder="例: 施策の内容に追記・修正が必要なため。"></textarea>
+                <div class="mm-modal-footer">
+                    <button class="btn-cancel-modal" id="btn-cancel-return-request">キャンセル</button>
+                    <button id="btn-confirm-return-request" class="btn btn-primary" style="font-weight:800; border-radius:8px; padding:0.6rem 1.4rem;">申請する</button>
+                </div>
+            </div>
+        </div>
+
         <div id="mm-printable-area">
-            <!-- 上部タイトルカード (極薄ホワイトガラスモーフィズム、店名と年月を横並びに統合) -->
-            <div class="glass-panel" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); color: #1e293b; padding: 1.2rem 1.8rem; border-radius: 6px; margin-bottom: 2rem; border: 1px solid var(--border); box-shadow: var(--shadow-sm);">
+            <!-- 上部タイトルカード -->
+            <div class="glass-panel" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); color: #1e293b; padding: 1.2rem 1.8rem; border-radius: 6px; margin-bottom: ${rejectionBanner || returnRequestBanner ? '1rem' : '2rem'}; border: 1px solid var(--border); box-shadow: var(--shadow-sm);">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
                     <div style="display:flex; align-items:baseline; flex-wrap:wrap; gap:0.8rem;">
                         <h1 style="margin: 0; font-size: 1.5rem; font-weight: 900; letter-spacing: -0.5px; color: #1e293b; display:inline-flex; align-items:center;">
@@ -304,11 +375,14 @@ async function renderFormView(container) {
                     </div>
                     <div style="display: flex; gap: 1.5rem; background: rgba(0,0,0,0.02); padding: 0.6rem 1.2rem; border-radius: 12px; border: 1px solid var(--border); font-size:0.85rem;">
                         <div><span style="color:#64748b; display:block; font-size:0.75rem; font-weight:700;">記入者</span><strong style="color:#1e293b;" id="display-author">${editingMeetingData.author_name}</strong></div>
-                        <div style="border-left: 1px solid var(--border); padding-left: 1.5rem;"><span style="color:#64748b; display:block; font-size:0.75rem; font-weight:700;">状態</span><strong style="color:var(--primary);" id="display-status">${editingMeetingData.status || '下書き'}</strong></div>
+                        <div style="border-left: 1px solid var(--border); padding-left: 1.5rem;"><span style="color:#64748b; display:block; font-size:0.75rem; font-weight:700;">状態</span><strong style="color:${statusColor};" id="display-status">${status}</strong></div>
                         <div style="border-left: 1px solid var(--border); padding-left: 1.5rem;"><span style="color:#64748b; display:block; font-size:0.75rem; font-weight:700;">最終更新</span><strong style="color:#1e293b;" id="display-date">-</strong></div>
                     </div>
                 </div>
             </div>
+
+            ${rejectionBanner}
+            ${returnRequestBanner}
 
             <!-- KPI PDCAボード (グリッド) -->
             <h2 style="font-size: 1.2rem; font-weight: 900; color: var(--text-primary); margin-bottom: 1rem; display:flex; align-items:center; gap:0.5rem;" class="no-print">
@@ -318,14 +392,14 @@ async function renderFormView(container) {
                 <p style="text-align:center; padding:3rem; color:var(--text-secondary);"><i class="fas fa-spinner fa-spin"></i> 実績値およびKPIボードの自動構築中...</p>
             </div>
 
-            <!-- スタッフ・採用共有エリア (全幅カード ＆ 3カラム構成へ刷新) -->
+            <!-- スタッフ・採用共有エリア -->
             <div class="mm-card" style="border-radius:6px; margin-top: 3rem; width: 100%;">
                 <div class="mm-section-title" style="font-size:1.1rem; font-weight:900; margin-bottom:1.5rem; display:flex; align-items:center; gap:0.5rem; color:var(--text-primary);">
                     <i class="fas fa-users" style="color:#3b82f6;"></i> スタッフ・採用共有エリア (人事管理・リスク共有)
                 </div>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem; align-items: stretch;" id="mm-hr-sharing-grid">
                     
-                    <!-- 左カラム: 定性報告 (人員計画、退職懸念、スタッフの教育計画を縦積み) -->
+                    <!-- 左カラム -->
                     <div style="display: flex; flex-direction: column; gap: 1.2rem; justify-content: space-between;">
                         <div class="input-group" style="margin:0;">
                             <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">人員計画</label>
@@ -341,17 +415,16 @@ async function renderFormView(container) {
                         </div>
                     </div>
 
-                    <!-- 中央カラム: VISA期限確認 (自動警告UI ＆ 店長報告メモ) -->
+                    <!-- 中央カラム: VISA期限確認 -->
                     <div class="input-group" style="display:flex; flex-direction:column; background: rgba(0,0,0,0.01); padding: 1.2rem; border-radius: 6px; border: 1px solid var(--border); margin:0;">
                         <label style="display:block; margin-bottom:0.6rem; font-weight:800; font-size:0.75rem; color:#64748b;">外国人スタッフ VISA期限確認</label>
-                        <!-- 動的警告表示コンテナ -->
                         <div id="mm-visa-warnings-container" style="margin-bottom:0.8rem; display:flex; flex-direction:column; gap:0.4rem;">
                             <span style="font-size:0.72rem; color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> VISA期限データを照合中...</span>
                         </div>
                         <textarea id="mm-input-visa" class="mm-input" rows="6" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem; flex-grow:1;" placeholder="期限切れの近いスタッフへの対策を記入してください" ${isLocked ? 'disabled' : ''}></textarea>
                     </div>
 
-                    <!-- 右カラム: 在籍外国人従業員のVISA在留期限一覧 (自動フェッチ＆ソート表示) -->
+                    <!-- 右カラム: VISA期限一覧 -->
                     <div style="display:flex; flex-direction:column; background: rgba(0,0,0,0.01); padding: 1.2rem; border-radius: 6px; border: 1px solid var(--border); margin:0;">
                         <label style="display:block; margin-bottom:0.6rem; font-weight:800; font-size:0.75rem; color:#64748b;">在籍外国人従業員のVISA期限一覧</label>
                         <div id="mm-visa-all-list-container" style="display:flex; flex-direction:column; gap:0.6rem; overflow-y:auto; max-height: 290px; padding-right: 0.2rem;">
@@ -364,6 +437,8 @@ async function renderFormView(container) {
         </div>
     `;
 
+    // ── イベントバインド ──
+
     document.getElementById('btn-back-archive').onclick = () => {
         currentMeetingView = 'archive';
         renderMeetingView();
@@ -373,10 +448,47 @@ async function renderFormView(container) {
         window.print();
     };
 
+    // 提出・保存ボタン
     const saveBtn = document.getElementById('btn-save-meeting');
     if (saveBtn) {
         saveBtn.onclick = async () => {
             await saveMeetingData();
+        };
+    }
+
+    // 下書き保存ボタン
+    const draftBtn = document.getElementById('btn-draft-meeting');
+    if (draftBtn) {
+        draftBtn.onclick = async () => {
+            await saveDraftData();
+        };
+    }
+
+    // 差し戻しボタン（管理者）
+    const rejectBtn = document.getElementById('btn-reject-meeting');
+    if (rejectBtn) {
+        const rejectModal = document.getElementById('mm-reject-modal');
+        rejectBtn.onclick = () => rejectModal.classList.add('active');
+        document.getElementById('btn-cancel-reject').onclick = () => rejectModal.classList.remove('active');
+        rejectModal.onclick = (e) => { if (e.target === rejectModal) rejectModal.classList.remove('active'); };
+        document.getElementById('btn-confirm-reject').onclick = async () => {
+            const note = document.getElementById('mm-reject-note').value.trim();
+            rejectModal.classList.remove('active');
+            await rejectMeetingData(note);
+        };
+    }
+
+    // 差し戻し申請ボタン（一般ユーザー）
+    const requestReturnBtn = document.getElementById('btn-request-return');
+    if (requestReturnBtn && !isRequestPending) {
+        const requestModal = document.getElementById('mm-return-request-modal');
+        requestReturnBtn.onclick = () => requestModal.classList.add('active');
+        document.getElementById('btn-cancel-return-request').onclick = () => requestModal.classList.remove('active');
+        requestModal.onclick = (e) => { if (e.target === requestModal) requestModal.classList.remove('active'); };
+        document.getElementById('btn-confirm-return-request').onclick = async () => {
+            const note = document.getElementById('mm-return-request-note').value.trim();
+            requestModal.classList.remove('active');
+            await requestReturnMeeting(note);
         };
     }
 
@@ -1530,7 +1642,22 @@ async function loadArchiveList() {
                 storesMap.set(d.store_id, d.store_name);
             }
 
+            // 店舗ごとの最新月を記録（orderBy desc なので最初に出たものが最新）
+            if (!latestMonthMap.has(d.store_id)) {
+                latestMonthMap.set(d.store_id, d.target_month);
+            }
+
             const deleteBtnHtml = isAdmin ? `<button onclick="window.deleteMeeting(event, '${docSnap.id}')" class="btn no-print" style="background:#fff5f5; color:#f87171; border:none; padding:0.35rem 0.6rem; border-radius:6px; margin-left:1rem; cursor:pointer; transition: all 0.2s;" onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fff5f5'" title="この記録を削除する"><i class="fas fa-trash-alt"></i></button>` : '';
+
+            // ステータスバッジのスタイルを分岐
+            let badgeHtml = '';
+            if (d.status === '差し戻し申請中') {
+                badgeHtml = `<span class="status-badge--request">${d.status}</span>`;
+            } else if (d.status === '提出済み') {
+                badgeHtml = `<span style="background:var(--primary); color:white; padding:0.35rem 0.9rem; border-radius:20px; font-size:0.75rem; font-weight:800;">${d.status}</span>`;
+            } else {
+                badgeHtml = `<span style="background:#e2e8f0; color:#475569; padding:0.35rem 0.9rem; border-radius:20px; font-size:0.75rem; font-weight:800;">${d.status || '下書き'}</span>`;
+            }
 
             html += `
                 <div class="glass-panel mm-archive-item" data-store-id="${d.store_id}" style="padding: 0.9rem 1.5rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s; border-radius: 6px;"
@@ -1546,9 +1673,7 @@ async function loadArchiveList() {
                         </span>
                     </div>
                     <div style="display:flex; align-items:center;">
-                        <span style="background:${d.status === '提出済み' ? 'var(--primary)' : '#e2e8f0'}; color:${d.status === '提出済み' ? 'white' : '#475569'}; padding:0.35rem 0.9rem; border-radius:20px; font-size:0.75rem; font-weight:800; border:1px solid rgba(0,0,0,0.02);">
-                            ${d.status || '下書き'}
-                        </span>
+                        ${badgeHtml}
                         ${deleteBtnHtml}
                     </div>
                 </div>
@@ -1596,6 +1721,8 @@ async function loadArchiveList() {
                 editingMeetingData = { id: docId, ...docRef.data() };
                 currentTargetStore = editingMeetingData.store_id;
                 currentTargetMonth = editingMeetingData.target_month;
+                // 店舗の最新月かどうかを判定
+                isLatestSheet = (latestMonthMap.get(editingMeetingData.store_id) === editingMeetingData.target_month);
                 currentMeetingView = 'form';
                 renderMeetingView();
             }
@@ -1762,6 +1889,22 @@ function initAutoResizeTextareas(extraIds = []) {
     });
 }
 
+// ヘルパー: hr_sharingフィールドをDOMから収集してeditingMeetingDataを更新する
+function _collectFormInputs() {
+    const recEl  = document.getElementById('mm-input-rec');
+    const retEl  = document.getElementById('mm-input-ret');
+    const visaEl = document.getElementById('mm-input-visa');
+    const trainEl= document.getElementById('mm-input-train');
+    editingMeetingData.free_targets = {};
+    editingMeetingData.hr_sharing = {
+        recruitment_plan:   recEl  ? recEl.value  : (editingMeetingData.hr_sharing?.recruitment_plan   || ''),
+        retirement_concern: retEl  ? retEl.value  : (editingMeetingData.hr_sharing?.retirement_concern  || ''),
+        visa_check:         visaEl ? visaEl.value : (editingMeetingData.hr_sharing?.visa_check           || ''),
+        training_status:    trainEl? trainEl.value: (editingMeetingData.hr_sharing?.training_status      || '')
+    };
+}
+
+// ─── 提出・保存（既存） ───────────────────────────────────────────────────
 async function saveMeetingData() {
     const btn = document.getElementById('btn-save-meeting');
     if (!btn) return;
@@ -1769,11 +1912,7 @@ async function saveMeetingData() {
     const user = window.appState ? window.appState.currentUser : null;
     const isAdmin = user && (user.Role === 'Admin' || user.Role === '管理者');
     if (editingMeetingData.status === '提出済み' && !isAdmin) {
-        if (typeof showAlert === 'function') {
-            showAlert("提出済みの資料は編集できません。", "danger");
-        } else {
-            alert("提出済みの資料は編集できません。");
-        }
+        showAlert("提出済みの資料は編集できません。", "danger");
         return;
     }
     
@@ -1782,38 +1921,22 @@ async function saveMeetingData() {
     btn.disabled = true;
 
     try {
-        const user = window.appState ? window.appState.currentUser : null;
-        
-        const recText = document.getElementById('mm-input-rec').value;
-        const retText = document.getElementById('mm-input-ret').value;
-        const visaText = document.getElementById('mm-input-visa').value;
-        const trainText = document.getElementById('mm-input-train').value;
-
-        // メモリ内データをアップデート
-        editingMeetingData.free_targets = {};
-        
-        editingMeetingData.hr_sharing = {
-            recruitment_plan: recText,
-            retirement_concern: retText,
-            visa_check: visaText,
-            training_status: trainText
-        };
-
-        editingMeetingData.status = '提出済み'; // 保存時は自動で提出状態へ
+        _collectFormInputs();
+        editingMeetingData.status = '提出済み';
         editingMeetingData.updated_at = new Date().toISOString();
+        // 差し戻し申請フィールドをクリア（提出し直したので）
+        delete editingMeetingData.return_request_note;
+        delete editingMeetingData.return_requested_at;
 
         if (user) {
-            editingMeetingData.author_id = user.id || editingMeetingData.author_id;
+            editingMeetingData.author_id   = user.id   || editingMeetingData.author_id;
             editingMeetingData.author_name = user.Name || editingMeetingData.author_name;
         }
 
         const docId = `${editingMeetingData.store_id}_${editingMeetingData.target_month}`;
-        
-        // Firestore への保存実行
         await setDoc(doc(db, "t_manager_meetings", docId), editingMeetingData);
         
         showAlert("店舗PDCAボードを正常に保存・提出しました！", "success");
-        
         currentMeetingView = 'archive';
         editingMeetingData = null;
         renderMeetingView();
@@ -1824,5 +1947,93 @@ async function saveMeetingData() {
     } finally {
         btn.innerHTML = originalHtml;
         btn.disabled = false;
+    }
+}
+
+// ─── 機能①：下書き保存 ───────────────────────────────────────────────────
+async function saveDraftData() {
+    const btn = document.getElementById('btn-draft-meeting');
+    if (!btn) return;
+
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
+    btn.disabled = true;
+
+    try {
+        _collectFormInputs();
+        // status は現在値のまま維持（'下書き' または '差し戻し申請中' → '下書き' はそのまま）
+        // ただし申請中フィールドは維持する（誤って上書きしない）
+        editingMeetingData.updated_at = new Date().toISOString();
+
+        const user = window.appState ? window.appState.currentUser : null;
+        if (user) {
+            editingMeetingData.author_id   = user.id   || editingMeetingData.author_id;
+            editingMeetingData.author_name = user.Name || editingMeetingData.author_name;
+        }
+
+        const docId = `${editingMeetingData.store_id}_${editingMeetingData.target_month}`;
+        await setDoc(doc(db, "t_manager_meetings", docId), editingMeetingData);
+
+        showAlert("下書きを保存しました。引き続き編集できます。", "success");
+        // アーカイブへ遷移せず、ヘッダーの最終更新日のみ更新
+        const displayDate = document.getElementById('display-date');
+        if (displayDate) displayDate.textContent = new Date().toLocaleDateString('ja-JP');
+
+    } catch (e) {
+        console.error("Draft save failed:", e);
+        showAlert("下書き保存に失敗しました。接続状況を確認してください。", "danger");
+    } finally {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+    }
+}
+
+// ─── 機能②：管理者による差し戻し ─────────────────────────────────────────
+async function rejectMeetingData(note) {
+    try {
+        editingMeetingData.status = '下書き';
+        if (note) {
+            editingMeetingData.rejection_note = note;
+        } else {
+            delete editingMeetingData.rejection_note;
+        }
+        // 差し戻し申請フィールドをクリア
+        delete editingMeetingData.return_request_note;
+        delete editingMeetingData.return_requested_at;
+        editingMeetingData.updated_at = new Date().toISOString();
+
+        const docId = `${editingMeetingData.store_id}_${editingMeetingData.target_month}`;
+        await setDoc(doc(db, "t_manager_meetings", docId), editingMeetingData);
+
+        showAlert("シートを差し戻しました。記入者が再編集できる状態になりました。", "success");
+        // latestMonthMapを更新（差し戻し後もステータス変化のみなので月は変わらない）
+        currentMeetingView = 'archive';
+        editingMeetingData = null;
+        renderMeetingView();
+
+    } catch (e) {
+        console.error("Reject failed:", e);
+        showAlert("差し戻し処理に失敗しました。接続状況を確認してください。", "danger");
+    }
+}
+
+// ─── 機能③：差し戻し申請 ─────────────────────────────────────────────────
+async function requestReturnMeeting(note) {
+    try {
+        editingMeetingData.status = '差し戻し申請中';
+        editingMeetingData.return_request_note = note || '';
+        editingMeetingData.return_requested_at = new Date().toISOString();
+        editingMeetingData.updated_at = new Date().toISOString();
+
+        const docId = `${editingMeetingData.store_id}_${editingMeetingData.target_month}`;
+        await setDoc(doc(db, "t_manager_meetings", docId), editingMeetingData);
+
+        showAlert("差し戻しを申請しました。管理者の確認をお待ちください。", "success");
+        // 画面を再描画してボタンを「申請済み」グレーアウトに更新
+        renderMeetingView();
+
+    } catch (e) {
+        console.error("Return request failed:", e);
+        showAlert("差し戻し申請に失敗しました。接続状況を確認してください。", "danger");
     }
 }

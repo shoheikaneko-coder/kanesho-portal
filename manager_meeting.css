@@ -212,6 +212,253 @@
 }
 
 /* =============================================================
+   下書き保存・差し戻し・差し戻し申請 ボタン
+   ============================================================= */
+
+/* 下書き保存ボタン（グレー系セカンダリ） */
+.btn-draft {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    font-weight: 800;
+    border-radius: 10px;
+    padding: 0.6rem 1.4rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.btn-draft:hover {
+    background: #e2e8f0;
+    border-color: #94a3b8;
+    transform: translateY(-1px);
+}
+.btn-draft:active {
+    transform: translateY(0);
+}
+
+/* 差し戻しボタン（アンバー警告色）- 管理者専用 */
+.btn-reject {
+    background: #fff7ed;
+    color: #c2410c;
+    border: 1px solid #fed7aa;
+    font-weight: 800;
+    border-radius: 10px;
+    padding: 0.6rem 1.4rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.btn-reject:hover {
+    background: #ffedd5;
+    border-color: #fb923c;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(251,146,60,0.2);
+}
+.btn-reject:active {
+    transform: translateY(0);
+}
+
+/* 差し戻し申請ボタン（淡いオレンジ系）- 一般ユーザー専用 */
+.btn-request-return {
+    background: #fefce8;
+    color: #92400e;
+    border: 1px solid #fde68a;
+    font-weight: 800;
+    border-radius: 10px;
+    padding: 0.6rem 1.4rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.btn-request-return:hover {
+    background: #fef9c3;
+    border-color: #fbbf24;
+    transform: translateY(-1px);
+}
+.btn-request-return:active {
+    transform: translateY(0);
+}
+.btn-request-return:disabled,
+.btn-request-return.requested {
+    background: #f1f5f9;
+    color: #94a3b8;
+    border-color: #e2e8f0;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* =============================================================
+   差し戻しコメントバナー
+   ============================================================= */
+.mm-rejection-banner {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    border: 1px solid #fcd34d;
+    border-left: 4px solid #f59e0b;
+    border-radius: 6px;
+    padding: 0.9rem 1.2rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    font-size: 0.88rem;
+    color: #78350f;
+    line-height: 1.6;
+    animation: slideDown 0.3s ease;
+}
+.mm-rejection-banner .banner-icon {
+    font-size: 1.1rem;
+    margin-top: 0.1rem;
+    flex-shrink: 0;
+}
+.mm-rejection-banner strong {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #92400e;
+    margin-bottom: 0.2rem;
+}
+
+/* 差し戻し申請中バナー（一般ユーザー向け） */
+.mm-return-request-banner {
+    background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+    border: 1px solid #fb923c;
+    border-left: 4px solid #f97316;
+    border-radius: 6px;
+    padding: 0.9rem 1.2rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    font-size: 0.88rem;
+    color: #7c2d12;
+    line-height: 1.6;
+    animation: slideDown 0.3s ease;
+}
+.mm-return-request-banner .banner-icon {
+    font-size: 1.1rem;
+    margin-top: 0.1rem;
+    flex-shrink: 0;
+}
+.mm-return-request-banner strong {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #c2410c;
+    margin-bottom: 0.2rem;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* =============================================================
+   ステータスバッジ追加分
+   ============================================================= */
+/* アーカイブ一覧の '差し戻し申請中' バッジ */
+.status-badge--request {
+    background: linear-gradient(135deg, #f97316, #fb923c);
+    color: white;
+    padding: 0.35rem 0.9rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    border: none;
+    box-shadow: 0 2px 8px rgba(249,115,22,0.3);
+    animation: pulse-orange 2s infinite;
+}
+@keyframes pulse-orange {
+    0%, 100% { box-shadow: 0 2px 8px rgba(249,115,22,0.3); }
+    50%       { box-shadow: 0 2px 16px rgba(249,115,22,0.55); }
+}
+
+/* =============================================================
+   差し戻し・申請 モーダル共通スタイル
+   ============================================================= */
+.mm-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(4px);
+}
+.mm-modal-overlay.active {
+    display: flex;
+}
+.mm-modal-box {
+    background: white;
+    padding: 2rem;
+    border-radius: 6px;
+    width: 90%;
+    max-width: 440px;
+    border: 1px solid var(--border);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    animation: slideDown 0.2s ease;
+}
+.mm-modal-box h3 {
+    margin-top: 0;
+    font-size: 1.1rem;
+    font-weight: 900;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.8rem;
+    margin-bottom: 1.2rem;
+}
+.mm-modal-box textarea {
+    width: 100%;
+    min-height: 90px;
+    resize: vertical;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 0.7rem;
+    font-size: 0.9rem;
+    box-sizing: border-box;
+    font-family: inherit;
+    transition: border-color 0.2s;
+}
+.mm-modal-box textarea:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(230,57,70,0.1);
+}
+.mm-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.8rem;
+    border-top: 1px solid var(--border);
+    padding-top: 1.2rem;
+    margin-top: 1.2rem;
+}
+.mm-modal-footer .btn-cancel-modal {
+    background: #f1f5f9;
+    color: #475569;
+    border: none;
+    font-weight: 700;
+    border-radius: 8px;
+    padding: 0.6rem 1.2rem;
+    cursor: pointer;
+}
+.mm-modal-footer .btn-cancel-modal:hover {
+    background: #e2e8f0;
+}
+
+/* =============================================================
    印刷用スタイル (A4縦に完全最適化 & スクロール・高さ制限の強制排除)
    ============================================================= */
 @media print {
