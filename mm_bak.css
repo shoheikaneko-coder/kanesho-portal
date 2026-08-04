@@ -1,0 +1,581 @@
+/* manager_meeting.css */
+
+.manager-meeting-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+.mm-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.mm-card {
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 4px 20px -2px rgba(0,0,0,0.05);
+    padding: 2rem;
+    margin-bottom: 2rem;
+    border: 1px solid var(--border);
+}
+
+.mm-section-title {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--primary);
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.mm-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.mm-grid-2 { grid-template-columns: repeat(2, 1fr); }
+.mm-grid-3 { grid-template-columns: repeat(3, 1fr); }
+.mm-grid-4 { grid-template-columns: repeat(4, 1fr); }
+.mm-grid-5 { grid-template-columns: repeat(5, 1fr); }
+
+.mm-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-bottom: 0.2rem;
+    display: block;
+}
+
+.mm-value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    background: #f8fafc;
+    padding: 0.6rem;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+}
+
+.mm-input {
+    width: 100%;
+    padding: 0.6rem;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    font-size: 0.95rem;
+    background: white;
+    box-sizing: border-box;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.mm-input:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(230,57,70,0.1);
+}
+
+.mm-textarea {
+    width: 100%;
+    padding: 0.6rem;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    font-size: 0.95rem;
+    background: white;
+    min-height: 80px;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+/* =============================================================
+   KPI PDCAボード用 新規追加クラス (角丸をシャープ化: 6px / 4px)
+   ============================================================= */
+
+.mm-kpi-card {
+    background: white;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.04);
+    padding: 1.8rem;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.mm-kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 35px -10px rgba(0, 0, 0, 0.08);
+}
+
+.mm-kpi-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #f1f5f9;
+    padding-bottom: 1rem;
+    margin-bottom: 1.2rem;
+}
+
+.mm-kpi-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+}
+.mm-kpi-dot.sales { background: var(--primary); }
+.mm-kpi-dot.customers { background: #3b82f6; }
+.mm-kpi-dot.spend { background: #f59e0b; }
+.mm-kpi-dot.productivity { background: #10b981; }
+
+.mm-kpi-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 1rem;
+    background: #f8fafc;
+    padding: 1rem 1.2rem;
+    border-radius: 6px;
+    border: 1px solid #f1f5f9;
+    margin-bottom: 1.5rem;
+}
+
+.metric-box {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.metric-label {
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.15rem;
+}
+
+.metric-val {
+    font-size: 1.1rem;
+    font-weight: 900;
+    color: var(--text-primary);
+}
+
+.metric-val.primary {
+    color: var(--primary);
+    font-size: 1.2rem;
+}
+
+.mm-up {
+    color: #10b981 !important;
+}
+
+.mm-down {
+    color: #ef4444 !important;
+}
+
+.mm-actions-area {
+    background: #ffffff;
+    border-radius: 6px;
+    margin-top: 1.2rem;
+}
+
+.mm-action-item-panel {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 1.2rem;
+    transition: all 0.2s;
+}
+
+.mm-action-item-panel:hover {
+    border-color: #cbd5e1;
+    background: #f1f5f9;
+}
+
+.mm-action-item-panel.completed {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+.mm-action-item-panel.completed:hover {
+    background: #dcfce7;
+    border-color: #86efac;
+}
+
+.mm-badge {
+    padding: 0.25rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    display: inline-block;
+}
+
+/* =============================================================
+   下書き保存・差し戻し・差し戻し申請 ボタン
+   ============================================================= */
+
+/* 下書き保存ボタン（グレー系セカンダリ） */
+.btn-draft {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    font-weight: 800;
+    border-radius: 10px;
+    padding: 0.6rem 1.4rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.btn-draft:hover {
+    background: #e2e8f0;
+    border-color: #94a3b8;
+    transform: translateY(-1px);
+}
+.btn-draft:active {
+    transform: translateY(0);
+}
+
+/* 差し戻しボタン（アンバー警告色）- 管理者専用 */
+.btn-reject {
+    background: #fff7ed;
+    color: #c2410c;
+    border: 1px solid #fed7aa;
+    font-weight: 800;
+    border-radius: 10px;
+    padding: 0.6rem 1.4rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.btn-reject:hover {
+    background: #ffedd5;
+    border-color: #fb923c;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(251,146,60,0.2);
+}
+.btn-reject:active {
+    transform: translateY(0);
+}
+
+/* 差し戻し申請ボタン（淡いオレンジ系）- 一般ユーザー専用 */
+.btn-request-return {
+    background: #fefce8;
+    color: #92400e;
+    border: 1px solid #fde68a;
+    font-weight: 800;
+    border-radius: 10px;
+    padding: 0.6rem 1.4rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.btn-request-return:hover {
+    background: #fef9c3;
+    border-color: #fbbf24;
+    transform: translateY(-1px);
+}
+.btn-request-return:active {
+    transform: translateY(0);
+}
+.btn-request-return:disabled,
+.btn-request-return.requested {
+    background: #f1f5f9;
+    color: #94a3b8;
+    border-color: #e2e8f0;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* =============================================================
+   差し戻しコメントバナー
+   ============================================================= */
+.mm-rejection-banner {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    border: 1px solid #fcd34d;
+    border-left: 4px solid #f59e0b;
+    border-radius: 6px;
+    padding: 0.9rem 1.2rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    font-size: 0.88rem;
+    color: #78350f;
+    line-height: 1.6;
+    animation: slideDown 0.3s ease;
+}
+.mm-rejection-banner .banner-icon {
+    font-size: 1.1rem;
+    margin-top: 0.1rem;
+    flex-shrink: 0;
+}
+.mm-rejection-banner strong {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #92400e;
+    margin-bottom: 0.2rem;
+}
+
+/* 差し戻し申請中バナー（一般ユーザー向け） */
+.mm-return-request-banner {
+    background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+    border: 1px solid #fb923c;
+    border-left: 4px solid #f97316;
+    border-radius: 6px;
+    padding: 0.9rem 1.2rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    font-size: 0.88rem;
+    color: #7c2d12;
+    line-height: 1.6;
+    animation: slideDown 0.3s ease;
+}
+.mm-return-request-banner .banner-icon {
+    font-size: 1.1rem;
+    margin-top: 0.1rem;
+    flex-shrink: 0;
+}
+.mm-return-request-banner strong {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #c2410c;
+    margin-bottom: 0.2rem;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* =============================================================
+   ステータスバッジ追加分
+   ============================================================= */
+/* アーカイブ一覧の '差し戻し申請中' バッジ */
+.status-badge--request {
+    background: linear-gradient(135deg, #f97316, #fb923c);
+    color: white;
+    padding: 0.35rem 0.9rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    border: none;
+    box-shadow: 0 2px 8px rgba(249,115,22,0.3);
+    animation: pulse-orange 2s infinite;
+}
+@keyframes pulse-orange {
+    0%, 100% { box-shadow: 0 2px 8px rgba(249,115,22,0.3); }
+    50%       { box-shadow: 0 2px 16px rgba(249,115,22,0.55); }
+}
+
+/* =============================================================
+   差し戻し・申請 モーダル共通スタイル
+   ============================================================= */
+.mm-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(4px);
+}
+.mm-modal-overlay.active {
+    display: flex;
+}
+.mm-modal-box {
+    background: white;
+    padding: 2rem;
+    border-radius: 6px;
+    width: 90%;
+    max-width: 440px;
+    border: 1px solid var(--border);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    animation: slideDown 0.2s ease;
+}
+.mm-modal-box h3 {
+    margin-top: 0;
+    font-size: 1.1rem;
+    font-weight: 900;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.8rem;
+    margin-bottom: 1.2rem;
+}
+.mm-modal-box textarea {
+    width: 100%;
+    min-height: 90px;
+    resize: vertical;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 0.7rem;
+    font-size: 0.9rem;
+    box-sizing: border-box;
+    font-family: inherit;
+    transition: border-color 0.2s;
+}
+.mm-modal-box textarea:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(230,57,70,0.1);
+}
+.mm-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.8rem;
+    border-top: 1px solid var(--border);
+    padding-top: 1.2rem;
+    margin-top: 1.2rem;
+}
+.mm-modal-footer .btn-cancel-modal {
+    background: #f1f5f9;
+    color: #475569;
+    border: none;
+    font-weight: 700;
+    border-radius: 8px;
+    padding: 0.6rem 1.2rem;
+    cursor: pointer;
+}
+.mm-modal-footer .btn-cancel-modal:hover {
+    background: #e2e8f0;
+}
+
+/* =============================================================
+   印刷用スタイル (A4縦に完全最適化 & スクロール・高さ制限の強制排除)
+   ============================================================= */
+@media print {
+    /* 印刷時の全親要素のスクロール・高さ制限を完全に無効化し、改ページ途切れを解消 */
+    html, body, #dashboard-layout, #page-content, .dashboard-layout, .app-container {
+        height: auto !important;
+        min-height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+        position: relative !important;
+    }
+    
+    body * {
+        visibility: hidden;
+    }
+    
+    #mm-printable-area, 
+    #mm-printable-area * {
+        visibility: visible;
+    }
+    
+    #mm-printable-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        max-width: none;
+        padding: 0;
+        margin: 0;
+        color: #000 !important;
+        background: #fff !important;
+        display: block !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    .mm-card, .mm-kpi-card, .mm-action-item-panel {
+        box-shadow: none !important;
+        border: 1px solid #ccc !important;
+        break-inside: avoid;
+        margin-bottom: 12px !important;
+        padding: 12px !important;
+        background: #fff !important;
+        transform: none !important;
+        border-radius: 4px !important;
+    }
+
+    .mm-kpi-metrics-grid {
+        background: #fff !important;
+        border: 1px solid #ddd !important;
+        padding: 8px !important;
+        gap: 6px !important;
+        border-radius: 4px !important;
+    }
+
+    .glass-panel {
+        background: #fff !important;
+        color: #000 !important;
+        border: 1px solid #ccc !important;
+        box-shadow: none !important;
+        border-radius: 4px !important;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+
+    @page {
+        size: A4 portrait;
+        margin: 0.8cm;
+    }
+    
+    h1 {
+        font-size: 1.3rem !important;
+        margin-bottom: 0.8rem !important;
+        color: #000 !important;
+    }
+
+    h2, h3, h4 {
+        font-size: 0.95rem !important;
+        margin-bottom: 0.4rem !important;
+        color: #000 !important;
+    }
+    
+    .mm-section-title {
+        font-size: 0.95rem !important;
+        padding-bottom: 2px !important;
+        margin-bottom: 5px !important;
+        color: #000 !important;
+        border-bottom: 1px solid #000 !important;
+    }
+    
+    .mm-label, .metric-label {
+        font-size: 0.62rem !important;
+        color: #555 !important;
+    }
+    
+    .mm-input, .mm-textarea, .mm-value, .metric-val {
+        padding: 0.3rem !important;
+        font-size: 0.8rem !important;
+        background: #fff !important;
+        border: 1px solid #ccc !important;
+        color: #000 !important;
+        border-radius: 3px !important;
+    }
+
+    .metric-val.primary {
+        font-size: 0.9rem !important;
+        color: #000 !important;
+    }
+
+    .mm-action-item-panel.completed {
+        background: #fff !important;
+        border-color: #999 !important;
+    }
+
+    canvas {
+        max-height: 30px !important;
+    }
+}

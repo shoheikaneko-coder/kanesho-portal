@@ -1,0 +1,1828 @@
+import { db } from './firebase.js';
+import { collection, getDocs, doc, setDoc, getDoc, deleteDoc, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { showConfirm, showAlert } from './ui_utils.js';
+
+let currentMeetingView = 'archive'; // 'archive' | 'form'
+let editingMeetingData = null;
+let currentTargetMonth = '';
+let currentTargetStore = '';
+
+// 施策カテゴリの標準リスト
+const ACTION_CATEGORIES = [
+    '接客', 'メニュー', 'POP', 'SNS', '外観', 'オペレーション', '回転率', '教育', '予約導線', 'ドリンク導線'
+];
+
+export const managerMeetingPageHtml = `
+    <div id="manager-meeting-container" class="manager-meeting-container animate-fade-in">
+        <!-- JSで動的にビューが挿入されます -->
+    </div>
+`;
+
+export async function initManagerMeetingPage() {
+    renderMeetingView();
+}
+
+function renderMeetingView() {
+    const container = document.getElementById('manager-meeting-container');
+    if (!container) return;
+
+    if (currentMeetingView === 'archive') {
+        renderArchiveView(container);
+    } else {
+        renderFormView(container);
+    }
+}
+
+// -------------------------------------------------------------
+// アーカイブビュー (一覧表示)
+// -------------------------------------------------------------
+async function renderArchiveView(container) {
+    container.innerHTML = `
+        <div class="mm-header no-print">
+            <div>
+                <h2 style="margin: 0; display: flex; align-items: center; gap: 0.8rem; font-weight: 900; color: var(--text-primary);">
+                    <i class="fas fa-sync-alt" style="color: var(--primary);"></i>
+                    店舗PDCA (旧店長会議)
+                </h2>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.4rem; font-weight: 500;">
+                    各KPIに基づく仮説・実行・検証のログと、次月への改善サイクル管理
+                </p>
+            </div>
+            <button id="btn-create-meeting" class="btn btn-primary" style="padding: 0.8rem 1.8rem; font-weight: 900; border-radius: 12px; box-shadow: 0 4px 12px rgba(230,57,70,0.2);">
+                <i class="fas fa-plus"></i> 新規PDCA作成
+            </button>
+        </div>
+
+        <div class="mm-card no-print" style="margin-top: 1.5rem; border-radius: 6px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                <h3 style="margin:0; font-size:1.1rem; color:var(--text-primary); font-weight:800;">提出履歴一覧</h3>
+                <select id="mm-archive-filter-store" class="mm-input" style="width:auto; min-width:200px; padding:0.4rem 0.8rem; font-weight:700;">
+                    <option value="all">全店舗を表示</option>
+                </select>
+            </div>
+            <div id="mm-archive-list" style="display: flex; flex-direction: column; gap: 1rem;">
+                <p style="text-align:center; padding: 3rem; color: var(--text-secondary);"><i class="fas fa-spinner fa-spin"></i> 履歴をロード中...</p>
+            </div>
+        </div>
+
+        <!-- 新規作成モーダル (丸み 6px) -->
+        <div id="mm-create-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:10000; justify-content:center; align-items:center; backdrop-filter: blur(4px);">
+            <div class="glass-panel animate-fade-in" style="background:white; padding:2rem; border-radius:6px; width:90%; max-width:420px; border: 1px solid var(--border); box-shadow: var(--shadow-lg);">
+                <h3 style="margin-top:0; color:var(--text-primary); font-weight:900; font-size:1.2rem; border-bottom:1px solid var(--border); padding-bottom:0.8rem; margin-bottom:1.5rem;">新規店舗PDCAの作成</h3>
+                <div class="input-group" style="margin-bottom: 1.2rem;">
+                    <label style="display:block; margin-bottom:0.5rem; font-weight:700; font-size:0.8rem; color:var(--text-secondary);">対象店舗</label>
+                    <select id="mm-select-store" class="mm-input" style="width:100%; padding:0.8rem; border-radius:10px; border:1px solid var(--border); font-weight:700;">
+                        <option value="">ロード中...</option>
+                    </select>
+                </div>
+                <div class="input-group" style="margin-bottom: 1.5rem;">
+                    <label style="display:block; margin-bottom:0.5rem; font-weight:700; font-size:0.8rem; color:var(--text-secondary);">対象月</label>
+                    <input type="month" id="mm-select-month" class="mm-input" style="width:100%; padding:0.8rem; border-radius:10px; border:1px solid var(--border); font-weight:700;">
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:1rem; border-top:1px solid var(--border); padding-top:1.2rem;">
+                    <button id="btn-cancel-modal" class="btn" style="background:#f1f5f9; color:#475569; font-weight:700; border-radius:10px;">キャンセル</button>
+                    <button id="btn-confirm-create" class="btn btn-primary" style="font-weight:900; border-radius:10px;">作成開始</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const modal = document.getElementById('mm-create-modal');
+    loadArchiveList();
+    
+    document.getElementById('btn-create-meeting').onclick = async () => {
+        modal.style.display = 'flex';
+        const now = new Date();
+        document.getElementById('mm-select-month').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        
+        // 店舗リスト取得
+        const storeSelect = document.getElementById('mm-select-store');
+        if (storeSelect.options.length <= 1) {
+            try {
+                const snap = await getDocs(query(collection(db, "m_stores"), orderBy("store_id")));
+                storeSelect.innerHTML = '';
+                snap.forEach(d => {
+                    const data = d.data();
+                    if (data.store_type === 'CK') return; // CKは除外
+                    const opt = document.createElement('option');
+                    opt.value = d.id;
+                    opt.textContent = data.store_name || data.店舗名;
+                    storeSelect.appendChild(opt);
+                });
+                
+                if (window.appState && window.appState.currentUser) {
+                    storeSelect.value = window.appState.currentUser.StoreID || 'honten';
+                }
+            } catch (e) {
+                console.error("Failed to load stores:", e);
+                storeSelect.innerHTML = '<option value="">店舗の読み込みに失敗</option>';
+            }
+        }
+    };
+
+    document.getElementById('btn-cancel-modal').onclick = () => {
+        modal.style.display = 'none';
+    };
+
+    document.getElementById('btn-confirm-create').onclick = async () => {
+        const store = document.getElementById('mm-select-store').value;
+        const month = document.getElementById('mm-select-month').value;
+        if (!store || !month) return alert("店舗と月を選択してください");
+        
+        currentTargetStore = store;
+        currentTargetMonth = month;
+        
+        // 既存のドキュメントがあるか確認
+        const docId = `${store}_${month}`;
+        try {
+            const docSnap = await getDoc(doc(db, "t_manager_meetings", docId));
+            if (docSnap.exists()) {
+                editingMeetingData = { id: docId, ...docSnap.data() };
+            } else {
+                // 新規作成＆自動引き継ぎ処理
+                editingMeetingData = await generateNewPDCAData(store, month);
+            }
+            
+            currentMeetingView = 'form';
+            modal.style.display = 'none';
+            renderMeetingView();
+        } catch (e) {
+            console.error("Error creating/loading PDCA:", e);
+            alert("データの初期化に失敗しました。");
+        }
+    };
+}
+
+// -------------------------------------------------------------
+// 新規作成時の前月からの自動引き継ぎロジック (コア機能)
+// -------------------------------------------------------------
+async function generateNewPDCAData(storeId, monthStr) {
+    const user = window.appState ? window.appState.currentUser : null;
+    const authorName = user ? (user.Name || '店舗スタッフ') : '店舗スタッフ';
+    const authorId = user ? (user.id || 'unknown') : 'unknown';
+
+    // 1. 基本オブジェクトの作成
+    const newDoc = {
+        store_id: storeId,
+        store_name: '', // 初期読込でセット
+        target_month: monthStr,
+        author_id: authorId,
+        author_name: authorName,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        status: '下書き',
+        actions: [],
+        free_targets: {
+            education: '',
+            hospitality: '',
+            operation: ''
+        },
+        hr_sharing: {
+            recruitment_plan: '',
+            retirement_concern: '',
+            visa_check: '',
+            training_status: ''
+        }
+    };
+
+    // 店舗名取得
+    try {
+        const sSnap = await getDoc(doc(db, "m_stores", storeId));
+        if (sSnap.exists()) {
+            newDoc.store_name = sSnap.data().store_name || sSnap.data().店舗名;
+        } else {
+            newDoc.store_name = storeId;
+        }
+    } catch(e) {
+        newDoc.store_name = storeId;
+    }
+
+    // 2. 前月年月を計算
+    const [y, m] = monthStr.split('-').map(Number);
+    let prevY = y;
+    let prevM = m - 1;
+    if (prevM === 0) { prevM = 12; prevY--; }
+    const prevMonthStr = `${prevY}-${String(prevM).padStart(2, '0')}`;
+
+    // 3. 前月ドキュメントを読み込み
+    try {
+        const prevDocId = `${storeId}_${prevMonthStr}`;
+        const prevSnap = await getDoc(doc(db, "t_manager_meetings", prevDocId));
+        if (prevSnap.exists()) {
+            const prevData = prevSnap.data();
+            
+            // 4. アクションの自動引き継ぎ
+            if (prevData.actions && Array.isArray(prevData.actions)) {
+                prevData.actions.forEach(act => {
+                    // 「実行中 (active)」であるか、または「次回改善案 (next_action)」が記入されているものを引き継ぐ
+                    const hasNextAction = act.next_action && act.next_action.trim() !== '';
+                    const isActive = act.status === 'active';
+
+                    if (isActive || hasNextAction) {
+                        // 前月の次回改善案（next_action）を今月の施策内容（details）に昇格させる
+                        let detailsStr = act.details || '';
+                        if (hasNextAction) {
+                            detailsStr = `【前月改善策】${act.next_action}\n────────────────\n(前月実施内容: ${act.details || 'なし'})`;
+                        }
+
+                        newDoc.actions.push({
+                            id: `${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+                            kpi_type: act.kpi_type,
+                            category: act.category || '接客',
+                            action_name: act.action_name || '無題の引き継ぎ施策',
+                            details: detailsStr,
+                            expected_effect: act.expected_effect || 0,
+                            result_comment: '', // 今月振り返るためクリア
+                            actual_effect: 0,   // 今月の実績
+                            next_action: '',    // 次回改善用
+                            status: 'active'    // 再びアクティブに
+                        });
+                    }
+                });
+            }
+
+            // 5. 定性目標 & スタッフ情報の引き継ぎ (VISA確認や退職懸念などは継続的に確認する必要があるため)
+            if (prevData.free_targets) {
+                newDoc.free_targets = {
+                    education: prevData.free_targets.education || '',
+                    hospitality: prevData.free_targets.hospitality || '',
+                    operation: prevData.free_targets.operation || ''
+                };
+            }
+            if (prevData.hr_sharing) {
+                newDoc.hr_sharing = {
+                    recruitment_plan: prevData.hr_sharing.recruitment_plan || '',
+                    retirement_concern: prevData.hr_sharing.retirement_concern || '',
+                    visa_check: prevData.hr_sharing.visa_check || '',
+                    training_status: prevData.hr_sharing.training_status || ''
+                };
+            }
+        }
+    } catch(e) {
+        console.warn("Failed to carry over from previous month:", e);
+    }
+
+    return newDoc;
+}
+
+// -------------------------------------------------------------
+// フォームビュー (PDCAボード・最重要画面)
+// -------------------------------------------------------------
+async function renderFormView(container) {
+    const currentUser = window.appState ? window.appState.currentUser : null;
+    const isAdmin = currentUser && (currentUser.Role === 'Admin' || currentUser.Role === '管理者');
+    const isLocked = editingMeetingData.status === '提出済み' && !isAdmin;
+
+    container.innerHTML = `
+        <div class="mm-header no-print" style="margin-bottom: 2rem;">
+            <button id="btn-back-archive" class="btn" style="background: white; border: 1px solid var(--border); font-weight: 700; border-radius: 10px; padding: 0.6rem 1.2rem;">
+                <i class="fas fa-arrow-left"></i> 戻る
+            </button>
+            <div style="display: flex; gap: 1rem;">
+                <button id="btn-print-meeting" class="btn" style="background: white; border: 1px solid var(--primary); color: var(--primary); font-weight: 700; border-radius: 10px; padding: 0.6rem 1.2rem;">
+                    <i class="fas fa-print"></i> 印刷 / PDF保存
+                </button>
+                ${isLocked ? '' : `
+                <button id="btn-save-meeting" class="btn btn-primary" style="font-weight: 900; border-radius: 10px; padding: 0.6rem 1.8rem; box-shadow: 0 4px 12px rgba(230,57,70,0.2);">
+                    <i class="fas fa-save"></i> 提出・保存
+                </button>
+                `}
+            </div>
+        </div>
+
+        <div id="mm-printable-area">
+            <!-- 上部タイトルカード (極薄ホワイトガラスモーフィズム、店名と年月を横並びに統合) -->
+            <div class="glass-panel" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); color: #1e293b; padding: 1.2rem 1.8rem; border-radius: 6px; margin-bottom: 2rem; border: 1px solid var(--border); box-shadow: var(--shadow-sm);">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                    <div style="display:flex; align-items:baseline; flex-wrap:wrap; gap:0.8rem;">
+                        <h1 style="margin: 0; font-size: 1.5rem; font-weight: 900; letter-spacing: -0.5px; color: #1e293b; display:inline-flex; align-items:center;">
+                            ${editingMeetingData.store_name}
+                        </h1>
+                        <span style="font-size: 1.25rem; font-weight: 800; color: var(--text-secondary); letter-spacing: -0.2px;">
+                            [ ${editingMeetingData.target_month.split('-')[0]}年${parseInt(editingMeetingData.target_month.split('-')[1])}月度 ]
+                        </span>
+                    </div>
+                    <div style="display: flex; gap: 1.5rem; background: rgba(0,0,0,0.02); padding: 0.6rem 1.2rem; border-radius: 12px; border: 1px solid var(--border); font-size:0.85rem;">
+                        <div><span style="color:#64748b; display:block; font-size:0.75rem; font-weight:700;">記入者</span><strong style="color:#1e293b;" id="display-author">${editingMeetingData.author_name}</strong></div>
+                        <div style="border-left: 1px solid var(--border); padding-left: 1.5rem;"><span style="color:#64748b; display:block; font-size:0.75rem; font-weight:700;">状態</span><strong style="color:var(--primary);" id="display-status">${editingMeetingData.status || '下書き'}</strong></div>
+                        <div style="border-left: 1px solid var(--border); padding-left: 1.5rem;"><span style="color:#64748b; display:block; font-size:0.75rem; font-weight:700;">最終更新</span><strong style="color:#1e293b;" id="display-date">-</strong></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KPI PDCAボード (グリッド) -->
+            <h2 style="font-size: 1.2rem; font-weight: 900; color: var(--text-primary); margin-bottom: 1rem; display:flex; align-items:center; gap:0.5rem;" class="no-print">
+                <i class="fas fa-chart-line" style="color:var(--primary);"></i> KPI改善ダッシュボード
+            </h2>
+            <div id="mm-kpi-boards-container" style="display: flex; flex-direction: column; gap: 2rem;">
+                <p style="text-align:center; padding:3rem; color:var(--text-secondary);"><i class="fas fa-spinner fa-spin"></i> 実績値およびKPIボードの自動構築中...</p>
+            </div>
+
+            <!-- スタッフ・採用共有エリア (全幅カード ＆ 3カラム構成へ刷新) -->
+            <div class="mm-card" style="border-radius:6px; margin-top: 3rem; width: 100%;">
+                <div class="mm-section-title" style="font-size:1.1rem; font-weight:900; margin-bottom:1.5rem; display:flex; align-items:center; gap:0.5rem; color:var(--text-primary);">
+                    <i class="fas fa-users" style="color:#3b82f6;"></i> スタッフ・採用共有エリア (人事管理・リスク共有)
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem; align-items: stretch;" id="mm-hr-sharing-grid">
+                    
+                    <!-- 左カラム: 定性報告 (人員計画、退職懸念、スタッフの教育計画を縦積み) -->
+                    <div style="display: flex; flex-direction: column; gap: 1.2rem; justify-content: space-between;">
+                        <div class="input-group" style="margin:0;">
+                            <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">人員計画</label>
+                            <textarea id="mm-input-rec" class="mm-input" rows="2" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.6rem 0.8rem; font-size:0.85rem;" placeholder="今月・来月の採用目標、充足状況など" ${isLocked ? 'disabled' : ''}></textarea>
+                        </div>
+                        <div class="input-group" style="margin:0;">
+                            <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">退職懸念</label>
+                            <textarea id="mm-input-ret" class="mm-input" rows="2" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.6rem 0.8rem; font-size:0.85rem;" placeholder="スタッフの退職懸念・モチベーションなど" ${isLocked ? 'disabled' : ''}></textarea>
+                        </div>
+                        <div class="input-group" style="margin:0;">
+                            <label style="display:block; margin-bottom:0.4rem; font-weight:800; font-size:0.75rem; color:#64748b;">スタッフの教育計画</label>
+                            <textarea id="mm-input-train" class="mm-input" rows="2" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.6rem 0.8rem; font-size:0.85rem;" placeholder="サブ店長昇格候補、育成進捗など" ${isLocked ? 'disabled' : ''}></textarea>
+                        </div>
+                    </div>
+
+                    <!-- 中央カラム: VISA期限確認 (自動警告UI ＆ 店長報告メモ) -->
+                    <div class="input-group" style="display:flex; flex-direction:column; background: rgba(0,0,0,0.01); padding: 1.2rem; border-radius: 6px; border: 1px solid var(--border); margin:0;">
+                        <label style="display:block; margin-bottom:0.6rem; font-weight:800; font-size:0.75rem; color:#64748b;">外国人スタッフ VISA期限確認</label>
+                        <!-- 動的警告表示コンテナ -->
+                        <div id="mm-visa-warnings-container" style="margin-bottom:0.8rem; display:flex; flex-direction:column; gap:0.4rem;">
+                            <span style="font-size:0.72rem; color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> VISA期限データを照合中...</span>
+                        </div>
+                        <textarea id="mm-input-visa" class="mm-input" rows="6" style="width:100%; border-radius:6px; border:1px solid var(--border); padding:0.8rem; font-size:0.85rem; flex-grow:1;" placeholder="期限切れの近いスタッフへの対策を記入してください" ${isLocked ? 'disabled' : ''}></textarea>
+                    </div>
+
+                    <!-- 右カラム: 在籍外国人従業員のVISA在留期限一覧 (自動フェッチ＆ソート表示) -->
+                    <div style="display:flex; flex-direction:column; background: rgba(0,0,0,0.01); padding: 1.2rem; border-radius: 6px; border: 1px solid var(--border); margin:0;">
+                        <label style="display:block; margin-bottom:0.6rem; font-weight:800; font-size:0.75rem; color:#64748b;">在籍外国人従業員のVISA期限一覧</label>
+                        <div id="mm-visa-all-list-container" style="display:flex; flex-direction:column; gap:0.6rem; overflow-y:auto; max-height: 290px; padding-right: 0.2rem;">
+                            <span style="font-size:0.72rem; color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> 従業員リストを読み込み中...</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('btn-back-archive').onclick = () => {
+        currentMeetingView = 'archive';
+        renderMeetingView();
+    };
+
+    document.getElementById('btn-print-meeting').onclick = () => {
+        window.print();
+    };
+
+    const saveBtn = document.getElementById('btn-save-meeting');
+    if (saveBtn) {
+        saveBtn.onclick = async () => {
+            await saveMeetingData();
+        };
+    }
+
+    // 定性目標などのフォーム復元
+    if (editingMeetingData.hr_sharing) {
+        document.getElementById('mm-input-rec').value = editingMeetingData.hr_sharing.recruitment_plan || '';
+        document.getElementById('mm-input-ret').value = editingMeetingData.hr_sharing.retirement_concern || '';
+        document.getElementById('mm-input-visa').value = editingMeetingData.hr_sharing.visa_check || '';
+        document.getElementById('mm-input-train').value = editingMeetingData.hr_sharing.training_status || '';
+    }
+
+    const today = new Date().toLocaleDateString('ja-JP');
+    document.getElementById('display-date').textContent = editingMeetingData.updated_at ? new Date(editingMeetingData.updated_at).toLocaleDateString('ja-JP') : today;
+
+    // VISA期限チェックロジック
+    await checkVisaExpirations(editingMeetingData.store_id);
+
+    // オートリサイズ機能の初期化
+    initAutoResizeTextareas();
+
+    // KPI集計とPDCAボードの描画
+    await buildKpiPdcaBoards();
+}
+
+// -------------------------------------------------------------
+// KPI PDCAボードの自動構築 (集計とUIレンダリング - 売上日次平均メイン ＆ ロードマップ自動提示)
+// -------------------------------------------------------------
+const TAX_RATE = 1.1;
+
+async function buildKpiPdcaBoards() {
+    const container = document.getElementById('mm-kpi-boards-container');
+    if (!container) return;
+
+    const currentUser = window.appState ? window.appState.currentUser : null;
+    const isAdmin = currentUser && (currentUser.Role === 'Admin' || currentUser.Role === '管理者');
+    const isLocked = editingMeetingData.status === '提出済み' && !isAdmin;
+
+    const [year, monthStr] = editingMeetingData.target_month.split('-');
+    const currentYear = parseInt(year);
+    const currentMonth = parseInt(monthStr);
+
+    const storeId = editingMeetingData.store_id;
+
+    // --- 1. 年月算出 (当月、前月、前々月、前年同月、及び過去12ヶ月トレンド年月) ---
+    const getMonthString = (y, m) => `${y}-${String(m).padStart(2, '0')}`;
+    
+    const targetYm = getMonthString(currentYear, currentMonth);
+    
+    let prevY = currentYear, prevM = currentMonth - 1;
+    if (prevM === 0) { prevM = 12; prevY--; }
+    const prevYm = getMonthString(prevY, prevM);
+
+    let prev2Y = prevY, prev2M = prevM - 1;
+    if (prev2M === 0) { prev2M = 12; prev2Y--; }
+    const prev2Ym = getMonthString(prev2Y, prev2M);
+
+    let prev3Y = prev2Y, prev3M = prev2M - 1;
+    if (prev3M === 0) { prev3M = 12; prev3Y--; }
+    const prev3Ym = getMonthString(prev3Y, prev3M);
+
+    const prevYearY = currentYear - 1;
+    const prevYearYm = getMonthString(prevYearY, currentMonth);
+
+    // 過去12ヶ月（当月を含む）の年月キー配列の動的生成
+    const trendMonths = [];
+    for (let i = 11; i >= 0; i--) {
+        let y = currentYear;
+        let m = currentMonth - i;
+        while (m <= 0) { m += 12; y--; }
+        const ym = getMonthString(y, m);
+        trendMonths.push(ym);
+    }
+
+    // --- 2. 予定営業日数の取得 (カレンダーマスタ) ---
+    let targetOpDays = 25; // デフォルト営業日数
+    try {
+        let calSnap = await getDoc(doc(db, "m_calendars", `${targetYm}_${storeId}`));
+        if (!calSnap.exists()) {
+            calSnap = await getDoc(doc(db, "m_calendars", `${targetYm}_common`));
+        }
+        if (calSnap.exists()) {
+            const calData = calSnap.data();
+            const daysArr = calData.days || [];
+            const count = daysArr.filter(d => d.type === 'work').length;
+            if (count > 0) targetOpDays = count;
+        }
+    } catch(e) {
+        console.warn("Failed to fetch calendar days:", e);
+    }
+
+    // --- 3. 目標値の取得 (月次 & 年間マスタから逆算) ---
+    let targetSales = 0;       // 売上目標 (税抜)
+    let targetSphOp = 0;       // 営業人時売上目標 (生産性)
+    let targetAvgSpend = 3050; // 客単価目標 (標準デフォルト ¥3,050)
+    
+    try {
+        // 月次計画 (売上目標)
+        const goalSnap = await getDoc(doc(db, "t_monthly_goals", `${targetYm}_${storeId}`));
+        if (goalSnap.exists()) {
+            targetSales = Number(String(goalSnap.data().sales_target || '0').replace(/,/g, '')) || 0;
+        }
+        
+        // 年間マスタ (7月始まり会計年度)
+        let fy = currentYear;
+        if (currentMonth < 7) fy = currentYear - 1;
+        const bSnap = await getDoc(doc(db, "m_annual_budgets", `${fy}_${storeId}`));
+        if (bSnap.exists()) {
+            const budData = bSnap.exists() ? bSnap.data() : {};
+            targetSphOp = Number(String(budData.target_sales_per_hour_op || '0').replace(/,/g, '')) || 0;
+            
+            // 年間目標から想定客単価を逆算
+            const annS = Number(budData.total_sales_target) || 0;
+            const annC = Number(budData.total_cust_target) || 0;
+            if (annS > 0 && annC > 0) {
+                targetAvgSpend = Math.round(annS / annC);
+            }
+        }
+    } catch(e) {
+        console.error("Failed to load goals & budgets:", e);
+    }
+
+    const targetCustomers = targetAvgSpend > 0 ? Math.round(targetSales / targetAvgSpend) : 0;
+    const targetLaborHours = targetSphOp > 0 ? targetSales / targetSphOp : 0;
+
+    // --- 4. 実績値の集計 ---
+    const performanceMap = {};
+    const laborMap = {};
+    
+    trendMonths.forEach(ym => {
+        performanceMap[ym] = { sales: 0, cust: 0, days: 0 };
+        laborMap[ym] = 0;
+    });
+
+    // 比較用および算出用の過去年月キーが漏れないよう補正初期化
+    const ensureYmKeys = [targetYm, prevYm, prev2Ym, prev3Ym, prevYearYm];
+    ensureYmKeys.forEach(ym => {
+        if (performanceMap[ym] === undefined) {
+            performanceMap[ym] = { sales: 0, cust: 0, days: 0 };
+        }
+        if (laborMap[ym] === undefined) {
+            laborMap[ym] = 0;
+        }
+    });
+
+    // マスタデータ一括取得 (CKスタッフの判定等に使用)
+    let storeMap = {};
+    let userMap = {};
+    try {
+        const [allStoresSnap, allUsersSnap] = await Promise.all([
+            getDocs(collection(db, "m_stores")),
+            getDocs(collection(db, "m_users"))
+        ]);
+        allStoresSnap.forEach(d => {
+            const data = d.data();
+            const sid = data.store_id || data.StoreID || data['店舗ID'];
+            if (sid) storeMap[String(sid)] = { ...data, id: d.id };
+            storeMap[d.id] = { ...data, id: d.id };
+        });
+        allUsersSnap.forEach(d => {
+            const data = d.data();
+            userMap[String(d.id).trim()] = data;
+            const code = data.EmployeeCode || data.staff_code || "";
+            if (code) userMap[String(code).trim()] = data;
+            const name = data.staff_name || data.name || "";
+            if (name) userMap[name.trim()] = data;
+        });
+    } catch(e) {
+        console.error("Failed to load masters:", e);
+    }
+
+    try {
+        // 営業実績集計
+        const pSnap = await getDocs(query(collection(db, "t_performance"), where("store_id", "==", storeId)));
+        pSnap.forEach(docSnap => {
+            const d = docSnap.data();
+            const normDate = (d.date || "").replace(/\//g, '-').replace(/\./g, '-');
+            const ym = d.year_month || normDate.substring(0, 7);
+            
+            if (performanceMap[ym] !== undefined) {
+                const salesTaxEx = d.amount_ex_tax !== undefined ? Number(d.amount_ex_tax) : ((Number(d.amount || d.Amount || 0) || 0) / TAX_RATE);
+                const cust = Number(d.customer_count || d.customer_count_total || d.customer_count_total_ex_tax || d.customers || 0) || 0;
+                
+                performanceMap[ym].sales += salesTaxEx;
+                performanceMap[ym].cust += cust;
+                
+                // 実際に売上が発生した日を営業日数としてカウント
+                if (salesTaxEx > 0) {
+                    performanceMap[ym].days++;
+                }
+            }
+        });
+
+        // 勤怠人時集計
+        const aSnap = await getDocs(collection(db, "t_attendance"));
+        
+        // ユーザーごとに打刻データを整理
+        const perStaff = {};
+        aSnap.forEach(docSnap => {
+            const d = docSnap.data();
+            const rawSid = String(d.store_id || d.StoreID || "").trim();
+            const si = storeMap[rawSid];
+            const normSid = (si && si.id) ? si.id : rawSid;
+            
+            // 対象店舗のデータ、またはインポートデータも含めるため広く拾う
+            const staffId = String(d.staff_id || d.staff_code || d.EmployeeCode || d.staff_name || d.name || "unknown").trim();
+            const key = staffId; 
+            if (!perStaff[key]) perStaff[key] = [];
+            perStaff[key].push({ ...d, normalized_sid: normSid });
+        });
+
+        Object.values(perStaff).forEach(recs => {
+            const first = recs[0];
+            const staffKey = String(first.staff_id || first.staff_code || first.EmployeeCode || first.staff_name || first.name || "").trim();
+            const staffData = userMap[staffKey] || {};
+            const staffStoreId = String(staffData.StoreID || staffData.StoreId || staffData.store_id || "").trim();
+            const homeStore = storeMap[staffStoreId];
+            
+            // ユーザー指定の判定基準: store_type が "CK" ならCK所属
+            const isCKStaff = homeStore && String(homeStore.store_type || "").trim() === 'CK';
+
+            // 営業社員（非CK所属）のみ営業労働hにカウント
+            if (isCKStaff) return;
+
+            // 全打刻/インポートデータを日付順に処理
+            recs.sort((a,b) => new Date(a.timestamp || a.date || 0) - new Date(b.timestamp || b.date || 0));
+            let inT = null, breakStartT = null, totalBreakMs = 0, currentNormalizedSid = "", inDate = null;
+
+            recs.forEach(r => {
+                const ts = r.timestamp || r.date || r.Date || "";
+                if (!ts) return;
+                const type = String(r.type || r.Type || '').toLowerCase();
+                const sid = r.normalized_sid;
+                const isImported = (r.total_labor_hours !== undefined || r.TotalLaborHours !== undefined);
+
+                if (isImported) {
+                    // インポートデータ(集計済み)の処理
+                    const fallbackSid = (staffData ? (staffData.StoreID || staffData.StoreId) : '') || 'unknown';
+                    const finalSid = sid || fallbackSid;
+                    if (finalSid === storeId) {
+                        const h = Number(String(r.total_labor_hours || r.TotalLaborHours || '0').replace(/,/g, '')) || 0;
+                        const rawYm = r.year_month || r.YearMonth || String(ts).substring(0, 7);
+                        const ym = String(rawYm).replace(/\//g, '-');
+                        if (laborMap[ym] !== undefined) {
+                            laborMap[ym] += h;
+                        }
+                    }
+                } else {
+                    // アプリからのリアルタイム打刻データの処理
+                    if (type === 'in' || type.includes('check_in') || type.includes('出勤')) {
+                        inT = new Date(ts);
+                        totalBreakMs = 0; breakStartT = null; currentNormalizedSid = sid;
+                        const jstInT = new Date(inT.getTime() + (9 * 60 * 60 * 1000));
+                        inDate = r.date || jstInT.toISOString().substring(0, 10);
+                    } else if (type.includes('break_start') || type.includes('休憩開始')) {
+                        breakStartT = new Date(ts);
+                    } else if ((type.includes('break_end') || type.includes('休憩終了')) && breakStartT) {
+                        totalBreakMs += (new Date(ts) - breakStartT);
+                        breakStartT = null;
+                    } else if ((type === 'out' || type.includes('check_out') || type.includes('退勤')) && inT) {
+                        const outT = new Date(ts);
+                        const netMs = Math.max(0, (outT - inT) - totalBreakMs);
+                        const h = netMs / 3600000;
+                        
+                        const shiftDate = inDate || r.date || new Date(inT.getTime() + (9 * 60 * 60 * 1000)).toISOString().substring(0, 10);
+                        const ym = shiftDate.substring(0, 7).replace(/\//g, '-');
+                        const finalSid = currentNormalizedSid || sid;
+
+                        const fallbackSid = (staffData ? (staffData.StoreID || staffData.StoreId) : '') || 'unknown';
+                        const sidToUse = finalSid || fallbackSid;
+                        
+                        if (sidToUse === storeId && laborMap[ym] !== undefined) {
+                            laborMap[ym] += h;
+                        }
+                        inT = null; totalBreakMs = 0; breakStartT = null; inDate = null;
+                    }
+                }
+            });
+        });
+    } catch(e) {
+        console.error("Error aggregating performance data:", e);
+    }
+
+    // 各月の実営業日数 (0件の場合は予定/標準日数でフォールバック)
+    const opDaysActual = performanceMap[targetYm].days || targetOpDays;
+    const opDaysPrev = performanceMap[prevYm].days || 25;
+    const opDaysPrev2 = performanceMap[prev2Ym].days || 25;
+    const opDaysPrev3 = performanceMap[prev3Ym].days || 25;
+    const opDaysPrevYear = performanceMap[prevYearYm].days || 25;
+
+    // 各KPIの数値定義 (売上は1日平均をメインとする)
+    const kpis = {
+        sales: {
+            name: '売上 (日次平均 ＆ 月次合計)',
+            unit: '円',
+            isCurrency: true,
+            target: targetSales / targetOpDays, // 1日平均目標
+            actual: performanceMap[targetYm].sales / opDaysActual, // 1日平均実績
+            prev: performanceMap[prevYm].sales / opDaysPrev,
+            prev2: performanceMap[prev2Ym].sales / opDaysPrev2,
+            prev3: performanceMap[prev3Ym].sales / opDaysPrev3,
+            prevYear: performanceMap[prevYearYm].sales / opDaysPrevYear,
+            // 補正参照用の合計値
+            totalTarget: targetSales,
+            totalActual: performanceMap[targetYm].sales,
+            opDays: opDaysActual,
+            opDaysTarget: targetOpDays
+        },
+        customers: {
+            name: '平均来客数 (日次平均)',
+            unit: '人',
+            isCurrency: false,
+            target: targetCustomers / targetOpDays, // 1日平均目標
+            actual: performanceMap[targetYm].cust / opDaysActual, // 1日平均実績
+            prev: performanceMap[prevYm].cust / opDaysPrev,
+            prev2: performanceMap[prev2Ym].cust / opDaysPrev2,
+            prev3: performanceMap[prev3Ym].cust / opDaysPrev3,
+            prevYear: performanceMap[prevYearYm].cust / opDaysPrevYear,
+            // 補正参照用の合計値
+            totalTarget: targetCustomers,
+            totalActual: performanceMap[targetYm].cust,
+            opDays: opDaysActual,
+            opDaysTarget: targetOpDays
+        },
+        spend: {
+            name: '客単価 (税抜)',
+            unit: '円',
+            isCurrency: true,
+            target: targetAvgSpend,
+            actual: performanceMap[targetYm].cust > 0 ? performanceMap[targetYm].sales / performanceMap[targetYm].cust : 0,
+            prev: performanceMap[prevYm].cust > 0 ? performanceMap[prevYm].sales / performanceMap[prevYm].cust : 0,
+            prev2: performanceMap[prev2Ym].cust > 0 ? performanceMap[prev2Ym].sales / performanceMap[prev2Ym].cust : 0,
+            prev3: performanceMap[prev3Ym].cust > 0 ? performanceMap[prev3Ym].sales / performanceMap[prev3Ym].cust : 0,
+            prevYear: performanceMap[prevYearYm].cust > 0 ? performanceMap[prevYearYm].sales / performanceMap[prevYearYm].cust : 0
+        },
+        productivity: {
+            name: '営業人時売上 (生産性)',
+            unit: '円',
+            isCurrency: true,
+            target: targetSphOp,
+            actual: laborMap[targetYm] > 0 ? performanceMap[targetYm].sales / laborMap[targetYm] : 0,
+            prev: laborMap[prevYm] > 0 ? performanceMap[prevYm].sales / laborMap[prevYm] : 0,
+            prev2: laborMap[prev2Ym] > 0 ? performanceMap[prev2Ym].sales / laborMap[prev2Ym] : 0,
+            prev3: laborMap[prev3Ym] > 0 ? performanceMap[prev3Ym].sales / laborMap[prev3Ym] : 0,
+            prevYear: laborMap[prevYearYm] > 0 ? performanceMap[prevYearYm].sales / laborMap[prevYearYm] : 0
+        }
+    };
+
+    // 増減率のカラーバッジ生成ヘルパー関数
+    const makeBadge = (diffVal, diffPctText, diffValText, isLarge = false) => {
+        const isPlus = diffVal >= 0;
+        const bg = isPlus ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)';
+        const color = isPlus ? '#10b981' : '#ef4444';
+        const arrow = isPlus ? '▲' : '▼';
+        
+        // サイズ調整 (特大：1.05rem、通常：0.86rem)
+        const fontSize = isLarge ? '1.05rem' : '0.86rem';
+        const padding = isLarge ? '0.35rem 0.85rem' : '0.25rem 0.65rem';
+        const arrowSize = isLarge ? '0.75rem' : '0.62rem';
+        
+        return `
+            <span style="font-size:${fontSize}; font-weight:850; color:${color}; background:${bg}; padding:${padding}; border-radius:30px; display:inline-flex; align-items:center; gap:0.2rem; margin-left:0.8rem; letter-spacing:0.2px; border:1px solid rgba(0,0,0,0.01); white-space:nowrap; vertical-align:middle;">
+                <span style="font-size:${arrowSize}; margin-bottom:1px;">${arrow}</span>${diffPctText} | ${diffValText}
+            </span>
+        `;
+    };
+
+    // HTML構築
+    container.innerHTML = '';
+    
+    const kpiKeys = ['sales', 'customers', 'spend', 'productivity'];
+    const shortNames = {
+        sales: '売上',
+        customers: '来客数',
+        spend: '客単価',
+        productivity: '営業人時売上'
+    };
+    
+    kpiKeys.forEach(key => {
+        const kpi = kpis[key];
+        const val = kpi.actual;
+        const tgt = kpi.target;
+        const shortName = shortNames[key] || kpi.name;
+        
+        // 達成率
+        const pct = tgt > 0 ? (val / tgt) * 100 : 0;
+        const pctText = tgt > 0 ? `${Math.round(pct)}%` : '-';
+        const pctClass = pct >= 100 ? 'text-success' : 'text-danger';
+        
+        // 前月・前々月の実名（〇月）の算出
+        const getMonthName = (monthOffset) => {
+            let m = currentMonth - monthOffset;
+            while (m <= 0) m += 12;
+            return `${m}月`;
+        };
+        const prevMonthName = getMonthName(1);
+        const prev2MonthName = getMonthName(2);
+
+        // 各KPIの過去12ヶ月の定点実績（1日平均値ベース）とX軸ラベルの抽出
+        const trendPoints = [];
+        const trendLabels = [];
+
+        trendMonths.forEach(ym => {
+            const perf = performanceMap[ym];
+            const lab = laborMap[ym];
+            
+            // 年月ごとの営業日数
+            let opDays = perf.days || 25;
+            
+            let valYm = 0;
+            if (key === 'sales') {
+                valYm = perf.sales / opDays;
+            } else if (key === 'customers') {
+                valYm = perf.cust / opDays;
+            } else if (key === 'spend') {
+                valYm = perf.cust > 0 ? perf.sales / perf.cust : 0;
+            } else if (key === 'productivity') {
+                valYm = lab > 0 ? perf.sales / lab : 0;
+            }
+            trendPoints.push(valYm);
+
+            // 月名ラベル (例: "4月")
+            const m = parseInt(ym.substring(5, 7));
+            trendLabels.push(`${m}月`);
+        });
+
+        // 各KPIカードごとのラベルマッピング
+        const labelNames = {
+            sales: { actual: `${currentMonth}月度日次売上平均`, target: '目標平均売上' },
+            customers: { actual: `${currentMonth}月度日次客数平均`, target: '目標平均来客数' },
+            spend: { actual: `${currentMonth}月度客単価実績`, target: '目標客単価' },
+            productivity: { actual: `${currentMonth}月度実績`, target: '目標営業人時売上' }
+        };
+        const labels = labelNames[key] || { actual: '当月実績', target: '定量目標' };
+
+        // 単位サフィックス (/日 など) の判定
+        const dailySuffix = (key === 'sales' || key === 'customers') ? ' /日' : '';
+
+        // 1. 当月バッジ (当月 - 前月)
+        const diffVal = val - kpi.prev;
+        const diffPct = kpi.prev > 0 ? (diffVal / kpi.prev) * 100 : 0;
+        const diffValText = diffVal >= 0 ? `+${formatKpiVal(diffVal, kpi)}` : `-${formatKpiVal(Math.abs(diffVal), kpi)}`;
+        const diffPctText = diffPct >= 0 ? `+${Math.round(diffPct * 10) / 10}%` : `${Math.round(diffPct * 10) / 10}%`;
+        const prevBadgeHtml = makeBadge(diffVal, diffPctText, diffValText, true);
+
+        // 2. 前月バッジ (前月 - 前々月)
+        const diffValPrev = kpi.prev - kpi.prev2;
+        const diffPctPrev = kpi.prev2 > 0 ? (diffValPrev / kpi.prev2) * 100 : 0;
+        const diffValTextPrev = diffValPrev >= 0 ? `+${formatKpiVal(diffValPrev, kpi)}` : `-${formatKpiVal(Math.abs(diffValPrev), kpi)}`;
+        const diffPctTextPrev = diffPctPrev >= 0 ? `+${Math.round(diffPctPrev * 10) / 10}%` : `${Math.round(diffPctPrev * 10) / 10}%`;
+        const prev2BadgeHtml = makeBadge(diffValPrev, diffPctTextPrev, diffValTextPrev, false);
+
+        // 3. 前々月バッジ (前々月 - 前々々月)
+        const diffValPrev2 = kpi.prev2 - kpi.prev3;
+        const diffPctPrev2 = kpi.prev3 > 0 ? (diffValPrev2 / kpi.prev3) * 100 : 0;
+        const diffValTextPrev2 = diffValPrev2 >= 0 ? `+${formatKpiVal(diffValPrev2, kpi)}` : `-${formatKpiVal(Math.abs(diffValPrev2), kpi)}`;
+        const diffPctTextPrev2 = diffPctPrev2 >= 0 ? `+${Math.round(diffPctPrev2 * 10) / 10}%` : `${Math.round(diffPctPrev2 * 10) / 10}%`;
+        const prev3BadgeHtml = makeBadge(diffValPrev2, diffPctTextPrev2, diffValTextPrev2, false);
+
+        // 3ヶ月平均値
+        const avg3 = (val + kpi.prev + kpi.prev2) / 3;
+
+        // 目標ギャップ値の算出
+        const gapVal = tgt - val;
+        const gapClass = gapVal <= 0 ? 'text-success' : 'text-danger';
+        const gapText = gapVal <= 0 ? '目標達成済! 🎉' : `残りギャップ: -${formatKpiVal(gapVal, kpi)}${dailySuffix}`;
+
+        // 前年同月比差分（前年 ➔ 当月）
+        const diffYearVal = val - kpi.prevYear;
+        const diffYearValText = diffYearVal >= 0 ? `+${formatKpiVal(diffYearVal, kpi)}` : `-${formatKpiVal(Math.abs(diffYearVal), kpi)}`;
+        const diffYearClass = diffYearVal >= 0 ? 'mm-up' : 'mm-down';
+
+        // KPI別アクションリスト
+        const kpiActions = (editingMeetingData.actions || []).filter(a => a.kpi_type === key);
+
+        // 売上と来客数の場合はヘッダーに「月間合計（月次）」を表示し、他のKPIはそのまま実績・目標を表示する
+        const headerTgt = (key === 'sales' || key === 'customers') ? kpi.totalTarget : tgt;
+        const headerVal = (key === 'sales' || key === 'customers') ? kpi.totalActual : val;
+
+        let tgtSuffix = '';
+        let actSuffix = '';
+        if (key === 'sales' || key === 'customers') {
+            tgtSuffix = ` <span style="font-size:0.75rem; font-weight:600; color:var(--text-secondary); margin-left:0.2rem;">(予定: ${kpi.opDaysTarget}日)</span>`;
+            actSuffix = ` <span style="font-size:0.75rem; font-weight:600; color:var(--text-secondary); margin-left:0.2rem;">(実働: ${kpi.opDays}日)</span>`;
+        }
+
+        let cardStyle = '';
+        let accentColor = '';
+        let isKpi = true;
+        let kpiTagHtml = '';
+
+        if (key === 'sales') {
+            isKpi = false;
+            kpiTagHtml = ` <span style="font-size:0.65rem; font-weight:800; color:#64748b; background:#e2e8f0; padding:0.15rem 0.4rem; border-radius:4px; margin-left:0.5rem; letter-spacing:0.1px; vertical-align:middle; display:inline-block;">KGI (結果)</span>`;
+            cardStyle = 'background: #fbfcfd; border: 1px solid var(--border); box-shadow: none;';
+        } else {
+            if (key === 'customers') {
+                accentColor = '#f59e0b';
+            } else if (key === 'spend') {
+                accentColor = '#10b981';
+            } else if (key === 'productivity') {
+                accentColor = '#3b82f6';
+            }
+            cardStyle = `border-left: 5px solid ${accentColor};`;
+        }
+
+        const card = document.createElement('div');
+        card.className = 'glass-panel mm-kpi-card';
+        card.style.cssText = cardStyle;
+        card.innerHTML = `
+            <div class="mm-kpi-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; border-bottom:1.5px solid var(--border); padding-bottom:0.8rem; margin-bottom:1.2rem;">
+                <div style="display:flex; align-items:center; flex-wrap:wrap; gap:1.5rem;">
+                    <h3 style="margin:0; font-size:1.35rem; font-weight:950; color:var(--text-primary); display:flex; align-items:center;">
+                        ${shortName}${kpiTagHtml}
+                    </h3>
+                    <div style="display:flex; align-items:center; gap:1.2rem; font-size:1.05rem; font-weight:800; color:var(--text-secondary);">
+                        <span>目標: <strong style="color:var(--text-primary); font-size:1.1rem; font-weight:900;">${formatKpiVal(headerTgt, kpi)}</strong>${tgtSuffix}</span>
+                        <span style="color:var(--border);">|</span>
+                        <span>実績: <strong style="color:var(--text-primary); font-size:1.1rem; font-weight:900;">${formatKpiVal(headerVal, kpi)}</strong>${actSuffix}</span>
+                    </div>
+                </div>
+                <div class="${pctClass}" style="font-size:1.35rem; font-weight:950; display:flex; align-items:center; gap:0.3rem;">
+                    達成率: ${pctText}
+                </div>
+            </div>
+
+            <div class="mm-kpi-metrics-grid" style="display:flex; gap:1.2rem; margin-bottom:1.5rem; flex-wrap:wrap; align-items:stretch;">
+                <!-- 左列 (幅: 48% / 最小幅 320px)：当月実績 (実名時系列リスト付き - 改行なしの横広レイアウト) -->
+                <div class="metric-box" style="flex: 1; min-width: 320px; display:flex; flex-direction:column; justify-content:space-between; background:rgba(0,0,0,0.02); padding:1.2rem; border-radius:6px; border:1px solid var(--border); box-sizing:border-box;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-end; width:100%;">
+                        <!-- 左ブロック: ラベル ＆ 特大実績数値 -->
+                        <div style="display:flex; flex-direction:column; justify-content:flex-end;">
+                            <span class="metric-label" style="display:block; font-size:0.92rem; color:var(--text-secondary); font-weight:800; margin-bottom:0.4rem;">${labels.actual}</span>
+                            <strong class="metric-val primary" style="font-size:1.75rem; font-weight:950; color:var(--primary); line-height:1.1; margin:0;">${formatKpiVal(val, kpi)}${dailySuffix}</strong>
+                        </div>
+                        <!-- 右ブロック: 前月対比ラベル ＆ 特大成長バッジ -->
+                        <div style="display:flex; flex-direction:column; align-items:flex-end; justify-content:flex-end;">
+                            <span class="metric-label" style="display:block; font-size:0.92rem; color:var(--text-secondary); font-weight:800; margin-bottom:0.4rem; letter-spacing:0.5px;">前月対比</span>
+                            <div style="display:flex; align-items:center; height:1.925rem; margin:0;">
+                                ${prevBadgeHtml}
+                            </div>
+                        </div>
+                    </div>
+                    <div style="margin-top:1.2rem; border-top:1px dashed var(--border); padding-top:1.0rem; display:flex; flex-direction:column; gap:0.9rem; width:100%;">
+                        <span style="font-size:1.05rem; color:var(--text-secondary); font-weight:700; display:flex; justify-content:space-between; align-items:center; width:100%; white-space:nowrap;">
+                            <span>${prevMonthName}実績: <strong style="color:var(--text-primary); font-size:1.15rem; font-weight:900; margin-left:0.2rem;">${formatKpiVal(kpi.prev, kpi)}${dailySuffix}</strong></span>
+                            ${prev2BadgeHtml}
+                        </span>
+                        <span style="font-size:1.05rem; color:var(--text-secondary); font-weight:700; display:flex; justify-content:space-between; align-items:center; width:100%; white-space:nowrap;">
+                            <span>${prev2MonthName}実績: <strong style="color:var(--text-primary); font-size:1.15rem; font-weight:900; margin-left:0.2rem;">${formatKpiVal(kpi.prev2, kpi)}${dailySuffix}</strong></span>
+                            ${prev3BadgeHtml}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- 右列 (幅: 52% / 最小幅 340px)：目標値・前年比の横並び ＆ 12ヶ月定点トレンドの「縦積みカード」 -->
+                <div style="flex: 1.1; min-width: 340px; display:flex; flex-direction:column; gap:0.8rem; justify-content:space-between; box-sizing:border-box;">
+                    <!-- 上段：目標値と前年比の横並び -->
+                    <div style="display:flex; gap:0.8rem; width:100%;">
+                        <!-- 目標値 -->
+                        <div class="metric-box" style="flex: 1; min-width: 150px; display:flex; flex-direction:column; justify-content:center; background:rgba(0,0,0,0.02); padding:0.8rem 1rem; border-radius:6px; border:1px solid var(--border); box-sizing:border-box;">
+                            <span class="metric-label" style="display:block; font-size:0.7rem; color:var(--text-secondary); font-weight:800; margin-bottom:0.15rem;">${labels.target}</span>
+                            <strong style="font-size:1.15rem; font-weight:900; color:var(--text-primary);">${formatKpiVal(tgt, kpi)}${dailySuffix}</strong>
+                            <span class="${gapClass}" style="font-size:0.68rem; font-weight:800; display:block; margin-top:0.2rem;">
+                                ${gapText}
+                            </span>
+                        </div>
+                        <!-- 前年比 ＆ 3ヶ月平均 -->
+                        <div class="metric-box" style="flex: 1; min-width: 150px; display:flex; flex-direction:column; justify-content:center; background:rgba(0,0,0,0.02); padding:0.8rem 1rem; border-radius:6px; border:1px solid var(--border); box-sizing:border-box;">
+                            <span class="metric-label" style="display:block; font-size:0.7rem; color:var(--text-secondary); font-weight:800; margin-bottom:0.15rem;">前年同月比 (実力対比)</span>
+                            <strong class="${diffYearVal >= 0 ? 'mm-up' : 'mm-down'}" style="font-size:1.1rem; font-weight:900;">${diffYearValText}${dailySuffix}</strong>
+                            <span style="font-size:0.65rem; color:var(--text-secondary); font-weight:600; display:block;">(前年: ${formatKpiVal(kpi.prevYear, kpi)}${dailySuffix})</span>
+                            <span style="font-size:0.68rem; color:var(--text-secondary); font-weight:700; display:block; border-top:1px dashed var(--border); margin-top:0.25rem; padding-top:0.15rem;">
+                                3ヶ月平均: ${formatKpiVal(avg3, kpi)}${dailySuffix}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- 下段：直近12ヶ月（1年間）推移トレンド (Canvas) -->
+                    <div class="metric-box" style="width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.02); padding:0.8rem 1.2rem; border-radius:6px; border:1px solid var(--border); min-height:80px; box-sizing:border-box;">
+                        <span class="metric-label" style="display:block; font-size:0.75rem; color:var(--text-secondary); font-weight:800; margin-bottom:0.4rem; align-self:flex-start;">12ヶ月定点トレンド (実力推移)</span>
+                        <div style="width:100%; display:flex; justify-content:center; align-items:center;">
+                            <canvas id="canvas-trend-${key}" width="340" height="50" style="max-height:50px; width:100%;"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            ${isKpi ? `
+            <!-- アクションプランエリア -->
+            <div class="mm-actions-area" style="margin-top: 1.5rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px dashed var(--border); padding-bottom:0.8rem; margin-bottom:1rem;">
+                    <h4 style="margin:0; font-size:0.9rem; font-weight:800; color:var(--text-secondary); display:flex; align-items:center; gap:0.4rem;">
+                        <i class="fas fa-tasks"></i> 改善のための具体的な施策
+                    </h4>
+                    ${isLocked ? '' : `
+                    <button class="btn no-print" onclick="window.addNewActionClick('${key}')" style="font-size:0.75rem; padding:0.4rem 1.2rem; border-radius:20px; font-weight:800; border: 1.5px solid ${accentColor}; color: ${accentColor}; background: transparent; transition: all 0.2s;"
+                            onmouseover="this.style.background='${accentColor}'; this.style.color='#ffffff';"
+                            onmouseout="this.style.background='transparent'; this.style.color='${accentColor}';">
+                        <i class="fas fa-plus"></i> 施策を追加
+                    </button>
+                    `}
+                </div>
+
+                <div id="mm-actions-list-${key}" style="display:flex; flex-direction:column; gap:1rem;">
+                    ${kpiActions.length === 0 ? `
+                        <div style="text-align:center; padding: 1.5rem; background:rgba(0,0,0,0.01); border-radius:10px; border:1px dashed var(--border); font-size:0.8rem; color:var(--text-secondary);">
+                            登録されている実行施策はありません。新規施策を追加してください。
+                        </div>
+                    ` : kpiActions.map(act => renderActionRow(act, isLocked)).join('')}
+                </div>
+            </div>
+            ` : ''}
+        `;
+        container.appendChild(card);
+
+        // canvasにトレンドグラフを描画 (12ヶ月データと月名ラベルを渡す)
+        drawTrendGraph(`canvas-trend-${key}`, trendPoints, trendLabels, tgt, kpi, key);
+    });
+}
+
+function formatKpiVal(val, kpi) {
+    if (kpi.isCurrency) {
+        return `¥${Math.round(val).toLocaleString()}`;
+    }
+    return `${Math.round(val).toLocaleString()} ${kpi.unit}`;
+}
+
+
+
+// -------------------------------------------------------------
+// トレンドグラフの描画 (Canvas API を用いた動的レンダリング)
+// -------------------------------------------------------------
+function drawTrendGraph(canvasId, dataPoints, monthLabels, targetVal, kpi, key) {
+    setTimeout(() => {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        
+        // Canvasのピクセル比率を調整しボケを防ぐ (高DPI対応)
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.scale(dpr, dpr);
+        
+        const w = rect.width;
+        const h = rect.height;
+
+        // CSS変数から直接色を取得 (Canvas APIは直接var()を使用できないためフォールバックを確保)
+        const computedStyle = window.getComputedStyle(canvas);
+        const secondaryColor = computedStyle.getPropertyValue('--secondary').trim() || '#f4a261';
+        const textSecondaryColor = computedStyle.getPropertyValue('--text-secondary').trim() || '#94a3b8';
+
+        const paddingLeft = 14;
+        const paddingRight = 14;
+        const paddingTop = 6;
+        const paddingBottom = 14; // ラベル用の余白
+
+        const maxVal = Math.max(...dataPoints, targetVal) || 1;
+        const minVal = Math.min(...dataPoints, targetVal) || 0;
+        const range = maxVal - minVal || 1;
+
+        const getX = (index) => paddingLeft + (index / (dataPoints.length - 1)) * (w - paddingLeft - paddingRight);
+        const getY = (value) => h - paddingBottom - ((value - minVal) / range) * (h - paddingTop - paddingBottom);
+
+        // トレンドグラフのハイライト色 (KPIのテーマカラーに連動)
+        let themeColor = secondaryColor;
+        if (key === 'customers') themeColor = '#f59e0b';
+        else if (key === 'spend') themeColor = '#10b981';
+        else if (key === 'productivity') themeColor = '#3b82f6';
+        else if (key === 'sales') themeColor = textSecondaryColor; // KGI（売上）は落ち着いたグレー
+
+        // チャートのレンダリング本体 (ホバーしたインデックスをハイライト)
+        function renderChart(hoveredIndex = -1) {
+            ctx.clearRect(0, 0, w, h);
+
+            // 1. 目標線の描画 (破線)
+            ctx.strokeStyle = 'rgba(230, 57, 70, 0.35)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.moveTo(0, getY(targetVal));
+            ctx.lineTo(w, getY(targetVal));
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 2. 推移線の描画
+            ctx.strokeStyle = secondaryColor;
+            ctx.lineWidth = 2;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(getX(0), getY(dataPoints[0]));
+            for (let i = 1; i < dataPoints.length; i++) {
+                ctx.lineTo(getX(i), getY(dataPoints[i]));
+            }
+            ctx.stroke();
+
+            // 3. 各ポイントのドット描画
+            for (let i = 0; i < dataPoints.length; i++) {
+                const px = getX(i);
+                const py = getY(dataPoints[i]);
+
+                if (i === hoveredIndex) {
+                    // ホバーされたドット：外側に半透明の波紋を重ね、中心ドットをテーマカラーで大きく描画
+                    ctx.fillStyle = hexToRgba(themeColor, 0.2);
+                    ctx.beginPath();
+                    ctx.arc(px, py, 8.5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = themeColor;
+                    ctx.beginPath();
+                    ctx.arc(px, py, 4.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // 内側に白ドットを描いて目立たせる
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(px, py, 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    // 通常のドット
+                    ctx.fillStyle = secondaryColor;
+                    ctx.beginPath();
+                    ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            
+            // 最終月のドットを目立たせる (ホバーされていない場合)
+            if (hoveredIndex !== dataPoints.length - 1) {
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(getX(dataPoints.length - 1), getY(dataPoints[dataPoints.length - 1]), 3.5, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // 4. 月名ラベルの描画
+            ctx.fillStyle = textSecondaryColor;
+            ctx.font = '700 8px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            
+            for (let i = 0; i < dataPoints.length; i++) {
+                if (i % 2 === 1) {
+                    ctx.fillText(monthLabels[i], getX(i), h - 10);
+                }
+            }
+        }
+
+        // 共通ツールチップの動的生成/取得
+        let tooltip = document.getElementById('mm-chart-tooltip');
+        let tooltipText;
+        if (!tooltip) {
+            tooltip = document.createElement('div');
+            tooltip.id = 'mm-chart-tooltip';
+            tooltip.style.cssText = `
+                position: absolute;
+                background: rgba(15, 23, 42, 0.95);
+                color: #ffffff;
+                padding: 6px 10px;
+                border-radius: 6px;
+                font-size: 11px;
+                font-weight: 700;
+                pointer-events: none;
+                opacity: 0;
+                transform: translate(-50%, -100%) scale(0.9);
+                transition: opacity 0.15s ease-out, transform 0.15s ease-out;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+                z-index: 9999;
+                white-space: nowrap;
+            `;
+
+            tooltipText = document.createElement('span');
+            tooltip.appendChild(tooltipText);
+
+            // 下向き矢印
+            const arrow = document.createElement('div');
+            arrow.style.cssText = `
+                position: absolute;
+                width: 6px;
+                height: 6px;
+                background: rgba(15, 23, 42, 0.95);
+                transform: rotate(45deg);
+                bottom: -3px;
+                left: 50%;
+                margin-left: -3px;
+            `;
+            tooltip.appendChild(arrow);
+            document.body.appendChild(tooltip);
+        } else {
+            tooltipText = tooltip.querySelector('span');
+        }
+
+        // 初回描画
+        renderChart();
+
+        let lastHoveredIndex = -1;
+
+        const hideTooltip = () => {
+            tooltip.style.opacity = '0';
+            tooltip.style.transform = 'translate(-50%, -100%) scale(0.9)';
+            canvas.style.cursor = 'default';
+            if (lastHoveredIndex !== -1) {
+                lastHoveredIndex = -1;
+                renderChart(-1);
+            }
+        };
+
+        // マウス移動での当たり判定イベント登録
+        canvas.addEventListener('mousemove', (e) => {
+            const rectVal = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rectVal.left;
+            const mouseY = e.clientY - rectVal.top;
+
+            let hoveredIndex = -1;
+            let minDist = 12; // 12px以内の点を探す
+
+            for (let i = 0; i < dataPoints.length; i++) {
+                const px = getX(i);
+                const py = getY(dataPoints[i]);
+                const dist = Math.sqrt((mouseX - px) ** 2 + (mouseY - py) ** 2);
+                if (dist < minDist) {
+                    minDist = dist;
+                    hoveredIndex = i;
+                }
+            }
+
+            if (hoveredIndex !== -1) {
+                const pageX = e.clientX + window.scrollX;
+                const pageY = rectVal.top + getY(dataPoints[hoveredIndex]) + window.scrollY;
+
+                const monthStr = monthLabels[hoveredIndex];
+                const rawVal = dataPoints[hoveredIndex];
+                const formattedVal = formatKpiVal(rawVal, kpi);
+                const dailySuffix = (key === 'sales' || key === 'customers' || key === 'productivity') ? ' /日' : '';
+
+                tooltipText.textContent = `${monthStr}実績: ${formattedVal}${dailySuffix}`;
+
+                // ツールチップ位置更新とフェードイン
+                tooltip.style.left = `${pageX}px`;
+                tooltip.style.top = `${pageY - 10}px`;
+                tooltip.style.opacity = '1';
+                tooltip.style.transform = 'translate(-50%, -100%) scale(1)';
+
+                canvas.style.cursor = 'pointer';
+
+                if (lastHoveredIndex !== hoveredIndex) {
+                    lastHoveredIndex = hoveredIndex;
+                    renderChart(hoveredIndex);
+                }
+            } else {
+                hideTooltip();
+            }
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            hideTooltip();
+        });
+    }, 100);
+}
+
+// カラーヘルパー関数
+function hexToRgba(hex, alpha) {
+    if (hex.startsWith('var(')) {
+        // CSS変数の場合の簡易代替フォールバック（secondaryは薄いグレー系）
+        return `rgba(100, 116, 139, ${alpha})`;
+    }
+    // #ffffff や #fff のパース
+    let c = hex.substring(1);
+    if (c.length === 3) {
+        c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2];
+    }
+    const r = parseInt(c.substring(0, 2), 16);
+    const g = parseInt(c.substring(2, 4), 16);
+    const b = parseInt(c.substring(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+// -------------------------------------------------------------
+// 個別のアクションカードのレンダリング (HTML)
+// -------------------------------------------------------------
+function renderActionRow(act, isLocked = false) {
+    const isCompleted = act.status === 'completed';
+    return `
+        <div class="mm-action-item-panel ${isCompleted ? 'completed' : ''}" id="action-panel-${act.id}">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.5rem; border-bottom:1px solid #f1f5f9; padding-bottom:0.6rem; margin-bottom:0.8rem;">
+                <div style="display:flex; align-items:center; gap:0.6rem;">
+                    <span class="mm-badge" style="background:#eff6ff; color:#3b82f6; border:1px solid rgba(59,130,246,0.15);">${act.category}</span>
+                    <strong style="font-size:0.95rem; color:var(--text-primary); font-weight:800;">${act.action_name}</strong>
+                </div>
+                <div style="display:flex; align-items:center; gap:0.5rem;" class="no-print">
+                    ${isLocked ? '' : `
+                    <button class="btn" onclick="window.toggleActionStatusClick('${act.id}')" style="background:${isCompleted ? '#f1f5f9' : '#ecfdf5'}; color:${isCompleted ? '#64748b' : '#10b981'}; font-size:0.7rem; padding:0.25rem 0.6rem; border-radius:6px; font-weight:800; border:none; display:flex; align-items:center; gap:0.2rem;">
+                        <i class="fas ${isCompleted ? 'fa-undo' : 'fa-check'}"></i> ${isCompleted ? '振り返りを修正' : '完了・振り返る'}
+                    </button>
+                    <button class="btn" onclick="window.deleteActionClick('${act.id}')" style="background:#fff5f5; color:#f87171; font-size:0.7rem; padding:0.25rem 0.4rem; border-radius:6px; border:none;">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                    `}
+                </div>
+            </div>
+
+            <!-- PDCA内容 -->
+            <div style="display:grid; grid-template-columns: 1.2fr 1fr; gap:1.5rem; font-size:0.82rem; line-height:1.5; color:#475569;">
+                <!-- 左側: Plan & Do (仮説 & 実行) -->
+                <div style="border-right: 1px dashed #e2e8f0; padding-right:1rem;">
+                    <div><span style="font-weight:800; color:#1e293b; display:block; margin-bottom:0.2rem;">[実行予定内容]</span> ${act.details ? act.details.replace(/\n/g, '<br>') : '未記入'}</div>
+                    <div style="margin-top:0.6rem;"><span style="font-weight:800; color:#1e293b;">[想定効果]:</span> <strong>+${act.expected_effect || 0}</strong></div>
+                </div>
+
+                <!-- 右側: Check & Action (検証 & 改善案) -->
+                <div>
+                    ${isCompleted ? `
+                        <div><span style="font-weight:800; color:#10b981; display:block; margin-bottom:0.2rem;">[結果・振り返り]</span> ${act.result_comment ? act.result_comment.replace(/\n/g, '<br>') : '未記入'}</div>
+                        <div style="margin-top:0.4rem;"><span style="font-weight:800; color:#10b981;">[結果効果]:</span> <strong>+${act.actual_effect || 0}</strong></div>
+                        <div style="margin-top:0.6rem;"><span style="font-weight:800; color:#3b82f6; display:block; margin-bottom:0.2rem;">[次回改善案]</span> ${act.next_action ? act.next_action.replace(/\n/g, '<br>') : '未記入'}</div>
+                    ` : `
+                        <div style="text-align:center; padding:1.2rem; background:#f8fafc; border-radius:8px; border:1px solid #f1f5f9; color:#94a3b8; font-weight:700;">
+                            <i class="fas fa-clock" style="display:block; font-size:1.2rem; margin-bottom:0.3rem;"></i>
+                            月末振り返り待ち
+                        </div>
+                    `}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// -------------------------------------------------------------
+// 施策のインタラクティブなイベント処理 (メモリ更新 ＆ 再描画)
+// -------------------------------------------------------------
+
+// 1. 施策の新規追加モーダル
+window.addNewActionClick = (kpiKey) => {
+    const modalId = 'mm-action-modal-new';
+    let modal = document.getElementById(modalId);
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = modalId;
+        modal.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:10005; display:flex; justify-content:center; align-items:center; backdrop-filter: blur(4px);';
+        document.body.appendChild(modal);
+    }
+
+    const kpiNames = {
+        sales: '売上',
+        customers: '来客数',
+        spend: '客単価',
+        productivity: '営業人時売上'
+    };
+    const kpiName = kpiNames[kpiKey] || 'KPI';
+    const unit = kpiKey === 'customers' ? '人' : '円';
+
+    modal.innerHTML = `
+        <div class="glass-panel animate-scale-in" style="background:white; padding:2rem; border-radius:6px; width:90%; max-width:480px; border: 1px solid var(--border); box-shadow: var(--shadow-lg); max-height:85vh; overflow-y:auto;">
+            <h3 style="margin-top:0; color:var(--text-primary); font-weight:900; font-size:1.15rem; border-bottom:1px solid var(--border); padding-bottom:0.6rem; margin-bottom:1.2rem;">新規実行施策の登録 (${kpiName})</h3>
+            
+            <div class="input-group" style="margin-bottom:1rem;">
+                <label style="display:block; margin-bottom:0.3rem; font-weight:800; font-size:0.75rem; color:#64748b;">実施する施策のタイトル</label>
+                <input type="text" id="new-act-name" class="mm-input" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border); font-size:0.85rem;" placeholder="例: 日本酒おすすめPOP設置">
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1.2fr; gap:1rem; margin-bottom:1rem;">
+                <div class="input-group">
+                    <label style="display:block; margin-bottom:0.3rem; font-weight:800; font-size:0.75rem; color:#64748b;">施策カテゴリ</label>
+                    <select id="new-act-cat" class="mm-input" style="width:100%; padding:0.7rem; border-radius:8px; border:1px solid var(--border); font-size:0.85rem;">
+                        ${ACTION_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label style="display:block; margin-bottom:0.3rem; font-weight:800; font-size:0.75rem; color:#64748b;">施策のKPIに対する想定数値効果</label>
+                    <div style="display:flex; align-items:center; gap:0.4rem;">
+                        <input type="number" id="new-act-expect" class="mm-input" style="flex:1; padding:0.7rem; border-radius:8px; border:1px solid var(--border); font-size:0.85rem; text-align:right;" placeholder="50">
+                        <span style="font-size:0.85rem; font-weight:800; color:var(--text-secondary); width:20px; text-align:left;">${unit}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-group" style="margin-bottom:1.5rem;">
+                <label style="display:block; margin-bottom:0.3rem; font-weight:800; font-size:0.75rem; color:#64748b;">実施内容</label>
+                <textarea id="new-act-details" class="mm-input" rows="3" style="width:100%; border-radius:8px; border:1px solid var(--border); padding:0.7rem; font-size:0.85rem;" placeholder="誰が、いつまでに、何を、どのように取り組むか具体的に記載"></textarea>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:1rem; border-top:1px solid var(--border); padding-top:1rem;">
+                <button class="btn" onclick="document.getElementById('${modalId}').style.display='none'" style="background:#f1f5f9; color:#475569; font-weight:700; border-radius:8px; font-size:0.8rem; padding:0.5rem 1rem;">キャンセル</button>
+                <button id="btn-save-new-act" class="btn btn-primary" style="font-weight:900; border-radius:8px; font-size:0.8rem; padding:0.5rem 1.2rem;">施策を追加する</button>
+            </div>
+        </div>
+    `;
+
+    modal.style.display = 'flex';
+    
+    // 施策モーダルの「実施内容」テキストエリアにオートリサイズをバインド
+    initAutoResizeTextareas(['new-act-details']);
+
+    document.getElementById('btn-save-new-act').onclick = () => {
+        const name = document.getElementById('new-act-name').value.trim();
+        const cat = document.getElementById('new-act-cat').value;
+        const expect = parseInt(document.getElementById('new-act-expect').value) || 0;
+        const details = document.getElementById('new-act-details').value.trim();
+
+        if (!name) return alert("施策名を入力してください");
+
+        const newAction = {
+            id: `${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            kpi_type: kpiKey,
+            category: cat,
+            action_name: name,
+            details: details,
+            expected_effect: expect,
+            result_comment: '',
+            actual_effect: 0,
+            next_action: '',
+            status: 'active'
+        };
+
+        if (!editingMeetingData.actions) editingMeetingData.actions = [];
+        editingMeetingData.actions.push(newAction);
+
+        modal.style.display = 'none';
+        buildKpiPdcaBoards(); // 再描画
+    };
+};
+
+// 2. 施策のステータス切り替え ＆ 振り返り入力
+window.toggleActionStatusClick = (actionId) => {
+    const actIdx = editingMeetingData.actions.findIndex(a => a.id === actionId);
+    if (actIdx === -1) return;
+
+    const act = editingMeetingData.actions[actIdx];
+
+    if (act.status === 'completed') {
+        // すでに完了している場合は、「下書き/実行中」に戻す確認
+        if (confirm("この施策を『実行中 (振り返り待ち)』に戻しますか？")) {
+            act.status = 'active';
+            buildKpiPdcaBoards();
+        }
+        return;
+    }
+
+    // 振り返りの入力モーダルを立ち上げる
+    const modalId = 'mm-action-modal-reflect';
+    let modal = document.getElementById(modalId);
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = modalId;
+        modal.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:10005; display:flex; justify-content:center; align-items:center; backdrop-filter: blur(4px);';
+        document.body.appendChild(modal);
+    }
+
+    const kpiNames = {
+        sales: '売上',
+        customers: '来客数',
+        spend: '客単価',
+        productivity: '営業人時売上'
+    };
+    const kpiName = kpiNames[act.kpi_type] || 'KPI';
+    const unit = act.kpi_type === 'customers' ? '人' : '円';
+
+    modal.innerHTML = `
+        <div class="glass-panel animate-scale-in" style="background:white; padding:2rem; border-radius:6px; width:90%; max-width:480px; border: 1px solid var(--border); box-shadow: var(--shadow-lg); max-height:85vh; overflow-y:auto;">
+            <h3 style="margin-top:0; color:var(--text-primary); font-weight:900; font-size:1.15rem; border-bottom:1px solid var(--border); padding-bottom:0.6rem; margin-bottom:1.2rem;">施策の振り返り (${kpiName})</h3>
+            
+            <div style="background:#eff6ff; border-radius:8px; padding:0.8rem; border:1px solid rgba(59,130,246,0.1); margin-bottom:1.2rem; font-size:0.82rem;">
+                <span style="display:block; color:#94a3b8; font-weight:700; font-size:0.7rem; margin-bottom:0.2rem;">対象施策</span>
+                <strong style="color:var(--text-primary); font-size:0.9rem;">${act.action_name}</strong>
+                <p style="margin:0.4rem 0 0; color:#475569;">想定効果: <strong>+${act.expected_effect || 0} ${unit}</strong></p>
+            </div>
+
+            <div class="input-group" style="margin-bottom:1rem;">
+                <label style="display:block; margin-bottom:0.3rem; font-weight:800; font-size:0.75rem; color:#64748b;">実際の結果・定量効果 (数値)</label>
+                <div style="display:flex; align-items:center; gap:0.4rem;">
+                    <input type="number" id="reflect-act-actual" class="mm-input" style="flex:1; padding:0.7rem; border-radius:8px; border:1px solid var(--border); font-size:0.85rem; text-align:right;" value="${act.actual_effect || ''}" placeholder="35">
+                    <span style="font-size:0.85rem; font-weight:800; color:var(--text-secondary); width:20px; text-align:left;">${unit}</span>
+                </div>
+            </div>
+
+            <div class="input-group" style="margin-bottom:1rem;">
+                <label style="display:block; margin-bottom:0.3rem; font-weight:800; font-size:0.75rem; color:#64748b;">結果と要因の振り返り (定性)</label>
+                <textarea id="reflect-act-comment" class="mm-input" rows="3" style="width:100%; border-radius:8px; border:1px solid var(--border); font-size:0.85rem;" placeholder="計画通りに進んだか、未達要因または成功要因は何だったか">${act.result_comment || ''}</textarea>
+            </div>
+
+            <div class="input-group" style="margin-bottom:1.5rem;">
+                <label style="display:block; margin-bottom:0.3rem; font-weight:800; font-size:0.75rem; color:#64748b;">次回改善案 (翌月へ自動コピーされます)</label>
+                <textarea id="reflect-act-next" class="mm-input" rows="2" style="width:100%; border-radius:8px; border:1px solid var(--border); padding:0.7rem; font-size:0.85rem;" placeholder="今回の学びを活かして、次はどこを改善・調整するか">${act.next_action || ''}</textarea>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:1rem; border-top:1px solid var(--border); padding-top:1rem;">
+                <button class="btn" onclick="document.getElementById('${modalId}').style.display='none'" style="background:#f1f5f9; color:#475569; font-weight:700; border-radius:8px; font-size:0.8rem; padding:0.5rem 1rem;">閉じる</button>
+                <button id="btn-save-reflect" class="btn btn-primary" style="font-weight:900; border-radius:8px; font-size:0.8rem; padding:0.5rem 1.2rem; background:#10b981; border-color:#10b981;">振り返りを確定する</button>
+            </div>
+        </div>
+    `;
+
+    modal.style.display = 'flex';
+    
+    // 振り返りモーダルのテキストエリアにオートリサイズをバインド
+    initAutoResizeTextareas(['reflect-act-comment', 'reflect-act-next']);
+
+    document.getElementById('btn-save-reflect').onclick = () => {
+        const actual = parseInt(document.getElementById('reflect-act-actual').value) || 0;
+        const comment = document.getElementById('reflect-act-comment').value.trim();
+        const next = document.getElementById('reflect-act-next').value.trim();
+
+        act.actual_effect = actual;
+        act.result_comment = comment;
+        act.next_action = next;
+        act.status = 'completed'; // 完了ステータスへ
+
+        modal.style.display = 'none';
+        buildKpiPdcaBoards(); // 再描画
+    };
+};
+
+// 3. 施策の削除
+window.deleteActionClick = (actionId) => {
+    if (confirm("この施策を削除してもよろしいですか？（※保存ボタンを押すまで最終確定はされません）")) {
+        editingMeetingData.actions = editingMeetingData.actions.filter(a => a.id !== actionId);
+        buildKpiPdcaBoards();
+    }
+};
+
+// -------------------------------------------------------------
+// 保存 ＆ データベース通信処理
+// -------------------------------------------------------------
+
+async function loadArchiveList() {
+    const listContainer = document.getElementById('mm-archive-list');
+    if (!listContainer) return;
+
+    try {
+        const snap = await getDocs(query(collection(db, "t_manager_meetings"), orderBy("target_month", "desc")));
+        if (snap.empty) {
+            listContainer.innerHTML = '<p style="text-align:center; padding:3rem; color:var(--text-secondary);">過去の提出データはありません</p>';
+            return;
+        }
+
+        const currentUser = window.appState ? window.appState.currentUser : null;
+        const isAdmin = currentUser && (currentUser.Role === 'Admin' || currentUser.Role === '管理者');
+
+        let html = '';
+        const storesMap = new Map(); // 追加: 店舗リスト保持用
+
+        snap.forEach(docSnap => {
+            const d = docSnap.data();
+            const dateStr = d.updated_at ? new Date(d.updated_at).toLocaleDateString('ja-JP') : '-';
+
+            // 店舗リストの収集
+            if (d.store_id && d.store_name) {
+                storesMap.set(d.store_id, d.store_name);
+            }
+
+            const deleteBtnHtml = isAdmin ? `<button onclick="window.deleteMeeting(event, '${docSnap.id}')" class="btn no-print" style="background:#fff5f5; color:#f87171; border:none; padding:0.35rem 0.6rem; border-radius:6px; margin-left:1rem; cursor:pointer; transition: all 0.2s;" onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fff5f5'" title="この記録を削除する"><i class="fas fa-trash-alt"></i></button>` : '';
+
+            html += `
+                <div class="glass-panel mm-archive-item" data-store-id="${d.store_id}" style="padding: 0.9rem 1.5rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s; border-radius: 6px;"
+                     onclick="window.openMeeting('${docSnap.id}')"
+                     onmouseover="this.style.borderColor='var(--primary)'; this.style.boxShadow='var(--shadow-sm)';"
+                     onmouseout="this.style.borderColor='var(--border)'; this.style.boxShadow='none';">
+                    <div style="display:flex; align-items:baseline; gap:1.2rem; flex-wrap:wrap;">
+                        <h4 style="margin:0; font-size:1.1rem; color:var(--text-primary); font-weight:800; display:inline-flex; align-items:center;">
+                            ${d.store_name} - ${d.target_month.split('-')[0]}年${parseInt(d.target_month.split('-')[1])}月度
+                        </h4>
+                        <span style="font-size:0.8rem; color:var(--text-secondary); font-weight:600; letter-spacing: -0.1px;">
+                            記入者: ${d.author_name} | 最終更新: ${dateStr}
+                        </span>
+                    </div>
+                    <div style="display:flex; align-items:center;">
+                        <span style="background:${d.status === '提出済み' ? 'var(--primary)' : '#e2e8f0'}; color:${d.status === '提出済み' ? 'white' : '#475569'}; padding:0.35rem 0.9rem; border-radius:20px; font-size:0.75rem; font-weight:800; border:1px solid rgba(0,0,0,0.02);">
+                            ${d.status || '下書き'}
+                        </span>
+                        ${deleteBtnHtml}
+                    </div>
+                </div>
+            `;
+        });
+        
+        listContainer.innerHTML = html;
+
+        // プルダウンの生成とフィルタリングイベントのバインド
+        const filterSelect = document.getElementById('mm-archive-filter-store');
+        if (filterSelect) {
+            filterSelect.innerHTML = '<option value="all">全店舗を表示</option>';
+            storesMap.forEach((name, id) => {
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.textContent = name;
+                filterSelect.appendChild(opt);
+            });
+
+            filterSelect.onchange = (e) => {
+                const selected = e.target.value;
+                const items = listContainer.querySelectorAll('.mm-archive-item');
+                items.forEach(item => {
+                    if (selected === 'all' || item.getAttribute('data-store-id') === selected) {
+                        item.style.display = 'flex';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            };
+
+            // デフォルトで自店舗を選択（管理者以外）
+            if (currentUser && !isAdmin) {
+                const myStore = currentUser.StoreID || currentUser.StoreId;
+                if (myStore && storesMap.has(myStore)) {
+                    filterSelect.value = myStore;
+                    filterSelect.dispatchEvent(new Event('change')); // 初期表示の絞り込み実行
+                }
+            }
+        }
+        
+        window.openMeeting = async (docId) => {
+            const docRef = await getDoc(doc(db, "t_manager_meetings", docId));
+            if (docRef.exists()) {
+                editingMeetingData = { id: docId, ...docRef.data() };
+                currentTargetStore = editingMeetingData.store_id;
+                currentTargetMonth = editingMeetingData.target_month;
+                currentMeetingView = 'form';
+                renderMeetingView();
+            }
+        };
+
+        window.deleteMeeting = async (event, docId) => {
+            event.stopPropagation(); // 行全体のクリックイベント発火を防ぐ
+            if (confirm("本当にこの店舗PDCA資料を削除しますか？\\n※この操作は取り消せません。")) {
+                try {
+                    await deleteDoc(doc(db, "t_manager_meetings", docId));
+                    showAlert ? showAlert("PDCA資料を削除しました。") : alert("PDCA資料を削除しました。");
+                    loadArchiveList(); // 一覧を再描画
+                } catch(e) {
+                    console.error("Failed to delete PDCA:", e);
+                    alert("削除に失敗しました。");
+                }
+            }
+        };
+
+    } catch (e) {
+        console.error("Failed to load archive:", e);
+        listContainer.innerHTML = '<p style="text-align:center; color:var(--danger); font-weight:700;">データの読み込みに失敗しました。</p>';
+    }
+}
+
+async function checkVisaExpirations(storeId) {
+    const container = document.getElementById('mm-visa-warnings-container');
+    const textarea = document.getElementById('mm-input-visa');
+    const listContainer = document.getElementById('mm-visa-all-list-container');
+    if (!container || !textarea) return;
+
+    try {
+        let storeName = '';
+        const sSnap = await getDoc(doc(db, "m_stores", storeId));
+        if (sSnap.exists()) {
+            storeName = sSnap.data().store_name || sSnap.data().店舗名 || '';
+        }
+
+        const snap = await getDocs(collection(db, "m_users"));
+        const staffList = [];
+        const today = new Date();
+
+        snap.forEach(d => {
+            const data = d.data();
+            const uStoreId = String(data.StoreID || data.StoreId || "").trim();
+            const uStoreName = String(data.Store || "").trim();
+
+            if (uStoreId === storeId || (storeName && uStoreName === storeName)) {
+                if (data.visa_expiry_date) {
+                    staffList.push({
+                        id: d.id,
+                        name: data.DisplayName || data.Name || "名前未設定",
+                        expiry: data.visa_expiry_date
+                    });
+                }
+            }
+        });
+
+        // 期限が近い順にソート (期限日昇順)
+        staffList.sort((a, b) => new Date(a.expiry).getTime() - new Date(b.expiry).getTime());
+
+        // --- 右カラムの全員のVISA在留期限一覧をレンダリング ---
+        if (listContainer) {
+            if (staffList.length === 0) {
+                listContainer.innerHTML = `<span style="font-size:0.75rem; color:#64748b; padding:1rem; text-align:center;">在籍している外国人スタッフはいません。</span>`;
+            } else {
+                let listHtml = '';
+                staffList.forEach(s => {
+                    const expDate = new Date(s.expiry);
+                    let color = '#10b981';
+                    let label = '安全';
+                    let diffDays = '-';
+                    if (!isNaN(expDate.getTime())) {
+                        const diffTime = expDate.getTime() - today.getTime();
+                        diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        if (diffDays <= 45) {
+                            color = '#ef4444';
+                            label = `残り ${diffDays}日 🔴`;
+                        } else if (diffDays <= 60) {
+                            color = '#f59e0b';
+                            label = `残り ${diffDays}日 🟡`;
+                        } else {
+                            label = `残り ${diffDays}日 🟢`;
+                        }
+                    }
+                    listHtml += `
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:#fff; padding:0.5rem 0.8rem; border-radius:6px; border:1px solid var(--border); font-size:0.8rem; box-shadow:0 1px 2px rgba(0,0,0,0.02);">
+                            <strong style="color:var(--text-primary); font-weight:700;">${s.name}</strong>
+                            <span style="font-weight:800; color:${color}; font-size:0.75rem; display:inline-flex; align-items:center; gap:0.2rem;">
+                                ${s.expiry} <span style="font-size:0.7rem; opacity:0.85;">(${label})</span>
+                            </span>
+                        </div>
+                    `;
+                });
+                listContainer.innerHTML = listHtml;
+            }
+        }
+
+        // --- 中央カラムの警告インジケータをレンダリング (チェックアイコン等のノイズを排除) ---
+        const warnings = [];
+        const autoInputs = [];
+
+        staffList.forEach(s => {
+            const expDate = new Date(s.expiry);
+            if (isNaN(expDate.getTime())) return;
+
+            const diffTime = expDate.getTime() - today.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays <= 45) {
+                warnings.push({
+                    type: 'danger',
+                    html: `<span style="font-size:0.72rem; color:#ef4444; background:rgba(239, 68, 68, 0.08); padding:0.25rem 0.6rem; border-radius:4px; font-weight:800; display:inline-flex; align-items:center; gap:0.2rem; width:fit-content; border:1px solid rgba(239, 68, 68, 0.15);">🔴 ${s.name} (期限: ${s.expiry} / 残り ${diffDays}日) [至急更新手続きが必要]</span>`
+                });
+                autoInputs.push(`${s.name}（期限: ${s.expiry} / 残り${diffDays}日）➔ `);
+            } else if (diffDays <= 60) {
+                warnings.push({
+                    type: 'warning',
+                    html: `<span style="font-size:0.72rem; color:#f59e0b; background:rgba(245, 158, 11, 0.08); padding:0.25rem 0.6rem; border-radius:4px; font-weight:800; display:inline-flex; align-items:center; gap:0.2rem; width:fit-content; border:1px solid rgba(245, 158, 11, 0.15);">🟡 ${s.name} (期限: ${s.expiry} / 残り ${diffDays}日) [更新準備を確認してください]</span>`
+                });
+                autoInputs.push(`${s.name}（期限: ${s.expiry} / 残り${diffDays}日）➔ `);
+            }
+        });
+
+        if (warnings.length === 0) {
+            container.innerHTML = `<span style="font-size:0.75rem; color:#10b981; font-weight:800; display:inline-flex; align-items:center; gap:0.2rem;">🟢 期限が近い外国人スタッフはいません（全員残り60日以上）</span>`;
+        } else {
+            container.innerHTML = warnings.map(w => w.html).join('');
+            
+            const isNewDraft = !editingMeetingData.updated_at || editingMeetingData.status === '下書き';
+            const hasNoSavedData = !editingMeetingData.hr_sharing || !editingMeetingData.hr_sharing.visa_check || editingMeetingData.hr_sharing.visa_check.trim() === '';
+            
+            if (isNewDraft && hasNoSavedData && textarea.value.trim() === '') {
+                textarea.value = `【システム自動検知】\n` + autoInputs.map(line => `・ ${line}`).join('\n') + `\n\n[対応状況・メモ]:\n`;
+            }
+        }
+
+    } catch (e) {
+        console.error("Failed to check visa expirations:", e);
+        container.innerHTML = `<span style="font-size:0.72rem; color:#ef4444;">❌ VISAデータの照合に失敗しました。</span>`;
+    }
+}
+
+// テキストエリアの自動高さ調整関数
+function initAutoResizeTextareas(extraIds = []) {
+    const ids = ['mm-input-rec', 'mm-input-ret', 'mm-input-train', 'mm-input-visa', ...extraIds];
+    ids.forEach(id => {
+        const ta = document.getElementById(id);
+        if (!ta) return;
+
+        // スクロールバーを隠し、リサイズ機能を固定
+        ta.style.overflowY = 'hidden';
+        ta.style.resize = 'none';
+
+        const resize = () => {
+            ta.style.height = 'auto';
+            ta.style.height = (ta.scrollHeight + 4) + 'px';
+        };
+
+        ta.addEventListener('input', resize);
+        
+        // 初期文字流し込み後のタイミングで初回サイズ調整を実行
+        setTimeout(resize, 0);
+    });
+}
+
+async function saveMeetingData() {
+    const btn = document.getElementById('btn-save-meeting');
+    if (!btn) return;
+    
+    const user = window.appState ? window.appState.currentUser : null;
+    const isAdmin = user && (user.Role === 'Admin' || user.Role === '管理者');
+    if (editingMeetingData.status === '提出済み' && !isAdmin) {
+        if (typeof showAlert === 'function') {
+            showAlert("提出済みの資料は編集できません。", "danger");
+        } else {
+            alert("提出済みの資料は編集できません。");
+        }
+        return;
+    }
+    
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
+    btn.disabled = true;
+
+    try {
+        const user = window.appState ? window.appState.currentUser : null;
+        
+        const recText = document.getElementById('mm-input-rec').value;
+        const retText = document.getElementById('mm-input-ret').value;
+        const visaText = document.getElementById('mm-input-visa').value;
+        const trainText = document.getElementById('mm-input-train').value;
+
+        // メモリ内データをアップデート
+        editingMeetingData.free_targets = {};
+        
+        editingMeetingData.hr_sharing = {
+            recruitment_plan: recText,
+            retirement_concern: retText,
+            visa_check: visaText,
+            training_status: trainText
+        };
+
+        editingMeetingData.status = '提出済み'; // 保存時は自動で提出状態へ
+        editingMeetingData.updated_at = new Date().toISOString();
+
+        if (user) {
+            editingMeetingData.author_id = user.id || editingMeetingData.author_id;
+            editingMeetingData.author_name = user.Name || editingMeetingData.author_name;
+        }
+
+        const docId = `${editingMeetingData.store_id}_${editingMeetingData.target_month}`;
+        
+        // Firestore への保存実行
+        await setDoc(doc(db, "t_manager_meetings", docId), editingMeetingData);
+        
+        showAlert("店舗PDCAボードを正常に保存・提出しました！", "success");
+        
+        currentMeetingView = 'archive';
+        editingMeetingData = null;
+        renderMeetingView();
+
+    } catch (e) {
+        console.error("Save failed:", e);
+        showAlert("保存に失敗しました。接続状況を確認してください。", "danger");
+    } finally {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+    }
+}
