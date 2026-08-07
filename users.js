@@ -1109,6 +1109,20 @@ window.openUserEditForm = async (userId) => {
 };
 
 async function compressImage(file, maxWidth = 1200) {
+    if (file.type === 'image/heic' || file.type === 'image/heif' || file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')) {
+        try {
+            const convertedBlob = await heic2any({
+                blob: file,
+                toType: "image/jpeg",
+                quality: 0.8
+            });
+            file = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+        } catch (error) {
+            console.error("HEIC conversion failed:", error);
+            throw new Error('HEIC画像の変換に失敗しました。');
+        }
+    }
+
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -1127,10 +1141,10 @@ async function compressImage(file, maxWidth = 1200) {
                 ctx.drawImage(img, 0, 0, w, h);
                 resolve(canvas.toDataURL('image/jpeg', 0.8));
             };
-            img.onerror = reject;
+            img.onerror = () => reject(new Error('非対応の画像形式か、画像の読み込みに失敗しました。'));
             img.src = e.target.result;
         };
-        reader.onerror = reject;
+        reader.onerror = () => reject(new Error('ファイルの読み込みに失敗しました。'));
         reader.readAsDataURL(file);
     });
 }
