@@ -404,8 +404,15 @@ async function loadInitialData() {
     }
 
     try {
-        // 1. Load Stores from m_stores (The master source)
-        const storeSnap = await getDocs(query(collection(db, "m_stores"), orderBy("store_id")));
+        const [storeSnap, timingSnap, itemSnap, ingSnap, supSnap, menuSnap] = await Promise.all([
+            getDocs(query(collection(db, "m_stores"), orderBy("store_id"))),
+            getDocs(collection(db, "m_check_timings")),
+            getDocs(collection(db, "m_items")),
+            getDocs(collection(db, "m_ingredients")),
+            getDocs(collection(db, "m_suppliers")),
+            getDocs(collection(db, "m_menus"))
+        ]);
+
         allStores = [];
         storeSnap.forEach(d => {
             const data = d.data();
@@ -418,21 +425,11 @@ async function loadInitialData() {
             });
         });
 
-        // 2. Load Timing Master
-        const timingSnap = await getDocs(collection(db, "m_check_timings"));
         timingMaster = {};
         timingSnap.forEach(d => {
             const data = d.data();
             timingMaster[data.ID || d.id] = data.確認タイミング || data.Name || d.id;
         });
-
-        // 3. Load Items, Ingredients, Suppliers, and Menus
-        const [itemSnap, ingSnap, supSnap, menuSnap] = await Promise.all([
-            getDocs(collection(db, "m_items")),
-            getDocs(collection(db, "m_ingredients")),
-            getDocs(collection(db, "m_suppliers")),
-            getDocs(collection(db, "m_menus"))
-        ]);
 
         cachedItems = itemSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         cachedIngredients = ingSnap.docs.map(d => ({ id: d.id, ...d.data() }));
