@@ -1,6 +1,5 @@
 import { db } from './firebase.js';
 import { collection, getDocs, onSnapshot, addDoc, updateDoc, doc, getDoc, query, where, orderBy, setDoc, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-import { calculateAllTheoreticalStocks } from './stock_logic.js';
 import { showAlert } from './ui_utils.js';
 
 export const inventoryPageHtml = `
@@ -458,17 +457,7 @@ async function loadInitialData() {
 
 let cachedMenusForInv = [];
 
-// 理論在庫のキャッシュ (StoreID_ProductID -> value)
-let theoreticalStockCache = {};
-
-async function loadTheoreticalStocks(storeCode) {
-    const masterCache = {
-        items: Object.keys(productMap).map(id => ({ id: id, name: productMap[id] })),
-        menus: cachedMenusForInv,
-        ingredients: [] // stock_logic now uses menus to find recipes, ingredients list is less critical but good to have for consistency if needed
-    };
-    theoreticalStockCache = await calculateAllTheoreticalStocks(storeCode, masterCache);
-}
+// 理論在庫のキャッシュ (削除済み)
 
 // Helper: Check if the entry is from the current "business day"
 function isConfirmedToday(updatedAt, resetTime, isConfirmedFlag) {
@@ -499,6 +488,7 @@ function getBusinessDate(resetTime = "05:00") {
 }
 
 function render() {
+    if (!masterDataLoaded) return;
     const main = document.getElementById('inv-main-content');
     const sidebarTimings = document.getElementById('inv-timing-list');
     const storeSelect = document.getElementById('inv-store-select');
@@ -1414,8 +1404,17 @@ export async function initInventoryPage(user) {
     inventoryData = [];
     currentTab = 'tiles';
 
-    await loadInitialData();
-    render();
+    const main = document.getElementById('inv-main-content');
+    if (main) {
+        main.innerHTML = `<div style="text-align:center; padding: 4rem;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary);"></i><p>マスタデータ読み込み中...</p></div>`;
+    }
+
+    loadInitialData().then(() => {
+        render();
+    }).catch(err => {
+        console.error("Initial data load failed:", err);
+        if (main) main.innerHTML = `<div style="text-align:center; padding: 4rem; color: red;">データの読み込みに失敗しました。</div>`;
+    });
 }
 
 function openInvSettings() {
@@ -2035,13 +2034,9 @@ async function loadStoreInventory(internalCode) {
             inventoryData = newData;
 
             // [最適化] resolve()を先に呼んでUIをブロックしない。
-            // 理論在庫はバックグラウンドで計算する。
             if (isFirstLoad) {
                 isFirstLoad = false;
                 resolve();
-                loadTheoreticalStocks(internalCode).catch(err => {
-                    console.error("Theoretical stock error:", err);
-                });
             }
 
             render();
@@ -2724,3 +2719,4 @@ async function saveSingleItemSettings() {
         if (overlay) overlay.style.display = 'none'; 
     }
 }
+ 
