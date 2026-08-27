@@ -5776,6 +5776,9 @@ window.importQuizCSV = (event) => {
 let currentQuizIdx = -1;
 
 window.startEvaluationQuiz = (idx) => {
+    if (window.mobileEditingEval) {
+        selectedEvalDetail = window.mobileEditingEval;
+    }
     const item = selectedEvalDetail.items[idx];
     if (!item || !item.quiz_data) return;
     
@@ -5936,7 +5939,11 @@ window.submitEvaluationQuiz = async () => {
     document.getElementById('quiz-execution-modal').style.display = 'none';
     
     // 画面再描画
-    window.refreshCurrentEvalDetail();
+    if (window.appState && window.appState.isMobileMode && window.openMobileInputView) {
+        window.openMobileInputView(selectedEvalDetail.currentMode, selectedEvalDetail, selectedEvalDetail.isReadOnly);
+    } else {
+        window.refreshCurrentEvalDetail();
+    }
     
     // 自動保存
     try {

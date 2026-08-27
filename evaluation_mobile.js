@@ -10,7 +10,7 @@ let mobileMyEvaluation = null;
 let mobileSubordinateUsers = [];
 let mobileActiveTab = 'self'; // 'self' or 'subordinates'
 let mobileAllPastHistory = [];
-let mobileEditingEval = null;
+let mobileEditingEval = null; window.mobileEditingEval = null;
 
 export const evaluationPageHtmlMobile = `
     <style>
@@ -787,13 +787,13 @@ function bindMobileActionButtons(container) {
 // Mobile Input View Logic
 // ==========================================
 
-function openMobileInputView(mode, evalData, isReadOnly = false) {
+window.openMobileInputView = function(mode, evalData, isReadOnly = false) {
     document.body.style.overflow = 'hidden';
     const inputScreen = document.getElementById('eval-mob-input-screen');
     document.body.appendChild(inputScreen);
     const globalFab = document.getElementById('fab-main-btn');
     if (globalFab) globalFab.style.display = 'none';
-    mobileEditingEval = JSON.parse(JSON.stringify(evalData)); // Deep copy for editing
+    mobileEditingEval = JSON.parse(JSON.stringify(evalData)); window.mobileEditingEval = mobileEditingEval; // Deep copy for editing
     mobileEditingEval.currentMode = mode;
     mobileEditingEval.isReadOnly = isReadOnly;
     const contentArea = document.getElementById('eval-mob-content-area');
@@ -820,7 +820,7 @@ function closeMobileInputView() {
     inputScreen.style.display = 'none';
     contentArea.style.display = 'block';
     headerArea.style.display = 'block';
-    mobileEditingEval = null;
+    mobileEditingEval = null; window.mobileEditingEval = null;
 }
 
 window.openMobileHistoryView = function(evalDataOrId) {
