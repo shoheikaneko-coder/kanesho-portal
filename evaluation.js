@@ -1,5 +1,5 @@
 import { db } from './firebase.js';
-import { collection, getDocs, getDoc, setDoc, updateDoc, doc, query, where, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, getDocs, getDoc, setDoc, updateDoc, deleteDoc, doc, query, where, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { showConfirm, showAlert } from './ui_utils.js';
 
 let localPeriodSettings = null; // 現在の評価期設定
@@ -16,6 +16,16 @@ let activeEditItems = [];      // 編集中の項目リスト
 let allStaffUsersForAdmin = []; // 管理者タブの評価対象者選択用
 let globalStoreMapForEval = {}; // 店舗ID -> 店舗名のマッピング
 let globalJobTitles = [];       // マスタからロードした一意な役職（job_title）リスト
+
+// マスタデータキャッシュ（ページ滞在中は再取得しない）
+let _masterCache = {
+    stores: null,
+    grades: null,
+    routes: null,
+    users: null,
+    cacheTime: null
+};
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5分間キャッシュ有効
 
 export const evaluationPageHtml = `
     <style>
@@ -212,6 +222,9 @@ export const evaluationPageHtml = `
                 <button class="btn btn-secondary" id="btn-admin-edit-templates-tab" title="評価項目マスタ編集" style="display: none; padding: 0.5rem; width: 36px; height: 36px; align-items: center; justify-content: center; font-size: 1.1rem; border: 1px solid #cbd5e1; background: #f8fafc; color: #475569; border-radius: 6px; cursor: pointer;">
                     <i class="fas fa-cog"></i>
                 </button>
+                <button class="btn btn-secondary" id="btn-admin-edit-quiz-tab" title="テスト(試験)マスタ管理" style="display: none; padding: 0.5rem; width: 36px; height: 36px; align-items: center; justify-content: center; font-size: 1.1rem; border: 1px solid #cbd5e1; background: #f8fafc; color: #8b5cf6; border-radius: 6px; cursor: pointer;">
+                    <i class="fas fa-spell-check"></i>
+                </button>
                 <button class="btn btn-secondary" id="btn-admin-cancel-period-tab" title="評価リセット" style="display: none; padding: 0.5rem; width: 36px; height: 36px; align-items: center; justify-content: center; font-size: 1.1rem; border: 1px solid #fecdd3; background: #fff1f2; color: #be123c; border-radius: 6px; cursor: pointer;">
                     <i class="fas fa-trash-alt"></i>
                 </button>
@@ -376,6 +389,151 @@ export const evaluationPageHtml = `
         </div>
     </div>
 
+    <!-- テスト(試験)マスタ管理画面 (インライン展開) -->
+    <div id="quiz-editor-container" style="display: none; margin-bottom: 2rem;">
+        <div class="glass-panel animate-fade-in" style="background: white; border-radius: 16px; border: 1px solid var(--border); box-shadow: var(--shadow-xl); width: 100%; padding: 0; overflow: hidden; display: flex; flex-direction: column; min-height: 80vh;">
+            <div style="background: #f8fafc; padding: 1.5rem 2rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-spell-check" style="color: #8b5cf6;"></i>テスト(試験)マスタ管理</h3>
+                <button type="button" class="btn" onclick="window.closeQuizEditorModal()" style="background: white; border: 1px solid #cbd5e1; color: #64748b; font-weight: 700; border-radius: 8px; padding: 0.5rem 1rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><i class="fas fa-times"></i> 閉じる</button>
+            </div>
+            
+            <div style="padding: 2rem; flex: 1; overflow-y: auto; background: #fafafa;" id="quiz-view-list">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h4 style="margin: 0; font-size: 1.1rem; font-weight: 800; color: #334155;">作成済みテスト一覧</h4>
+                    <button class="btn btn-primary" onclick="window.createNewQuiz()" style="padding: 0.6rem 1.2rem; font-size: 0.9rem; font-weight: 800; border-radius: 8px; background: #8b5cf6; border: none;"><i class="fas fa-plus"></i> 新規テスト作成</button>
+                </div>
+                <div id="quiz-list-container" style="display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));">
+                    <!-- JSで描画 -->
+                </div>
+            </div>
+
+            <!-- 編集画面 -->
+            <div style="display: none; flex-direction: column; flex: 1;" id="quiz-view-editor">
+                <div style="padding: 1.5rem 2rem; background: white; border-bottom: 1px solid #e2e8f0;">
+                    <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem;">
+                        <button class="btn" onclick="window.backToQuizList()" style="background: #f1f5f9; color: #475569; border: none; border-radius: 8px; padding: 0.5rem 1rem; font-weight: 700;"><i class="fas fa-arrow-left"></i> 一覧へ戻る</button>
+                        <h4 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #1e293b;">テスト編集: <span id="editor-current-quiz-name" style="color: #8b5cf6;">---</span></h4>
+                    </div>
+                    
+                    <div style="background: #f8fafc; padding: 1.5rem; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 2rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h5 style="margin: 0; font-size: 1.1rem; font-weight: 800; color: #334155;"><i class="fas fa-sliders-h" style="color: #64748b; margin-right: 0.5rem;"></i>テストの基本設定（配点と合格基準）</h5>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 100px 1fr 1fr 120px 80px; gap: 1rem; align-items: center; margin-bottom: 0.8rem; padding: 0 0.5rem;">
+                            <div style="font-weight: 700; font-size: 0.85rem; color: #64748b;">特性</div>
+                            <div style="font-weight: 700; font-size: 0.85rem; color: #64748b;">ランダム出題数</div>
+                            <div style="font-weight: 700; font-size: 0.85rem; color: #64748b;">1問あたりの配点</div>
+                            <div style="font-weight: 700; font-size: 0.85rem; color: #64748b;">個別の合格基準点</div>
+                            <div style="font-weight: 700; font-size: 0.85rem; color: #64748b; text-align: right;">最高得点</div>
+                        </div>
+                        
+                        <!-- 必須問題 -->
+                        <div style="display: grid; grid-template-columns: 100px 1fr 1fr 120px 80px; gap: 1rem; align-items: center; margin-bottom: 0.8rem; background: white; padding: 0.8rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+                            <div style="font-weight: 800; font-size: 0.85rem; color: #be123c;"><span style="background: #ffe4e6; padding: 0.3rem 0.6rem; border-radius: 4px;">必須問題</span></div>
+                            <div><input type="number" id="quiz-editor-count-mandatory" value="0" min="0" oninput="window.updateQuizMaxScore()" style="width: 70px; padding: 0.4rem; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: bold;"> 問</div>
+                            <div><input type="number" id="quiz-editor-points-mandatory" value="3" min="0" oninput="window.updateQuizMaxScore()" style="width: 70px; padding: 0.4rem; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: bold;"> 点</div>
+                            <div><input type="number" id="quiz-editor-threshold-mandatory" placeholder="設定なし" min="0" style="width: 80px; padding: 0.4rem; border: 1px solid #f59e0b; border-radius: 6px; font-weight: bold; background: #fef3c7;"> <span style="font-size: 0.8rem; color: #64748b;">以上</span></div>
+                            <div style="text-align: right; font-weight: 800; color: #334155;"><span id="quiz-editor-max-mandatory">0</span> 点</div>
+                        </div>
+
+                        <!-- 高難易度 -->
+                        <div style="display: grid; grid-template-columns: 100px 1fr 1fr 120px 80px; gap: 1rem; align-items: center; margin-bottom: 0.8rem; background: white; padding: 0.8rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+                            <div style="font-weight: 800; font-size: 0.85rem; color: #a21caf;"><span style="background: #fae8ff; padding: 0.3rem 0.6rem; border-radius: 4px;">高難易度</span></div>
+                            <div><input type="number" id="quiz-editor-count-hard" value="0" min="0" oninput="window.updateQuizMaxScore()" style="width: 70px; padding: 0.4rem; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: bold;"> 問</div>
+                            <div><input type="number" id="quiz-editor-points-hard" value="5" min="0" oninput="window.updateQuizMaxScore()" style="width: 70px; padding: 0.4rem; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: bold;"> 点</div>
+                            <div><input type="number" id="quiz-editor-threshold-hard" placeholder="設定なし" min="0" style="width: 80px; padding: 0.4rem; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: bold;"> <span style="font-size: 0.8rem; color: #64748b;">以上</span></div>
+                            <div style="text-align: right; font-weight: 800; color: #334155;"><span id="quiz-editor-max-hard">0</span> 点</div>
+                        </div>
+
+                        <!-- 一般問題 -->
+                        <div style="display: grid; grid-template-columns: 100px 1fr 1fr 120px 80px; gap: 1rem; align-items: center; margin-bottom: 1.5rem; background: white; padding: 0.8rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+                            <div style="font-weight: 800; font-size: 0.85rem; color: #0369a1;"><span style="background: #e0f2fe; padding: 0.3rem 0.6rem; border-radius: 4px;">一般問題</span></div>
+                            <div><input type="number" id="quiz-editor-count-general" value="10" min="0" oninput="window.updateQuizMaxScore()" style="width: 70px; padding: 0.4rem; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: bold;"> 問</div>
+                            <div><input type="number" id="quiz-editor-points-general" value="1" min="0" oninput="window.updateQuizMaxScore()" style="width: 70px; padding: 0.4rem; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: bold;"> 点</div>
+                            <div><input type="number" id="quiz-editor-threshold-general" placeholder="設定なし" min="0" style="width: 80px; padding: 0.4rem; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: bold;"> <span style="font-size: 0.8rem; color: #64748b;">以上</span></div>
+                            <div style="text-align: right; font-weight: 800; color: #334155;"><span id="quiz-editor-max-general">0</span> 点</div>
+                        </div>
+                        
+                        <div style="border-top: 1px dashed #cbd5e1; padding-top: 1.5rem; display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div style="flex: 1; padding-right: 2rem;">
+                                <div style="display: flex; gap: 2rem; margin-bottom: 1rem;">
+                                    <div>
+                                        <label style="font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 0.5rem; display: block;">評価点3 (合格) の全体基準点</label>
+                                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                            <input type="number" id="quiz-editor-threshold-eval3" value="10" min="0" style="width: 90px; padding: 0.6rem; border: 2px solid #3b82f6; border-radius: 8px; font-weight: bold; font-size: 1.1rem;">
+                                            <span style="font-size: 0.9rem; color: #334155; font-weight: bold;">点以上</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label style="font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 0.5rem; display: block;">評価点2 の全体基準点</label>
+                                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                            <input type="number" id="quiz-editor-threshold-eval2" value="6" min="0" style="width: 90px; padding: 0.6rem; border: 2px solid #cbd5e1; border-radius: 8px; font-weight: bold; font-size: 1.1rem;">
+                                            <span style="font-size: 0.9rem; color: #334155; font-weight: bold;">点以上</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="font-size: 0.75rem; color: #64748b; line-height: 1.5; background: #f1f5f9; padding: 0.8rem; border-radius: 6px;">
+                                    <i class="fas fa-exclamation-circle" style="color: #3b82f6;"></i> <b>合否および評価点の判定ルール</b><br>
+                                    ・全体の合計点のみから「評価点（1〜3）」が自動算出されます（評価点2未満は自動的に1点）。<br>
+                                    ・合計点が「評価点3の基準」を満たしていても、いずれかの特性で設定した「個別の合格基準点」を下回る場合は<b>テスト不合格</b>となり、上長による加点はできず基礎評価点（1〜3）で固定されます。
+                                </div>
+                            </div>
+                            
+                            <div style="background: white; border: 2px solid #334155; border-radius: 12px; padding: 1.5rem; text-align: center; min-width: 200px;">
+                                <label style="font-size: 0.9rem; font-weight: 800; color: #334155; margin-bottom: 0.5rem; display: block;">テスト全体の満点</label>
+                                <div style="font-size: 2.2rem; font-weight: 900; color: #0f172a;"><span id="quiz-editor-max-total">0</span> <span style="font-size: 1.2rem; font-weight: 700;">点</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="padding: 2rem; flex: 1; overflow-y: auto; background: #fafafa;">
+                    <div style="background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 1.5rem; margin-bottom: 2rem;">
+                        <label style="font-size: 0.95rem; font-weight: 800; color: #334155; margin-bottom: 0.5rem; display: block;"><i class="fas fa-book-open" style="color: #3b82f6; margin-right: 0.5rem;"></i>テストの意義・前書き（ステートメント）</label>
+                        <p style="font-size: 0.8rem; color: #64748b; margin-top: 0; margin-bottom: 1rem;">※受験者が回答を開始する前に必ず読む文章です。</p>
+                        <textarea id="quiz-editor-preface" rows="3" placeholder="（例）この衛生管理チェックテストは、「お客様ファーストを考える上で食中毒を起こさないことが長期的なお客様ファーストになる」という会社の理念に沿った内容です..." style="width: 100%; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; font-family: inherit; font-size: 0.95rem; resize: none; overflow: hidden;" oninput="this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px';"></textarea>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h5 style="margin: 0; font-size: 1rem; font-weight: 800; color: #334155;">問題プール一覧 <span id="quiz-total-questions-count" style="background: #e2e8f0; color: #475569; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.8rem;">0</span></h5>
+                        <div style="display: flex; gap: 1rem; align-items: center;">
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button type="button" onclick="document.getElementById('quiz-csv-import-input').click()" style="background: white; border: 1px solid #cbd5e1; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.85rem; font-weight: 700; color: #475569; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><i class="fas fa-file-import"></i> インポート</button>
+                                <input type="file" id="quiz-csv-import-input" accept=".csv" style="display: none;" onchange="window.importQuizCSV(event)">
+                                <button type="button" onclick="window.exportQuizCSV()" style="background: white; border: 1px solid #cbd5e1; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.85rem; font-weight: 700; color: #475569; cursor: pointer; display: flex; align-items: center; gap: 0.3rem;"><i class="fas fa-file-export"></i> エクスポート</button>
+                            </div>
+                            <div style="display: flex; background: #e2e8f0; border-radius: 8px; padding: 0.2rem;" id="quiz-filter-tabs">
+                                <button type="button" onclick="window.setQuizFilter('all')" data-filter="all" style="border: none; background: white; padding: 0.4rem 1rem; border-radius: 6px; font-size: 0.85rem; font-weight: 700; color: #3b82f6; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-right: 0.2rem;">全て</button>
+                                <button type="button" onclick="window.setQuizFilter('mandatory')" data-filter="mandatory" style="border: none; background: transparent; padding: 0.4rem 1rem; border-radius: 6px; font-size: 0.85rem; font-weight: 700; color: #64748b; cursor: pointer; margin-right: 0.2rem;">必須</button>
+                                <button type="button" onclick="window.setQuizFilter('general')" data-filter="general" style="border: none; background: transparent; padding: 0.4rem 1rem; border-radius: 6px; font-size: 0.85rem; font-weight: 700; color: #64748b; cursor: pointer; margin-right: 0.2rem;">一般</button>
+                                <button type="button" onclick="window.setQuizFilter('hard')" data-filter="hard" style="border: none; background: transparent; padding: 0.4rem 1rem; border-radius: 6px; font-size: 0.85rem; font-weight: 700; color: #64748b; cursor: pointer;">高難易度</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="quiz-questions-container" style="display: flex; flex-direction: column; gap: 1rem;">
+                        <!-- JSで描画 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- フッター (保存) -->
+            <div style="background: white; border-top: 1px solid var(--border); padding: 1.2rem 2rem; display: none; justify-content: space-between; align-items: center;" id="quiz-view-editor-footer">
+                <div>
+                    <span id="quiz-validation-warning" style="display: none; color: #ef4444; font-size: 0.85rem; font-weight: 700;"><i class="fas fa-exclamation-triangle"></i> 出題数以上の問題プールを登録してください</span>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <button class="btn btn-primary" type="button" onclick="window.addQuizQuestion()" style="padding: 0.8rem 2rem; font-weight: 800; font-size: 1rem; border-radius: 8px; background: #3b82f6; border: none; box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2);">
+                        <i class="fas fa-plus"></i> 問題を追加する
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="window.saveActiveQuiz()" id="btn-save-quiz" style="padding: 0.8rem 2rem; font-weight: 800; font-size: 1rem; border-radius: 8px; background: #8b5cf6; border: none; box-shadow: 0 4px 6px rgba(139, 92, 246, 0.2);">
+                        <i class="fas fa-save"></i> テストを保存する
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 評価項目マスタ編集画面 (インライン展開) -->
     <div id="template-editor-container" style="display: none; margin-bottom: 2rem;">
         <div class="glass-panel animate-fade-in" style="background: white; border-radius: 16px; border: 1px solid var(--border); box-shadow: var(--shadow-xl); width: 100%; height: 80vh; display: flex; flex-direction: column; padding: 0; overflow: hidden;">
@@ -434,14 +592,7 @@ export const evaluationPageHtml = `
                         </div>
                     </div>
 
-                    <!-- 対象役職の選択エリア -->
-                    <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1rem;">
-                        <div style="font-weight: 800; font-size: 0.9rem; color: #1e293b; margin-bottom: 0.5rem;"><i class="fas fa-users" style="color: #6366f1; margin-right: 0.4rem;"></i>このシートを適用する役職</div>
-                        <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 0.8rem;">チェックを入れた役職のスタッフに対して、次回の評価期開始時からこのシートが自動的に割り当てられます。（運用中の場合）</div>
-                        <div id="editor-target-job-titles" style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                            <!-- ここにチェックボックスが動的に生成されます -->
-                        </div>
-                    </div>
+
 
                     <!-- 警告メッセージ表示エリア -->
                     <div id="template-validation-warning" style="display: none; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 0.75rem 1rem; color: #991b1b; font-size: 0.82rem; font-weight: 700; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
@@ -455,10 +606,8 @@ export const evaluationPageHtml = `
                             <table class="eval-table" style="font-size: 0.82rem;">
                                 <thead>
                                     <tr style="background:#f8fafc;">
-                                        <th style="width: 70px; text-align: center;">順序</th>
-                                        <th style="width: 150px; text-align: left;">カテゴリ</th>
-                                        <th style="text-align: left; width: 35%;">項目タイトル（基準・行動定義）</th>
-                                        <th style="text-align: left; width: 45%;">詳細説明（評価のポイント）</th>
+                                        <th style="text-align: left; width: 45%; padding-left: 0.8rem;">カテゴリ・評価項目</th>
+                                        <th style="text-align: left; width: 55%;">詳細説明（評価のポイント）</th>
                                         <th style="width: 60px; text-align: center;">操作</th>
                                     </tr>
                                 </thead>
@@ -498,78 +647,28 @@ export const evaluationPageHtml = `
         </div>
     </div>
 
-    <!-- 過去データ入力モーダル -->
-    <div id="legacy-import-modal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); z-index: 3000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 1rem; box-sizing: border-box;">
-        <div class="glass-panel" style="background: white; width: 100%; max-width: 900px; max-height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);">
-            <div style="padding: 1.2rem 1.8rem; border-bottom: 1px solid var(--border); background: #f8fafc; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
-                <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-file-import" style="color: #64748b;"></i>過去データのアーカイブ手入力</h3>
-                <button type="button" id="btn-close-legacy-modal" style="background: transparent; border: none; font-size: 1.4rem; cursor: pointer; color: #94a3b8; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'"><i class="fas fa-times"></i></button>
+    <!-- テスト実施（回答）モーダル -->
+    <div id="quiz-execution-modal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); z-index: 4000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 1rem; box-sizing: border-box;">
+        <div class="glass-panel" style="background: white; width: 100%; max-width: 800px; max-height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
+            <div style="padding: 1.2rem 1.8rem; border-bottom: 1px solid var(--border); background: #8b5cf6; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+                <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: white; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-spell-check"></i> <span id="quiz-execution-title">テスト</span>
+                </h3>
+                <button type="button" onclick="window.closeEvaluationQuiz()" style="background: transparent; border: none; font-size: 1.4rem; cursor: pointer; color: white; opacity: 0.8; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;"><i class="fas fa-times"></i></button>
             </div>
             
-            <div style="padding: 1.5rem 1.8rem; overflow-y: auto; flex-grow: 1; background: #f8fafc;">
-                <!-- 基本設定 -->
-                <div style="display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;">
-                    <div class="input-group" style="flex: 1; margin: 0;">
-                        <label style="font-weight: 700; color: #475569; font-size:0.8rem;">対象期 (例: 2025-12)</label>
-                        <input type="text" id="legacy-period" placeholder="YYYY-MM" required style="font-family: monospace; font-size:1.05rem; padding: 0.55rem 0.8rem;">
-                    </div>
-                    <div class="input-group" style="flex: 1; margin: 0;">
-                        <label style="font-weight: 700; color: #475569; font-size:0.8rem;">対象スタッフ</label>
-                        <select id="legacy-user-select" style="padding: 0.55rem 0.8rem; background: white; font-weight: 600; font-size:0.95rem;"></select>
-                    </div>
-                    <div class="input-group" style="flex: 1; margin: 0;">
-                        <label style="font-weight: 700; color: #475569; font-size:0.8rem;">適用テンプレート</label>
-                        <select id="legacy-template-select" style="padding: 0.55rem 0.8rem; background: white; font-weight: 600; font-size:0.95rem;"></select>
-                    </div>
-                </div>
-
-                <div class="input-group" style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
-                    <div style="flex: 1;">
-                        <label style="font-weight: 700; color: #475569; font-size:0.8rem;">当時の等級 (任意)</label>
-                        <input type="text" id="legacy-grade" placeholder="例: J1" style="padding: 0.55rem 0.8rem; font-family: monospace;">
-                    </div>
-                    <div style="flex: 1;">
-                        <label style="font-weight: 700; color: #475569; font-size:0.8rem;">当時の総合点数</label>
-                        <input type="number" id="legacy-total-score" placeholder="合計点" style="padding: 0.55rem 0.8rem; font-weight:800;">
-                    </div>
-                </div>
-
-                <!-- 項目入力 -->
-                <div class="glass-panel" style="padding: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: white; margin-bottom: 1rem;">
-                    <div style="padding: 1rem; background: #f1f5f9; border-bottom: 1px solid var(--border); font-size: 0.8rem; color: #475569;">
-                        各項目に対し、当時の点数を入力してください。<br>
-                        <span style="color: #be123c; font-weight: 700;"><i class="fas fa-exclamation-circle"></i> 過去の項目構成（項目数・名称）が現在と異なる場合</span><br>
-                        「評価項目マスタの編集」から現在のテンプレートを<b>「複製」</b>し、過去の評価フォーマットを作成した上でここから適用してください。
-                    </div>
-                    <div style="overflow-x: auto;">
-                        <table class="eval-table" style="font-size: 0.82rem;">
-                            <thead>
-                                <tr style="background:#f8fafc;">
-                                    <th style="width: 250px; text-align: left;">対象の評価項目タイトル</th>
-                                    <th style="text-align: left;">当時のメモ (任意)</th>
-                                    <th style="width: 100px; text-align: center;">当時の点数</th>
-                                </tr>
-                            </thead>
-                            <tbody id="legacy-items-tbody">
-                                <!-- JSで動的生成 -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- 総括コメント -->
-                <div class="glass-panel" style="padding: 1.2rem; background: white; border: 1px solid var(--border);">
-                    <h5 style="margin: 0 0 0.6rem; color: #475569; font-weight: 800;">面談メモ・総括コメント</h5>
-                    <textarea id="legacy-memo" rows="4" placeholder="当時の所見やフィードバック内容を入力" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.85rem; font-family:inherit; resize:vertical;"></textarea>
-                </div>
+            <div style="padding: 1.5rem 2rem; overflow-y: auto; flex-grow: 1; background: #f8fafc;" id="quiz-execution-content">
+                <!-- JSで問題を描画 -->
             </div>
-
-            <!-- モーダルフッター -->
-            <div style="padding: 1rem 1.8rem; border-top: 1px solid var(--border); background: white; display: flex; justify-content: flex-end; align-items: center; gap: 0.8rem; flex-shrink: 0;">
-                <button class="btn btn-secondary" id="btn-close-legacy-modal-footer" style="font-weight: 700; padding: 0.6rem 1.2rem; background: white; border: 1px solid #cbd5e1; color: var(--text-secondary);">キャンセル</button>
-                <button class="btn btn-primary" id="btn-save-legacy" style="font-weight: 800; padding: 0.6rem 2rem; background: #10b981; border-color: #10b981; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.15);">アーカイブ保存する</button>
+            
+            <div style="padding: 1rem 1.8rem; border-top: 1px solid var(--border); background: white; display: flex; justify-content: flex-end; align-items: center;">
+                <button type="button" class="btn btn-primary" onclick="window.submitEvaluationQuiz()" id="btn-submit-quiz" style="font-weight: 800; padding: 0.8rem 2rem; background: #8b5cf6; border-color: #8b5cf6; box-shadow: 0 4px 6px rgba(139, 92, 246, 0.2);">
+                    <i class="fas fa-paper-plane"></i> 回答を提出する
+                </button>
             </div>
         </div>
+    </div>
+
     <!-- 評価詳細モーダル (部下評価・閲覧用) -->
     <div id="eval-detail-modal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); z-index: 3000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 1rem; box-sizing: border-box;">
         <div class="glass-panel animate-fade-in" style="background: white; width: 100%; max-width: 1000px; max-height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
@@ -725,14 +824,6 @@ export async function initEvaluationPage() {
         };
     }
 
-    // 過去データモーダルクローズ＆保存
-    const btnCloseLegacy = document.getElementById('btn-close-legacy-modal');
-    if (btnCloseLegacy) btnCloseLegacy.onclick = window.closeLegacyImportModal;
-    const btnCloseLegacyFooter = document.getElementById('btn-close-legacy-modal-footer');
-    if (btnCloseLegacyFooter) btnCloseLegacyFooter.onclick = window.closeLegacyImportModal;
-    const btnSaveLegacy = document.getElementById('btn-save-legacy');
-    if (btnSaveLegacy) btnSaveLegacy.onclick = window.saveLegacyImportData;
-
     // 履歴モーダルクローズ
     const btnCloseHistory = document.getElementById('btn-close-history-modal');
     if (btnCloseHistory) btnCloseHistory.onclick = () => document.getElementById('eval-history-modal').style.display = 'none';
@@ -791,6 +882,14 @@ export async function initEvaluationPage() {
     if (btnEditTemplates) {
         btnEditTemplates.onclick = () => {
             openTemplateEditorModal();
+        };
+    }
+
+    // テストマスタ管理ボタンのバインド
+    const btnEditQuiz = document.getElementById('btn-admin-edit-quiz-tab');
+    if (btnEditQuiz) {
+        btnEditQuiz.onclick = () => {
+            if(window.openQuizEditorModal) window.openQuizEditorModal();
         };
     }
     
@@ -1026,66 +1125,92 @@ async function loadInitialSettingsAndData() {
         }
     }
 
-    // 店舗マスタのロード（名称解決用）
-    try {
-        const storeSnap = await getDocs(collection(db, "m_stores"));
-        globalStoreMapForEval = {};
-        storeSnap.forEach(d => {
-            const data = d.data();
-            globalStoreMapForEval[d.id] = data.store_name || data.店舗名 || d.id;
-        });
-    } catch(e) { console.error("Failed to load stores for eval:", e); }
+    // --- キャッシュの確認 ---
+    const now = Date.now();
+    const isCacheValid = _masterCache.cacheTime && (now - _masterCache.cacheTime) < CACHE_TTL_MS;
 
-
-    // --- 新しい動的部下判定ロジック用マスタロード ---
     let gradeMap = {};
     let routeMap = {};
-    try {
-        const gradesSnap = await getDocs(collection(db, "m_grades"));
-        gradesSnap.forEach(d => {
-            const data = d.data();
-            if (data.grade_code) gradeMap[data.grade_code] = data;
-        });
-        
-        const routesSnap = await getDocs(collection(db, "m_evaluation_routes"));
-        routesSnap.forEach(d => {
-            routeMap[d.id] = d.data();
-        });
-    } catch(e) { console.error("Failed to load grades or routes:", e); }
-    // ----------------------------------------------
+    let allUsers = [];
 
+    if (isCacheValid) {
+        // キャッシュから復元
+        globalStoreMapForEval = _masterCache.stores;
+        gradeMap = _masterCache.grades;
+        routeMap = _masterCache.routes;
+        allUsers = _masterCache.users;
+        
+        // 評価期設定のみ最新を取得 (並列)
+        try {
+            const [periodDoc] = await Promise.all([
+                getDoc(doc(db, "settings", "evaluation"))
+            ]);
+            
+            if (periodDoc.exists()) {
+                localPeriodSettings = periodDoc.data();
+                updatePeriodBanner();
+            } else {
+                localPeriodSettings = null;
+                updatePeriodBannerEmpty();
+            }
+        } catch (e) {
+            console.error("Failed to load evaluation period settings from cache path:", e);
+        }
+    } else {
+        // キャッシュがない/古い場合は全て並列取得
+        try {
+            const [storeSnap, gradesSnap, routesSnap, periodDoc, snapUsers] = await Promise.all([
+                getDocs(collection(db, "m_stores")),
+                getDocs(collection(db, "m_grades")),
+                getDocs(collection(db, "m_evaluation_routes")),
+                getDoc(doc(db, "settings", "evaluation")),
+                getDocs(query(collection(db, "m_users")))
+            ]);
+
+            globalStoreMapForEval = {};
+            storeSnap.forEach(d => {
+                const data = d.data();
+                globalStoreMapForEval[d.id] = data.store_name || data.店舗名 || d.id;
+            });
+
+            gradesSnap.forEach(d => {
+                const data = d.data();
+                if (data.grade_code) gradeMap[data.grade_code] = data;
+            });
+
+            routesSnap.forEach(d => {
+                routeMap[d.id] = d.data();
+            });
+            
+            if (periodDoc.exists()) {
+                localPeriodSettings = periodDoc.data();
+                updatePeriodBanner();
+            } else {
+                localPeriodSettings = null;
+                updatePeriodBannerEmpty();
+            }
+
+            snapUsers.forEach(d => {
+                allUsers.push({ id: d.id, ...d.data() });
+            });
+
+            // キャッシュに保存
+            _masterCache.stores = globalStoreMapForEval;
+            _masterCache.grades = gradeMap;
+            _masterCache.routes = routeMap;
+            _masterCache.users = allUsers;
+            _masterCache.cacheTime = now;
+
+        } catch(e) {
+            console.error("Failed to load initial data in parallel:", e);
+        }
+    }
 
     // 1. シードデータの確認・投入
     await verifyAndSeedTemplates();
 
-    // 2. 現在の評価期設定を取得
-    try {
-        const periodDoc = await getDoc(doc(db, "settings", "evaluation"));
-        if (periodDoc.exists()) {
-            localPeriodSettings = periodDoc.data();
-            updatePeriodBanner();
-        } else {
-            // 初期状態（評価期未設定）
-            localPeriodSettings = null;
-            updatePeriodBannerEmpty();
-        }
-    } catch (e) {
-        console.error("Failed to load evaluation period settings:", e);
-    }
-
-
     const role = user.Role || 'Staff';
     const myStore = user.StoreID || user.StoreId;
-    
-    // 全ユーザーを取得
-    const allUsers = [];
-    try {
-        const qUsers = query(collection(db, "m_users"));
-        const snapUsers = await getDocs(qUsers);
-        snapUsers.forEach(d => {
-            allUsers.push({ id: d.id, ...d.data() });
-        });
-    } catch(e) { console.error("Failed to load users:", e); }
     
     // 現在のユーザーの役職を等級マスタから判定
     let myJobTitle = '';
@@ -1169,6 +1294,9 @@ async function loadInitialSettingsAndData() {
         
         const btnEditTemplatesTab = document.getElementById('btn-admin-edit-templates-tab');
         if (btnEditTemplatesTab) btnEditTemplatesTab.style.display = 'flex';
+        
+        const btnEditQuizTab = document.getElementById('btn-admin-edit-quiz-tab');
+        if (btnEditQuizTab) btnEditQuizTab.style.display = 'flex';
         
         const btnWorkflowTab = document.getElementById('btn-admin-workflow-tab');
         if (btnWorkflowTab) btnWorkflowTab.style.display = 'flex';
@@ -1518,7 +1646,7 @@ async function renderHistoryTab(container) {
                         <thead>
                             <tr>
                                 <th style="text-align:left;">対象期</th>
-                                <th style="text-align:left;">データ種別</th>
+                                
                                 <th style="text-align:center;">確定点数</th>
                                 <th style="text-align:center;">等級判定</th>
                                 <th style="text-align:right;">操作</th>
@@ -1528,13 +1656,12 @@ async function renderHistoryTab(container) {
         `;
 
         histories.forEach(h => {
-            const isLegacy = h.is_legacy_archive ? '<span style="font-size:0.75rem; background:#cbd5e1; color:white; padding:0.2rem 0.6rem; border-radius:4px; font-weight:800;"><i class="fas fa-archive"></i> 手入力アーカイブ</span>' : '<span style="font-size:0.75rem; background:#3b82f6; color:white; padding:0.2rem 0.6rem; border-radius:4px; font-weight:800;"><i class="fas fa-laptop"></i> システム判定</span>';
-            const score = h.final_total_score || h.manager_total_score || h.self_total_score || '-';
+                        const score = h.final_total_score || h.manager_total_score || h.self_total_score || '-';
 
             html += `
                 <tr style="background:white; border-bottom:1px solid #e2e8f0; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
                     <td style="font-weight:900; color:#1e293b; padding:1.2rem;">${h.period}期</td>
-                    <td style="padding:1.2rem;">${isLegacy}</td>
+                    
                     <td style="text-align:center; font-weight:900; color:#be123c; font-size:1.2rem; padding:1.2rem;">${score}</td>
                     <td style="text-align:center; font-family:monospace; font-weight:900; color:#059669; font-size:1.2rem; padding:1.2rem;">${h.new_grade || '-'}</td>
                     <td style="text-align:right; padding:1.2rem;">
@@ -1556,6 +1683,14 @@ async function renderHistoryTab(container) {
 // 2. 部下評価タブ (上長・店長ビュー)
 // ==========================================
 function renderSubordinatesTab(container) {
+    // データロード完了前に描画されることへの安全ガード
+    if (!activeEvaluations || activeEvaluations.length === 0) {
+        if (localPeriodSettings && localPeriodSettings.status === 'open') {
+            container.innerHTML = '<div style="text-align:center; padding:4rem;"><i class="fas fa-spinner fa-spin fa-3x" style="color:#cbd5e1;"></i><div style="margin-top:1.5rem; color:#94a3b8; font-weight:700;">データを読み込んでいます...</div></div>';
+            return;
+        }
+    }
+
     const targetUsers = subordinateUsers.filter(u => {
         const evalData = activeEvaluations.find(e => e.user_id === u.id);
         if (!evalData) return false;
@@ -2385,6 +2520,13 @@ async function getSnapshotItemsForTemplate(templateId, userId) {
         console.warn("Could not find previous evaluation for user:", userId, e);
     }
 
+    // テストマスタを全取得
+    let quizBanks = {};
+    try {
+        const qs = await getDocs(collection(db, "m_quiz_banks"));
+        qs.forEach(d => { quizBanks[d.id] = d.data(); });
+    } catch(e) { console.warn("Failed to load quiz banks", e); }
+
     // 前回の各項目の点数をマッピングして初期配列を作成
     return items.map(item => {
         let prevScore = 0;
@@ -2395,11 +2537,76 @@ async function getSnapshotItemsForTemplate(templateId, userId) {
             }
         }
 
+        // テストデータが紐付いている場合はランダム出題データを生成
+        let quiz_data = null;
+        if (item.quiz_bank_id && quizBanks[item.quiz_bank_id]) {
+            const bank = quizBanks[item.quiz_bank_id];
+            
+            let selectedQuestions = [];
+            
+            if (bank.settings) {
+                const types = ['mandatory', 'hard', 'general'];
+                types.forEach(type => {
+                    const setting = bank.settings[type] || { count: 0, points: 0 };
+                    const count = parseInt(setting.count) || 0;
+                    const points = parseInt(setting.points) || 0;
+                    
+                    if (count > 0) {
+                        const pool = (bank.questions || []).filter(q => q.type === type || (type === 'general' && !q.type));
+                        const shuffled = [...pool].sort(() => 0.5 - Math.random());
+                        const extracted = shuffled.slice(0, count).map(q => ({
+                            id: q.id,
+                            text: q.text,
+                            explanation: q.explanation || '',
+                            choices: q.choices,
+                            points: points,
+                            correct_index: q.correct_index,
+                            user_answer: null,
+                            type: type
+                        }));
+                        selectedQuestions.push(...extracted);
+                    }
+                });
+                
+                selectedQuestions.sort(() => 0.5 - Math.random());
+            } else {
+                const count = bank.questions_count || 10;
+                const shuffled = [...(bank.questions || [])].sort(() => 0.5 - Math.random());
+                selectedQuestions = shuffled.slice(0, count).map(q => ({
+                    id: q.id,
+                    text: q.text,
+                    explanation: q.explanation || '',
+                    choices: q.choices,
+                    points: q.points || 10,
+                    correct_index: q.correct_index,
+                    user_answer: null,
+                    type: q.type || 'general'
+                }));
+            }
+            
+            quiz_data = {
+                quiz_bank_id: item.quiz_bank_id,
+                quiz_title: bank.title,
+                preface: bank.preface || '',
+                pass_score: bank.pass_score || 80,
+                threshold_eval3: bank.threshold_eval3 !== undefined ? bank.threshold_eval3 : (bank.pass_score || 80),
+                threshold_eval2: bank.threshold_eval2 !== undefined ? bank.threshold_eval2 : Math.floor((bank.pass_score || 80) / 2),
+                settings: bank.settings || {},
+                questions: selectedQuestions,
+                completed: false,
+                score: 0,
+                eval_score: 0,
+                passed: false
+            };
+        }
+
         return {
             item_id: item.item_id,
             category: item.category,
             title: item.title,
             description: item.description || '',
+            quiz_bank_id: item.quiz_bank_id || null, // 紐付きID
+            quiz_data: quiz_data, // 出題データ
             is_new: false, // マスタ変更検知用（将来拡張）
             self_score: 0,
             self_comment: '',
@@ -2747,85 +2954,208 @@ function renderModalBody(container, mode) {
 
         // 自己評価ラジオボタン（編集権限がない場合は数字のみ表示）
         let selfRadioHtml = '';
-        if (isSelfMode) {
-            for (let s = 5; s >= 1; s--) {
-                const isSel = item.self_score === s;
-                selfRadioHtml += `
-                    <button type="button" class="score-btn ${isSel ? 'selected-self' : ''}" 
-                            onclick="window.selectScore(${idx}, 'self', ${s})">
-                        ${s}
+        
+        if (item.quiz_data) {
+            // テスト紐付け項目
+            if (item.quiz_data.completed) {
+                const badgeColor = item.quiz_data.passed ? '#10b981' : '#ef4444';
+                const passText = item.quiz_data.passed ? '合格' : '不合格';
+                
+                const wrongCount = item.quiz_data.questions ? item.quiz_data.questions.filter(q => q.user_answer !== q.correct_index).length : 0;
+                let reviewBtn = '';
+                if (wrongCount === 0) {
+                    reviewBtn = `<div style="font-size: 0.65rem; color: #10b981; margin-top: 0.4rem; font-weight: 700;">全問正解！<br>(復習項目なし)</div>`;
+                } else {
+                    const quizDataStr = encodeURIComponent(JSON.stringify(item.quiz_data));
+                    reviewBtn = `<div style="margin-top: 0.4rem;"><button type="button" onclick="window.openQuizReviewModal(decodeURIComponent('${quizDataStr}'))" style="padding: 0.2rem 0.5rem; font-size: 0.7rem; font-weight: 700; background: #fef2f2; color: #ef4444; border: 1px solid #fca5a5; border-radius: 4px; cursor: pointer; transition: 0.2s;"><i class="fas fa-search"></i> 誤答を復習</button></div>`;
+                }
+
+                selfRadioHtml = `
+                    <div style="text-align: center; width: 100%;">
+                        <div style="font-weight: 800; font-size: 1.1rem; color: #3b82f6;">${item.self_score || '-'}</div>
+                        <div style="font-size: 0.7rem; color: ${badgeColor}; font-weight: 700; margin-top: 0.2rem;">
+                            ${passText} (${item.quiz_data.score}点)
+                        </div>
+                        ${reviewBtn}
+                    </div>
+                `;
+            } else if (isSelfMode) {
+                selfRadioHtml = `
+                    <button type="button" class="btn btn-primary" onclick="window.startEvaluationQuiz(${idx})"
+                            style="padding: 0.4rem 0.8rem; font-size: 0.8rem; font-weight: 800; border-radius: 6px; background: #8b5cf6; border: none; width: 100%;">
+                        <i class="fas fa-edit"></i> 試験を実施
                     </button>
                 `;
+            } else {
+                selfRadioHtml = `<div style="font-size: 0.8rem; color: #94a3b8; text-align: center; width: 100%;">未受験</div>`;
             }
-        } else if (mode === 'self' || allSubmitted || isAdmin) {
-            selfRadioHtml = `<div style="font-weight: 800; font-size: 1.1rem; color: #3b82f6; text-align: center; width: 100%;">${item.self_score || '-'}</div>`;
         } else {
-            selfRadioHtml = hiddenIconHtml;
+            // 通常の評価項目
+            if (isSelfMode) {
+                for (let s = 5; s >= 1; s--) {
+                    const isSel = item.self_score === s;
+                    selfRadioHtml += `
+                        <button type="button" class="score-btn ${isSel ? 'selected-self' : ''}" 
+                                onclick="window.selectScore(${idx}, 'self', ${s})">
+                            ${s}
+                        </button>
+                    `;
+                }
+            } else if (mode === 'self' || allSubmitted || isAdmin) {
+                selfRadioHtml = `<div style="font-weight: 800; font-size: 1.1rem; color: #3b82f6; text-align: center; width: 100%;">${item.self_score || '-'}</div>`;
+            } else {
+                selfRadioHtml = hiddenIconHtml;
+            }
         }
 
         // 1次評価ラジオボタン
         let primaryRadioHtml = '';
         if (hasPrimary) {
-            if (canEditPrimary) {
-                for (let s = 5; s >= 1; s--) {
-                    const isSel = item.primary_score === s;
-                    primaryRadioHtml += `
-                        <button type="button" class="score-btn ${isSel ? 'selected-manager' : ''}" 
-                                onclick="window.selectScore(${idx}, 'primary', ${s})">
-                            ${s}
-                        </button>
-                    `;
+            if (item.quiz_data) {
+                if (!item.quiz_data.completed) {
+                    primaryRadioHtml = `<div style="font-size: 0.8rem; color: #94a3b8; text-align: center; width: 100%;">未受験</div>`;
+                } else {
+                    if (canEditPrimary) {
+                        let btns = '';
+                        const minScore = item.quiz_data.eval_score || 3;
+                        for (let s = 5; s >= 1; s--) {
+                            let isDisabled = false;
+                            let isSel = item.primary_score === s;
+                            if (!item.quiz_data.passed) {
+                                isDisabled = true; // 不合格時は全ロック
+                                isSel = (s === (item.quiz_data.eval_score || 1));
+                            } else {
+                                isDisabled = s < minScore; // 合格時は下限未満をロック
+                            }
+                            
+                            const btnStyle = isDisabled ? 'opacity:0.3; cursor:not-allowed;' : '';
+                            const btnDisabled = isDisabled ? 'disabled' : '';
+                            const onclick = isDisabled ? '' : `onclick="window.selectScore(${idx}, 'primary', ${s})"`;
+                            btns += `<button type="button" class="score-btn ${isSel ? 'selected-manager' : ''}" style="${btnStyle}" ${btnDisabled} ${onclick}>${s}</button>`;
+                        }
+                        primaryRadioHtml = btns;
+                    } else if (allSubmitted || isAdmin) {
+                        primaryRadioHtml = `<div style="font-weight: 800; font-size: 1.1rem; color: #10b981; text-align: center; width: 100%;">${item.primary_score || (item.quiz_data.passed ? '-' : (item.quiz_data.eval_score || 1))}</div>`;
+                    } else {
+                        primaryRadioHtml = hiddenIconHtml;
+                    }
                 }
-            } else if (allSubmitted || isAdmin) {
-                primaryRadioHtml = `<div style="font-weight: 800; font-size: 1.1rem; color: #10b981; text-align: center; width: 100%;">${item.primary_score || '-'}</div>`;
             } else {
-                primaryRadioHtml = hiddenIconHtml;
+                if (canEditPrimary) {
+                    for (let s = 5; s >= 1; s--) {
+                        const isSel = item.primary_score === s;
+                        primaryRadioHtml += `
+                            <button type="button" class="score-btn ${isSel ? 'selected-manager' : ''}" 
+                                    onclick="window.selectScore(${idx}, 'primary', ${s})">
+                                ${s}
+                            </button>
+                        `;
+                    }
+                } else if (allSubmitted || isAdmin) {
+                    primaryRadioHtml = `<div style="font-weight: 800; font-size: 1.1rem; color: #10b981; text-align: center; width: 100%;">${item.primary_score || '-'}</div>`;
+                } else {
+                    primaryRadioHtml = hiddenIconHtml;
+                }
             }
         }
 
         // 上長評価（2次評価/最終評価）ラジオボタン
         let managerRadioHtml = '';
-        if (canEditSecondary) {
-            for (let s = 5; s >= 1; s--) {
-                const isSel = item.manager_score === s;
-                managerRadioHtml += `
-                    <button type="button" class="score-btn ${isSel ? 'selected-manager' : ''}" 
-                            onclick="window.selectScore(${idx}, 'manager', ${s})">
-                        ${s}
-                    </button>
-                `;
+        if (item.quiz_data) {
+            if (!item.quiz_data.completed) {
+                managerRadioHtml = `<div style="font-size: 0.8rem; color: #94a3b8; text-align: center; width: 100%;">未受験</div>`;
+            } else {
+                if (canEditSecondary || isInterviewMode) {
+                    let btns = '';
+                    const minScore = item.quiz_data.eval_score || 3;
+                    for (let s = 5; s >= 1; s--) {
+                        let isDisabled = false;
+                        let isSel = item.manager_score === s;
+                        if (!item.quiz_data.passed) {
+                            isDisabled = true; // 不合格時は全ロック
+                            isSel = (s === (item.quiz_data.eval_score || 1));
+                        } else {
+                            isDisabled = s < minScore; // 合格時は下限未満をロック
+                        }
+                        
+                        const btnStyle = isDisabled ? 'opacity:0.3; cursor:not-allowed;' : '';
+                        const btnDisabled = isDisabled ? 'disabled' : '';
+                        const onclick = isDisabled ? '' : `onclick="window.selectScore(${idx}, 'manager', ${s})"`;
+                        const popoverOnclick = isDisabled ? '' : `onclick="window.selectScore(${idx}, 'manager', ${s})"`;
+                        
+                        btns += `
+                            <button type="button" class="score-btn ${isSel ? 'selected-manager' : ''}" 
+                                    style="${isInterviewMode ? 'padding: 0.3rem 0.5rem;' : ''} ${btnStyle}"
+                                    ${btnDisabled} ${isInterviewMode ? popoverOnclick : onclick}>
+                                ${s}
+                            </button>
+                        `;
+                    }
+                    if (canEditSecondary) {
+                        managerRadioHtml = btns;
+                    } else {
+                        managerRadioHtml = `
+                            <div class="eval-popover-container" style="position: relative; display: inline-block; width: 100%; text-align: center;">
+                                <div onclick="window.toggleScorePopover(${idx}, event)" style="cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.3rem; padding: 0.2rem 0.5rem; border-radius: 6px; transition: background 0.2s;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'" title="クリックして点数を変更">
+                                    <span id="popover-score-text-${idx}" style="font-weight: 800; font-size: 1.1rem; color: #7c3aed;">${item.manager_score || (item.quiz_data.passed ? '-' : (item.quiz_data.eval_score || 1))}</span>
+                                    <i class="fas fa-pencil-alt" style="font-size: 0.7rem; color: #a78bfa;"></i>
+                                </div>
+                                <div id="popover-score-${idx}" class="eval-popover-menu" style="display: none; position: absolute; top: calc(100% + 5px); left: 50%; transform: translateX(-50%); background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.4rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); z-index: 50; white-space: nowrap;">
+                                    <div style="position: absolute; top: -5px; left: 50%; transform: translateX(-50%) rotate(45deg); width: 10px; height: 10px; background: white; border-top: 1px solid #e2e8f0; border-left: 1px solid #e2e8f0;"></div>
+                                    <div style="display: flex; gap: 0.25rem; position: relative;">
+                                        ${btns}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                } else if (allSubmitted || isAdmin) {
+                    managerRadioHtml = `<div style="font-weight: 800; font-size: 1.1rem; color: #7c3aed; text-align: center; width: 100%;">${item.manager_score || (item.quiz_data.passed ? '-' : (item.quiz_data.eval_score || 1))}</div>`;
+                } else {
+                    managerRadioHtml = hiddenIconHtml;
+                }
             }
-        } else if (isInterviewMode) {
-            // ポップオーバー用のボタンリスト
-            let popoverBtns = '';
-            for (let s = 5; s >= 1; s--) {
-                const isSel = item.manager_score === s;
-                popoverBtns += `
-                    <button type="button" class="score-btn ${isSel ? 'selected-manager' : ''}" 
-                            onclick="window.selectScore(${idx}, 'manager', ${s})" style="padding: 0.3rem 0.5rem;">
-                        ${s}
-                    </button>
-                `;
-            }
-            managerRadioHtml = `
-                <div class="eval-popover-container" style="position: relative; display: inline-block; width: 100%; text-align: center;">
-                    <div onclick="window.toggleScorePopover(${idx}, event)" style="cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.3rem; padding: 0.2rem 0.5rem; border-radius: 6px; transition: background 0.2s;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'" title="クリックして点数を変更">
-                        <span id="popover-score-text-${idx}" style="font-weight: 800; font-size: 1.1rem; color: #7c3aed;">${item.manager_score || '-'}</span>
-                        <i class="fas fa-pencil-alt" style="font-size: 0.7rem; color: #a78bfa;"></i>
-                    </div>
-                    <!-- 吹き出し本体 -->
-                    <div id="popover-score-${idx}" class="eval-popover-menu" style="display: none; position: absolute; top: calc(100% + 5px); left: 50%; transform: translateX(-50%); background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.4rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); z-index: 50; white-space: nowrap;">
-                        <div style="position: absolute; top: -5px; left: 50%; transform: translateX(-50%) rotate(45deg); width: 10px; height: 10px; background: white; border-top: 1px solid #e2e8f0; border-left: 1px solid #e2e8f0;"></div>
-                        <div style="display: flex; gap: 0.25rem; position: relative;">
-                            ${popoverBtns}
+        } else {
+            if (canEditSecondary) {
+                for (let s = 5; s >= 1; s--) {
+                    const isSel = item.manager_score === s;
+                    managerRadioHtml += `
+                        <button type="button" class="score-btn ${isSel ? 'selected-manager' : ''}" 
+                                onclick="window.selectScore(${idx}, 'manager', ${s})">
+                            ${s}
+                        </button>
+                    `;
+                }
+            } else if (isInterviewMode) {
+                let popoverBtns = '';
+                for (let s = 5; s >= 1; s--) {
+                    const isSel = item.manager_score === s;
+                    popoverBtns += `
+                        <button type="button" class="score-btn ${isSel ? 'selected-manager' : ''}" 
+                                onclick="window.selectScore(${idx}, 'manager', ${s})" style="padding: 0.3rem 0.5rem;">
+                            ${s}
+                        </button>
+                    `;
+                }
+                managerRadioHtml = `
+                    <div class="eval-popover-container" style="position: relative; display: inline-block; width: 100%; text-align: center;">
+                        <div onclick="window.toggleScorePopover(${idx}, event)" style="cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.3rem; padding: 0.2rem 0.5rem; border-radius: 6px; transition: background 0.2s;" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'" title="クリックして点数を変更">
+                            <span id="popover-score-text-${idx}" style="font-weight: 800; font-size: 1.1rem; color: #7c3aed;">${item.manager_score || '-'}</span>
+                            <i class="fas fa-pencil-alt" style="font-size: 0.7rem; color: #a78bfa;"></i>
+                        </div>
+                        <div id="popover-score-${idx}" class="eval-popover-menu" style="display: none; position: absolute; top: calc(100% + 5px); left: 50%; transform: translateX(-50%); background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.4rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); z-index: 50; white-space: nowrap;">
+                            <div style="position: absolute; top: -5px; left: 50%; transform: translateX(-50%) rotate(45deg); width: 10px; height: 10px; background: white; border-top: 1px solid #e2e8f0; border-left: 1px solid #e2e8f0;"></div>
+                            <div style="display: flex; gap: 0.25rem; position: relative;">
+                                ${popoverBtns}
+                            </div>
                         </div>
                     </div>
-                </div>
-            `;
-        } else if (allSubmitted || isAdmin) {
-            managerRadioHtml = `<div style="font-weight: 800; font-size: 1.1rem; color: #7c3aed; text-align: center; width: 100%;">${item.manager_score || '-'}</div>`;
-        } else {
-            managerRadioHtml = hiddenIconHtml;
+                `;
+            } else if (allSubmitted || isAdmin) {
+                managerRadioHtml = `<div style="font-weight: 800; font-size: 1.1rem; color: #7c3aed; text-align: center; width: 100%;">${item.manager_score || '-'}</div>`;
+            } else {
+                managerRadioHtml = hiddenIconHtml;
+            }
         }
 
         // コメント入力欄
@@ -3104,13 +3434,23 @@ function renderModalBody(container, mode) {
         }
         
         // Re-render the table to reflect the new comment status
-        const detailContainer = document.getElementById('subordinate-detail-container');
-        const selfInlineContainer = document.getElementById('self-eval-inline-container');
+        window.refreshCurrentEvalDetail();
+    };
 
-        if (window.currentEvalMode === 'self' && selfInlineContainer) {
-            renderEvalDetailInline(selfInlineContainer, selectedEvalDetail, 'self');
-        } else if (detailContainer) {
-            renderEvalDetailInline(detailContainer, selectedEvalDetail, window.currentEvalMode || 'manager');
+    window.refreshCurrentEvalDetail = () => {
+        if (!selectedEvalDetail || !window.currentEvalMode) return;
+        
+        let container = null;
+        const mode = window.currentEvalMode;
+        
+        if (mode === 'self') container = document.getElementById('self-eval-inline-container');
+        else if (mode === 'interview') container = document.getElementById('interview-detail-container');
+        else if (mode === 'president') container = document.getElementById('president-detail-container');
+        else if (mode === 'admin') container = document.getElementById('admin-detail-inner');
+        else container = document.getElementById('subordinate-detail-container');
+        
+        if (container) {
+            renderEvalDetailInline(container, selectedEvalDetail, mode);
         }
     };
 
@@ -3344,8 +3684,15 @@ function renderModalFooter(container, mode) {
 
     // 3. 上長評価の提出（面談待ちへ、または社長提出へ）
     window.submitManagerEvaluation = (type) => {
-        const incompletePrimary = selectedEvalDetail.items.some(it => !it.primary_score);
-        const incompleteManager = selectedEvalDetail.items.some(it => !it.manager_score);
+        // テスト不合格で強制ロックされている項目は未入力チェックから除外し、提出時に自動セットする
+        const incompletePrimary = selectedEvalDetail.items.some(it => {
+            if (it.quiz_data && it.quiz_data.completed && !it.quiz_data.passed) return false;
+            return !it.primary_score;
+        });
+        const incompleteManager = selectedEvalDetail.items.some(it => {
+            if (it.quiz_data && it.quiz_data.completed && !it.quiz_data.passed) return false;
+            return !it.manager_score;
+        });
         
         if (type === 'primary' && incompletePrimary) {
             return showAlert('入力未完了', 'すべての評価項目（24項目）に1次評価点を入力してください。');
@@ -3358,6 +3705,15 @@ function renderModalFooter(container, mode) {
         const dateEl = document.getElementById('modal-interview-date');
         if (notesEl) selectedEvalDetail.interview_notes = notesEl.value;
         if (dateEl) selectedEvalDetail.interview_date = dateEl.value;
+
+        // 不合格でロックされた項目の点数を自動補完
+        selectedEvalDetail.items.forEach(it => {
+            if (it.quiz_data && it.quiz_data.completed && !it.quiz_data.passed) {
+                const forcedScore = it.quiz_data.eval_score || 1;
+                if (!it.primary_score) it.primary_score = forcedScore;
+                if (!it.manager_score) it.manager_score = forcedScore;
+            }
+        });
 
         // 社長へ提出する際は面談メモが必須
         if (type === 'president_pending' && !selectedEvalDetail.interview_notes) {
@@ -3597,16 +3953,22 @@ async function openTemplateEditorModal() {
     
     // 全テンプレートをFirestoreからロード
     try {
-        const snap = await getDocs(collection(db, "m_evaluation_templates"));
+        const [snap, quizSnap] = await Promise.all([
+            getDocs(collection(db, "m_evaluation_templates")),
+            getDocs(collection(db, "m_quiz_banks"))
+        ]);
+        
         editTemplates = {};
         snap.forEach(d => {
-            editTemplates[d.id] = {
-                id: d.id,
-                ...d.data()
-            };
+            editTemplates[d.id] = { id: d.id, ...d.data() };
+        });
+        
+        window.availableQuizzes = {};
+        quizSnap.forEach(d => {
+            window.availableQuizzes[d.id] = d.data();
         });
     } catch (e) {
-        console.error("Failed to load templates for editor:", e);
+        console.error("Failed to load templates or quizzes for editor:", e);
         showAlert("エラー", "テンプレートデータの読み込みに失敗しました。");
         return;
     }
@@ -3725,70 +4087,48 @@ function loadActiveEditTemplate() {
         specialNoteEl.value = template.special_note || '';
     }
     
-    renderTargetJobTitles();
     renderTemplateItems();
 }
 
-function renderTargetJobTitles() {
-    const container = document.getElementById('editor-target-job-titles');
-    if (!container) return;
+window.draggedTemplateItemIndex = null;
+window.onTemplateItemDragStart = (e, index) => {
+    window.draggedTemplateItemIndex = index;
+    e.dataTransfer.effectAllowed = 'move';
+    e.target.style.opacity = '0.5';
+};
+window.onTemplateItemDragEnd = (e) => {
+    e.target.style.opacity = '1';
+    window.draggedTemplateItemIndex = null;
     
-    container.innerHTML = '';
-    
-    const template = editTemplates[activeEditTemplateId];
-    if (!template) return;
-    
-    const targets = template.target_job_titles || [];
-    
-    if (globalJobTitles.length === 0) {
-        container.innerHTML = '<span style="color:#94a3b8; font-size:0.75rem;">役職データが見つかりません</span>';
-        return;
+    // Remove drag-over styles from all rows
+    const tbody = document.getElementById('template-items-tbody');
+    if (tbody) {
+        Array.from(tbody.children).forEach(tr => tr.style.borderTop = '');
     }
+};
+window.onTemplateItemDragOver = (e, tr) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    tr.style.borderTop = '2px solid #3b82f6';
+};
+window.onTemplateItemDragLeave = (e, tr) => {
+    tr.style.borderTop = '';
+};
+window.onTemplateItemDrop = (e, targetIndex) => {
+    e.preventDefault();
+    if (window.draggedTemplateItemIndex === null || window.draggedTemplateItemIndex === targetIndex) return;
     
-    globalJobTitles.forEach(jt => {
-        const isChecked = targets.includes(jt);
-        const label = document.createElement('label');
-        label.style.display = 'flex';
-        label.style.alignItems = 'center';
-        label.style.gap = '0.3rem';
-        label.style.cursor = 'pointer';
-        label.style.fontSize = '0.8rem';
-        label.style.fontWeight = '600';
-        label.style.color = isChecked ? '#1e293b' : '#64748b';
-        label.style.background = isChecked ? '#e0e7ff' : '#f1f5f9';
-        label.style.padding = '0.4rem 0.8rem';
-        label.style.borderRadius = '20px';
-        label.style.transition = 'all 0.2s';
-        label.style.border = isChecked ? '1px solid #c7d2fe' : '1px solid transparent';
-        
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.checked = isChecked;
-        checkbox.style.cursor = 'pointer';
-        checkbox.onchange = () => {
-            window.toggleTargetJobTitle(jt, checkbox.checked);
-        };
-        
-        label.appendChild(checkbox);
-        label.appendChild(document.createTextNode(jt));
-        container.appendChild(label);
+    const item = activeEditItems.splice(window.draggedTemplateItemIndex, 1)[0];
+    activeEditItems.splice(targetIndex, 0, item);
+    
+    activeEditItems.forEach((it, idx) => {
+        it.display_order = idx + 1;
     });
-}
-
-window.toggleTargetJobTitle = (jobTitle, isChecked) => {
-    const template = editTemplates[activeEditTemplateId];
-    if (!template) return;
     
-    if (!template.target_job_titles) template.target_job_titles = [];
+    renderTemplateItems();
     
-    if (isChecked) {
-        if (!template.target_job_titles.includes(jobTitle)) {
-            template.target_job_titles.push(jobTitle);
-        }
-    } else {
-        template.target_job_titles = template.target_job_titles.filter(jt => jt !== jobTitle);
-    }
-    renderTargetJobTitles();
+    const totalCountEl = document.getElementById('template-total-items-count');
+    if (totalCountEl) totalCountEl.textContent = activeEditItems.length;
 };
 
 function renderTemplateItems() {
@@ -3820,43 +4160,81 @@ function renderTemplateItems() {
     activeEditItems.forEach((item, index) => {
         const tr = document.createElement('tr');
         tr.style.borderBottom = '1px solid var(--border)';
+        tr.style.transition = 'all 0.2s';
+        
+        // Drag and Drop settings
+        tr.draggable = true;
+        tr.style.cursor = 'grab';
+        tr.ondragstart = (e) => window.onTemplateItemDragStart(e, index);
+        tr.ondragend = (e) => window.onTemplateItemDragEnd(e);
+        tr.ondragover = (e) => window.onTemplateItemDragOver(e, tr);
+        tr.ondragleave = (e) => window.onTemplateItemDragLeave(e, tr);
+        tr.ondrop = (e) => window.onTemplateItemDrop(e, index);
         
         tr.innerHTML = `
-            <!-- 表示順序 -->
-            <td style="padding: 0.6rem 0.4rem; text-align: center;">
-                <input type="number" value="${item.display_order || (index + 1)}" min="1" 
-                       onchange="window.updateTemplateItemField(${index}, 'display_order', this.value)" 
-                       style="width: 60px; text-align: center; padding: 0.35rem 0.2rem; border: 1px solid #cbd5e1; border-radius: 6px; font-family: monospace; font-size: 0.8rem;">
+            <!-- 項目定義とテスト (カテゴリ / テスト / 評価項目 / ID) -->
+            <td style="padding: 1rem 0.6rem 1rem 1rem; vertical-align: top; width: 45%;">
+                <div style="display: flex; gap: 0.8rem; margin-bottom: 0.8rem;">
+                    <!-- カテゴリ -->
+                    <div style="flex: 1;">
+                        <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 0.2rem; font-weight: 700;">カテゴリ</div>
+                        <textarea rows="1" placeholder="例: ビジネスマナー"
+                                  oninput="this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px'; window.updateTemplateItemField(${index}, 'category', this.value)"
+                                  style="width: 100%; padding: 0.4rem 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-family: inherit; font-size: 0.8rem; resize: none; overflow: hidden; display: block; min-height: 32px; background: #f8fafc;">${item.category || ''}</textarea>
+                    </div>
+                    <!-- テスト -->
+                    <div style="flex: 1;">
+                        <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 0.2rem; font-weight: 700;">テスト</div>
+                        <select onchange="window.updateTemplateItemField(${index}, 'quiz_bank_id', this.value)" 
+                                style="width: 100%; padding: 0.4rem 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-size: 0.8rem; background: #f8fafc; min-height: 32px; height: 32px; cursor: pointer;">
+                            <option value="">(紐付けなし)</option>
+                            ${Object.keys(window.availableQuizzes || {}).map(qId => {
+                                const q = window.availableQuizzes[qId];
+                                return `<option value="${qId}" ${item.quiz_bank_id === qId ? 'selected' : ''}>${q.title || qId}</option>`;
+                            }).join('')}
+                        </select>
+                    </div>
+                </div>
+                
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.2rem;">
+                    <div style="font-size: 0.75rem; color: #64748b; font-weight: 700;">評価項目</div>
+                    <div style="font-size: 0.65rem; color: #94a3b8; font-family: monospace;" title="システムID (編集不可)">ID: ${item.item_id || '---'}</div>
+                </div>
+                <textarea rows="1" placeholder="評価項目の内容を入力"
+                          oninput="this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px'; window.updateTemplateItemField(${index}, 'title', this.value)"
+                          style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-family: inherit; font-size: 0.9rem; resize: none; overflow: hidden; display: block; min-height: 40px;">${item.title || ''}</textarea>
             </td>
-            <!-- カテゴリ -->
-            <td style="padding: 0.6rem 0.4rem;">
-                <input type="text" value="${item.category || ''}" placeholder="例: 労働管理"
-                       onchange="window.updateTemplateItemField(${index}, 'category', this.value)"
-                       style="width: 100%; padding: 0.35rem 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-size: 0.8rem;">
+            <!-- 評価基準 (詳細説明) -->
+            <td style="padding: 1rem 0.6rem; vertical-align: top; width: 55%;">
+                <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 0.2rem; font-weight: 700;">詳細説明（評価のポイント）</div>
+                <textarea rows="1" placeholder="具体的な評価基準を記載"
+                          oninput="this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px'; window.updateTemplateItemField(${index}, 'description', this.value)"
+                          style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-family: inherit; font-size: 0.85rem; resize: none; overflow: hidden; display: block; min-height: 120px; line-height: 1.5;">${item.description || ''}</textarea>
             </td>
-            <!-- 項目名 -->
-            <td style="padding: 0.6rem 0.4rem;">
-                <textarea rows="2" placeholder="評価項目の内容を入力"
-                          onchange="window.updateTemplateItemField(${index}, 'title', this.value)"
-                          style="width: 100%; padding: 0.35rem 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-family: inherit; font-size: 0.8rem; resize: vertical;">${item.title || ''}</textarea>
-            </td>
-            <!-- 基準説明 -->
-            <td style="padding: 0.6rem 0.4rem;">
-                <textarea rows="2" placeholder="具体的な評価基準を記載"
-                          onchange="window.updateTemplateItemField(${index}, 'description', this.value)"
-                          style="width: 100%; padding: 0.35rem 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-family: inherit; font-size: 0.8rem; resize: vertical;">${item.description || ''}</textarea>
-            </td>
-            <!-- 操作 (削除) -->
-            <td style="padding: 0.6rem 0.4rem; text-align: center;">
-                <button type="button" class="btn" onclick="window.deleteTemplateItem(${index})" 
-                        style="background: transparent; border: none; color: var(--danger); cursor: pointer; padding: 0.4rem; border-radius: 50%; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; transition: background 0.2s;"
-                        onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='transparent'">
-                    <i class="fas fa-trash-alt"></i>
-                </button>
+            <!-- 操作 (並び替え / 削除) -->
+            <td style="padding: 1rem 0.4rem; vertical-align: top; text-align: center;">
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 0.8rem;">
+                    <div style="color: #94a3b8; padding: 0.4rem; cursor: grab;" title="ドラッグして並び替え">
+                        <i class="fas fa-grip-vertical" style="font-size: 1.2rem;"></i>
+                    </div>
+                    <button type="button" class="btn" onclick="window.deleteTemplateItem(${index})" 
+                            style="background: transparent; border: none; color: var(--danger); cursor: pointer; padding: 0.4rem; border-radius: 50%; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; transition: background 0.2s;"
+                            onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='transparent'" title="この項目を削除">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
             </td>
         `;
         tbody.appendChild(tr);
     });
+    
+    setTimeout(() => {
+        const textareas = tbody.querySelectorAll('textarea');
+        textareas.forEach(ta => {
+            ta.style.height = 'auto';
+            ta.style.height = ta.scrollHeight + 'px';
+        });
+    }, 10);
 }
 
 function checkUnsavedChanges() {
@@ -4298,7 +4676,8 @@ window.saveActiveTemplate = async () => {
                     category: item.category.trim(),
                     title: item.title.trim(),
                     description: (item.description || '').trim(),
-                    display_order: parseInt(item.display_order) || (idx + 1)
+                    display_order: parseInt(item.display_order) || (idx + 1),
+                    quiz_bank_id: item.quiz_bank_id || null
                 };
             })
         }, { merge: true }); // Use merge to preserve status
@@ -4566,7 +4945,7 @@ window.openEvaluationHistory = async (userId, userName) => {
                     <thead>
                         <tr>
                             <th style="text-align:left;">対象期</th>
-                            <th style="text-align:left;">データ種別</th>
+                            
                             <th style="text-align:center;">確定点数</th>
                             <th style="text-align:center;">等級判定</th>
                             <th style="text-align:right;">操作</th>
@@ -4576,13 +4955,12 @@ window.openEvaluationHistory = async (userId, userName) => {
         `;
         
         histories.forEach(h => {
-            const isLegacy = h.is_legacy_archive ? '<span style="font-size:0.7rem; background:#cbd5e1; color:white; padding:0.2rem 0.4rem; border-radius:4px; font-weight:800;"><i class="fas fa-archive"></i> 手入力アーカイブ</span>' : '<span style="font-size:0.7rem; background:#3b82f6; color:white; padding:0.2rem 0.4rem; border-radius:4px; font-weight:800;"><i class="fas fa-laptop"></i> システム判定</span>';
-            const score = h.final_total_score || h.manager_total_score || h.self_total_score || '-';
+                        const score = h.final_total_score || h.manager_total_score || h.self_total_score || '-';
             
             html += `
                 <tr style="background:white; border-bottom:1px solid #e2e8f0;">
                     <td style="font-weight:800; color:#1e293b;">${h.period}期</td>
-                    <td>${isLegacy}</td>
+                    
                     <td style="text-align:center; font-weight:800; color:#be123c;">${score}</td>
                     <td style="text-align:center; font-family:monospace; font-weight:800; color:#059669;">${h.new_grade || '-'}</td>
                     <td style="text-align:right;">
@@ -4656,8 +5034,19 @@ window.viewHistoryDetail = (evalId) => {
     
     snapshotItems.forEach(item => {
         const scoreData = evalData[item.item_id] || {};
-        const managerScore = scoreData.manager_score || scoreData.score || '-';
+        const managerScore = item.manager_score ?? scoreData.manager_score ?? scoreData.score ?? '-';
         
+        let reviewBtn = '';
+        if (item.quiz_data && item.quiz_data.completed) {
+            const wrongCount = item.quiz_data.questions ? item.quiz_data.questions.filter(q => q.user_answer !== q.correct_index).length : 0;
+            if (wrongCount === 0) {
+                reviewBtn = `<div style="font-size: 0.65rem; color: #10b981; margin-top: 0.4rem; font-weight: 700;">全問正解！</div>`;
+            } else {
+                const quizDataStr = encodeURIComponent(JSON.stringify(item.quiz_data));
+                reviewBtn = `<div style="margin-top: 0.4rem;"><button type="button" onclick="window.openQuizReviewModal(decodeURIComponent('${quizDataStr}'))" style="padding: 0.2rem 0.5rem; font-size: 0.7rem; font-weight: 700; background: #fef2f2; color: #ef4444; border: 1px solid #fca5a5; border-radius: 4px; cursor: pointer; transition: 0.2s;"><i class="fas fa-search"></i> 誤答を復習</button></div>`;
+            }
+        }
+
         itemsHtml += `
             <tr style="background:white; border-bottom:1px solid #e2e8f0;">
                 <td style="padding: 0.8rem; font-size:0.85rem;">
@@ -4667,9 +5056,10 @@ window.viewHistoryDetail = (evalId) => {
                 </td>
                 <td style="padding: 0.8rem; text-align:center; font-weight:900; color:#7c3aed; font-size:1.2rem;">
                     ${managerScore}
+                    ${reviewBtn}
                 </td>
                 <td style="padding: 0.8rem; font-size:0.85rem; color:#475569;">
-                    ${scoreData.manager_comment || scoreData.comment || '-'}
+                    ${scoreData.manager_comment || item.manager_comment || scoreData.comment || '-'}
                 </td>
             </tr>
         `;
@@ -4807,4 +5197,857 @@ window.openPeriodStartForm = () => {
 window.closePeriodStartForm = () => {
     document.getElementById('period-start-container').style.display = 'none';
     document.getElementById('eval-main-content').style.display = 'block';
+};
+
+// ==========================================
+// 9. テスト(試験)マスタ管理機能
+// ==========================================
+let editQuizzes = {};
+let activeEditQuizId = '';
+let activeQuizQuestions = [];
+
+window.openQuizEditorModal = async () => {
+    // メインコンテンツを非表示にする
+    document.getElementById('eval-main-content').style.display = 'none';
+    document.getElementById('eval-period-banner').style.display = 'none';
+    const tabsContainer = document.querySelector('.tabs-container');
+    if (tabsContainer) tabsContainer.style.display = 'none';
+
+    document.getElementById('quiz-editor-container').style.display = 'block';
+    document.getElementById('quiz-view-list').style.display = 'block';
+    document.getElementById('quiz-view-editor').style.display = 'none';
+    document.getElementById('quiz-view-editor-footer').style.display = 'none';
+    await window.loadQuizList();
+};
+
+window.closeQuizEditorModal = () => {
+    document.getElementById('quiz-editor-container').style.display = 'none';
+    document.getElementById('eval-main-content').style.display = 'block';
+    document.getElementById('eval-period-banner').style.display = 'flex';
+    const tabsContainer = document.querySelector('.tabs-container');
+    if (tabsContainer) tabsContainer.style.display = 'flex';
+};
+
+window.loadQuizList = async () => {
+    try {
+        const snap = await getDocs(collection(db, "m_quiz_banks"));
+        editQuizzes = {};
+        const listContainer = document.getElementById('quiz-list-container');
+        listContainer.innerHTML = '';
+        if(snap.empty) {
+            listContainer.innerHTML = '<div style="color:#64748b;">作成済みのテストはありません。</div>';
+            return;
+        }
+        
+        let html = '';
+        snap.forEach(d => {
+            const data = d.data();
+            editQuizzes[d.id] = { id: d.id, ...data };
+            const qCount = data.questions ? data.questions.length : 0;
+            
+            let drawnCount = 0;
+            if (data.settings) {
+                drawnCount = (parseInt(data.settings.mandatory?.count) || 0) +
+                             (parseInt(data.settings.hard?.count) || 0) +
+                             (parseInt(data.settings.general?.count) || 0);
+            } else {
+                drawnCount = data.questions_count || 10;
+            }
+            
+            html += `
+                <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between; gap: 1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                    <div>
+                        <h5 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; color: #1e293b;">${data.title || d.id}</h5>
+                        <p style="margin: 0; font-size: 0.8rem; color: #64748b;">問題プール数: ${qCount}問 / 出題数: ${drawnCount}問</p>
+                        <p style="margin: 0; font-size: 0.8rem; color: #64748b;">合格基準: ${data.pass_score || 80}点</p>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn" onclick="window.openQuizDetail('${d.id}')" style="flex: 1; padding: 0.5rem; background: #f1f5f9; color: #475569; border: none; border-radius: 6px; font-weight: 700; font-size: 0.85rem;"><i class="fas fa-edit"></i> 編集</button>
+                        <button class="btn" onclick="window.deleteQuiz('${d.id}')" style="padding: 0.5rem; background: #fef2f2; color: #ef4444; border: 1px solid #fecaca; border-radius: 6px; font-weight: 700;"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+            `;
+        });
+        listContainer.innerHTML = html;
+    } catch(e) {
+        console.error(e);
+        showAlert("エラー", "テスト一覧の取得に失敗しました。");
+    }
+};
+
+window.createNewQuiz = async () => {
+    const title = prompt("新しいテストのタイトルを入力してください");
+    if(!title || !title.trim()) return;
+    
+    const newId = 'quiz_' + Date.now();
+    const newData = {
+        title: title.trim(),
+        settings: {
+            mandatory: { count: 0, points: 3 },
+            hard: { count: 0, points: 5 },
+            general: { count: 10, points: 1 }
+        },
+        pass_score: 80,
+        questions: [],
+        created_at: new Date().toISOString()
+    };
+    
+    try {
+        await setDoc(doc(db, "m_quiz_banks", newId), newData);
+        await window.loadQuizList();
+    } catch(e) {
+        console.error(e);
+        showAlert("エラー", "テストの作成に失敗しました。");
+    }
+};
+
+window.deleteQuiz = async (id) => {
+    const confirmDelete = await showConfirm("削除確認", "このテストを削除しますか？");
+    if(confirmDelete) {
+        try {
+            await deleteDoc(doc(db, "m_quiz_banks", id));
+            await window.loadQuizList();
+        } catch(e) {
+            console.error(e);
+            showAlert("エラー", "テストの削除に失敗しました。");
+        }
+    }
+};
+
+window.openQuizDetail = (id) => {
+    activeEditQuizId = id;
+    const quiz = editQuizzes[id];
+    document.getElementById('editor-current-quiz-name').textContent = quiz.title || id;
+    
+    const settings = quiz.settings || {
+        mandatory: { count: 0, points: 3 },
+        hard: { count: 0, points: 5 },
+        general: { count: quiz.questions_count || 10, points: 1 }
+    };
+    
+    document.getElementById('quiz-editor-count-mandatory').value = settings.mandatory.count;
+    document.getElementById('quiz-editor-points-mandatory').value = settings.mandatory.points;
+    document.getElementById('quiz-editor-threshold-mandatory').value = settings.mandatory.pass_score != null ? settings.mandatory.pass_score : (quiz.threshold_mandatory != null && quiz.threshold_mandatory > 0 ? quiz.threshold_mandatory : '');
+    
+    document.getElementById('quiz-editor-count-hard').value = settings.hard.count;
+    document.getElementById('quiz-editor-points-hard').value = settings.hard.points;
+    document.getElementById('quiz-editor-threshold-hard').value = settings.hard.pass_score != null ? settings.hard.pass_score : '';
+    
+    document.getElementById('quiz-editor-count-general').value = settings.general.count;
+    document.getElementById('quiz-editor-points-general').value = settings.general.points;
+    document.getElementById('quiz-editor-threshold-general').value = settings.general.pass_score != null ? settings.general.pass_score : '';
+    
+    document.getElementById('quiz-editor-threshold-eval3').value = quiz.threshold_eval3 !== undefined ? quiz.threshold_eval3 : (quiz.pass_score || 80);
+    document.getElementById('quiz-editor-threshold-eval2').value = quiz.threshold_eval2 !== undefined ? quiz.threshold_eval2 : Math.floor((quiz.pass_score || 80) / 2);
+    
+    const prefaceEl = document.getElementById('quiz-editor-preface');
+    if (prefaceEl) prefaceEl.value = quiz.preface || '';
+    
+    activeQuizQuestions = JSON.parse(JSON.stringify(quiz.questions || []));
+    
+    window.updateQuizMaxScore = () => {
+        const cm = parseInt(document.getElementById('quiz-editor-count-mandatory').value) || 0;
+        const pm = parseInt(document.getElementById('quiz-editor-points-mandatory').value) || 0;
+        const ch = parseInt(document.getElementById('quiz-editor-count-hard').value) || 0;
+        const ph = parseInt(document.getElementById('quiz-editor-points-hard').value) || 0;
+        const cg = parseInt(document.getElementById('quiz-editor-count-general').value) || 0;
+        const pg = parseInt(document.getElementById('quiz-editor-points-general').value) || 0;
+        
+        document.getElementById('quiz-editor-max-mandatory').textContent = cm * pm;
+        document.getElementById('quiz-editor-max-hard').textContent = ch * ph;
+        document.getElementById('quiz-editor-max-general').textContent = cg * pg;
+        document.getElementById('quiz-editor-max-total').textContent = (cm * pm) + (ch * ph) + (cg * pg);
+        
+        const summaryMandatoryEl = document.getElementById('quiz-editor-max-mandatory-summary');
+        if (summaryMandatoryEl) summaryMandatoryEl.textContent = cm * pm;
+        
+        // Trigger validation warning update
+        window.renderQuizQuestions();
+    };
+    
+    window.updateQuizMaxScore();
+    
+    document.getElementById('quiz-view-list').style.display = 'none';
+    document.getElementById('quiz-view-editor').style.display = 'flex';
+    document.getElementById('quiz-view-editor-footer').style.display = 'flex';
+    
+    // Auto-resize preface field now that it's visible
+    if (prefaceEl) {
+        prefaceEl.style.height = 'auto';
+        prefaceEl.style.height = prefaceEl.scrollHeight + 'px';
+    }
+};
+
+let currentQuizFilter = 'all';
+
+window.setQuizFilter = (filterType) => {
+    currentQuizFilter = filterType;
+    window.renderQuizQuestions();
+};
+
+window.backToQuizList = () => {
+    document.getElementById('quiz-view-editor').style.display = 'none';
+    document.getElementById('quiz-view-editor-footer').style.display = 'none';
+    document.getElementById('quiz-view-list').style.display = 'block';
+    window.loadQuizList();
+};
+
+window.renderQuizQuestions = () => {
+    const container = document.getElementById('quiz-questions-container');
+    
+    // バリデーション警告の制御
+    const countMandatory = parseInt(document.getElementById('quiz-editor-count-mandatory')?.value) || 0;
+    const countHard = parseInt(document.getElementById('quiz-editor-count-hard')?.value) || 0;
+    const countGeneral = parseInt(document.getElementById('quiz-editor-count-general')?.value) || 0;
+    
+    const actualMandatory = activeQuizQuestions.filter(q => q.type === 'mandatory').length;
+    const actualHard = activeQuizQuestions.filter(q => q.type === 'hard').length;
+    const actualGeneral = activeQuizQuestions.filter(q => q.type === 'general' || !q.type).length;
+    
+    const totalCountEl = document.getElementById('quiz-total-questions-count');
+    if (totalCountEl) {
+        if (currentQuizFilter === 'mandatory') totalCountEl.textContent = actualMandatory;
+        else if (currentQuizFilter === 'hard') totalCountEl.textContent = actualHard;
+        else if (currentQuizFilter === 'general') totalCountEl.textContent = actualGeneral;
+        else totalCountEl.textContent = activeQuizQuestions.length;
+    }
+    
+    const warnEl = document.getElementById('quiz-validation-warning');
+    if(warnEl) {
+        if(actualMandatory < countMandatory || actualHard < countHard || actualGeneral < countGeneral) {
+            warnEl.style.display = 'inline-block';
+            warnEl.innerHTML = '<i class="fas fa-exclamation-triangle"></i> 設定した出題数に対してプール問題数が不足しているカテゴリがあります（可能な最大数で出題されます）';
+        } else {
+            warnEl.style.display = 'none';
+        }
+    }
+    
+    // タブの表示状態を更新
+    const tabs = document.querySelectorAll('#quiz-filter-tabs button');
+    tabs.forEach(tab => {
+        if (tab.dataset.filter === currentQuizFilter) {
+            tab.style.background = 'white';
+            tab.style.color = '#3b82f6';
+            tab.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+        } else {
+            tab.style.background = 'transparent';
+            tab.style.color = '#64748b';
+            tab.style.boxShadow = 'none';
+        }
+    });
+    
+    if(activeQuizQuestions.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding: 2rem; color: #94a3b8;">問題がありません。「問題を追加する」を押してください。</div>';
+        return;
+    }
+    
+    let html = '';
+    let renderedCount = 0;
+    
+    activeQuizQuestions.forEach((q, idx) => {
+        const qType = q.type || 'general';
+        if (currentQuizFilter !== 'all' && qType !== currentQuizFilter) return;
+        
+        renderedCount++;
+        const choices = q.choices || ['', '', '', ''];
+        html += `
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div style="flex: 1; margin-right: 1rem;">
+                        <label style="font-size: 0.8rem; font-weight: 700; color: #64748b; margin-bottom: 0.5rem; display: block;">問題 ${idx + 1} (問題文)</label>
+                        <textarea rows="2" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-family: inherit; font-size: 0.9rem;" onchange="window.updateQuizQuestion(${idx}, 'text', this.value)">${q.text || ''}</textarea>
+                    </div>
+                    <div>
+                        <button class="btn" onclick="window.deleteQuizQuestion(${idx})" style="background: transparent; border: none; color: #ef4444; cursor: pointer; padding: 0.4rem; border-radius: 50%;"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                </div>
+                
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: 700; color: #64748b; margin-bottom: 0.5rem; display: block;">選択肢と正解</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                        ${choices.map((c, cIdx) => `
+                            <div style="display: flex; align-items: center; gap: 0.5rem; background: ${q.correct_index === cIdx ? '#ecfdf5' : '#f8fafc'}; border: 1px solid ${q.correct_index === cIdx ? '#10b981' : '#e2e8f0'}; border-radius: 6px; padding: 0.5rem;">
+                                <input type="radio" name="correct_${idx}" ${q.correct_index === cIdx ? 'checked' : ''} onchange="window.updateQuizQuestion(${idx}, 'correct_index', ${cIdx})" style="cursor: pointer; accent-color: #10b981;">
+                                <input type="text" value="${c}" placeholder="選択肢 ${cIdx + 1}" onchange="window.updateQuizQuestionChoice(${idx}, ${cIdx}, this.value)" style="flex: 1; border: none; background: transparent; outline: none; font-size: 0.9rem;">
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: 700; color: #64748b; margin-bottom: 0.5rem; display: block;">問題の特性</label>
+                    <select onchange="window.updateQuizQuestion(${idx}, 'type', this.value)" style="width: 150px; padding: 0.4rem; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: bold; color: #334155;">
+                        <option value="general" ${qType === 'general' ? 'selected' : ''}>一般問題</option>
+                        <option value="mandatory" ${qType === 'mandatory' ? 'selected' : ''}>必須問題</option>
+                        <option value="hard" ${qType === 'hard' ? 'selected' : ''}>高難易度</option>
+                    </select>
+                </div>
+                
+                <div style="margin-top: 0.5rem;">
+                    <label style="font-size: 0.8rem; font-weight: 700; color: #64748b; margin-bottom: 0.5rem; display: block;">解説 (任意)</label>
+                    <textarea rows="2" placeholder="問題の解説を入力してください" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-family: inherit; font-size: 0.9rem;" onchange="window.updateQuizQuestion(${idx}, 'explanation', this.value)">${q.explanation || ''}</textarea>
+                </div>
+            </div>
+        `;
+    });
+    
+    if(renderedCount === 0) {
+        html = '<div style="text-align:center; padding: 2rem; color: #94a3b8;">この特性に該当する問題はありません。</div>';
+    }
+    
+    container.innerHTML = html;
+};
+
+window.addQuizQuestion = () => {
+    currentQuizFilter = 'all';
+    activeQuizQuestions.push({
+        id: 'q_' + Date.now(),
+        text: '',
+        explanation: '',
+        choices: ['', '', '', ''],
+        correct_index: 0,
+        type: 'general'
+    });
+    window.renderQuizQuestions();
+    
+    setTimeout(() => {
+        const container = document.getElementById('quiz-questions-container');
+        if(container && container.lastElementChild) {
+            container.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+    }, 100);
+};
+
+window.deleteQuizQuestion = (idx) => {
+    activeQuizQuestions.splice(idx, 1);
+    window.renderQuizQuestions();
+};
+
+window.updateQuizQuestion = (idx, field, val) => {
+    if(activeQuizQuestions[idx]) {
+        activeQuizQuestions[idx][field] = val;
+    }
+    if(field === 'correct_index') {
+        window.renderQuizQuestions();
+    }
+};
+
+window.updateQuizQuestionChoice = (qIdx, cIdx, val) => {
+    if(activeQuizQuestions[qIdx] && activeQuizQuestions[qIdx].choices) {
+        activeQuizQuestions[qIdx].choices[cIdx] = val;
+    }
+};
+
+// 質問数変更時にもバリデーションチェックを走らせるため
+setTimeout(() => {
+    document.getElementById('quiz-editor-questions-count')?.addEventListener('change', () => {
+        if(activeEditQuizId) window.renderQuizQuestions();
+    });
+}, 1000);
+
+window.saveActiveQuiz = async () => {
+    if(!activeEditQuizId) return;
+    const btnSave = document.getElementById('btn-save-quiz');
+    
+    const getThreshold = (id) => {
+        const el = document.getElementById(id);
+        if (!el || el.value === '') return null;
+        return parseInt(el.value) || 0;
+    };
+    
+    const settings = {
+        mandatory: {
+            count: parseInt(document.getElementById('quiz-editor-count-mandatory').value) || 0,
+            points: parseInt(document.getElementById('quiz-editor-points-mandatory').value) || 0,
+            pass_score: getThreshold('quiz-editor-threshold-mandatory')
+        },
+        hard: {
+            count: parseInt(document.getElementById('quiz-editor-count-hard').value) || 0,
+            points: parseInt(document.getElementById('quiz-editor-points-hard').value) || 0,
+            pass_score: getThreshold('quiz-editor-threshold-hard')
+        },
+        general: {
+            count: parseInt(document.getElementById('quiz-editor-count-general').value) || 0,
+            points: parseInt(document.getElementById('quiz-editor-points-general').value) || 0,
+            pass_score: getThreshold('quiz-editor-threshold-general')
+        }
+    };
+    const thresholdEval3 = parseInt(document.getElementById('quiz-editor-threshold-eval3').value) || 0;
+    const thresholdEval2 = parseInt(document.getElementById('quiz-editor-threshold-eval2').value) || 0;
+    
+    const hasEmpty = activeQuizQuestions.some(q => !q.text.trim() || q.choices.some(c => !c.trim()));
+    if(hasEmpty) {
+        return showAlert("入力エラー", "未入力の問題文や選択肢があります。すべて入力してください。");
+    }
+    
+    const originalText = btnSave.innerHTML;
+    btnSave.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
+    btnSave.disabled = true;
+    const preface = document.getElementById('quiz-editor-preface') ? document.getElementById('quiz-editor-preface').value.trim() : '';
+    
+    try {
+        await updateDoc(doc(db, "m_quiz_banks", activeEditQuizId), {
+            settings: settings,
+            threshold_eval3: thresholdEval3,
+            threshold_eval2: thresholdEval2,
+            preface: preface,
+            questions: activeQuizQuestions,
+            updated_at: new Date().toISOString()
+        });
+        showAlert("保存成功", "テストデータを保存しました！");
+    } catch(e) {
+        console.error(e);
+        showAlert("エラー", "保存に失敗しました。");
+    } finally {
+        btnSave.innerHTML = originalText;
+        btnSave.disabled = false;
+    }
+};
+
+window.exportQuizCSV = () => {
+    if (!activeQuizQuestions || activeQuizQuestions.length === 0) {
+        return showAlert("エラー", "エクスポートする問題がありません。");
+    }
+    
+    const escapeCSV = (str) => {
+        if (str == null) return '""';
+        let s = String(str);
+        if (s.includes('"') || s.includes(',') || s.includes('\n')) {
+            return '"' + s.replace(/"/g, '""') + '"';
+        }
+        return s;
+    };
+    
+    const typeMap = { 'mandatory': '必須問題', 'hard': '高難易度', 'general': '一般問題' };
+    
+    // ヘッダ: 番号, 特性, 問題文, 選択肢1, 選択肢2, 選択肢3, 選択肢4, 正解番号, 解説文
+    let csvContent = "\uFEFF"; // BOM for Excel
+    csvContent += "番号,特性,問題文,選択肢1,選択肢2,選択肢3,選択肢4,正解番号,解説文\n";
+    
+    activeQuizQuestions.forEach((q, idx) => {
+        const row = [
+            idx + 1,
+            typeMap[q.type || 'general'] || '一般問題',
+            escapeCSV(q.text || ''),
+            escapeCSV(q.choices[0] || ''),
+            escapeCSV(q.choices[1] || ''),
+            escapeCSV(q.choices[2] || ''),
+            escapeCSV(q.choices[3] || ''),
+            q.correct_index !== undefined ? q.correct_index + 1 : 1,
+            escapeCSV(q.explanation || '')
+        ];
+        csvContent += row.join(",") + "\n";
+    });
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const filename = document.getElementById('editor-current-quiz-name').textContent || 'quiz';
+    a.download = `${filename}_問題データ.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+};
+
+window.importQuizCSV = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const text = e.target.result;
+        
+        const parseCSV = (str) => {
+            const result = [];
+            let row = [];
+            let inQuotes = false;
+            let val = '';
+            for (let i = 0; i < str.length; i++) {
+                const char = str[i];
+                const nextChar = str[i+1];
+                
+                if (inQuotes) {
+                    if (char === '"' && nextChar === '"') {
+                        val += '"';
+                        i++; 
+                    } else if (char === '"') {
+                        inQuotes = false;
+                    } else {
+                        val += char;
+                    }
+                } else {
+                    if (char === '"') {
+                        inQuotes = true;
+                    } else if (char === ',') {
+                        row.push(val);
+                        val = '';
+                    } else if (char === '\n' || char === '\r') {
+                        if (char === '\r' && nextChar === '\n') i++;
+                        row.push(val);
+                        result.push(row);
+                        row = [];
+                        val = '';
+                    } else {
+                        val += char;
+                    }
+                }
+            }
+            if (val !== '' || row.length > 0) {
+                row.push(val);
+                result.push(row);
+            }
+            return result;
+        };
+        
+        try {
+            let rows = parseCSV(text);
+            if (rows.length > 0 && rows[0].length > 0 && rows[0][0].charCodeAt(0) === 0xFEFF) {
+                rows[0][0] = rows[0][0].substring(1);
+            }
+            
+            if (rows.length < 2) {
+                event.target.value = '';
+                return showAlert("エラー", "CSVに有効なデータが含まれていません。");
+            }
+            
+            const newQuestions = [];
+            const reverseTypeMap = { '必須問題': 'mandatory', '高難易度': 'hard', '一般問題': 'general', '必須': 'mandatory', '一般': 'general' };
+            
+            for (let i = 1; i < rows.length; i++) {
+                const r = rows[i];
+                if (r.length < 2 || (r.length === 1 && !r[0].trim())) continue;
+                
+                const typeStr = (r[1] || '').trim();
+                const qType = reverseTypeMap[typeStr] || 'general';
+                const qText = (r[2] || '').trim();
+                const choices = [
+                    (r[3] || '').trim(),
+                    (r[4] || '').trim(),
+                    (r[5] || '').trim(),
+                    (r[6] || '').trim()
+                ];
+                while(choices.length < 4) choices.push('');
+                
+                let correctIndex = parseInt(r[7]) - 1;
+                if (isNaN(correctIndex) || correctIndex < 0 || correctIndex > 3) {
+                    correctIndex = 0;
+                }
+                
+                const explanation = (r[8] || '').trim();
+                
+                if (!qText) continue; 
+                
+                newQuestions.push({
+                    id: 'q_' + Date.now() + '_' + Math.floor(Math.random()*1000) + '_' + i,
+                    type: qType,
+                    text: qText,
+                    choices: choices,
+                    correct_index: correctIndex,
+                    explanation: explanation
+                });
+            }
+            
+            if (newQuestions.length === 0) {
+                event.target.value = '';
+                return showAlert("エラー", "読み込める問題データがありませんでした。");
+            }
+            
+            activeQuizQuestions = newQuestions;
+            window.setQuizFilter('all'); 
+            window.updateQuizMaxScore();
+            
+            showAlert("インポート完了", `${newQuestions.length}問の問題データをインポートしました。\n（※必ず「テストを保存する」ボタンを押して確定してください）`);
+            
+        } catch (err) {
+            console.error(err);
+            showAlert("エラー", "CSVの読み込み中にエラーが発生しました。");
+        } finally {
+            event.target.value = '';
+        }
+    };
+    reader.readAsText(file);
+};
+
+// ==========================================
+// 10. テスト実施（受験）機能
+// ==========================================
+let currentQuizIdx = -1;
+
+window.startEvaluationQuiz = (idx) => {
+    const item = selectedEvalDetail.items[idx];
+    if (!item || !item.quiz_data) return;
+    
+    currentQuizIdx = idx;
+    const qData = item.quiz_data;
+    
+    document.getElementById('quiz-execution-title').textContent = qData.quiz_title || 'テスト';
+    
+    const container = document.getElementById('quiz-execution-content');
+    let html = '';
+    
+    const hasPreface = qData.preface && qData.preface.trim() !== '';
+    if (hasPreface) {
+        html += `
+            <div id="quiz-preface-section" style="background: #fffbeb; border: 1px solid #fcd34d; border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem;">
+                <h4 style="margin: 0 0 1rem 0; color: #b45309; font-size: 1.1rem;"><i class="fas fa-info-circle"></i> テストの意義（必ずお読みください）</h4>
+                <div style="font-size: 0.95rem; color: #334155; line-height: 1.6; white-space: pre-wrap; margin-bottom: 1.5rem;">${qData.preface}</div>
+                
+                <label style="display: flex; align-items: center; gap: 0.5rem; padding: 1rem; background: white; border: 2px solid #fbbf24; border-radius: 8px; cursor: pointer;">
+                    <input type="checkbox" id="quiz-preface-agree" onchange="window.toggleQuizQuestionsVisibility(this.checked)" style="width: 1.5rem; height: 1.5rem; accent-color: #d97706;">
+                    <span style="font-weight: 800; color: #b45309; font-size: 1rem;">内容を理解してテストを開始する</span>
+                </label>
+            </div>
+        `;
+    }
+    
+    html += `<div id="quiz-questions-section" style="display: ${hasPreface ? 'none' : 'block'};">`;
+    
+    const th_eval3 = qData.threshold_eval3 !== undefined ? qData.threshold_eval3 : (qData.pass_score || 80);
+    let passText = `合計 ${th_eval3}点以上`;
+    
+    const settings = qData.settings || {};
+    const th_mand = (settings.mandatory && settings.mandatory.pass_score != null) ? settings.mandatory.pass_score : (qData.threshold_mandatory || 0);
+    const th_hard = (settings.hard && settings.hard.pass_score != null) ? settings.hard.pass_score : 0;
+    const th_gen = (settings.general && settings.general.pass_score != null) ? settings.general.pass_score : 0;
+    
+    let subReqs = [];
+    if (th_mand > 0) subReqs.push(`必須問題${th_mand}点以上`);
+    if (th_hard > 0) subReqs.push(`高難易度${th_hard}点以上`);
+    if (th_gen > 0) subReqs.push(`一般問題${th_gen}点以上`);
+    
+    if (subReqs.length > 0) {
+        passText += `（かつ ${subReqs.join('、')}）`;
+    }
+    
+    html += `<div style="margin-bottom: 1rem; color: #475569; font-size: 0.9rem; font-weight: bold;">
+        全 ${qData.questions.length} 問 / 合格基準: ${passText}
+    </div>`;
+    
+    qData.questions.forEach((q, qIdx) => {
+        html += `
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1.5rem; margin-bottom: 1rem;">
+                <h4 style="margin: 0 0 1rem 0; color: #1e293b; font-size: 1rem; line-height: 1.4;">問${qIdx + 1}. ${q.text} <span style="font-size:0.8rem; color:#94a3b8; font-weight:normal;">(${q.points}点)</span></h4>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+        `;
+        q.choices.forEach((choice, cIdx) => {
+            html += `
+                    <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                        <input type="radio" name="quiz_ans_${qIdx}" value="${cIdx}" onchange="window.selectQuizAnswer(${qIdx}, ${cIdx})" style="accent-color: #8b5cf6; width: 1.2rem; height: 1.2rem;">
+                        <span style="font-size: 0.95rem; color: #334155;">${choice}</span>
+                    </label>
+            `;
+        });
+        html += `
+                </div>
+            </div>
+        `;
+    });
+    
+    html += `</div>`; // quiz-questions-section close
+    
+    container.innerHTML = html;
+    document.getElementById('quiz-execution-modal').style.display = 'flex';
+};
+
+window.toggleQuizQuestionsVisibility = (isChecked) => {
+    const section = document.getElementById('quiz-questions-section');
+    if (section) {
+        section.style.display = isChecked ? 'block' : 'none';
+        if (isChecked) {
+            setTimeout(() => {
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+        }
+    }
+};
+
+window.closeEvaluationQuiz = () => {
+    document.getElementById('quiz-execution-modal').style.display = 'none';
+};
+
+window.selectQuizAnswer = (qIdx, cIdx) => {
+    const item = selectedEvalDetail.items[currentQuizIdx];
+    if (item && item.quiz_data && item.quiz_data.questions[qIdx]) {
+        item.quiz_data.questions[qIdx].user_answer = cIdx;
+    }
+};
+
+window.submitEvaluationQuiz = async () => {
+    const item = selectedEvalDetail.items[currentQuizIdx];
+    if (!item || !item.quiz_data) return;
+    
+    const qData = item.quiz_data;
+    
+    // 未回答チェック
+    const unanswered = qData.questions.findIndex(q => q.user_answer === null || q.user_answer === undefined);
+    if (unanswered !== -1) {
+        return showAlert('未回答あり', `問${unanswered + 1} が未回答です。すべての問題に回答してください。`);
+    }
+    
+    // 採点
+    let totalScore = 0;
+    let maxScore = 0;
+    let catScores = { mandatory: 0, hard: 0, general: 0 };
+    qData.questions.forEach(q => {
+        maxScore += q.points;
+        if (q.user_answer === q.correct_index) {
+            totalScore += q.points;
+            if (q.type && catScores[q.type] !== undefined) {
+                catScores[q.type] += q.points;
+            } else {
+                catScores.general += q.points; // fallback
+            }
+        }
+    });
+    
+    const th_eval3 = qData.threshold_eval3 !== undefined ? qData.threshold_eval3 : (qData.pass_score || 80);
+    const th_eval2 = qData.threshold_eval2 !== undefined ? qData.threshold_eval2 : Math.floor((qData.pass_score || 80) / 2);
+    
+    // 評価点の算出 (ボーダー基準)
+    let evalScore = 1;
+    if (totalScore >= th_eval3) {
+        evalScore = 3;
+    } else if (totalScore >= th_eval2) {
+        evalScore = 2;
+    }
+    
+    // 合否判定 (合計点数と各特性ボーダーをすべてクリアしているか)
+    let passed = totalScore >= th_eval3;
+    const settings = qData.settings || {};
+    const th_mand = (settings.mandatory && settings.mandatory.pass_score != null) ? settings.mandatory.pass_score : (qData.threshold_mandatory || 0);
+    const th_hard = (settings.hard && settings.hard.pass_score != null) ? settings.hard.pass_score : 0;
+    const th_gen = (settings.general && settings.general.pass_score != null) ? settings.general.pass_score : 0;
+    
+    if (th_mand > 0 && catScores.mandatory < th_mand) passed = false;
+    if (th_hard > 0 && catScores.hard < th_hard) passed = false;
+    if (th_gen > 0 && catScores.general < th_gen) passed = false;
+    
+    qData.score = totalScore;
+    qData.passed = passed;
+    qData.eval_score = evalScore;
+    qData.completed = true;
+    
+    // 自己評価スコアに反映
+    item.self_score = evalScore;
+    
+    // UIを閉じる
+    document.getElementById('quiz-execution-modal').style.display = 'none';
+    
+    // 画面再描画
+    window.refreshCurrentEvalDetail();
+    
+    // 自動保存
+    try {
+        await updateDoc(doc(db, "t_evaluations", selectedEvalDetail.id), {
+            items: selectedEvalDetail.items,
+            updated_at: new Date().toISOString()
+        });
+        if (window.calculateTotals) window.calculateTotals();
+        let alertMsg = `あなたの得点は ${totalScore}点 / ${maxScore}点 です。`;
+        let subBreakdowns = [];
+        if (th_mand > 0) subBreakdowns.push(`必須問題: ${catScores.mandatory}点`);
+        if (th_hard > 0) subBreakdowns.push(`高難易度: ${catScores.hard}点`);
+        if (th_gen > 0) subBreakdowns.push(`一般問題: ${catScores.general}点`);
+        
+        if (subBreakdowns.length > 0) {
+            alertMsg += `\n（うち ${subBreakdowns.join('、')}）`;
+        }
+        alertMsg += `\n\n結果：${passed ? '合格' : '不合格'}\n評価点として ${evalScore}点 が付与されました。`;
+        await showAlert('採点結果', alertMsg);
+    } catch(e) {
+        console.error("Auto save quiz error", e);
+        showAlert('エラー', 'テスト結果の保存に失敗しました。');
+    }
+};
+
+
+// ==========================================
+// テスト誤答復習モーダル
+// ==========================================
+window.openQuizReviewModal = (quizDataStr) => {
+    let qData;
+    try {
+        qData = JSON.parse(quizDataStr);
+    } catch(e) { return; }
+    
+    let modal = document.getElementById('quiz-review-modal-dynamic');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'quiz-review-modal-dynamic';
+        modal.style.position = 'fixed';
+        modal.style.inset = '0';
+        modal.style.background = 'rgba(15, 23, 42, 0.5)';
+        modal.style.zIndex = '9999999';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+        modal.style.backdropFilter = 'blur(4px)';
+        modal.style.padding = '1rem';
+        modal.style.boxSizing = 'border-box';
+        document.body.appendChild(modal);
+    }
+    
+    const wrongQuestions = qData.questions.filter(q => q.user_answer !== q.correct_index);
+    
+    let questionsHtml = '';
+    wrongQuestions.forEach((q, i) => {
+        const escapeHTML = str => String(str).replace(/[&<>"']/g, match => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[match]));
+        let choicesHtml = '';
+        q.choices.forEach((c, cIdx) => {
+            let badge = '';
+            let border = '1px solid #e2e8f0';
+            let bg = 'white';
+            if (cIdx === q.correct_index) {
+                badge = `<span style="margin-left:auto; background:#10b981; color:white; padding:0.2rem 0.5rem; font-size:0.75rem; border-radius:12px; font-weight:800; white-space:nowrap;"><i class="fas fa-check"></i> 正解</span>`;
+                border = '2px solid #10b981';
+                bg = '#ecfdf5';
+            } else if (cIdx === q.user_answer) {
+                badge = `<span style="margin-left:auto; background:#ef4444; color:white; padding:0.2rem 0.5rem; font-size:0.75rem; border-radius:12px; font-weight:800; white-space:nowrap;"><i class="fas fa-times"></i> あなたの回答</span>`;
+                border = '2px solid #ef4444';
+                bg = '#fef2f2';
+            }
+            
+            choicesHtml += `
+                <div style="padding:0.6rem; margin-bottom:0.4rem; border-radius:6px; border:${border}; background:${bg}; display:flex; align-items:center;">
+                    <span style="font-weight:700; color:#334155;">${escapeHTML(c)}</span>
+                    ${badge}
+                </div>
+            `;
+        });
+        
+        questionsHtml += `
+            <div style="background:white; border:1px solid #cbd5e1; border-radius:8px; padding:1.2rem; margin-bottom:1.5rem; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                <div style="font-weight:800; font-size:1.05rem; color:#1e293b; margin-bottom:1rem; display:flex; gap:0.5rem; align-items:flex-start;">
+                    <span style="background:#ef4444; color:white; width:24px; height:24px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; font-size:0.8rem; flex-shrink:0;">
+                        <i class="fas fa-exclamation"></i>
+                    </span>
+                    <div>${escapeHTML(q.text)}</div>
+                </div>
+                <div style="margin-bottom:1rem;">
+                    ${choicesHtml}
+                </div>
+                ${q.explanation ? `
+                    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:1rem;">
+                        <div style="font-weight:800; color:#475569; font-size:0.85rem; margin-bottom:0.5rem;"><i class="fas fa-lightbulb" style="color:#f59e0b;"></i> 解説</div>
+                        <div style="font-size:0.9rem; color:#334155; line-height:1.5;">${escapeHTML(q.explanation)}</div>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    });
+    
+    modal.innerHTML = `
+        <div class="glass-panel" style="background: #f1f5f9; width: 100%; max-width: 700px; max-height: 90vh; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3);">
+            <div style="padding: 1.2rem 1.5rem; border-bottom: 1px solid #cbd5e1; background: white; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-size: 1.1rem; font-weight: 800; color: #1e293b;"><i class="fas fa-search" style="color:#ef4444;"></i> 誤答の復習 (${wrongQuestions.length}問)</h3>
+                <button type="button" onclick="document.getElementById('quiz-review-modal-dynamic').style.display='none';" style="background:transparent; border:none; font-size:1.4rem; cursor:pointer; color:#94a3b8;"><i class="fas fa-times"></i></button>
+            </div>
+            <div style="padding: 1.5rem; overflow-y: auto; flex-grow: 1;">
+                ${questionsHtml}
+            </div>
+        </div>
+    `;
+    
+    modal.style.display = 'flex';
 };

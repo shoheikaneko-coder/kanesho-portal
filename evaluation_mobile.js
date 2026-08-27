@@ -5,6 +5,7 @@ import { showAlert } from './ui_utils.js';
 // --- State Variables for Mobile ---
 let mobilePeriodSettings = null;
 let mobileActiveEvaluations = [];
+window._masterCacheMobile = { data: null, timestamp: 0 };
 let mobileMyEvaluation = null;
 let mobileSubordinateUsers = [];
 let mobileActiveTab = 'self'; // 'self' or 'subordinates'
@@ -346,6 +347,22 @@ export const evaluationPageHtmlMobile = `
         
         <!-- Content Area -->
         <div class="eval-mob-input-screen" id="eval-mob-input-screen" style="display: none;"></div>
+
+    <!-- モバイル用 フルスクリーン誤答復習パネル -->
+    <div id="mob-quiz-review-panel" style="display: none; position: fixed; inset: 0; background: white; z-index: 9999999; flex-direction: column; overflow: hidden; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
+        <div style="background: #f8fafc; padding: 1rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); flex-shrink: 0;">
+            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 800; color: #1e293b;"><i class="fas fa-search" style="color: #6366f1; margin-right: 0.5rem;"></i>誤答の復習</h3>
+            <button onclick="document.getElementById('mob-quiz-review-panel').style.transform='translateY(100%)'; setTimeout(()=>document.getElementById('mob-quiz-review-panel').style.display='none',300);" style="background: white; border: 1px solid #cbd5e1; width: 36px; height: 36px; border-radius: 50%; font-size: 1.2rem; color: #64748b; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div id="mob-quiz-review-content" style="padding: 1.5rem; overflow-y: auto; flex-grow: 1; background: #fff; padding-bottom: 100px;">
+        </div>
+        <div style="padding: 1rem; border-top: 1px solid #e2e8f0; background: white; flex-shrink: 0;">
+            <button onclick="document.getElementById('mob-quiz-review-panel').style.transform='translateY(100%)'; setTimeout(()=>document.getElementById('mob-quiz-review-panel').style.display='none',300);" style="width: 100%; padding: 1rem; border-radius: 12px; background: #f1f5f9; color: #475569; font-weight: 800; font-size: 1rem; border: none;">シートに戻る</button>
+        </div>
+    </div>
+
         <div class="eval-mob-content" id="eval-mob-content-area">
             <div class="eval-mob-loading">
                 <i class="fas fa-spinner fa-spin fa-2x"></i>
@@ -398,20 +415,34 @@ async function loadInitialDataMobile() {
         // 2. Fetch subordinate users (same logic as PC)
         mobileSubordinateUsers = [];
         
-        // マスタロード
+        // マスタロード（キャッシュと並列取得による高速化）
         let gradeMap = {};
         let routeMap = {};
-        try {
-            const gradesSnap = await getDocs(collection(db, "m_grades"));
-            gradesSnap.forEach(d => {
-                const data = d.data();
-                if (data.grade_code) gradeMap[data.grade_code] = data;
-            });
-            const routesSnap = await getDocs(collection(db, "m_evaluation_routes"));
-            routesSnap.forEach(d => {
-                routeMap[d.id] = d.data();
-            });
-        } catch(e) { console.error("Failed to load grades or routes for mobile:", e); }
+        
+        const now = Date.now();
+        if (window._masterCacheMobile && window._masterCacheMobile.data && (now - window._masterCacheMobile.timestamp < 5 * 60 * 1000)) {
+            gradeMap = window._masterCacheMobile.data.gradeMap;
+            routeMap = window._masterCacheMobile.data.routeMap;
+        } else {
+            try {
+                const [gradesSnap, routesSnap] = await Promise.all([
+                    getDocs(collection(db, "m_grades")),
+                    getDocs(collection(db, "m_evaluation_routes"))
+                ]);
+                gradesSnap.forEach(d => {
+                    const data = d.data();
+                    if (data.grade_code) gradeMap[data.grade_code] = data;
+                });
+                routesSnap.forEach(d => {
+                    routeMap[d.id] = d.data();
+                });
+                
+                window._masterCacheMobile = {
+                    data: { gradeMap, routeMap },
+                    timestamp: now
+                };
+            } catch(e) { console.error("Failed to load grades or routes for mobile:", e); }
+        }
 
         const uSnap = await getDocs(collection(db, "m_users"));
         const allUsers = [];
@@ -519,7 +550,8 @@ function renderMobileView() {
 }
 
 function generateSelfViewHtml() {
-    let html = '';
+        let html = '';
+
     
     // --- Hero Card (Current Evaluation) ---
     if (!mobilePeriodSettings || mobilePeriodSettings.status === 'closed') {
@@ -719,7 +751,7 @@ function bindMobileActionButtons(container) {
             
             let msg = 'この画面は現在準備中です。PC版をご利用ください。';
             if (type === 'self-input') return openMobileInputView('self', mobileMyEvaluation);
-            if (type === 'self-view') msg = '【自己評価確認画面】へ遷移します。\n（※次回のステップで構築します）';
+            if (type === 'self-view') return window.openMobileHistoryView(mobileMyEvaluation);
             if (type === 'history-view') {
                 const evalId = e.currentTarget.dataset.id;
                 openMobileHistoryView(evalId);
@@ -915,6 +947,23 @@ function generateHistoryHtml(e) {
                 <div style="font-weight: 800; color: #1e293b; font-size: 0.95rem; margin-bottom: 0.3rem;">${item.title || item.item_name || ''}</div>
                 <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem; line-height: 1.5;">${(item.description || '').replace(/\n/g, '<br>')}</div>
                 
+                ${item.quiz_data && item.quiz_data.completed ? `
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.8rem; margin-bottom: 1rem; text-align: center;">
+                        <div style="font-size: 0.85rem; font-weight: 700; color: ${item.quiz_data.passed ? '#10b981' : '#ef4444'}; margin-bottom: 0.4rem;">
+                            ${item.quiz_data.passed ? '合格' : '不合格'} (${item.quiz_data.score}点)
+                        </div>
+                        ${(() => {
+                            const wrongCount = item.quiz_data.questions ? item.quiz_data.questions.filter(q => q.user_answer !== q.correct_index).length : 0;
+                            if (wrongCount === 0) {
+                                return '<div style="font-size: 0.75rem; color: #10b981; font-weight: 700;">全問正解！<br>(復習項目なし)</div>';
+                            } else {
+                                const quizDataStr = encodeURIComponent(JSON.stringify(item.quiz_data));
+                                return `<button type="button" onclick="window.openMobileQuizReviewModal(decodeURIComponent('${quizDataStr}'))" style="padding: 0.4rem 1rem; font-size: 0.8rem; font-weight: 700; background: #fef2f2; color: #ef4444; border: 1px solid #fca5a5; border-radius: 8px; cursor: pointer;"><i class="fas fa-search"></i> 誤答を復習</button>`;
+                            }
+                        })()}
+                    </div>
+                ` : ''}
+                
                 <div style="display: flex; gap: 0.5rem; position: relative;">
                     <div style="flex: 1; background: #f8fafc; border-radius: 8px; padding: 0.8rem; text-align: center;">
                         <div style="font-size: 0.7rem; font-weight: 700; color: #475569; margin-bottom: 0.2rem;"><i class="fas fa-user" style="color: #94a3b8; margin-right:4px;"></i>自己評価</div>
@@ -1007,6 +1056,32 @@ function generateInputHtml(mode, isReadOnly = false) {
         <div style="padding-top: 1rem;">
     `;
     
+
+    // 店長が評価する際の「部下育成進捗」アシストウィジェットの構築
+    if (mode === 'manager') {
+        const targetItem = mobileEditingEval.items.find(item => item.title.includes('部下の等級が前回評価よりも上がっている'));
+        if (targetItem) {
+            const hasRankedUpCount = mobileActiveEvaluations.filter(e => {
+                const isSub = mobileSubordinateUsers.some(u => u.id === e.user_id);
+                if (!isSub) return false;
+                const cur = parseInt(e.current_grade) || 0;
+                const nxt = parseInt(e.new_grade) || 0;
+                return nxt > cur && e.status !== 'not_started';
+            }).length;
+            
+            html += `
+                <div style="background: #f0fdf4; border: 1px dashed #86efac; border-radius: 12px; padding: 1.2rem; margin: 0 1rem 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                    <h5 style="margin: 0 0 0.5rem; color: #166534; font-weight: 800; font-size: 0.9rem;"><i class="fas fa-magic"></i> 部下育成責任・自動判定アシスト</h5>
+                    <p style="margin: 0; font-size: 0.8rem; color: #15803d; line-height: 1.5;">
+                        店長マスタ管理下のスタッフ等級推移を自動算出しました：<br>
+                        <strong style="display:inline-block; margin-top:4px;">今期等級が上昇した部下の人数: ${hasRankedUpCount}名</strong> (在職中の部下合計: ${mobileSubordinateUsers.length}名中)<br>
+                        <span style="font-size:0.75rem; display:inline-block; margin-top:4px;">※上記の成果を参考に、「部下の育成責任」の評価点を入力してください。</span>
+                    </p>
+                </div>
+            `;
+        }
+    }
+    
     mobileEditingEval.items.forEach((item, idx) => {
         let currentScore = item.self_score;
         let currentComment = item.self_comment || '';
@@ -1059,14 +1134,65 @@ function generateInputHtml(mode, isReadOnly = false) {
                 `;
             }
         } else {
-            html += `
-                <div class="eval-mob-rating-group" data-idx="${idx}">
-                    ${[1,2,3,4,5].map(score => `
-                        <button class="eval-mob-rating-btn ${currentScore === score ? 'selected' : ''}" data-score="${score}">${score}</button>
-                    `).join('')}
-                </div>
-                <textarea class="eval-mob-comment" id="mob-comment-${idx}" placeholder="評価理由などを入力（任意）">${currentComment}</textarea>
-            `;
+            if (item.quiz_data) {
+                if (item.quiz_data.completed) {
+                    const badgeColor = item.quiz_data.passed ? '#10b981' : '#ef4444';
+                    const passText = item.quiz_data.passed ? '合格' : '不合格';
+                    
+                    if (mode === 'manager') {
+                        const minScore = item.quiz_data.eval_score || 3;
+                        html += `
+                            <div class="eval-mob-rating-group" data-idx="${idx}">
+                                ${[1,2,3,4,5].map(score => {
+                                    const isDisabled = !item.quiz_data.passed || score < minScore;
+                                    const style = isDisabled ? 'opacity:0.3; pointer-events:none;' : '';
+                                    return `<button class="eval-mob-rating-btn ${currentScore === score ? 'selected' : ''}" data-score="${score}" style="${style}">${score}</button>`;
+                                }).join('')}
+                            </div>
+                            <textarea class="eval-mob-comment" id="mob-comment-${idx}" placeholder="評価理由などを入力（任意）">${currentComment}</textarea>
+                        `;
+                    } else if (mode === 'self') {
+                        html += `
+                            <div style="text-align: center; width: 100%; margin: 1rem 0;">
+                                <div style="font-weight: 800; font-size: 1.5rem; color: #3b82f6;">${item.self_score || '-'}</div>
+                                <div style="font-size: 0.9rem; color: ${badgeColor}; font-weight: 700; margin-top: 0.2rem;">
+                                    ${passText} (${item.quiz_data.score}点)
+                                </div>
+                            </div>
+                            <textarea class="eval-mob-comment" id="mob-comment-${idx}" placeholder="評価理由などを入力（任意）">${currentComment}</textarea>
+                        `;
+                    } else {
+                        html += `
+                            <div style="text-align: center; width: 100%; margin: 1rem 0;">
+                                <div style="font-weight: 800; font-size: 1.5rem; color: #3b82f6;">${currentScore || '-'}</div>
+                            </div>
+                            <textarea class="eval-mob-comment" id="mob-comment-${idx}" placeholder="評価理由などを入力（任意）">${currentComment}</textarea>
+                        `;
+                    }
+                } else {
+                    if (mode === 'self') {
+                        html += `
+                            <div style="margin: 1rem 0; text-align: center;">
+                                <button type="button" class="btn btn-primary" onclick="if(window.startEvaluationQuiz) { window.startEvaluationQuiz(${idx}); } else { alert('PC版からテストを実施してください'); }"
+                                        style="padding: 0.8rem 1.5rem; font-size: 1rem; font-weight: 800; border-radius: 8px; background: #8b5cf6; border: none; width: 100%; box-shadow: 0 4px 6px rgba(139, 92, 246, 0.2);">
+                                    <i class="fas fa-edit"></i> 試験を実施
+                                </button>
+                            </div>
+                        `;
+                    } else {
+                        html += `<div style="font-size: 0.9rem; color: #94a3b8; text-align: center; width: 100%; margin: 1rem 0;">未受験</div>`;
+                    }
+                }
+            } else {
+                html += `
+                    <div class="eval-mob-rating-group" data-idx="${idx}">
+                        ${[1,2,3,4,5].map(score => `
+                            <button class="eval-mob-rating-btn ${currentScore === score ? 'selected' : ''}" data-score="${score}">${score}</button>
+                        `).join('')}
+                    </div>
+                    <textarea class="eval-mob-comment" id="mob-comment-${idx}" placeholder="評価理由などを入力（任意）">${currentComment}</textarea>
+                `;
+            }
         }
         
         html += `
@@ -1261,9 +1387,19 @@ function bindMobileInputEvents(mode) {
             }
             confirmMsg = '面談記録を提出し、社長確認待ちへ進めます。よろしいですか？';
         } else {
-            if (mode === 'primary') incomplete = mobileEditingEval.items.some(it => !it.primary_score);
-            else if (mode === 'manager') incomplete = mobileEditingEval.items.some(it => !it.manager_score);
-            else incomplete = mobileEditingEval.items.some(it => !it.self_score);
+            if (mode === 'primary') {
+                incomplete = mobileEditingEval.items.some(it => {
+                    if (it.quiz_data && it.quiz_data.completed && !it.quiz_data.passed) return false;
+                    return !it.primary_score;
+                });
+            } else if (mode === 'manager') {
+                incomplete = mobileEditingEval.items.some(it => {
+                    if (it.quiz_data && it.quiz_data.completed && !it.quiz_data.passed) return false;
+                    return !it.manager_score;
+                });
+            } else {
+                incomplete = mobileEditingEval.items.some(it => !it.self_score);
+            }
             
             if (incomplete) {
                 return showAlert('入力が完了していません', '未入力の評価項目があります。<br>すべての項目に点数をつけてから提出してください。');
@@ -1290,6 +1426,15 @@ function bindMobileInputEvents(mode) {
                 const isSelfSub = mobileEditingEval.is_self_submitted || false;
 
                 let nextStatus = mobileEditingEval.status;
+                // 不合格でロックされた項目の点数を自動補完
+                mobileEditingEval.items.forEach(it => {
+                    if (it.quiz_data && it.quiz_data.completed && !it.quiz_data.passed) {
+                        const forcedScore = it.quiz_data.eval_score || 1;
+                        if (!it.primary_score) it.primary_score = forcedScore;
+                        if (!it.manager_score) it.manager_score = forcedScore;
+                    }
+                });
+
                 let updateData = {
                     items: mobileEditingEval.items,
                     updated_at: new Date().toISOString()
@@ -1470,4 +1615,56 @@ window.showEvalItemCommentModal = function(idx) {
     
     modal.innerHTML = html;
     modal.style.display = 'flex';
+};
+
+window.openMobileQuizReviewModal = function(quizDataStr) {
+    const qData = JSON.parse(decodeURIComponent(quizDataStr));
+    const container = document.getElementById('mob-quiz-review-content');
+    container.innerHTML = '';
+    
+    const wrongs = qData.questions.filter(q => q.user_answer !== q.correct_index);
+    if (wrongs.length === 0) {
+        container.innerHTML = '<div style="text-align:center; color:#10b981; font-weight:800; padding:2rem 0;">全問正解です！<br>復習する項目はありません。</div>';
+    } else {
+        wrongs.forEach((q, idx) => {
+            const isCorrect = q.user_answer === q.correct_index;
+            const ansText = q.user_answer !== null && q.user_answer !== undefined ? q.choices[q.user_answer] : '未回答';
+            const correctText = q.choices[q.correct_index];
+            
+            container.innerHTML += `
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.2rem; margin-bottom: 1.5rem; position: relative; overflow: hidden;">
+                    <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: #ef4444;"></div>
+                    <div style="font-size: 0.75rem; color: #ef4444; font-weight: 800; margin-bottom: 0.5rem;"><i class="fas fa-times-circle"></i> 不正解</div>
+                    <p style="margin: 0 0 1rem; font-size: 0.95rem; font-weight: 800; color: #1e293b; line-height: 1.5;">${q.question}</p>
+                    
+                    <div style="background: white; border-radius: 8px; padding: 0.8rem; margin-bottom: 0.8rem; border: 1px solid #fecaca;">
+                        <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; margin-bottom: 0.2rem;">あなたの回答</div>
+                        <div style="color: #ef4444; font-weight: 800; font-size: 0.9rem;">${ansText}</div>
+                    </div>
+                    
+                    <div style="background: white; border-radius: 8px; padding: 0.8rem; margin-bottom: 1rem; border: 1px solid #a7f3d0;">
+                        <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; margin-bottom: 0.2rem;">正解</div>
+                        <div style="color: #10b981; font-weight: 800; font-size: 0.9rem;">${correctText}</div>
+                    </div>
+                    
+                    ${q.explanation ? `
+                        <div style="background: #eff6ff; border-radius: 8px; padding: 1rem; border-left: 3px solid #3b82f6;">
+                            <div style="font-size: 0.75rem; color: #2563eb; font-weight: 800; margin-bottom: 0.4rem;"><i class="fas fa-lightbulb"></i> 解説</div>
+                            <p style="margin: 0; font-size: 0.85rem; color: #1e3a8a; line-height: 1.6;">${q.explanation}</p>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        });
+    }
+    
+    const panel = document.getElementById('mob-quiz-review-panel');
+    // Ensure it's at the root body level to avoid stacking context issues
+    if (panel.parentElement !== document.body) {
+        document.body.appendChild(panel);
+    }
+    panel.style.display = 'flex';
+    // Trigger reflow for transition
+    void panel.offsetWidth;
+    panel.style.transform = 'translateY(0)';
 };
