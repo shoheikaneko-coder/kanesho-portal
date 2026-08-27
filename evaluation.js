@@ -5943,9 +5943,9 @@ window.submitEvaluationQuiz = async () => {
     document.getElementById('quiz-execution-modal').style.display = 'none';
     
     // 画面再描画
-    if (window.appState && window.appState.isMobileMode && window.openMobileInputView) {
+    if (window.mobileEditingEval && typeof window.openMobileInputView === 'function') {
         window.openMobileInputView(selectedEvalDetail.currentMode, selectedEvalDetail, selectedEvalDetail.isReadOnly);
-    } else {
+    } else if (typeof window.refreshCurrentEvalDetail === 'function') {
         window.refreshCurrentEvalDetail();
     }
     
