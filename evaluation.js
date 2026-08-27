@@ -3675,6 +3675,10 @@ function renderModalFooter(container, mode) {
                 renderActiveTabContent();
 
                 showAlert('提出完了', '提出が完了しました。上長から面談日についての連絡が来るまでお待ちください。');
+                
+                if (window.mobileEditingEval && typeof window.closeMobileInputView === 'function') {
+                    window.closeMobileInputView();
+                }
             } catch(e) {
                 console.error(e);
                 showAlert('エラー', `提出処理に失敗しました。<br><br><span style="font-size:0.8rem;color:#ef4444;word-break:break-all;">【システムエラー詳細】<br>${e.message || e.toString()}</span>`);
@@ -3850,6 +3854,10 @@ function renderModalFooter(container, mode) {
                 renderActiveTabContent();
 
                 showAlert('完了', successMsg);
+                
+                if (window.mobileEditingEval && typeof window.closeMobileInputView === 'function') {
+                    window.closeMobileInputView();
+                }
             } catch(e) {
                 console.error(e);
                 showAlert('エラー', `送信処理に失敗しました。<br><br><span style="font-size:0.8rem;color:#ef4444;word-break:break-all;">【システムエラー詳細】<br>${e.message || e.toString()}</span>`);

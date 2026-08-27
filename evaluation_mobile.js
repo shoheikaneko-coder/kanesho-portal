@@ -1658,7 +1658,9 @@ window.openMobileQuizReviewModal = function(quizDataStr) {
                 <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.2rem; margin-bottom: 1.5rem; position: relative; overflow: hidden;">
                     <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: #ef4444;"></div>
                     <div style="font-size: 0.75rem; color: #ef4444; font-weight: 800; margin-bottom: 0.5rem;"><i class="fas fa-times-circle"></i> 不正解</div>
-                    <p style="margin: 0 0 1rem; font-size: 0.95rem; font-weight: 800; color: #1e293b; line-height: 1.5;">${q.question}</p>
+                    <p style="margin: 0 0 1rem; font-size: 0.95rem; font-weight: 800; color: #1e293b; line-height: 1.5;">
+                        ${String(q.text || '').replace(/[&<>"']/g, match => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[match]))}
+                    </p>
                     
                     <div style="background: white; border-radius: 8px; padding: 0.8rem; margin-bottom: 0.8rem; border: 1px solid #fecaca;">
                         <div style="font-size: 0.7rem; color: #64748b; font-weight: 700; margin-bottom: 0.2rem;">あなたの回答</div>
@@ -1691,3 +1693,5 @@ window.openMobileQuizReviewModal = function(quizDataStr) {
     void panel.offsetWidth;
     panel.style.transform = 'translateY(0)';
 };
+
+window.closeMobileInputView = closeMobileInputView;
