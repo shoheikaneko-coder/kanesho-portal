@@ -5851,7 +5851,11 @@ window.startEvaluationQuiz = (idx) => {
     html += `</div>`; // quiz-questions-section close
     
     container.innerHTML = html;
-    document.getElementById('quiz-execution-modal').style.display = 'flex';
+    const modalEl = document.getElementById('quiz-execution-modal');
+    if (modalEl && modalEl.parentElement !== document.body) {
+        document.body.appendChild(modalEl);
+    }
+    if (modalEl) modalEl.style.display = 'flex';
 };
 
 window.toggleQuizQuestionsVisibility = (isChecked) => {
