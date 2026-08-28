@@ -1,6 +1,6 @@
 import { db } from './firebase.js';
 import { collection, getDocs, getDoc, doc, query, where, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-import { showAlert } from './ui_utils.js';
+import { showAlert, showConfirm } from './ui_utils.js';
 
 // --- State Variables for Mobile ---
 let mobilePeriodSettings = null;
@@ -523,9 +523,11 @@ async function loadInitialDataMobile() {
         mobileMyEvaluation = null;
         if (mobilePeriodSettings && mobilePeriodSettings.status !== 'closed' && mobilePeriodSettings.active_period) {
             let eSnap;
-            // 管理者（部下がいる）場合は従来通り期全体のデータを取得、一般社員は自分の分だけ取得
-            if (mobileSubordinateUsers.length > 0) {
+            const isAdmin = role === 'Admin' || role === '管理者';
+            if (isAdmin) {
                 eSnap = await getDocs(query(collection(db, "t_evaluations"), where("period", "==", mobilePeriodSettings.active_period)));
+            } else if (mobileSubordinateUsers.length > 0) {
+                eSnap = await getDocs(query(collection(db, "t_evaluations"), where("period", "==", mobilePeriodSettings.active_period), where("store_id", "==", myStore)));
             } else {
                 eSnap = await getDocs(query(collection(db, "t_evaluations"), where("period", "==", mobilePeriodSettings.active_period), where("user_id", "==", currentUser.id)));
             }
@@ -538,20 +540,8 @@ async function loadInitialDataMobile() {
             });
         }
         
-        // 4. Fetch past history for current user
+        // 4. Past history fetching is now lazy-loaded when the History tab is opened
         mobileAllPastHistory = [];
-        const histSnap = await getDocs(query(collection(db, "t_evaluations"), where("user_id", "==", currentUser.id)));
-        histSnap.forEach(d => {
-            const hData = { id: d.id, ...d.data() };
-            if (hData.status === 'approved' || hData.status === 'notified' || hData.is_legacy_archive) {
-                // If the period is not closed, the active period is shown at the top, so exclude it from history
-                const isCurrentActive = mobilePeriodSettings && mobilePeriodSettings.status !== 'closed' && hData.period === mobilePeriodSettings.active_period;
-                if (!isCurrentActive) {
-                    mobileAllPastHistory.push(hData);
-                }
-            }
-        });
-        mobileAllPastHistory.sort((a, b) => b.period.localeCompare(a.period));
         
     } catch (error) {
         console.error("Error loading mobile evaluation data:", error);
@@ -638,36 +628,73 @@ function generateSelfViewHtml() {
         </div>
     `;
     
-    if (mobileAllPastHistory.length === 0) {
-        html += `<div style="text-align:center; padding: 2rem; color: #94a3b8; font-size: 0.9rem;">過去の評価履歴はありません</div>`;
-    } else {
-        mobileAllPastHistory.forEach(h => {
-            const isLegacy = h.is_legacy_archive ? '<span style="background: #cbd5e1; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; margin-left: 0.4rem;">手入力</span>' : '';
-            const score = h.final_total_score || h.manager_total_score || h.self_total_score || '-';
-            const grade = h.new_grade || '-';
-            const evaluator = h.evaluator_name || '管理者(記録なし)';
-            
-            html += `
-                <div class="eval-mob-list-card action-mock-btn" data-type="history-view" data-id="${h.id}" style="display: flex; flex-direction: column; padding: 1.2rem; align-items: stretch; gap: 0.8rem; background: white; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 0.8rem; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
-                        <div style="font-weight: 800; color: #1e293b; font-size: 1.05rem;"><i class="fas fa-clock" style="color:#94a3b8; margin-right:4px;"></i> ${h.period}期 ${isLegacy}</div>
-                        <div style="font-family: monospace; font-size: 1.2rem; font-weight: 900; color: #059669;">${grade}</div>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div style="font-size: 0.85rem; color: #64748b; font-weight: 600;">
-                            最終評価者: <span style="color:#1e293b;">${evaluator}</span>
-                        </div>
-                        <div style="font-size: 0.9rem; font-weight: 700; color: #be123c;">
-                            <span style="font-size:0.75rem; color:#94a3b8; font-weight:600;">確定点数 </span>${score}点
-                        </div>
-                    </div>
-                </div>
-            `;
-        });
-    }
+    html += `
+        <div id="mob-history-container">
+            <button class="btn" style="width: 100%; padding: 1rem; background: white; border: 1px solid #cbd5e1; color: #475569; font-weight: 800; border-radius: 8px;" onclick="window.loadMobileHistory()">
+                <i class="fas fa-download"></i> 過去の履歴を読み込む
+            </button>
+        </div>
+    `;
     
     return html;
 }
+
+window.loadMobileHistory = async function() {
+    const container = document.getElementById('mob-history-container');
+    if (!container) return;
+    const currentUser = window.appState.currentUser;
+    if (!currentUser) return;
+
+    container.innerHTML = `<div style="text-align:center; padding: 2rem; color: #94a3b8;"><i class="fas fa-spinner fa-spin"></i> 読み込み中...</div>`;
+
+    try {
+        mobileAllPastHistory = [];
+        const histSnap = await getDocs(query(collection(db, "t_evaluations"), where("user_id", "==", currentUser.id)));
+        histSnap.forEach(d => {
+            const hData = { id: d.id, ...d.data() };
+            if (hData.status === 'approved' || hData.status === 'notified' || hData.is_legacy_archive) {
+                const isCurrentActive = mobilePeriodSettings && mobilePeriodSettings.status !== 'closed' && hData.period === mobilePeriodSettings.active_period;
+                if (!isCurrentActive) {
+                    mobileAllPastHistory.push(hData);
+                }
+            }
+        });
+        mobileAllPastHistory.sort((a, b) => b.period.localeCompare(a.period));
+
+        if (mobileAllPastHistory.length === 0) {
+            container.innerHTML = `<div style="text-align:center; padding: 2rem; color: #94a3b8; font-size: 0.9rem;">過去の評価履歴はありません</div>`;
+        } else {
+            let html = '';
+            mobileAllPastHistory.forEach(h => {
+                const isLegacy = h.is_legacy_archive ? '<span style="background: #cbd5e1; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; margin-left: 0.4rem;">手入力</span>' : '';
+                const score = h.final_total_score || h.manager_total_score || h.self_total_score || '-';
+                const grade = h.new_grade || '-';
+                const evaluator = h.evaluator_name || '管理者(記録なし)';
+                
+                html += \`
+                    <div class="eval-mob-list-card action-mock-btn" data-type="history-view" data-id="\${h.id}" style="display: flex; flex-direction: column; padding: 1.2rem; align-items: stretch; gap: 0.8rem; background: white; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 0.8rem; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
+                            <div style="font-weight: 800; color: #1e293b; font-size: 1.05rem;"><i class="fas fa-clock" style="color:#94a3b8; margin-right:4px;"></i> \${h.period}期 \${isLegacy}</div>
+                            <div style="font-family: monospace; font-size: 1.2rem; font-weight: 900; color: #059669;">\${grade}</div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="font-size: 0.85rem; color: #64748b; font-weight: 600;">
+                                最終評価者: <span style="color:#1e293b;">\${evaluator}</span>
+                            </div>
+                            <div style="font-size: 0.9rem; font-weight: 700; color: #be123c;">
+                                <span style="font-size:0.75rem; color:#94a3b8; font-weight:600;">確定点数 </span>\${score}点
+                            </div>
+                        </div>
+                    </div>
+                \`;
+            });
+            container.innerHTML = html;
+        }
+    } catch (e) {
+        console.error("Failed to load history:", e);
+        container.innerHTML = `<div style="text-align:center; padding: 2rem; color: #ef4444; font-size: 0.9rem;">履歴の読み込みに失敗しました</div>`;
+    }
+};
 
 function generateSubordinatesViewHtml() {
     let html = `
@@ -726,7 +753,11 @@ function generateSubordinatesViewHtml() {
                     actionBtnHtml = `<button class="eval-mob-sub-btn done action-mock-btn" data-type="sub-view" data-id="${ev.id}">自己評価未入力</button>`;
                 } else if (hasPrimary && !ev.is_primary_submitted) {
                     statusText = '1次評価 入力待ち';
-                    actionBtnHtml = `<button class="eval-mob-sub-btn done action-mock-btn" data-type="sub-view" data-id="${ev.id}">他の評価者が未入力</button>`;
+                    if (role === 'manager') {
+                        actionBtnHtml = `<button class="eval-mob-sub-btn action-mock-btn" style="background:#ef4444; color:white; border-color:#ef4444;" data-type="sub-input" data-role="manager" data-id="${ev.id}">評価を入力する</button>`;
+                    } else {
+                        actionBtnHtml = `<button class="eval-mob-sub-btn done action-mock-btn" data-type="sub-view" data-id="${ev.id}">他の評価者が未入力</button>`;
+                    }
                 } else if (ev.status === 'interviewing') {
                     if (role === 'manager') {
                         statusText = '面談待ち';
@@ -1228,10 +1259,10 @@ function generateInputHtml(mode, isReadOnly = false) {
             <div class="eval-mob-input-card" style="border: 2px solid #059669; padding-bottom: 2rem;">
                 <h4 style="color:#059669; font-weight:800; margin-bottom:1rem;"><i class="fas fa-edit"></i> 面談記録</h4>
                 <label style="font-size:0.8rem; font-weight:700; color:#475569; display:block; margin-bottom:0.3rem;">面談実施日</label>
-                <input type="date" id="mob-interview-date" value="${mobileEditingEval.interview_date || ''}" style="width:100%; padding:0.8rem; border:1px solid #cbd5e1; border-radius:8px; font-size:1rem; margin-bottom:1.2rem; font-family:inherit;" ${isReadOnly ? 'readonly' : ''}>
+                <input type="date" id="mob-interview-date" value="${mobileEditingEval.interview_date || ''}" style="width:100%; box-sizing:border-box; padding:0.8rem; border:1px solid #cbd5e1; border-radius:8px; font-size:1rem; margin-bottom:1.2rem; font-family:inherit;" ${isReadOnly ? 'readonly' : ''}>
                 
                 <label style="font-size:0.8rem; font-weight:700; color:#475569; display:block; margin-bottom:0.3rem;">面談メモ（話し合った内容など）</label>
-                <textarea id="mob-interview-notes" rows="5" placeholder="面談で話し合った内容や育成方針を記入" style="width:100%; padding:0.8rem; border:1px solid #cbd5e1; border-radius:8px; font-size:0.95rem; font-family:inherit; resize:none;" ${isReadOnly ? 'readonly' : ''}>${mobileEditingEval.interview_notes || ''}</textarea>
+                <textarea id="mob-interview-notes" rows="5" placeholder="面談で話し合った内容や育成方針を記入" style="width:100%; box-sizing:border-box; padding:0.8rem; border:1px solid #cbd5e1; border-radius:8px; font-size:0.95rem; font-family:inherit; resize:none;" ${isReadOnly ? 'readonly' : ''}>${mobileEditingEval.interview_notes || ''}</textarea>
             </div>
         `;
         if (mobileEditingEval.president_comment) {
@@ -1435,87 +1466,106 @@ function bindMobileInputEvents(mode) {
             else confirmMsg = '自己評価を提出します。提出後は変更ができなくなりますが、よろしいですか？';
         }
         
-        if (confirm(confirmMsg)) {
-            try {
-                const btn = document.getElementById('btn-mob-submit');
-                const originalText = btn.innerHTML;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 処理中...';
-                btn.disabled = true;
-                
-                const wf = mobileEditingEval.workflow || {};
-                const hasPrimary = !!wf.primary_evaluator;
-                const isPrimarySub = mobileEditingEval.is_primary_submitted || false;
-                const isManagerSub = mobileEditingEval.is_manager_submitted || false;
-                const isSelfSub = mobileEditingEval.is_self_submitted || false;
+        if (!confirm(confirmMsg)) {
+            return;
+        }
 
-                let nextStatus = mobileEditingEval.status;
-                // 不合格でロックされた項目の点数を自動補完
-                mobileEditingEval.items.forEach(it => {
-                    if (it.quiz_data && it.quiz_data.completed && !it.quiz_data.passed) {
-                        const forcedScore = it.quiz_data.eval_score || 1;
-                        if (!it.primary_score) it.primary_score = forcedScore;
-                        if (!it.manager_score) it.manager_score = forcedScore;
-                    }
-                });
+        try {
+            const btn = document.getElementById('btn-mob-submit');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 処理中...';
+            btn.disabled = true;
+            
+            const wf = mobileEditingEval.workflow || {};
+            const hasPrimary = !!wf.primary_evaluator;
+            const isPrimarySub = mobileEditingEval.is_primary_submitted || false;
+            const isManagerSub = mobileEditingEval.is_manager_submitted || false;
+            const isSelfSub = mobileEditingEval.is_self_submitted || false;
 
-                let updateData = {
-                    items: mobileEditingEval.items,
-                    updated_at: new Date().toISOString()
-                };
-                
-                // Collect interview date and notes
-                if (mode === 'interview') {
-                    const dateEl = document.getElementById('mob-interview-date');
-                    const notesEl = document.getElementById('mob-interview-notes');
-                    if (dateEl) {
-                        updateData.interview_date = dateEl.value;
-                        mobileEditingEval.interview_date = dateEl.value;
-                    }
-                    if (notesEl) {
-                        updateData.interview_notes = notesEl.value;
-                        mobileEditingEval.interview_notes = notesEl.value;
-                    }
+            let nextStatus = mobileEditingEval.status;
+            // 不合格でロックされた項目の点数を自動補完
+            mobileEditingEval.items.forEach(it => {
+                if (it.quiz_data && it.quiz_data.completed && !it.quiz_data.passed) {
+                    const forcedScore = it.quiz_data.eval_score || 1;
+                    if (!it.primary_score) it.primary_score = forcedScore;
+                    if (!it.manager_score) it.manager_score = forcedScore;
                 }
+            });
 
-                // Collect comments before submitting
-                mobileEditingEval.items.forEach((it, idx) => {
-                    const ta = document.getElementById(`mob-comment-${idx}`);
-                    if (ta) {
-                        if (mode === 'primary') it.primary_comment = ta.value;
-                        else if (mode === 'manager') it.manager_comment = ta.value;
-                        else it.self_comment = ta.value;
-                    }
-                });
+            let updateData = {
+                items: mobileEditingEval.items,
+                updated_at: new Date().toISOString()
+            };
+            
+            // Collect interview date and notes
+            if (mode === 'interview') {
+                const dateEl = document.getElementById('mob-interview-date');
+                const notesEl = document.getElementById('mob-interview-notes');
+                if (dateEl) {
+                    updateData.interview_date = dateEl.value;
+                    mobileEditingEval.interview_date = dateEl.value;
+                }
+                if (notesEl) {
+                    updateData.interview_notes = notesEl.value;
+                    mobileEditingEval.interview_notes = notesEl.value;
+                }
+            }
 
-                // Calculate total
-                let sum = 0;
+            // Collect comments before submitting
+            mobileEditingEval.items.forEach((it, idx) => {
+                const ta = document.getElementById(`mob-comment-${idx}`);
+                if (ta) {
+                    if (mode === 'primary') it.primary_comment = ta.value;
+                    else if (mode === 'manager') it.manager_comment = ta.value;
+                    else it.self_comment = ta.value;
+                }
+            });
+
+            // Calculate total
+            let sum = 0;
+            
+            if (mode === 'interview') {
+                nextStatus = 'president_pending';
+            } else if (mode === 'self') {
+                mobileEditingEval.items.forEach(it => sum += (it.self_score || 0));
+                updateData.self_total_score = sum;
+                updateData.is_self_submitted = true;
                 
-                if (mode === 'interview') {
-                    nextStatus = 'president_pending';
-                } else if (mode === 'self') {
-                    mobileEditingEval.items.forEach(it => sum += (it.self_score || 0));
-                    updateData.self_total_score = sum;
-                    updateData.is_self_submitted = true;
-                    
-                    if (hasPrimary && !isPrimarySub) nextStatus = 'self_submitted';
-                    else if (!isManagerSub) nextStatus = hasPrimary ? 'primary_submitted' : 'self_submitted';
-                    else nextStatus = 'interviewing';
-                } else if (mode === 'primary') {
-                    mobileEditingEval.items.forEach(it => sum += (it.primary_score || 0));
-                    updateData.primary_total_score = sum;
-                    updateData.is_primary_submitted = true;
-                    
-                    if (!isSelfSub) nextStatus = 'primary_evaluating'; // waiting for self
-                    else if (!isManagerSub) nextStatus = 'primary_submitted';
-                    else nextStatus = 'interviewing';
-                } else if (mode === 'manager') {
-                    mobileEditingEval.items.forEach(it => sum += (it.manager_score || 0));
-                    updateData.manager_total_score = sum;
-                    updateData.is_manager_submitted = true;
-                    
-                    if (!isSelfSub) nextStatus = 'manager_evaluating';
-                    else if (hasPrimary && !isPrimarySub) nextStatus = 'manager_evaluating';
-                    else nextStatus = 'interviewing';
+                if (hasPrimary && !isPrimarySub) nextStatus = 'self_submitted';
+                else if (!isManagerSub) nextStatus = hasPrimary ? 'primary_submitted' : 'self_submitted';
+                else nextStatus = 'interviewing';
+            } else if (mode === 'primary') {
+                mobileEditingEval.items.forEach(it => sum += (it.primary_score || 0));
+                updateData.primary_total_score = sum;
+                updateData.is_primary_submitted = true;
+                
+                if (!isSelfSub) nextStatus = 'primary_evaluating'; // waiting for self
+                else if (!isManagerSub) nextStatus = 'primary_submitted';
+                else nextStatus = 'interviewing';
+            } else if (mode === 'manager') {
+                mobileEditingEval.items.forEach(it => sum += (it.manager_score || 0));
+                updateData.manager_total_score = sum;
+                updateData.is_manager_submitted = true;
+                
+                if (hasPrimary && !isPrimarySub) {
+                    const skipConfirmed = await showConfirm(
+                        '1次評価スキップの確認',
+                        '現在、1次評価（副店長等）が未完了です。<br><br>1次評価をスキップして全員完了（面談待ち）に進めますか？<br>※「待機する」を選ぶと、あなたの評価は保存された上で1次評価者の入力を待ちます。',
+                        null,
+                        '待機する',
+                        'スキップして完了'
+                    );
+                    if (skipConfirmed) {
+                        updateData.is_primary_submitted = true;
+                        nextStatus = 'interviewing';
+                    } else {
+                        nextStatus = 'self_submitted';
+                    }
+                } else if (!isSelfSub) {
+                    nextStatus = 'manager_evaluating';
+                } else {
+                    nextStatus = 'interviewing';
+                }
                 }
                 
                 updateData.status = nextStatus;

@@ -1399,12 +1399,17 @@ async function loadEvaluationData() {
         // 1. 評価データのロード (権限に応じて最適化)
         const role = user.Role || 'Staff';
         const isAdmin = role === 'Admin' || role === '管理者';
+        const myStore = user.StoreID || user.StoreId;
         let qEvals;
         
-        // 管理者、または部下を持つ評価者の場合は今期の全データを取得、一般スタッフは自分のデータのみ取得
-        if (isAdmin || subordinateUsers.length > 0) {
+        if (isAdmin) {
+            // 管理者は全体管理のために今期の全データを取得
             qEvals = query(collection(db, "t_evaluations"), where("period", "==", period));
+        } else if (subordinateUsers.length > 0) {
+            // 店長・副店長など（部下を持つ評価者）は、自店舗の今期データのみを取得
+            qEvals = query(collection(db, "t_evaluations"), where("period", "==", period), where("store_id", "==", myStore));
         } else {
+            // 一般スタッフは自分のデータのみ取得
             qEvals = query(collection(db, "t_evaluations"), where("period", "==", period), where("user_id", "==", user.id));
         }
         
