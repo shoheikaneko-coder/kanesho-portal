@@ -441,16 +441,19 @@ async function loadInitialDataMobile() {
         // マスタロード（キャッシュと並列取得による高速化）
         let gradeMap = {};
         let routeMap = {};
+        let allUsers = [];
         
         const now = Date.now();
         if (window._masterCacheMobile && window._masterCacheMobile.data && (now - window._masterCacheMobile.timestamp < 5 * 60 * 1000)) {
             gradeMap = window._masterCacheMobile.data.gradeMap;
             routeMap = window._masterCacheMobile.data.routeMap;
+            allUsers = window._masterCacheMobile.data.allUsers || [];
         } else {
             try {
-                const [gradesSnap, routesSnap] = await Promise.all([
+                const [gradesSnap, routesSnap, uSnap] = await Promise.all([
                     getDocs(collection(db, "m_grades")),
-                    getDocs(collection(db, "m_evaluation_routes"))
+                    getDocs(collection(db, "m_evaluation_routes")),
+                    getDocs(collection(db, "m_users"))
                 ]);
                 gradesSnap.forEach(d => {
                     const data = d.data();
@@ -459,17 +462,14 @@ async function loadInitialDataMobile() {
                 routesSnap.forEach(d => {
                     routeMap[d.id] = d.data();
                 });
+                uSnap.forEach(d => allUsers.push({ id: d.id, ...d.data() }));
                 
                 window._masterCacheMobile = {
-                    data: { gradeMap, routeMap },
+                    data: { gradeMap, routeMap, allUsers },
                     timestamp: now
                 };
-            } catch(e) { console.error("Failed to load grades or routes for mobile:", e); }
+            } catch(e) { console.error("Failed to load master data for mobile:", e); }
         }
-
-        const uSnap = await getDocs(collection(db, "m_users"));
-        const allUsers = [];
-        uSnap.forEach(d => allUsers.push({ id: d.id, ...d.data() }));
         
         const role = currentUser.Role || 'Staff';
         const myStore = currentUser.StoreID || currentUser.StoreId;

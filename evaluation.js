@@ -1207,7 +1207,10 @@ async function loadInitialSettingsAndData() {
     }
 
     // 1. シードデータの確認・投入
-    await verifyAndSeedTemplates();
+    if (!window._templatesVerified) {
+        await verifyAndSeedTemplates();
+        window._templatesVerified = true;
+    }
 
     const role = user.Role || 'Staff';
     const myStore = user.StoreID || user.StoreId;
@@ -1245,11 +1248,8 @@ async function loadInitialSettingsAndData() {
             const isAdminEvaluator = isAdmin && (uRoute.primary_evaluator === '社長' || uRoute.secondary_evaluator === '社長');
             
             if (isEvaluator || isAdminEvaluator) {
-                // 自店舗の場合は常に許可
+                // 運用ルールに従い、他店舗のスタッフは評価対象外とする（自店舗のみ許可）
                 if ((u.StoreID || u.StoreId) === myStore) return true;
-                
-                // 他店舗の場合は、社長・統括店長・管理者のみ越境評価を許可
-                if (isAdmin || myJobTitle === '社長' || myJobTitle === '統括店長') return true;
             }
             
             // 【自店舗のフォールバック】店長・統括店長は評価ルート未設定の一般スタッフも強制表示
@@ -1396,9 +1396,18 @@ async function loadEvaluationData() {
     const period = localPeriodSettings.active_period;
 
     try {
-        // 1. 全評価データのロード (Admin/社長用、店長用の範囲)
+        // 1. 評価データのロード (権限に応じて最適化)
         const role = user.Role || 'Staff';
-        const qEvals = query(collection(db, "t_evaluations"), where("period", "==", period));
+        const isAdmin = role === 'Admin' || role === '管理者';
+        let qEvals;
+        
+        // 管理者、または部下を持つ評価者の場合は今期の全データを取得、一般スタッフは自分のデータのみ取得
+        if (isAdmin || subordinateUsers.length > 0) {
+            qEvals = query(collection(db, "t_evaluations"), where("period", "==", period));
+        } else {
+            qEvals = query(collection(db, "t_evaluations"), where("period", "==", period), where("user_id", "==", user.id));
+        }
+        
         const snapEvals = await getDocs(qEvals);
         
         snapEvals.forEach(d => {
