@@ -108,7 +108,8 @@ export const MENU_DEFINITION = [
                 icon: 'fa-store',
                 items: [
                     { id: 'dashboard', name: '分析ダッシュボード', icon: 'fa-chart-line', color: '#3b82f6', desc: '売上・客数・客単価などの分析ダッシュボード' },
-                    { id: 'manager_meeting', name: '店舗PDCA', icon: 'fa-sync-alt', color: '#14b8a6', desc: '店長会議用のPDCA進捗・議事録管理' }
+                    { id: 'manager_meeting', name: '店舗PDCA', icon: 'fa-sync-alt', color: '#14b8a6', desc: '店長会議用のPDCA進捗・議事録管理' },
+                    { id: 'menu_pdca', name: 'メニューPDCA', icon: 'fa-utensils', color: '#f59e0b', desc: '料理長会議・商品改善PDCAの管理' }
                 ]
             },
             {

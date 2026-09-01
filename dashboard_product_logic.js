@@ -1,5 +1,5 @@
 import { db } from './firebase.js';
-import { collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, getDocs, query, where, getDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getEffectivePrice } from './cost_engine.js?v=9';
 
 // モジュールレベルでのデータ保持（再ソート用）
@@ -111,7 +111,9 @@ export async function renderProductAnalysis(containerId, filters) {
         let totalCustomers = 0;
         let monthlySales = [];
 
-        const promises = months.map(async (ym) => {
+        container.innerHTML = ''; // プレースホルダーをクリア
+
+            const promises = months.map(async (ym) => {
             let qPerf = query(collection(db, "t_performance"), where("year_month", "==", ym));
             if (storeId !== 'all') qPerf = query(qPerf, where("store_id", "==", storeId));
             const snapPerf = await getDocs(qPerf);
@@ -178,7 +180,7 @@ export async function renderProductAnalysis(containerId, filters) {
                 prob: totalCustomers > 0 ? (p.qty / totalCustomers) * 100 : 0
             };
         });
-
+        
         lastResults = results;
         lastTotalCustomers = totalCustomers;
 
@@ -530,12 +532,13 @@ function assignAbcRanks(data, metric = 'profit') {
     data.sort((a, b) => b[metric] - a[metric]);
     let cumulative = 0;
     const total = data.reduce((sum, r) => sum + r[metric], 0);
-    data.forEach(r => {
-        cumulative += r[metric];
-        const pct = (total > 0) ? (cumulative / total) * 100 : 100;
-        if (pct <= 70) r.rank = 'A';
-        else if (pct <= 90) r.rank = 'B';
-        else r.rank = 'C';
+    data.forEach(item => {
+        cumulative += item[metric];
+        const cumShare = (total > 0) ? (cumulative / total) : 0;
+        // ABC判定
+        if (cumShare <= 0.7) item.rank = 'A';
+        else if (cumShare <= 0.9) item.rank = 'B';
+        else item.rank = 'C';
     });
 }
 

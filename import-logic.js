@@ -1,5 +1,5 @@
 import { db } from './firebase.js';
-import { collection, doc, setDoc, getDocs, orderBy, query, where, updateDoc, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, doc, setDoc, getDocs, orderBy, query, where, updateDoc, deleteDoc, writeBatch, addDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { processDiniiCSV as processDiniiMasterCSV } from './dinii_import.js';
 
 const SCHEMA_MAP = {
@@ -223,12 +223,83 @@ async function processDiniiCSV(text, filename, logFn) {
         agg.data.total_sales = agg.sales;
         agg.data.is_total = true;
 
-        // マスタ同期
+        // マスタ同期と自動追加
         if (menuItemsMap[dId]) {
             const master = menuItemsMap[dId];
-            if (master.name !== agg.data.menu_name) {
-                await updateDoc(doc(db, "m_menus", master.docId), { name: agg.data.menu_name, updated_at: new Date().toISOString() });
+            if (master.name !== agg.data.menu_name || (master.sales_price || 0) !== (agg.unitPrice || 0)) {
+                await updateDoc(doc(db, "m_menus", master.docId), { 
+                    name: agg.data.menu_name, 
+                    sales_price: agg.unitPrice || 0,
+                    updated_at: new Date().toISOString() 
+                });
+                if (master.item_id) {
+                    await updateDoc(doc(db, "m_items", master.item_id), {
+                        name: agg.data.menu_name,
+                        updated_at: new Date().toISOString()
+                    });
+                }
             }
+        } else {
+            // マスタに存在しない場合は新規登録
+            const itemId = `item_${Date.now()}_${Math.floor(Math.random()*1000)}`;
+            const docId = `${agg.data.store_id}_${dId}`;
+            
+            // 1. m_items 作成
+            await setDoc(doc(db, "m_items", itemId), {
+                id: itemId,
+                name: agg.data.menu_name,
+                category: "未分類",
+                store_id: agg.data.store_id,
+                unit: "個",
+                content_amount: 0,
+                is_sales_menu: true,
+                furigana: "",
+                notes: "Dinii売上インポートにより自動作成",
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            });
+
+            // 2. m_menus 作成
+            await setDoc(doc(db, "m_menus", docId), {
+                id: docId,
+                item_id: itemId,
+                dinii_id: dId,
+                name: agg.data.menu_name,
+                category: "未分類",
+                store_id: agg.data.store_id,
+                sales_price: agg.unitPrice || 0,
+                variants: [{
+                    choice_id: "",
+                    choice_name: "",
+                    sales_price: agg.unitPrice || 0,
+                    last_month_sales: agg.qty,
+                    is_primary: true,
+                    tax_type: "8%",
+                    recipe: [],
+                    recipe_status: "pending"
+                }],
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            });
+
+            // レシピ未登録通知を追加
+            try {
+                await addDoc(collection(db, "notifications"), {
+                    type: "recipe_missing",
+                    status: "pending",
+                    menu_name: agg.data.menu_name,
+                    store_id: agg.data.store_id,
+                    store_name: "インポート",
+                    menu_id: itemId,
+                    created_at: new Date().toISOString(),
+                    message: `新規メニュー「${agg.data.menu_name}」のレシピが未登録です`
+                });
+            } catch (err) {
+                console.error("Notification creation failed:", err);
+            }
+            
+            // 以降の行で重複して作られないようキャッシュを更新
+            menuItemsMap[dId] = { docId: docId, item_id: itemId, name: agg.data.menu_name, sales_price: agg.unitPrice || 0 };
         }
 
         // 重複防止のクリーンアップ

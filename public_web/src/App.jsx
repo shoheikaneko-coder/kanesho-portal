@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { db } from './firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore/lite';
 import './App.css';
 
 function App() {
@@ -13,11 +13,16 @@ function App() {
     'dry': [], 'balanced': [], 'fruity': []
   });
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('dry'); // dry, balanced, fruity, archive
   
   // Modal State
   const [selectedArchive, setSelectedArchive] = useState(null);
   const [isModalFlipped, setIsModalFlipped] = useState(false);
+
+  // Tab state: 'active' or 'archive'
+  const [activeTab, setActiveTab] = useState('dry');
+
+  // Archive display limit
+  const [displayLimit, setDisplayLimit] = useState(4);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -36,42 +41,36 @@ function App() {
     }
   }, [activeTab]);
 
+  const [archiveLoaded, setArchiveLoaded] = useState(false);
+  const [mastersCache, setMastersCache] = useState({});
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         const masterRef = collection(db, 'sake_master');
-        const masterSnap = await getDocs(query(masterRef, where('is_deleted', '==', false)));
-        const masters = {};
-        masterSnap.forEach(doc => { masters[doc.id] = { id: doc.id, ...doc.data() }; });
-
         const slotsRef = collection(db, 'daily_sake_slots');
-        const activeSnap = await getDocs(query(slotsRef, where('is_deleted', '==', false), where('is_archived', '==', false)));
-        const archSnap = await getDocs(query(slotsRef, where('is_deleted', '==', false), where('is_archived', '==', true)));
-        
+
+        const [masterSnap, activeSnap] = await Promise.all([
+          getDocs(query(masterRef, where('is_deleted', '==', false))),
+          getDocs(query(slotsRef, where('is_deleted', '==', false), where('is_archived', '==', false)))
+        ]);
+
+        const ObjectMasters = {};
+        masterSnap.forEach(doc => { ObjectMasters[doc.id] = { id: doc.id, ...doc.data() }; });
+        setMastersCache(ObjectMasters);
+
         const activeSlots = [];
         activeSnap.forEach(doc => { activeSlots.push({ id: doc.id, ...doc.data() }); });
         activeSlots.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
-
-        const archSlots = [];
-        archSnap.forEach(doc => { archSlots.push({ id: doc.id, ...doc.data() }); });
-        // In-memory sort by updated_at (descending) to avoid missing index errors
-        archSlots.sort((a, b) => {
-          const tA = a.updated_at?.toMillis() || 0;
-          const tB = b.updated_at?.toMillis() || 0;
-          return tB - tA;
-        });
 
         const newLineup = {
           'dry': { current: null, queued: [] },
           'balanced': { current: null, queued: [] },
           'fruity': { current: null, queued: [] }
         };
-        const newArchive = {
-          'dry': [], 'balanced': [], 'fruity': []
-        };
 
         activeSlots.forEach(slot => {
-          const master = masters[slot.sake_id];
+          const master = ObjectMasters[slot.sake_id];
           if (!master) return;
           const type = slot.taste_type;
           if (newLineup[type]) {
@@ -83,20 +82,7 @@ function App() {
           }
         });
 
-        archSlots.forEach(slot => {
-          const master = masters[slot.sake_id];
-          if (!master) return;
-          const type = slot.taste_type;
-          if (newArchive[type]) {
-            newArchive[type].push({
-              master: master,
-              archivedAt: slot.updated_at?.toDate() || null
-            });
-          }
-        });
-
         setLineup(newLineup);
-        setArchiveLineup(newArchive);
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -105,6 +91,50 @@ function App() {
     };
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'archive' || archiveLoaded) return;
+    const fetchArchive = async () => {
+      try {
+        const slotsRef = collection(db, 'daily_sake_slots');
+        const archSnap = await getDocs(query(slotsRef, where('is_deleted', '==', false), where('is_archived', '==', true)));
+        
+        const archSlots = [];
+        archSnap.forEach(doc => { archSlots.push({ id: doc.id, ...doc.data() }); });
+        archSlots.sort((a, b) => {
+          const tA = a.updated_at?.toMillis() || 0;
+          const tB = b.updated_at?.toMillis() || 0;
+          return tB - tA;
+        });
+
+        const newArchive = {
+          'dry': [], 'balanced': [], 'fruity': []
+        };
+        const seenSakeIds = new Set();
+
+        archSlots.forEach(slot => {
+          if (seenSakeIds.has(slot.sake_id)) return;
+          
+          const master = mastersCache[slot.sake_id];
+          if (!master) return;
+          const type = slot.taste_type;
+          if (newArchive[type]) {
+            newArchive[type].push({
+              master: master,
+              archivedAt: slot.updated_at?.toDate() || null
+            });
+            seenSakeIds.add(slot.sake_id);
+          }
+        });
+
+        setArchiveLineup(newArchive);
+        setArchiveLoaded(true);
+      } catch (error) {
+        console.error("Error fetching archive data:", error);
+      }
+    };
+    fetchArchive();
+  }, [activeTab, archiveLoaded, mastersCache]);
 
   const openFlipModal = (item) => {
     setSelectedArchive(item);
@@ -136,7 +166,7 @@ function App() {
           <div className="dashboard-top">
             <div className="dashboard-image-col">
               <div className="dashboard-badge">抜栓中</div>
-              <img src={c.image_url || 'https://via.placeholder.com/200x300?text=No+Image'} alt={c.brand_name} className="dashboard-image" />
+              <img loading="lazy" src={c.image_url || 'https://via.placeholder.com/200x300?text=No+Image'} alt={c.brand_name} className="dashboard-image" />
             </div>
             <div className="dashboard-specs-col">
               <h3 className="dash-title">{c.brand_name}</h3>
@@ -145,25 +175,25 @@ function App() {
               <div className="spec-list">
                 {c.rice_type && (
                   <div className="spec-item">
-                    <span className="spec-label"><i className="fas fa-seedling"></i> 使用米</span>
+                    <span className="spec-label">🌱 使用米</span>
                     <span className="spec-value">{c.rice_type}</span>
                   </div>
                 )}
                 {c.sake_meter_value && (
                   <div className="spec-item">
-                    <span className="spec-label"><i className="fas fa-tachometer-alt"></i> 日本酒度</span>
+                    <span className="spec-label">🍶 日本酒度</span>
                     <span className="spec-value">{c.sake_meter_value}</span>
                   </div>
                 )}
                 {(c.sake_category || c.polishing_ratio) && (
                   <div className="spec-item">
-                    <span className="spec-label"><i className="fas fa-tag"></i> 種別</span>
+                    <span className="spec-label">🏷 種別</span>
                     <span className="spec-value">{c.sake_category || (c.polishing_ratio ? c.polishing_ratio + '%' : '')}</span>
                   </div>
                 )}
                 {c.alcohol_percentage && (
                   <div className="spec-item">
-                    <span className="spec-label"><i className="fas fa-wine-glass"></i> 度数</span>
+                    <span className="spec-label">🍷 度数</span>
                     <span className="spec-value">{c.alcohol_percentage}</span>
                   </div>
                 )}
@@ -190,7 +220,7 @@ function App() {
         <div className="scroll-container">
           {data.queued.map((q, idx) => (
             <div key={idx} className="poster-card">
-              <img src={q.image_url || 'https://via.placeholder.com/150x200?text=No+Image'} alt={q.brand_name} className="poster-image" />
+              <img loading="lazy" src={q.image_url || 'https://via.placeholder.com/150x200?text=No+Image'} alt={q.brand_name} className="poster-image" />
               <div className="poster-content">
                 <p className="poster-title">{q.brand_name}</p>
                 <p className="poster-subtitle">{q.brewery_name}</p>
@@ -203,40 +233,66 @@ function App() {
   };
 
   const renderArchiveTab = () => {
+    const hasMore = archiveLineup.fruity.length > displayLimit || 
+                    archiveLineup.balanced.length > displayLimit || 
+                    archiveLineup.dry.length > displayLimit;
+
     return (
       <div style={{ marginBottom: 40, animation: 'fadeIn 0.5s ease' }}>
         <h3 style={{ fontSize: '1.1rem', textAlign: 'center', marginBottom: '20px', color: 'var(--text-sub)' }}>
-          <i className="fas fa-book"></i> 過去の提供銘柄
+          📖 過去の提供銘柄
         </h3>
         <div className="archive-gallery">
           {/* 左列：フルーティ */}
           <div className="archive-col">
             <div className="archive-col-header">フルーティ</div>
-            {archiveLineup.fruity.map((item, idx) => (
+            {archiveLineup.fruity.slice(0, displayLimit).map((item, idx) => (
               <div key={idx} className="archive-item" onClick={() => openFlipModal(item)}>
-                <img src={item.master.image_url || 'https://via.placeholder.com/150'} alt={item.master.brand_name} />
+                <img loading="lazy" src={item.master.image_url || 'https://via.placeholder.com/150'} alt={item.master.brand_name} />
               </div>
             ))}
           </div>
           {/* 中央列：バランス */}
           <div className="archive-col">
             <div className="archive-col-header">バランス</div>
-            {archiveLineup.balanced.map((item, idx) => (
+            {archiveLineup.balanced.slice(0, displayLimit).map((item, idx) => (
               <div key={idx} className="archive-item" onClick={() => openFlipModal(item)}>
-                <img src={item.master.image_url || 'https://via.placeholder.com/150'} alt={item.master.brand_name} />
+                <img loading="lazy" src={item.master.image_url || 'https://via.placeholder.com/150'} alt={item.master.brand_name} />
               </div>
             ))}
           </div>
           {/* 右列：辛口 */}
           <div className="archive-col">
             <div className="archive-col-header">辛口</div>
-            {archiveLineup.dry.map((item, idx) => (
+            {archiveLineup.dry.slice(0, displayLimit).map((item, idx) => (
               <div key={idx} className="archive-item" onClick={() => openFlipModal(item)}>
-                <img src={item.master.image_url || 'https://via.placeholder.com/150'} alt={item.master.brand_name} />
+                <img loading="lazy" src={item.master.image_url || 'https://via.placeholder.com/150'} alt={item.master.brand_name} />
               </div>
             ))}
           </div>
         </div>
+        
+        {hasMore && (
+          <div style={{ textAlign: 'center', marginTop: '30px' }}>
+            <button 
+              onClick={() => setDisplayLimit(prev => prev + 4)}
+              style={{
+                padding: '12px 40px',
+                backgroundColor: '#ffffff',
+                border: '1px solid #e2e8f0',
+                borderRadius: '30px',
+                color: '#475569',
+                fontWeight: 'bold',
+                fontSize: '1rem',
+                cursor: 'pointer',
+                boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              もっと見る ▼
+            </button>
+          </div>
+        )}
       </div>
     );
   };
@@ -247,7 +303,7 @@ function App() {
         <div className="header-top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px' }}>
           {/* 左側のロゴエリア（固定幅） */}
           <div style={{ width: '70px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-            <img src={`${import.meta.env.BASE_URL}logo.png`} alt="かね将ロゴ" style={{ width: '100%', height: 'auto', objectFit: 'contain' }} />
+            <img loading="lazy" src={`${import.meta.env.BASE_URL}logo.webp`} alt="かね将ロゴ" style={{ width: '100%', height: 'auto', objectFit: 'contain' }} />
           </div>
           
           {/* 中央のタイトルエリア */}
@@ -301,7 +357,7 @@ function App() {
             <div className={`flip-card-inner ${isModalFlipped ? 'flipped' : ''}`} onClick={() => setIsModalFlipped(!isModalFlipped)}>
               {/* 表面（全面画像） */}
               <div className="flip-face flip-front">
-                <img src={selectedArchive.master.image_url || 'https://via.placeholder.com/300x450?text=No+Image'} alt={selectedArchive.master.brand_name} />
+                <img loading="lazy" src={selectedArchive.master.image_url || 'https://via.placeholder.com/300x450?text=No+Image'} alt={selectedArchive.master.brand_name} />
               </div>
               
               {/* 裏面（詳細ダッシュボード風） */}
@@ -316,16 +372,16 @@ function App() {
                 
                 <div className="spec-list" style={{ marginBottom: '15px' }}>
                   {selectedArchive.master.rice_type && (
-                    <div className="spec-item"><span className="spec-label"><i className="fas fa-seedling"></i> 使用米</span><span className="spec-value">{selectedArchive.master.rice_type}</span></div>
+                    <div className="spec-item"><span className="spec-label">🌱 使用米</span><span className="spec-value">{selectedArchive.master.rice_type}</span></div>
                   )}
                   {selectedArchive.master.sake_meter_value && (
-                    <div className="spec-item"><span className="spec-label"><i className="fas fa-tachometer-alt"></i> 日本酒度</span><span className="spec-value">{selectedArchive.master.sake_meter_value}</span></div>
+                    <div className="spec-item"><span className="spec-label">🍶 日本酒度</span><span className="spec-value">{selectedArchive.master.sake_meter_value}</span></div>
                   )}
                   {(selectedArchive.master.sake_category || selectedArchive.master.polishing_ratio) && (
-                    <div className="spec-item"><span className="spec-label"><i className="fas fa-tag"></i> 種別</span><span className="spec-value">{selectedArchive.master.sake_category || (selectedArchive.master.polishing_ratio ? selectedArchive.master.polishing_ratio + '%' : '')}</span></div>
+                    <div className="spec-item"><span className="spec-label">🏷 種別</span><span className="spec-value">{selectedArchive.master.sake_category || (selectedArchive.master.polishing_ratio ? selectedArchive.master.polishing_ratio + '%' : '')}</span></div>
                   )}
                   {selectedArchive.master.alcohol_percentage && (
-                    <div className="spec-item"><span className="spec-label"><i className="fas fa-wine-glass"></i> 度数</span><span className="spec-value">{selectedArchive.master.alcohol_percentage}</span></div>
+                    <div className="spec-item"><span className="spec-label">🍷 度数</span><span className="spec-value">{selectedArchive.master.alcohol_percentage}</span></div>
                   )}
                 </div>
                 
@@ -339,12 +395,12 @@ function App() {
 
       <nav className="bottom-nav">
         <div className="nav-item active">
-          <i className="fas fa-wine-bottle" style={{fontSize: '1.2rem'}}></i>
+          <span style={{fontSize: '1.2rem', marginBottom: '4px'}}>🍶</span>
           <span>日本酒</span>
         </div>
         {/* InstagramのURLをここに設定します */}
         <a href="https://www.instagram.com/kaneshow_b1/" target="_blank" rel="noopener noreferrer" className="nav-item" style={{textDecoration: 'none'}}>
-          <i className="fab fa-instagram" style={{fontSize: '1.2rem'}}></i>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginBottom: '4px'}}><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
           <span>Instagram</span>
         </a>
       </nav>

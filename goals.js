@@ -554,6 +554,7 @@ export async function initGoalsStorePage() {
                     store_id: sidSel.value,
                     allocation_pct: d.pct,
                     sales_target: Math.round(annualBudget.total_sales_target * (d.pct / 100)),
+                    customers_target: Math.round(annualBudget.total_cust_target * (d.pct / 100)),
                     weights: storeWeights,
                     updated_at: new Date()
                 });

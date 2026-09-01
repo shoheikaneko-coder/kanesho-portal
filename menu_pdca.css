@@ -1419,3 +1419,24 @@
     .mp-hw-stat-card { min-width: 70px; }
 }
 
+/* ============================================================
+   印刷用スタイル (PDF出力・プリント用)
+   ============================================================ */
+@media print {
+    /* 1. PDCA画面内の不要なボタン等を非表示にする */
+    .mp-back-btn, .mp-detail-actions, .mp-stepper, .mp-list-header {
+        display: none !important;
+    }
+
+    /* 2. PDCAコンテナの余白や装飾をリセット */
+    #menu-pdca-container, #mp-step-content-area, .mp-step-content {
+        display: block !important;
+        position: static !important;
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+    }
+}

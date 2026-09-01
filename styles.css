@@ -3107,3 +3107,34 @@ input:checked + .toggle-slider:before {
   text-align: left;
 }
 
+
+/* ============================================================
+   グローバル印刷用スタイル (@media print)
+   ============================================================ */
+@media print {
+  /* ここに記述されたスタイルは「印刷時」にのみ適用され、画面表示には一切影響しません */
+  
+  /* 1. 全体の高さ制限を解除し、コンテンツが途切れないようにする */
+  html, body, #app-container, .dashboard-layout, .main-content, .page-content {
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    position: static !important;
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    background: white !important;
+  }
+  
+  /* 2. 背景の余計な装飾を非表示にする */
+  .blob, .sidebar-overlay {
+    display: none !important;
+  }
+  
+  /* 3. サイドバーやヘッダーなど、印刷不要なナビゲーションを非表示にする */
+  #sidebar, .top-header-v2, .mobile-app-header, .fab-container, .header-view-menu {
+    display: none !important;
+  }
+}

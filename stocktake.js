@@ -433,6 +433,20 @@ function renderDetailTable(record) {
                     <div style="font-weight: 800; font-size: 0.95rem; color: var(--text-primary);">${items.length} 品目</div>
                 </div>
             </div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; padding-top: 1rem; margin-top: 1rem; border-top: 1px dashed var(--border);">
+                <div>
+                    <div style="font-size: 0.68rem; color: var(--text-secondary); font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.2rem;">ドリンク棚卸額</div>
+                    <div style="font-weight: 900; font-size: 1.1rem; color: #1d4ed8;">¥${(record.total_drink || 0).toLocaleString()}</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.68rem; color: var(--text-secondary); font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.2rem;">フード棚卸額</div>
+                    <div style="font-weight: 900; font-size: 1.1rem; color: #c2410c;">¥${(record.total_food || 0).toLocaleString()}</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.68rem; color: var(--text-secondary); font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.2rem;">その他・未分類</div>
+                    <div style="font-weight: 800; font-size: 0.95rem; color: #475569;">¥${(record.total_other || 0).toLocaleString()}</div>
+                </div>
+            </div>
         </div>
 
         <!-- 明細テーブル -->
@@ -511,12 +525,18 @@ async function recordStocktake() {
         const storeName    = store?.store_name || store?.Name || selectedStoreId;
 
         let totalAmount    = 0;
+        let totalDrink     = 0;
+        let totalFood      = 0;
+        let totalOther     = 0;
         const itemSnapshots = [];
 
         for (const si of storeItems) {
             if (!si.ProductID) continue;
             const item = masterCache.items.find(i => i.id === si.ProductID);
             if (!item) continue;
+
+            // 備品は棚卸対象から除外（計算にも明細にも含めない）
+            if (item.major_category === '備品') continue;
 
             const qty      = Number(si.個数 || 0);
             const convAmt  = Number(si.unit_conversion_amount || 1); // 例: 1箱=500g → 500
@@ -529,6 +549,7 @@ async function recordStocktake() {
             // 例: とさか ¥950/500g, 1パック=500g → ¥950/500×500 = ¥950/パック
             const purchasePrice  = Number(ing.purchase_price  || 0);
             const contentAmount  = Number(ing.content_amount  || 0);
+            const netUnitPrice   = Number(ing.net_unit_price  || 0);
 
             let displayUnitPrice = 0;
             if (purchasePrice > 0 && contentAmount > 0) {
@@ -538,15 +559,24 @@ async function recordStocktake() {
             } else if (purchasePrice > 0 && contentAmount === 0) {
                 // content_amountが未設定の場合: 仕入れ単価をそのまま使用
                 displayUnitPrice = purchasePrice;
+            } else if (netUnitPrice > 0) {
+                // 自家製原材料の場合（仕入単価がなく、正味仕込単価が存在する）
+                displayUnitPrice = netUnitPrice * convAmt;
             }
             // ※ purchasePrice が 0 の場合は ¥0 として記録（マスタ未設定）
 
             const subtotal = displayUnitPrice * qty;
             totalAmount   += subtotal;
 
+            const category = item.major_category || 'その他';
+            if (category === 'ドリンク') totalDrink += subtotal;
+            else if (category === 'フード') totalFood += subtotal;
+            else totalOther += subtotal;
+
             itemSnapshots.push({
                 item_id:      si.ProductID,
                 item_name:    item.name || si.ProductID,
+                major_category: category,
                 display_unit: si.display_unit || item.unit || '',
                 qty:          qty,
                 unit_price:   Math.round(displayUnitPrice * 100) / 100,
@@ -563,6 +593,9 @@ async function recordStocktake() {
             recorded_at:   now,
             recorded_by:   currentUser?.Name || currentUser?.Email || 'unknown',
             total_amount:  Math.round(totalAmount),
+            total_drink:   Math.round(totalDrink),
+            total_food:    Math.round(totalFood),
+            total_other:   Math.round(totalOther),
             note:          '',
             items:         itemSnapshots
         });

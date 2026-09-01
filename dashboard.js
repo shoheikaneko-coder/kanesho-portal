@@ -5,13 +5,13 @@ export const dashboardPageHtml = `
         <!-- フィルターバー -->
         <div class="glass-panel" style="padding: 1.2rem 1.5rem; margin-bottom: 1.5rem;">
             <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
-                <div style="display: flex; flex-direction: column; gap: 0.3rem; flex: 1; min-width: 130px;">
-                    <label style="font-size: 0.78rem; color: var(--text-secondary); font-weight: 600;">開始日</label>
-                    <input type="date" id="dash-date-from" style="padding: 0.5rem 0.8rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem;">
+                <div style="display: flex; flex-direction: column; gap: 0.3rem; flex: 1; min-width: 150px;">
+                    <label style="font-size: 0.78rem; color: var(--text-secondary); font-weight: 600;">開始月</label>
+                    <input type="month" id="dash-month-from" style="padding: 0.5rem 0.8rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem;">
                 </div>
-                <div style="display: flex; flex-direction: column; gap: 0.3rem; flex: 1; min-width: 130px;">
-                    <label style="font-size: 0.78rem; color: var(--text-secondary); font-weight: 600;">終了日</label>
-                    <input type="date" id="dash-date-to" style="padding: 0.5rem 0.8rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem;">
+                <div style="display: flex; flex-direction: column; gap: 0.3rem; flex: 1; min-width: 150px;">
+                    <label style="font-size: 0.78rem; color: var(--text-secondary); font-weight: 600;">終了月</label>
+                    <input type="month" id="dash-month-to" style="padding: 0.5rem 0.8rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem;">
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 0.3rem; flex: 1; min-width: 130px;">
                     <label style="font-size: 0.78rem; color: var(--text-secondary); font-weight: 600;">店舗</label>
@@ -38,6 +38,7 @@ export const dashboardPageHtml = `
             <button class="dash-tab-btn" data-tab="tab-monthly"><i class="fas fa-table"></i> 店舗別・月別集計</button>
             <button class="dash-tab-btn" data-tab="tab-analytics"><i class="fas fa-chart-bar"></i> 多角分析</button>
             <button class="dash-tab-btn" data-tab="tab-product-analysis"><i class="fas fa-box"></i> 商品分析</button>
+            <button class="dash-tab-btn" data-tab="tab-monthly-close"><i class="fas fa-lock" style="color: #f59e0b;"></i> 月次確定処理 (締め)</button>
             <div style="margin-left: auto; padding-left: 1rem; display: flex; align-items: center;">
                 <button id="btn-dash-goto-import" class="btn btn-sm" style="background: var(--surface); border: 1px solid var(--border); color: var(--text-primary); font-weight: 700; white-space: nowrap;">
                     <i class="fas fa-cloud-upload-alt" style="color: var(--primary);"></i> データインポート
@@ -253,6 +254,11 @@ export const dashboardPageHtml = `
             </div>
         </div>
     </div>
+
+    <!-- 月次確定処理タブ用コンテナ -->
+    <div id="tab-monthly-close" class="dash-tab-content" style="display: none; padding: 1rem;">
+        <div id="tab-monthly-close-container"></div>
+    </div>
 `;
 
 window.closeDrilldown = () => {
@@ -316,13 +322,10 @@ const TAX_RATE = 1.1;
 export async function initDashboardPage() {
     injectStyles();
     const now = new Date();
-    // 昨日の日付を算出 (タイムゾーン安全・月末月初またぎ完全対応)
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yestYmd = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
-
-    document.getElementById('dash-date-from').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-    document.getElementById('dash-date-to').value = yestYmd;
+    const currentYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    
+    document.getElementById('dash-month-from').value = currentYm;
+    document.getElementById('dash-month-to').value = currentYm;
 
     // タブ切り替え設定
     const tabBtns = document.querySelectorAll('.dash-tab-btn');
@@ -336,16 +339,33 @@ export async function initDashboardPage() {
             const targetEl = document.getElementById(targetTab);
             if (targetEl) targetEl.style.display = 'block';
 
-            // 商品分析タブが選択された場合、初回読み込みまたは更新を行う
             if (targetTab === 'tab-product-analysis') {
-                const dateFrom    = document.getElementById('dash-date-from').value;
-                const dateTo      = document.getElementById('dash-date-to').value;
+                const monthFrom = document.getElementById('dash-month-from').value;
+                const monthTo = document.getElementById('dash-month-to').value;
                 const storeFilter = document.getElementById('dash-store-filter').value;
+                
+                if (monthFrom && monthTo) {
+                    const [yT, mT] = monthTo.split('-');
+                    const daysInLastMonth = new Date(yT, mT, 0).getDate();
+                    const dateFrom = `${monthFrom}-01`;
+                    const dateTo = `${monthTo}-${String(daysInLastMonth).padStart(2, '0')}`;
+                    
+                    try {
+                        const { renderProductAnalysis } = await import('./dashboard_product_logic.js?v=2');
+                        await renderProductAnalysis('product-analysis-container', { storeId: storeFilter, dateFrom, dateTo });
+                    } catch (e) {
+                        console.error("Product analysis load error:", e);
+                    }
+                }
+            }
+
+            // 月次確定タブが選択された場合
+            if (targetTab === 'tab-monthly-close') {
                 try {
-                    const { renderProductAnalysis } = await import('./dashboard_product_logic.js?v=1');
-                    await renderProductAnalysis('product-analysis-container', { storeId: storeFilter, dateFrom, dateTo });
+                    const { renderMonthlyCloseTab } = await import('./monthly_closing_logic.js?v=12');
+                    await renderMonthlyCloseTab('tab-monthly-close-container');
                 } catch (e) {
-                    console.error("Product analysis load error:", e);
+                    console.error("Monthly close tab load error:", e);
                 }
             }
         });
@@ -368,6 +388,8 @@ export async function initDashboardPage() {
             }
         };
     }
+
+    // 月次確定のモーダルロジックは削除されたため、ここは何もしません
 }
 
 
@@ -462,10 +484,16 @@ async function loadFilterOptions() {
 }
 
 async function refreshDashboard() {
-    const dateFrom    = document.getElementById('dash-date-from').value;
-    const dateTo      = document.getElementById('dash-date-to').value;
+    const monthFrom = document.getElementById('dash-month-from').value;
+    const monthTo = document.getElementById('dash-month-to').value;
     const storeFilter = document.getElementById('dash-store-filter').value;
     const groupFilter = document.getElementById('dash-group-filter').value;
+
+    if (!monthFrom || !monthTo) return;
+    if (monthFrom > monthTo) {
+        alert("開始月は終了月以前を指定してください。");
+        return;
+    }
 
     const dtbody = document.getElementById('daily-table-body');
     const mtbody = document.getElementById('monthly-pivot-body');
@@ -476,306 +504,153 @@ async function refreshDashboard() {
     if (mtbody) mtbody.innerHTML = '<tr><td colspan="12" style="text-align:center; padding:2rem;">集計中...</td></tr>';
 
     try {
-        const storeMap = {};
-        const sSnap = await getDocs(collection(db, "m_stores"));
-        sSnap.forEach(doc => {
-            const data = doc.data();
-            const fullData = { ...data, id: doc.id };
-            storeMap[doc.id] = fullData;
-            const sid = data.store_id || data.StoreID || data['店舗ID'];
-            if (sid) storeMap[String(sid)] = fullData;
-        });
+        let currentMonth = new Date(`${monthFrom}-01`);
+        const endMonth = new Date(`${monthTo}-01`);
+        const targetMonths = [];
+        while(currentMonth <= endMonth) {
+            const ym = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
+            targetMonths.push(ym);
+            currentMonth.setMonth(currentMonth.getMonth() + 1);
+        }
 
-        const pSnap = await getDocs(collection(db, "t_performance"));
-        let daily = [];
-        let groupDaily = []; // フィルターに関わらずグループ全体の計算用
-        pSnap.forEach(doc => {
-            const d = doc.data();
-            const normDate = (d.date || "").replace(/\//g, '-').replace(/\./g, '-');
-            if (normDate >= dateFrom && normDate <= dateTo) {
-                const si = storeMap[d.store_id];
-                const ym = d.year_month || normDate.substring(0, 7);
-                
-                // 全店舗のデータを一旦保持（按分の分母用）
-                groupDaily.push({ ...d, date: normDate, ym: ym });
-
-                // 表示用のフィルタリング
-                if (storeFilter !== 'all' && d.store_id !== storeFilter) return;
-                if (groupFilter !== 'all' && (!si || si.group_name !== groupFilter)) return;
-                daily.push({ ...d, date: normDate, ym: ym });
-            }
-        });
-
-        const groupSalesByYM = {};
-        groupDaily.forEach(r => {
-            const si = storeMap[r.store_id];
-            // 表記揺れに対応したグループ名取得
-            const gn = si ? (si.group_name || si.GroupName || si['グループ名']) : "";
-            if (gn) {
-                const gkey = `${gn}__${r.ym}`;
-                groupSalesByYM[gkey] = (groupSalesByYM[gkey] || 0) + (r.amount || r.sales || 0) / TAX_RATE;
-            }
-        });
-
-        const grouped = {};
-        daily.forEach(r => {
-            const sid = r.store_id || r.StoreID || "";
-            const ym = r.year_month || r.YearMonth || (r.date ? r.date.substring(0, 7) : "");
-            if (!sid || !ym) return;
-
-            const key = `${ym}__${sid}`;
-            if (!grouped[key]) {
-                const si = storeMap[sid] || {};
-                grouped[key] = {
-                    ym: ym,
-                    year_month: ym, // 両方の呼び名に対応
-                    store_id: sid, 
-                    store_name: r.store_name || r.StoreName || si.store_name || si.StoreName,
-                    group_name: si.group_name || si.GroupName || si['グループ名'],
-                    sales: 0, customers: 0, cash_diff: 0, days: 0, 
-                    op_hours: 0, ck_alloc: 0
-                };
-            }
-            const g = grouped[key];
-            g.sales += (r.amount || r.Amount || r['売上税込'] || 0);
-            g.customers += (r.customer_count || r.CustomerCount || r['客数'] || 0);
-            g.cash_diff += (r.cash_diff || r.CashDiff || r['現金過不足'] || 0);
-            g.days += 1;
-        });
-
-        const lSnap = await getDocs(collection(db, "t_attendance"));
-        const laborRaw = [];
+        let combinedRecordsMap = {}; 
+        let combinedGoals = { sales: 0, customers: 0, sph_op: 0, sph_total: 0, dailySalesTargets: {} };
+        let combinedTotalOpH = 0;
+        let combinedTotalCkH = 0;
+        let combinedDaily = [];
+        let combinedStoreMap = {};
+        let combinedUserMap = {};
+        let combinedFilteredLaborMap = {};
         
-        lSnap.forEach(doc => {
-            const d = doc.data();
-            const ts = d.timestamp || d.date || "";
-            // 日付形式をハイフンに統一 (2026/04/15 -> 2026-04-15)
-            const rawDate = d.date || ts.substring(0, 10);
-            const normDate = rawDate.replace(/\//g, '-').replace(/\./g, '-');
+        let laborTargetCount = 0;
+
+        for (const ym of targetMonths) {
+            const fixedDocId = `store_all_month_${ym}`;
+            const fixedSnap = await getDoc(doc(db, "t_fixed_monthly_records", fixedDocId));
             
-            // 判定を1日余裕を持たせる (深夜跨ぎの退勤を拾うため)
-            const dateToPlus1 = new Date(new Date(dateTo).getTime() + 86400000).toISOString().substring(0, 10);
-            if (normDate >= dateFrom && normDate <= dateToPlus1) {
-                laborRaw.push(d);
-            }
-        });
-
-        const storeNameToId = {};
-        Object.entries(storeMap).forEach(([k, v]) => {
-            if (v.store_name) storeNameToId[v.store_name] = v.id || k;
-        });
-
-        const perStaff = {};
-        laborRaw.forEach(r => {
-            const ts = r.timestamp || r.date || r.Date || "";
-            // IDがなければ名前を使用（管理者修正対策）
-            const staffId = String(r.staff_id || r.staff_code || r.EmployeeCode || r.staff_name || r.name || "").trim();
-            
-            // 店舗IDの正規化: 数値IDなどをドキュメントID(ID001等)に変換
-            const rawSid = String(r.store_id || r.StoreID || r.labor_store_id || storeNameToId[r.store_name] || "").trim();
-            const si = storeMap[rawSid];
-            const sid = (si && si.id) ? si.id : rawSid; // マスタにあれば正式なIDを使用
-            
-            if (!ts || !sid || !staffId) return;
-            // 重要: 日付(substring)で区切らず、スタッフID/名前のみでグルーピングする
-            const key = staffId;
-            if (!perStaff[key]) perStaff[key] = [];
-            perStaff[key].push({ ...r, normalized_sid: sid });
-        });
-
-        // スタッフマスタ（ID/従業員番号/名前のすべてで引けるようにインデックスを作成）
-        const uSnap = await getDocs(collection(db, "m_users"));
-        const userMap = {};
-        uSnap.forEach(d => { 
-            const data = d.data();
-            userMap[String(d.id).trim()] = data;
-            const code = data.EmployeeCode || data.staff_code || data.staff_id || "";
-            if (code) userMap[String(code).trim()] = data;
-            // 名前でも引けるように（修正打刻対策）
-            const name = data.staff_name || data.name || "";
-            if (name) userMap[name.trim()] = data;
-        });
-
-        const laborMap = {};      // ym__store_id -> op_hours
-        const ckHoursPool = {};   // group__ym -> total_ck_hours
-        const dailyLaborMap = {}; // date__store_id -> op_hours
-        const dailyCkHoursPool = {}; // group__date -> total_ck_hours
-
-        Object.values(perStaff).forEach(recs => {
-            const first = recs[0];
-            const staffKey = String(first.staff_id || first.staff_code || first.EmployeeCode || first.staff_name || first.name || "").trim();
-            const staffData = userMap[staffKey] || {};
-            const staffStoreId = String(staffData.StoreID || staffData.StoreId || staffData.store_id || "").trim();
-            const homeStore = storeMap[staffStoreId];
-            const isCKStaff = homeStore && String(homeStore.store_type || "").trim() === 'CK';
-            const staffGroupName = homeStore ? String(homeStore.group_name || homeStore.GroupName || homeStore['グループ名'] || "").trim() : "";
-
-            recs.sort((a,b) => new Date(a.timestamp || a.date || 0) - new Date(b.timestamp || b.date || 0));
-            let inT = null, breakStartT = null, totalBreakMs = 0, currentNormalizedSid = "", inDate = null;
-
-            recs.forEach(r => {
-                let ts = r.timestamp || r.date || r.Date || "";
-                if (ts && typeof ts.toDate === 'function') ts = ts.toDate().toISOString();
-                else ts = String(ts);
+            let monthData = null;
+            if (fixedSnap.exists()) {
+                monthData = fixedSnap.data().dashboard_snapshot;
+            } else {
+                const [yStr, mStr] = ym.split('-');
+                const daysInMonth = new Date(yStr, mStr, 0).getDate();
+                const dFrom = `${ym}-01`;
+                const dTo = `${ym}-${String(daysInMonth).padStart(2, '0')}`;
                 
-                if (!ts) return;
-                const type = String(r.type || r.Type || '').toLowerCase();
-                const sid = r.normalized_sid;
-                const isImported = (r.total_labor_hours !== undefined || r.TotalLaborHours !== undefined);
-
-                if (isImported) {
-                    const h = Number(r.total_labor_hours || r.TotalLaborHours || 0);
-                    const rawYm = r.year_month || r.YearMonth || String(ts).substring(0, 7);
-                    const ym = String(rawYm).replace(/\//g, '-');
-                    const rawSid = String(r.store_id || r.StoreID || "").trim();
-                    const si = storeMap[rawSid];
-                    const normSid = (si && si.id) ? si.id : rawSid;
-                    const fallbackSid = (staffData ? (staffData.StoreID || staffData.StoreId) : '') || 'unknown';
-                    const finalSid = normSid || fallbackSid;
-                    
-                    if (ym && ym >= dateFrom.substring(0,7) && ym <= dateTo.substring(0,7)) {
-                        if (isCKStaff && staffGroupName) {
-                            const gkey = `${staffGroupName}__${ym}`;
-                            ckHoursPool[gkey] = (ckHoursPool[gkey] || 0) + h;
-                        } else {
-                            const k = `${ym}__${finalSid}`;
-                            laborMap[k] = (laborMap[k] || 0) + h;
-                        }
+                const { fetchAndCalculateDashboardData } = await import('./dashboard_calculator.js?v=4');
+                monthData = await fetchAndCalculateDashboardData(db, dFrom, dTo, 'all', 'all');
+            }
+            
+            // --- 結合処理 ---
+            if (monthData && monthData.records) {
+                monthData.records.forEach(r => {
+                    const storeMonthKey = `${r.store_id}_${ym}`;
+                    if (!combinedRecordsMap[storeMonthKey]) {
+                        combinedRecordsMap[storeMonthKey] = { ...r };
+                        combinedRecordsMap[storeMonthKey].ym = ym; 
+                    } else {
+                        const c = combinedRecordsMap[storeMonthKey];
+                        c.sales = (c.sales || 0) + (r.sales || 0);
+                        c.customers = (c.customers || 0) + (r.customers || 0);
+                        c.cash_diff = (c.cash_diff || 0) + (r.cash_diff || 0);
+                        c.days = (c.days || 0) + (r.days || 0);
+                        c.op_hours = (c.op_hours || 0) + (r.op_hours || 0);
+                        c.ck_alloc = (c.ck_alloc || 0) + (r.ck_alloc || 0);
                     }
-                } else {
-                    if (type === 'in' || type.includes('check_in') || type.includes('出勤')) {
-                        inT = new Date(ts);
-                        if (!isNaN(inT.getTime())) {
-                            totalBreakMs = 0; breakStartT = null; currentNormalizedSid = sid;
-                            const jstInT = new Date(inT.getTime() + (9 * 60 * 60 * 1000));
-                            inDate = r.date || jstInT.toISOString().substring(0, 10);
-                        } else {
-                            inT = null;
-                        }
-                    } else if (type.includes('break_start') || type.includes('休憩開始')) {
-                        breakStartT = new Date(ts);
-                        if (isNaN(breakStartT.getTime())) breakStartT = null;
-                    } else if ((type.includes('break_end') || type.includes('休憩終了')) && breakStartT) {
-                        const boT = new Date(ts);
-                        if (!isNaN(boT.getTime())) {
-                            totalBreakMs += (boT - breakStartT);
-                        }
-                        breakStartT = null;
-                    } else if ((type === 'out' || type.includes('check_out') || type.includes('退勤')) && inT) {
-                        const outT = new Date(ts);
-                        if (!isNaN(outT.getTime())) {
-                            const netMs = Math.max(0, (outT - inT) - totalBreakMs);
-                            const h = netMs / 3600000;
-                            const shiftDate = inDate || r.date || new Date(inT.getTime() + (9 * 60 * 60 * 1000)).toISOString().substring(0, 10);
-                            const ym = shiftDate.substring(0, 7).replace(/\//g, '-');
-                            const finalSid = currentNormalizedSid || sid;
-
-                            if (shiftDate >= dateFrom && shiftDate <= dateTo) {
-                                if (isCKStaff && staffGroupName) {
-                                    const gkey = `${staffGroupName}__${ym}`;
-                                    const dgkey = `${staffGroupName}__${shiftDate}`;
-                                    ckHoursPool[gkey] = (ckHoursPool[gkey] || 0) + h;
-                                    dailyCkHoursPool[dgkey] = (dailyCkHoursPool[dgkey] || 0) + h;
-                                } else {
-                                    const fallbackSid = (staffData ? (staffData.StoreID || staffData.StoreId) : '') || 'unknown';
-                                    const sidToUse = finalSid || fallbackSid;
-                                    const k = `${ym}__${sidToUse}`;
-                                    const dk = `${shiftDate}__${sidToUse}`;
-                                    laborMap[k] = (laborMap[k] || 0) + h;
-                                    dailyLaborMap[dk] = (dailyLaborMap[dk] || 0) + h;
-                                }
-                            }
-                        }
-                        inT = null; totalBreakMs = 0; breakStartT = null; inDate = null;
+                });
+            }
+            
+            if (monthData && monthData.goals) {
+                combinedGoals.sales += monthData.goals.sales || 0;
+                combinedGoals.customers += monthData.goals.customers || 0;
+                
+                if (monthData.goals.dailySalesTargets) {
+                    for (const [date, val] of Object.entries(monthData.goals.dailySalesTargets)) {
+                        combinedGoals.dailySalesTargets[date] = (combinedGoals.dailySalesTargets[date] || 0) + val;
                     }
                 }
+                
+                if (monthData.goals.sph_op > 0) {
+                    combinedGoals.sph_op += monthData.goals.sph_op || 0;
+                    combinedGoals.sph_total += monthData.goals.sph_total || 0;
+                    laborTargetCount++;
+                }
+            }
+            
+            if (monthData) {
+                combinedTotalOpH += monthData.totalOpH || 0;
+                combinedTotalCkH += monthData.totalCkH || 0;
+                combinedDaily = combinedDaily.concat(monthData.daily || []);
+                Object.assign(combinedStoreMap, monthData.storeMap || {});
+                Object.assign(combinedUserMap, monthData.userMap || {});
+                Object.assign(combinedFilteredLaborMap, monthData.filteredLaborMap || {});
+            }
+        }
+        
+        if (laborTargetCount > 0) {
+            combinedGoals.sph_op = combinedGoals.sph_op / laborTargetCount;
+            combinedGoals.sph_total = combinedGoals.sph_total / laborTargetCount;
+        }
+        
+        let records = Object.values(combinedRecordsMap);
+        let goals = combinedGoals;
+        let totalOpH = combinedTotalOpH;
+        let totalCkH = combinedTotalCkH;
+        let daily = combinedDaily;
+        let storeMap = combinedStoreMap;
+        let userMap = combinedUserMap;
+        let filteredLaborMap = combinedFilteredLaborMap;
+
+        // --- フィルター適用 ---
+        if (storeFilter !== 'all' || groupFilter !== 'all') {
+            records = records.filter(r => {
+                const si = storeMap[r.store_id];
+                if (storeFilter !== 'all' && r.store_id !== storeFilter) return false;
+                if (groupFilter !== 'all' && (!si || si.group_name !== groupFilter)) return false;
+                return true;
             });
-        });
-
-        Object.keys(grouped).forEach(k => {
-            if (laborMap[k]) grouped[k].op_hours = laborMap[k];
-        });
-
-        // グループ全体の「日別売上」を計算（日別CK按分のため）
-        const groupDailySales = {};
-        groupDaily.forEach(r => {
-            const si = storeMap[r.store_id];
-            const gn = si ? (si.group_name || si.GroupName || si['グループ名']) : "";
-            if (gn) {
-                const dgkey = `${gn}__${r.date}`;
-                groupDailySales[dgkey] = (groupDailySales[dgkey] || 0) + (r.amount || r.sales || 0) / TAX_RATE;
-            }
-        });
-
-        // 各日次データに労働時間とCK按分を付与
-        daily.forEach(r => {
-            const sid = r.store_id || r.StoreID || "";
-            const si = storeMap[sid] || {};
-            const gn = si.group_name || si.GroupName || si['グループ名'] || "";
+            daily = daily.filter(r => {
+                const si = storeMap[r.store_id];
+                if (storeFilter !== 'all' && r.store_id !== storeFilter) return false;
+                if (groupFilter !== 'all' && (!si || si.group_name !== groupFilter)) return false;
+                return true;
+            });
+            totalOpH = 0; totalCkH = 0;
+            records.forEach(r => {
+                totalOpH += r.op_hours || 0;
+                totalCkH += r.ck_alloc || 0;
+            });
             
-            const dk = `${r.date}__${sid}`;
-            r.op_hours = dailyLaborMap[dk] || 0;
-            
-            const dgkey = `${gn}__${r.date}`;
-            const totalCkH = dailyCkHoursPool[dgkey] || 0;
-            const gSales = groupDailySales[dgkey] || 0;
-            const exTax = (r.amount || r.Amount || r['売上税込'] || 0) / TAX_RATE;
-            
-            if (gSales > 0 && totalCkH > 0) {
-                r.ck_alloc = totalCkH * (exTax / gSales);
-            } else {
-                r.ck_alloc = 0;
-            }
-        });
+            // 目標値の再計算（全期間・フィルター条件で計算し直す）
+            const [yF, mF] = monthFrom.split('-');
+            const [yT, mT] = monthTo.split('-');
+            const daysInLastMonth = new Date(yT, mT, 0).getDate();
+            const dateFrom = `${monthFrom}-01`;
+            const dateTo = `${monthTo}-${String(daysInLastMonth).padStart(2, '0')}`;
+            const { calculatePeriodGoals } = await import('./dashboard_calculator.js?v=4');
+            goals = await calculatePeriodGoals(db, storeFilter, groupFilter, storeMap, dateFrom, dateTo);
+        }
 
-        Object.values(grouped).forEach(r => {
-            const gn = r.group_name || ""; 
-            const gkey = `${gn}__${r.ym}`;
-            const gTotalSales = groupSalesByYM[gkey] || 0;
-            const totalCkH = ckHoursPool[gkey] || 0;
-            
-            if (gTotalSales > 0) {
-                const ratio = (r.sales / TAX_RATE) / gTotalSales;
-                r.ck_alloc = totalCkH * ratio;
-            } else {
-                r.ck_alloc = 0;
-            }
-        });
-
-        let totalOpH = 0;
-        let totalCkH = 0;
-        const filteredLaborMap = {};
-
-        Object.entries(laborMap).forEach(([key, h]) => {
-            const [ym, sid] = key.split('__');
-            if (storeFilter !== 'all' && sid !== storeFilter) return;
-            const si = storeMap[sid];
-            if (groupFilter !== 'all' && (!si || si.group_name !== groupFilter)) return;
-            totalOpH += h;
-            filteredLaborMap[key] = h;
-        });
-
-        Object.entries(ckHoursPool).forEach(([key, h]) => {
-            const [gn, ym] = key.split('__');
-            if (groupFilter !== 'all' && gn !== groupFilter) return;
-            totalCkH += h;
-        });
-
-        const records = Object.values(grouped);
-        const goals = await calculatePeriodGoals(storeFilter, groupFilter, storeMap, dateFrom, dateTo);
         window.__lastLaborMap = filteredLaborMap;
+        
+        // renderAllTabs に渡す全期間の日付
+        const [yF, mF] = monthFrom.split('-');
+        const [yT, mT] = monthTo.split('-');
+        const daysInLastMonth = new Date(yT, mT, 0).getDate();
+        const dateFrom = `${monthFrom}-01`;
+        const dateTo = `${monthTo}-${String(daysInLastMonth).padStart(2, '0')}`;
 
         // 全タブのレンダリング
         renderAllTabs(records, goals, totalOpH, totalCkH, daily, storeMap, storeFilter, userMap, dateFrom, dateTo);
         
         // ローディング非表示
-        document.getElementById('dash-loading-overlay').style.display = 'none';
+        if (loadingOverlay) loadingOverlay.style.display = 'none';
     } catch (e) {
         console.error(e);
         alert("ダッシュボード読込エラー: " + e.message + "\\n" + e.stack);
         if (dtbody) dtbody.innerHTML = '<tr><td colspan="13" style="text-align:center; color:var(--danger);">読込失敗</td></tr>';
         if (mtbody) mtbody.innerHTML = '<tr><td colspan="12" style="text-align:center; color:var(--danger);">読込失敗</td></tr>';
-        if (document.getElementById('dash-loading-overlay')) document.getElementById('dash-loading-overlay').style.display = 'none';
+        if (loadingOverlay) loadingOverlay.style.display = 'none';
     }
 }
 
@@ -812,7 +687,7 @@ function renderAllTabs(records, goals, totalOpH, totalCkH, daily, storeMap, stor
     // タブ5: 商品分析 (現在開いている場合のみ即座に更新)
     const activeTab = document.querySelector('.dash-tab-btn.active')?.getAttribute('data-tab');
     if (activeTab === 'tab-product-analysis') {
-        import('./dashboard_product_logic.js?v=1').then(m => {
+        import('./dashboard_product_logic.js?v=2').then(m => {
             m.renderProductAnalysis('product-analysis-container', { storeId: storeFilter, dateFrom, dateTo });
         });
     }
@@ -896,123 +771,6 @@ function renderKPIs(recs, goals = { sales: 0, customers: 0, sph_op: 0, sph_total
     }
 }
 
-/**
- * 期間内の累計目標を計算
- */
-async function calculatePeriodGoals(storeId, groupFilter, storeMap, from, to) {
-    const storesToProcess = [];
-    if (storeId === 'all') {
-        Object.values(storeMap).forEach(s => {
-            const sid = s.id || s.StoreID || s.StoreId;
-            if (!sid) return;
-            const gn = s.group_name || s.GroupName || s['グループ名'] || "";
-            if (groupFilter === 'all' || gn === groupFilter) {
-                if (String(s.store_type || "").trim() !== 'CK') {
-                    storesToProcess.push(sid);
-                }
-            }
-        });
-    } else {
-        storesToProcess.push(storeId);
-    }
-
-    let totalSales = 0;
-    let totalCust = 0;
-    let sphOpSum = 0;
-    let sphTotSum = 0;
-    let laborTargetCount = 0;
-
-    // 年度目標の取得 (期間の開始日を基準にする)
-    const startDate = new Date(from);
-    let fy = startDate.getFullYear();
-    if (startDate.getMonth() < 6) fy--; // 7月開始
-
-    for (const sid of storesToProcess) {
-        // 年度予算から人時売上目標を取得
-        try {
-            const bSnap = await getDoc(doc(db, "m_annual_budgets", `${fy}_${sid}`));
-            if (bSnap.exists()) {
-                const b = bSnap.data();
-                if (b.target_sales_per_hour_op) {
-                    sphOpSum += Number(b.target_sales_per_hour_op || 0);
-                    sphTotSum += Number(b.target_sales_per_hour_total || 0);
-                    laborTargetCount++;
-                }
-            }
-        } catch (e) { console.error("Budget fetch error for", sid, e); }
-
-        // 日別売上目標の集計
-        const start = new Date(from);
-        const end = new Date(to);
-        const monthCache = {};
-
-        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-            const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-            const key = `${ym}_${sid}`;
-            
-            if (!monthCache[key]) {
-                const snap = await getDoc(doc(db, "t_monthly_goals", key));
-                if (snap.exists()) {
-                    const data = snap.data();
-                    const weights = data.weights || { 
-                        mon_thu: 1.0, fri: 1.2, sat: 1.5, sun: 1.4, holiday: 1.5, day_before_holiday: 1.6 
-                    };
-
-                    const calSnap = await getDoc(doc(db, "m_calendars", `${ym}_common`));
-                    const calDays = calSnap.exists() ? calSnap.data().days : [];
-                    
-                    let totalWeights = 0;
-                    calDays.forEach(day => {
-                        if (day.type !== 'work') return;
-                        totalWeights += calculateDayWeight(d.getFullYear(), d.getMonth() + 1, day, calDays, weights);
-                    });
-                    
-                    monthCache[key] = { ...data, weights, totalWeights, calDays };
-                } else {
-                    monthCache[key] = null;
-                }
-            }
-            
-            const m = monthCache[key];
-            if (m) {
-                const calDay = m.calDays.find(cd => cd.day === d.getDate());
-                if (calDay && calDay.type === 'work') {
-                    const weight = calculateDayWeight(d.getFullYear(), d.getMonth() + 1, calDay, m.calDays, m.weights);
-                    const dailySales = (Number(m.sales_target || 0) / (m.totalWeights || 1)) * weight;
-                    
-                    totalSales += dailySales;
-                    totalCust += dailySales / 4500; // 仮の客単価
-                }
-            }
-        }
-    }
-
-    return { 
-        sales: totalSales, 
-        customers: totalCust,
-        sph_op: laborTargetCount > 0 ? sphOpSum / laborTargetCount : 0,
-        sph_total: laborTargetCount > 0 ? sphTotSum / laborTargetCount : 0
-    };
-}
-
-function calculateDayWeight(y, m, day, calDays, weights) {
-    const date = new Date(y, m - 1, day.day);
-    const dow = date.getDay();
-    const nextDayObj = calDays.find(nd => nd.day === day.day + 1);
-    const isDayBeforeH = nextDayObj ? nextDayObj.is_holiday : false;
-
-    const indices = [];
-    if (dow >= 1 && dow <= 4) indices.push(weights.mon_thu);
-    else if (dow === 5) indices.push(weights.fri);
-    else if (dow === 6) indices.push(weights.sat);
-    else if (dow === 0) indices.push(weights.sun);
-
-    if (day.is_holiday) indices.push(weights.holiday);
-    if (isDayBeforeH) indices.push(weights.day_before_holiday);
-
-    return Math.max(...indices);
-}
-
 function renderSummaryChart(daily, goals, dateFrom, dateTo) {
     const canvas = document.getElementById('chart-summary-trend');
     if (!canvas) return;
@@ -1022,41 +780,59 @@ function renderSummaryChart(daily, goals, dateFrom, dateTo) {
     // 日付順にソート
     const sorted = [...daily].sort((a,b) => a.date.localeCompare(b.date));
     
-    // 日付ごとの集計（複数店舗対応）
-    const dailyAgg = {};
+    // 月ごとの集計（複数店舗対応）
+    const monthAgg = {};
     sorted.forEach(r => {
-        if (!dailyAgg[r.date]) {
-            dailyAgg[r.date] = { sales: 0, opH: 0, ckH: 0 };
+        // r.date は "YYYY-MM-DD"
+        const yyyy_mm = r.date.substring(0, 7);
+        if (!monthAgg[yyyy_mm]) {
+            monthAgg[yyyy_mm] = { sales: 0, opH: 0, ckH: 0 };
         }
-        dailyAgg[r.date].sales += (r.amount || r.Amount || r['売上税込'] || 0) / TAX_RATE;
-        dailyAgg[r.date].opH += (r.op_hours || 0);
-        dailyAgg[r.date].ckH += (r.ck_alloc || 0);
+        monthAgg[yyyy_mm].sales += (r.amount || r.Amount || r['売上税込'] || 0) / TAX_RATE;
+        monthAgg[yyyy_mm].opH += (r.op_hours || 0);
+        monthAgg[yyyy_mm].ckH += (r.ck_alloc || 0);
     });
+    
+    // 目標値（goals.dailySalesTargets）を月ごとに合算
+    const monthTargetAgg = {};
+    if (goals && goals.dailySalesTargets) {
+        for (const [dateStr, targetVal] of Object.entries(goals.dailySalesTargets)) {
+            const yyyy_mm = dateStr.substring(0, 7);
+            monthTargetAgg[yyyy_mm] = (monthTargetAgg[yyyy_mm] || 0) + targetVal;
+        }
+    }
 
     const labels = [];
     const salesData = [];
     const efficiencyData = [];
+    const targetData = [];
     
-    // 期間内の日付を埋める
+    // 期間内の月を埋める
     let current = new Date(dateFrom);
+    current.setDate(1); // 月初にセット
     const end = new Date(dateTo);
+    
     while (current <= end) {
-        const dStr = current.toISOString().substring(0, 10);
-        const md = dStr.substring(5).replace('-', '/');
-        labels.push(md);
+        const yyyy = current.getFullYear();
+        const mm = String(current.getMonth() + 1).padStart(2, '0');
+        const ymStr = `${yyyy}-${mm}`;
         
-        const dAgg = dailyAgg[dStr] || { sales: 0, opH: 0 };
-        salesData.push(Math.round(dAgg.sales));
+        labels.push(`${mm}月`);
+        
+        const mAgg = monthAgg[ymStr] || { sales: 0, opH: 0 };
+        salesData.push(Math.round(mAgg.sales));
         
         // 人時売上 (効率)
-        const eff = dAgg.opH > 0 ? Math.round(dAgg.sales / dAgg.opH) : null;
+        const eff = mAgg.opH > 0 ? Math.round(mAgg.sales / mAgg.opH) : null;
         efficiencyData.push(eff);
         
-        current.setDate(current.getDate() + 1);
+        // 月別目標
+        const target = monthTargetAgg[ymStr] ? monthTargetAgg[ymStr] : null;
+        targetData.push(target);
+        
+        // 翌月へ進める
+        current.setMonth(current.getMonth() + 1);
     }
-
-    // 目標の推移（簡易的に期間平均）
-    const targetData = labels.map(() => goals.sales > 0 ? Math.round(goals.sales / labels.length) : null);
 
     window.__dashCharts['summary'] = new Chart(canvas, {
         type: 'bar',
@@ -1076,10 +852,11 @@ function renderSummaryChart(daily, goals, dateFrom, dateTo) {
                     data: targetData,
                     type: 'line',
                     borderColor: 'rgba(239, 68, 68, 0.8)',
-                    borderDash: [5, 5],
+                    borderWidth: 2,
                     fill: false,
                     yAxisID: 'y',
-                    pointRadius: 0
+                    pointRadius: 4,
+                    pointHoverRadius: 6
                 },
                 {
                     label: '営業人時売上',
@@ -1088,17 +865,20 @@ function renderSummaryChart(daily, goals, dateFrom, dateTo) {
                     borderColor: 'rgba(245, 158, 11, 1)',
                     backgroundColor: 'rgba(245, 158, 11, 1)',
                     yAxisID: 'y1',
-                    tension: 0.3
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
                 }
             ]
         },
         options: {
+            animation: false,
             responsive: true,
             maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
             scales: {
-                y: { type: 'linear', display: true, position: 'left', title: { display: true, text: '金額(円)' } },
-                y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: '人時売上(円)' } }
+                y: { type: 'linear', display: true, position: 'left', title: { display: true, text: '金額(円)' }, beginAtZero: true },
+                y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: '人時売上(円)' }, beginAtZero: true }
             }
         }
     });
@@ -1184,23 +964,79 @@ function renderMonthlyPivotTab(records, daily) {
         
         let sDays=0, sSales=0, sCust=0, sCash=0, sOpH=0, sCkH=0;
         
+        // 1. 合計値を算出
         rows.forEach(r => {
-            const exTax = r.sales / TAX_RATE;
-            const up = r.customers > 0 ? Math.round(exTax/r.customers) : 0;
-            const opS = r.op_hours > 0 ? Math.round(exTax/r.op_hours) : 0;
+            sDays += r.days; sSales += r.sales; sCust += r.customers; sCash += r.cash_diff; sOpH += r.op_hours; sCkH += (r.ck_alloc||0);
+        });
+
+        // 店舗名を安全なクラス名に変換 (btoaとencodeURIComponentを利用)
+        const storeClass = "store-" + btoa(unescape(encodeURIComponent(sName))).replace(/[^a-zA-Z0-9]/g, '');
+
+        // 2. 親行（バナー行）の作成
+        const exTax = sSales / TAX_RATE;
+        const parentTr = document.createElement('tr');
+        parentTr.style.background = '#f1f5f9';
+        parentTr.style.fontWeight = 'bold';
+        parentTr.style.cursor = 'pointer';
+        
+        // アコーディオンのトグル処理
+        parentTr.onclick = () => {
+            const childRows = document.querySelectorAll(`.${storeClass}`);
+            const icon = parentTr.querySelector('.accordion-icon');
+            let isHidden = true;
+            if (childRows.length > 0) {
+                isHidden = childRows[0].style.display === 'none';
+            }
+            childRows.forEach(row => {
+                row.style.display = isHidden ? 'table-row' : 'none';
+            });
+            if (icon) {
+                icon.textContent = isHidden ? '▼' : '▶';
+            }
+        };
+
+        parentTr.innerHTML = `
+            <td><span class="accordion-icon" style="margin-right: 8px; font-size: 0.8em;">▶</span>${sName} 合計</td>
+            <td style="text-align: center;">${sDays}</td>
+            <td style="text-align: right;">¥${Math.round(exTax).toLocaleString()}</td>
+            <td style="text-align: right;">${sCust.toLocaleString()}</td>
+            <td style="text-align: right;">¥${sCust > 0 ? Math.round(exTax/sCust).toLocaleString() : 0}</td>
+            <td style="text-align: right;" class="${sCash !== 0 ? 'val-red' : ''}">${sCash.toLocaleString()}</td>
+            <td style="text-align: right;">¥${sDays > 0 ? Math.round(exTax/sDays).toLocaleString() : 0}</td>
+            <td style="text-align: right;">${sDays > 0 ? (sCust/sDays).toFixed(1) : 0}</td>
+            <td style="text-align: right;">¥${sOpH > 0 ? Math.round(exTax/sOpH).toLocaleString() : 0}</td>
+            <td style="text-align: right;">¥${(sOpH+sCkH) > 0 ? Math.round(exTax/(sOpH+sCkH)).toLocaleString() : 0}</td>
+            <td style="text-align: right;">${sOpH.toFixed(1)}</td>
+            <td style="text-align: right;">${sCkH.toFixed(1)}</td>
+        `;
+        tbody.appendChild(parentTr);
+
+        // 3. 子行（月別の行）の作成
+        rows.forEach(r => {
+            const rExTax = r.sales / TAX_RATE;
+            const up = r.customers > 0 ? Math.round(rExTax/r.customers) : 0;
+            const opS = r.op_hours > 0 ? Math.round(rExTax/r.op_hours) : 0;
             const totH = r.op_hours + (r.ck_alloc || 0);
-            const totS = totH > 0 ? Math.round(exTax/totH) : 0;
-            const avgSales = r.days > 0 ? Math.round(exTax/r.days) : 0;
+            const totS = totH > 0 ? Math.round(rExTax/totH) : 0;
+            const avgSales = r.days > 0 ? Math.round(rExTax/r.days) : 0;
             const avgCust = r.days > 0 ? (r.customers/r.days).toFixed(1) : 0;
 
             const tr = document.createElement('tr');
+            tr.className = storeClass; // クラスを付与
+            tr.style.display = 'none'; // 初期状態は非表示
             tr.style.cursor = 'pointer';
-            tr.onclick = () => showDrilldown(r.ym, r.store_id, r.store_name, daily);
+            tr.style.background = '#ffffff'; // バナーと区別
+            
+            // 子行をクリックしたときの動作（ドリルダウン）
+            tr.onclick = (e) => {
+                e.stopPropagation(); // 親行への伝播を防ぐ
+                showDrilldown(r.ym, r.store_id, r.store_name, daily);
+            };
             
             tr.innerHTML = `
-                <td><span style="font-size:0.7rem; color:var(--text-secondary); display:block;">${sName}</span>${r.ym}</td>
+                <td style="padding-left: 24px;"><span style="font-size:0.7rem; color:var(--text-secondary); display:block;">${sName}</span>${r.ym}</td>
                 <td style="text-align: center;">${r.days}</td>
-                <td style="text-align: right;">¥${Math.round(exTax).toLocaleString()}</td>
+                <td style="text-align: right;">¥${Math.round(rExTax).toLocaleString()}</td>
                 <td style="text-align: right;">${r.customers.toLocaleString()}</td>
                 <td style="text-align: right;">¥${up.toLocaleString()}</td>
                 <td style="text-align: right;" class="${r.cash_diff !== 0 ? 'val-red' : ''}">${r.cash_diff.toLocaleString()}</td>
@@ -1212,32 +1048,7 @@ function renderMonthlyPivotTab(records, daily) {
                 <td style="text-align: right;">${(r.ck_alloc||0).toFixed(1)}</td>
             `;
             tbody.appendChild(tr);
-            
-            sDays += r.days; sSales += r.sales; sCust += r.customers; sCash += r.cash_diff; sOpH += r.op_hours; sCkH += (r.ck_alloc||0);
         });
-        
-        // 小計行
-        if (rows.length > 1) {
-            const exTax = sSales / TAX_RATE;
-            const tr = document.createElement('tr');
-            tr.style.background = '#f1f5f9';
-            tr.style.fontWeight = 'bold';
-            tr.innerHTML = `
-                <td>${sName} 計</td>
-                <td style="text-align: center;">${sDays}</td>
-                <td style="text-align: right;">¥${Math.round(exTax).toLocaleString()}</td>
-                <td style="text-align: right;">${sCust.toLocaleString()}</td>
-                <td style="text-align: right;">¥${sCust > 0 ? Math.round(exTax/sCust).toLocaleString() : 0}</td>
-                <td style="text-align: right;" class="${sCash !== 0 ? 'val-red' : ''}">${sCash.toLocaleString()}</td>
-                <td style="text-align: right;">¥${sDays > 0 ? Math.round(exTax/sDays).toLocaleString() : 0}</td>
-                <td style="text-align: right;">${sDays > 0 ? (sCust/sDays).toFixed(1) : 0}</td>
-                <td style="text-align: right;">¥${sOpH > 0 ? Math.round(exTax/sOpH).toLocaleString() : 0}</td>
-                <td style="text-align: right;">¥${(sOpH+sCkH) > 0 ? Math.round(exTax/(sOpH+sCkH)).toLocaleString() : 0}</td>
-                <td style="text-align: right;">${sOpH.toFixed(1)}</td>
-                <td style="text-align: right;">${sCkH.toFixed(1)}</td>
-            `;
-            tbody.appendChild(tr);
-        }
     });
 }
 

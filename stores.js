@@ -57,6 +57,7 @@ function renderListView(container) {
                         <th style="padding: 1.2rem; font-weight: 600;">店舗名</th>
                         <th style="padding: 1.2rem; font-weight: 600;">タイプ</th>
                         <th style="padding: 1.2rem; font-weight: 600;">Dinii店舗ID</th>
+                        <th style="padding: 1.2rem; font-weight: 600;">Dinii運用開始</th>
                         <th style="padding: 1.2rem; font-weight: 600;">グループ</th>
                         <th style="padding: 1.2rem; font-weight: 600;">席数</th>
                         <th style="padding: 1.2rem; font-weight: 600;">リセット</th>
@@ -96,60 +97,95 @@ function renderListView(container) {
 function renderFormView(container) {
     const isEdit = !!editingStoreData;
     container.innerHTML = `
-        <div class="glass-panel animate-fade-in" style="max-width: 600px; margin: 0 auto; padding: 0; overflow: hidden;">
-            <div style="padding: 1.5rem 2rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+        <div class="glass-panel animate-fade-in" style="max-width: 900px; margin: 0 auto; padding: 0; overflow: hidden;">
+            <div style="padding: 1.5rem 2.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
                 <h3 style="margin: 0; font-size: 1.25rem; color: #1e293b; display: flex; align-items: center; gap: 0.8rem;">
                     <i class="fas ${isEdit ? 'fa-edit' : 'fa-plus-circle'}" style="color: var(--primary);"></i>
                     ${isEdit ? '店舗情報の編集' : '新規店舗の登録'}
                 </h3>
-                <button id="btn-form-back" class="btn" style="background: white; border: 1px solid var(--border); color: var(--text-secondary);">
+                <button id="btn-form-back" class="btn" style="background: white; border: 1px solid var(--border); color: var(--text-secondary); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
                     <i class="fas fa-times"></i> キャンセル
                 </button>
             </div>
             
             <div style="padding: 2.5rem;">
-                <form id="store-form" style="display: flex; flex-direction: column; gap: 1.5rem;">
-                    <div>
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 700; font-size: 0.9rem; color: #475569;">店舗ID (英数字)</label>
-                        <input type="text" id="m-store-id" required ${isEdit ? 'disabled' : ''} placeholder="例: honten" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px; font-family: monospace; font-size: 1.1rem;">
-                        ${isEdit ? '<p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.3rem;">※IDは変更できません</p>' : ''}
+                <form id="store-form" style="display: flex; flex-direction: column; gap: 2.5rem;">
+                    
+                    <!-- セクション: 基本情報 -->
+                    <div style="display: grid; grid-template-columns: 200px 1fr; gap: 2rem; align-items: start; border-bottom: 1px dashed var(--border); padding-bottom: 2.5rem;">
+                        <div>
+                            <h4 style="margin: 0 0 0.5rem 0; font-size: 1rem; color: #1e293b;">基本情報</h4>
+                            <p style="margin: 0; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4;">店舗の根幹となる識別情報と名称を設定します。</p>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-weight: 700; font-size: 0.9rem; color: #475569;">店舗ID (英数字)</label>
+                                <input type="text" id="m-store-id" required ${isEdit ? 'disabled' : ''} placeholder="例: honten" style="width: 100%; max-width: 300px; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px; font-family: monospace; font-size: 1.05rem; background: ${isEdit ? '#f1f5f9' : 'white'};">
+                                ${isEdit ? '<p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.4rem;">※IDは変更できません</p>' : ''}
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-weight: 700; font-size: 0.9rem; color: #475569;">店舗名称</label>
+                                <input type="text" id="m-store-name" required placeholder="例: かね将 本店" style="width: 100%; max-width: 450px; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px; font-size: 1.05rem;">
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; max-width: 450px;">
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 700; font-size: 0.9rem; color: #475569;">店舗タイプ</label>
+                                    <select id="m-store-type" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px; background: white; font-weight: 600;">
+                                        <option value="Store">通常店舗</option>
+                                        <option value="CK">CK (セントラルキッチン)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 700; font-size: 0.9rem; color: #475569;">グループ名</label>
+                                    <input type="text" id="m-group-name" placeholder="例: 直営" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 700; font-size: 0.9rem; color: #475569;">店舗名称</label>
-                        <input type="text" id="m-store-name" required placeholder="例: かね将 本店" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px; font-size: 1.1rem;">
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+
+                    <!-- セクション: 営業設定 -->
+                    <div style="display: grid; grid-template-columns: 200px 1fr; gap: 2rem; align-items: start; border-bottom: 1px dashed var(--border); padding-bottom: 2.5rem;">
                         <div>
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 700; font-size: 0.9rem; color: #475569;">店舗タイプ</label>
-                            <select id="m-store-type" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px; background: white; font-weight: 600;">
-                                <option value="Store">通常店舗</option>
-                                <option value="CK">CK (セントラルキッチン)</option>
-                            </select>
+                            <h4 style="margin: 0 0 0.5rem 0; font-size: 1rem; color: #1e293b;">営業設定</h4>
+                            <p style="margin: 0; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4;">座席数や一日の切り替わり時間を指定します。</p>
                         </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-                        <div>
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 700; font-size: 0.9rem; color: #475569;">Dinii店舗ID (UUID)</label>
-                            <input type="text" id="m-store-dinii-id" placeholder="例: defb1ba1-..." style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px; font-family: monospace;">
-                        </div>
-                        <div>
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 700; font-size: 0.9rem; color: #475569;">グループ名</label>
-                            <input type="text" id="m-group-name" placeholder="例: 直営" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
+                        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; max-width: 450px;">
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 700; font-size: 0.9rem; color: #475569;">席数</label>
+                                    <input type="number" id="m-seat-count" placeholder="0" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 700; font-size: 0.9rem; color: #475569;">リセット時間</label>
+                                    <input type="time" id="m-reset-time" value="05:00" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+
+                    <!-- セクション: 外部連携 (Dinii) -->
+                    <div style="display: grid; grid-template-columns: 200px 1fr; gap: 2rem; align-items: start;">
                         <div>
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 700; font-size: 0.9rem; color: #475569;">席数</label>
-                            <input type="number" id="m-seat-count" placeholder="0" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
+                            <h4 style="margin: 0 0 0.5rem 0; font-size: 1rem; color: #1e293b;">外部連携 (Dinii)</h4>
+                            <p style="margin: 0; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4;">ダイニーPOSシステムとの連携情報を設定します。</p>
                         </div>
-                        <div>
-                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 700; font-size: 0.9rem; color: #475569;">リセット時間</label>
-                            <input type="time" id="m-reset-time" value="05:00" style="width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;">
+                        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-weight: 700; font-size: 0.9rem; color: #475569;">Dinii店舗ID (UUID)</label>
+                                <input type="text" id="m-store-dinii-id" placeholder="例: defb1ba1-bbc9-..." style="width: 100%; max-width: 450px; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px; font-family: monospace; font-size: 0.95rem;">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; font-weight: 700; font-size: 0.9rem; color: #475569;">Dinii運用開始月</label>
+                                <input type="month" id="m-dinii-start-month" style="width: 100%; max-width: 250px; padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px; font-family: monospace; font-size: 1.05rem;">
+                                <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.4rem;">※この月より前の月次確定ではインポートチェックを免除します。</p>
+                            </div>
                         </div>
                     </div>
                     
-                    <div style="display: flex; gap: 1rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
-                        <button type="button" id="btn-form-cancel" class="btn" style="flex: 1; background: #f1f5f9; color: var(--text-secondary); font-weight: 700;">キャンセル</button>
-                        <button type="submit" class="btn btn-primary" style="flex: 2; padding: 1rem; font-weight: 800; font-size: 1.1rem;">
+                    <!-- アクションボタン -->
+                    <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1rem; padding-top: 1.5rem; border-top: 1px solid var(--border);">
+                        <button type="button" id="btn-form-cancel" class="btn" style="padding: 0.8rem 2rem; background: #f1f5f9; color: var(--text-secondary); font-weight: 700;">キャンセル</button>
+                        <button type="submit" class="btn btn-primary" style="padding: 0.8rem 3rem; font-weight: 800; font-size: 1.05rem;">
                             <i class="fas fa-save" style="margin-right: 0.5rem;"></i>
                             店舗情報を保存
                         </button>
@@ -170,6 +206,7 @@ function renderFormView(container) {
         document.getElementById('m-store-type').value = editingStoreData.store_type || 'Store';
         document.getElementById('m-group-name').value = editingStoreData.group_name || '';
         document.getElementById('m-store-dinii-id').value = editingStoreData.dinii_store_id || '';
+        document.getElementById('m-dinii-start-month').value = editingStoreData.dinii_start_month || '';
         document.getElementById('m-seat-count').value = editingStoreData.seat_count || '';
         document.getElementById('m-reset-time').value = editingStoreData.reset_time || '05:00';
     }
@@ -229,6 +266,7 @@ function setupFormLogic() {
             store_type: document.getElementById('m-store-type').value,
             group_name: document.getElementById('m-group-name').value.trim(),
             dinii_store_id: document.getElementById('m-store-dinii-id').value.trim(),
+            dinii_start_month: document.getElementById('m-dinii-start-month').value,
             seat_count: Number(document.getElementById('m-seat-count').value) || 0,
             reset_time: document.getElementById('m-reset-time').value || "05:00"
         };
@@ -305,6 +343,7 @@ function renderTable(filter = "") {
                 <td style="padding: 1.2rem; font-weight: 700;">${s.store_name}</td>
                 <td style="padding: 1.2rem;"><span class="badge" style="background: ${s.store_type==='CK'?'#8B5CF6':'var(--primary-light)'}; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">${s.store_type==='CK'?'CK':'店舗'}</span></td>
                 <td style="padding: 1.2rem; font-family: monospace; font-size: 0.75rem; color: var(--text-secondary);">${s.dinii_store_id || '-'}</td>
+                <td style="padding: 1.2rem; font-family: monospace; font-size: 0.85rem;">${s.dinii_start_month || '-'}</td>
                 <td style="padding: 1.2rem; color: var(--text-secondary);">${s.group_name || '-'}</td>
                 <td style="padding: 1.2rem;">${s.seat_count || '-'}</td>
                 <td style="padding: 1.2rem; font-family: monospace; color: var(--text-secondary);">${s.reset_time || '05:00'}</td>

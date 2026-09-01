@@ -8,7 +8,7 @@ import { roleMasterService } from './role_master_service.js';
 
 import { attendancePageHtml, initAttendancePage } from './attendance.js?v=110';
 import { salesPageHtml, initSalesPage } from './sales.js?v=110';
-import { storesPageHtml, initStoresPage } from './stores.js?v=31';
+import { storesPageHtml, initStoresPage } from './stores.js?v=32';
 import { usersPageHtml, initUsersPage } from './users.js?v=20260710_06';
 import { inventoryPageHtml, initInventoryPage } from './inventory.js?v=20260711_03';
 import { inventoryMobilePageHtml, initInventoryMobilePage } from './inventory_mobile.js';
@@ -35,7 +35,7 @@ import { productAnalysisPageHtml, initProductAnalysisPage } from './product_anal
 import { notificationsPageHtml, initNotificationsPage } from './notifications.js?v=117';
 import { invoicesPageHtml, initInvoicesPage } from './invoices.js?v=20260711_07';
 import { calendarAdminPageHtml, initCalendarAdminPage, calendarViewerPageHtml, initCalendarViewerPage } from './calendar.js?v=64';
-import { goalsAdminPageHtml, initGoalsAdminPage, goalsStorePageHtml, initGoalsStorePage } from './goals.js?v=7';
+import { goalsAdminPageHtml, initGoalsAdminPage, goalsStorePageHtml, initGoalsStorePage } from './goals.js?v=8';
 import { homePageHtml, initHomePage } from './home.js?v=120';
 import { shiftSubmissionPageHtml, initShiftSubmissionPage, shiftAdminPageHtml, initShiftAdminPage, shiftViewerPageHtml, initShiftViewerPage, shiftViewerMobilePageHtml, initShiftViewerMobilePage, checkIfShiftPublished } from './shift.js?v=20260711_04';
 import { shiftAdminMobilePageHtml, initShiftAdminMobilePage } from './shift_mobile.js?v=20260711_04';
@@ -47,6 +47,7 @@ import { bottleKeepPageHtml, initBottleKeepPage } from './bottle_keep.js?v=20260
 import { prototypeMenuPageHtml, initPrototypeMenuPage } from './prototype_menu.js?v=141';
 import { competitorListPageHtml, initCompetitorListPage } from './competitor_list.js';
 import { managerMeetingPageHtml, initManagerMeetingPage } from './manager_meeting.js?v=20260428_01';
+import { menuPdcaPageHtml, initMenuPdcaPage } from './menu_pdca.js?v=20260829_01';
 import { PullToRefresh } from './ptr_logic.js';
 import { manualHubPageHtml, initManualHubPage, manualViewerPageHtml, initManualViewerPage } from './manual.js';
 import { gradesPageHtml, initGradesPage } from './grades.js';
@@ -518,7 +519,7 @@ async function showPage(target) {
                 updateHeaderTitle('ダッシュボード');
                 try {
                     // ダッシュボードが壊れていてもログインを阻害しないよう動的インポート
-                    const { dashboardPageHtml, initDashboardPage } = await import('./dashboard.js?v=119');
+                    const { dashboardPageHtml, initDashboardPage } = await import('./dashboard.js?v=138');
                     pageContent.innerHTML = dashboardPageHtml;
                     await initDashboardPage();
                 } catch (err) {
@@ -541,6 +542,11 @@ async function showPage(target) {
                 updateHeaderTitle('店長会議資料');
                 pageContent.innerHTML = managerMeetingPageHtml;
                 initManagerMeetingPage();
+                break;
+            case 'menu_pdca':
+                updateHeaderTitle('メニューPDCA');
+                pageContent.innerHTML = menuPdcaPageHtml;
+                initMenuPdcaPage();
                 break;
             case 'attendance_check':
                 updateHeaderTitle('勤怠状況確認');

@@ -411,9 +411,17 @@ async function renderMasterTab(container) {
     const listArea = document.getElementById('sake-master-list-area');
     if (window.sakeApp.masterSakes.length === 0) {
         try {
-            const q = query(collection(db, "sake_master"), where("is_deleted", "==", false), orderBy("brand_name"));
+            const q = query(collection(db, "sake_master"), where("is_deleted", "==", false));
             const snap = await getDocs(q);
-            window.sakeApp.masterSakes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            let masters = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            
+            // 登録した順番（新しい順）に並び替える
+            masters.sort((a, b) => {
+                const timeA = a.created_at?.toMillis ? a.created_at.toMillis() : 0;
+                const timeB = b.created_at?.toMillis ? b.created_at.toMillis() : 0;
+                return timeB - timeA;
+            });
+            window.sakeApp.masterSakes = masters;
         } catch (e) {
             console.error("Master fetch error:", e);
             if (listArea) {
@@ -657,11 +665,11 @@ window.sakeApp.openMasterForm = async (id = null, isCopy = false) => {
             const f = fIn.files[0];
             if (f) {
                 try {
-                    // 倉庫(Storage)ではなく、画像を圧縮してデータとして直接DBに保存する方式に変更
-                    // これによりCORS等の複雑な設定が不要になります
-                    const base64Data = await resizeImage(f, 600); 
-                    u = base64Data;
-                    p = null; // Storageは使わないためパスは不要
+                    const blob = await resizeImageToBlob(f, 600); 
+                    const storageRef = ref(storage, `sake_images/${Date.now()}_${f.name.replace(/[^a-zA-Z0-9.]/g, '_')}`);
+                    const snap = await uploadBytes(storageRef, blob);
+                    u = await getDownloadURL(snap.ref);
+                    p = snap.ref.fullPath;
                 } catch (imgErr) {
                     console.error("Image process error:", imgErr);
                     showAlert("画像エラー", "画像の処理に失敗しました: " + imgErr.message);
@@ -961,6 +969,35 @@ function resizeImage(file, maxWidth) {
                 // 画質を適度に落とす(0.7)ことでデータ量を節約しつつ美しさを維持
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
                 resolve(dataUrl);
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function resizeImageToBlob(file, maxWidth) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error("ファイルの読み込みに失敗しました"));
+        reader.onload = (event) => {
+            const img = new Image();
+            img.onerror = () => reject(new Error("画像の読み込みに失敗しました。ファイル形式が不正な可能性があります。"));
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                if (width > maxWidth) {
+                    height = height * (maxWidth / width);
+                    width = maxWidth;
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                canvas.toBlob((blob) => {
+                    resolve(blob);
+                }, 'image/webp', 0.7);
             };
             img.src = event.target.result;
         };

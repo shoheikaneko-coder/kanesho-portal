@@ -17,7 +17,7 @@ import {
     db, collection, getDocs, query, where, getDoc, doc,
     addDoc, updateDoc, setDoc, deleteDoc, serverTimestamp, orderBy
 } from './firebase.js';
-
+import { getEffectivePrice } from './cost_engine.js?v=9';
 // -------------------------------------------------------
 // ページHTML（SPAの差し込みテンプレート）
 // -------------------------------------------------------
@@ -97,15 +97,16 @@ async function loadStores() {
     const snap = await getDocs(collection(db, 'm_stores'));
     availableStores = [];
     snap.forEach(d => {
-        availableStores.push({ id: d.id, name: d.data().name || d.id });
+        const data = d.data();
+        if (data.store_type !== 'CK') {
+            availableStores.push({ id: d.id, name: data.store_name || d.id });
+        }
     });
     availableStores.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
 
-    // デフォルト店舗: ユーザーの所属店舗 → なければ先頭
-    const userStoreId = currentUser?.store_id;
-    const found = availableStores.find(s => s.id === userStoreId);
-    currentStoreId   = found ? found.id   : (availableStores[0]?.id ?? null);
-    currentStoreName = found ? found.name : (availableStores[0]?.name ?? '');
+    // 初期状態は「未選択」にしてデータ読み込みの負荷を下げる
+    currentStoreId   = '';
+    currentStoreName = '';
 }
 
 // -------------------------------------------------------
@@ -130,14 +131,26 @@ async function renderListView() {
         meetings.sort((a, b) => (b.year_month || '').localeCompare(a.year_month || ''));
     }
 
-    const storeOptions = availableStores.map(s =>
+    const storeOptions = `<option value="">店舗を選択</option>` + availableStores.map(s =>
         `<option value="${s.id}" ${s.id === currentStoreId ? 'selected' : ''}>${s.name}</option>`
     ).join('');
 
-    const rowsHtml = meetings.length === 0
-        ? `<tr><td colspan="8"><div class="mp-empty-state"><i class="fas fa-utensils"></i><p>まだ会議が登録されていません。<br>「新規会議を作成」から始めてください。</p></div></td></tr>`
-        : meetings.map(m => {
+    let rowsHtml = '';
+    if (!currentStoreId) {
+        rowsHtml = `<tr><td colspan="8"><div class="mp-empty-state"><i class="fas fa-store"></i><p>店舗を選択してください。</p></div></td></tr>`;
+    } else if (meetings.length === 0) {
+        rowsHtml = `<tr><td colspan="8"><div class="mp-empty-state"><i class="fas fa-utensils"></i><p>まだ会議が登録されていません。<br>「新規会議を作成」から始めてください。</p></div></td></tr>`;
+    } else {
+        rowsHtml = meetings.map(m => {
             const statusInfo = statusDisplay(m.status || '未作成');
+            
+            let actionBtnHtml = '';
+            if (m.status === '完了') {
+                actionBtnHtml = `<button class="mp-open-btn" onclick="window._mpOpenMeeting('${m.id}')" style="background:#10b981; color:white; border-color:#10b981;"><i class="fas fa-file-alt"></i> 議事録を見る</button>`;
+            } else {
+                actionBtnHtml = `<button class="mp-open-btn" onclick="window._mpOpenMeeting('${m.id}')">編集する</button>`;
+            }
+            
             return `
             <tr>
                 <td class="year-month">${formatYearMonth(m.year_month)}</td>
@@ -147,9 +160,17 @@ async function renderListView() {
                 <td>${(m.observing_count ?? 0)}件</td>
                 <td>${(m.homework_count ?? 0)}件</td>
                 <td>${(m.homework_pending_count ?? 0)}件</td>
-                <td><button class="mp-open-btn" onclick="window._mpOpenMeeting('${m.id}')">開く</button></td>
+                <td>
+                    <div style="display: flex; gap: 0.5rem; align-items: center; justify-content: flex-end;">
+                        ${actionBtnHtml}
+                        <button class="mp-delete-btn" onclick="window._mpDeleteMeeting('${m.id}')" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 0.25rem; font-size: 1rem;" title="削除">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                </td>
             </tr>`;
         }).join('');
+    }
 
     getRoot().innerHTML = `
         <div class="mp-list-header">
@@ -218,6 +239,35 @@ async function renderListView() {
         await openMeetingDetail(meetingId);
     };
 
+    window._mpDeleteMeeting = async (meetingId) => {
+        if (!confirm('この資料（会議データ）を削除してもよろしいですか？')) return;
+        try {
+            const mDoc = await getDoc(doc(db, 't_chef_meetings', meetingId));
+            if (mDoc.exists()) {
+                const data = mDoc.data();
+                const storeId = data.store_id;
+                const yMonth = data.year_month;
+                
+                // 関連データの削除 (改善施策)
+                if (storeId && yMonth) {
+                    const qPlans = query(collection(db, 't_chef_improvement_plans'), where('store_id', '==', storeId), where('decided_in_year_month', '==', yMonth));
+                    const plansSnap = await getDocs(qPlans);
+                    plansSnap.forEach(async (d) => await deleteDoc(d.ref));
+                    
+                    // 関連データの削除 (宿題)
+                    const qHw = query(collection(db, 't_chef_homework'), where('store_id', '==', storeId), where('year_month', '==', yMonth));
+                    const hwSnap = await getDocs(qHw);
+                    hwSnap.forEach(async (d) => await deleteDoc(d.ref));
+                }
+            }
+            await deleteDoc(doc(db, 't_chef_meetings', meetingId));
+            await renderListView();
+        } catch (err) {
+            console.error(err);
+            alert('削除に失敗しました。');
+        }
+    };
+
     window._mpOpenNewMeetingModal = () => openNewMeetingModal();
 
     window._mpSwitchTopTab = async (tab) => {
@@ -267,10 +317,7 @@ function openNewMeetingModal() {
                     <label>開催日</label>
                     <input type="date" id="mp-new-date" value="${defaultDate}">
                 </div>
-                <div class="mp-form-group">
-                    <label>会議時間（目安・分）</label>
-                    <input type="number" id="mp-new-duration" value="30" min="10" max="180">
-                </div>
+
                 <div class="mp-form-group">
                     <label>出席者（カンマ区切り）</label>
                     <input type="text" id="mp-new-attendees" placeholder="例: 社長、料理長、小山内">
@@ -296,7 +343,6 @@ function openNewMeetingModal() {
         const yearMonth  = document.getElementById('mp-new-year-month').value;
         const storeId    = document.getElementById('mp-new-store').value;
         const date       = document.getElementById('mp-new-date').value;
-        const duration   = parseInt(document.getElementById('mp-new-duration').value) || 30;
         const attendeesRaw = document.getElementById('mp-new-attendees').value;
         const attendees  = attendeesRaw.split(/[,、，]/).map(s => s.trim()).filter(Boolean);
 
@@ -321,7 +367,6 @@ function openNewMeetingModal() {
             store_name: storeName,
             year_month: yearMonth,
             meeting_date: date,
-            meeting_duration_min: duration,
             attendees: attendees,
             status: '作成中',
             step_progress: { step1_done: false, step2_done: false, step3_done: false, step4_done: false, step5_done: false },
@@ -388,21 +433,35 @@ async function renderDetailView() {
         { num: 5, label: '担当者・宿題', icon: 'fa-tasks' },
     ];
 
-    const stepperHtml = stepLabels.map((s, idx) => {
-        const isDone    = m.step_progress?.[`step${s.num}_done`];
-        const isActive  = activeStep === s.num;
-        const cls = isActive ? 'active' : (isDone ? 'done' : '');
-        const arrow = idx < stepLabels.length - 1 ? `<span class="mp-step-arrow">›</span>` : '';
-        return `
-            <div class="mp-step ${cls}" onclick="window._mpGoStep(${s.num})">
-                <span class="mp-step-num">
-                    ${isDone && !isActive ? '<i class="fas fa-check" style="font-size:0.7rem;"></i>' : s.num}
-                </span>
-                <span class="mp-step-label"><i class="fas ${s.icon}" style="margin-right:0.3rem;"></i>${s.label}</span>
-            </div>
-            ${arrow}
+    let actionButtonsHtml = '';
+    let stepperHtml = '';
+    
+    if (m.status === '完了') {
+        actionButtonsHtml = `
+            <button class="mp-action-btn" onclick="window._mpCaptureDashboard()" style="background:#475569; color:white; border:none;"><i class="fas fa-camera"></i> 会議議事録をキャプチャ</button>
+            <button class="mp-action-btn btn-edit" onclick="window._mpReopenMeeting()"><i class="fas fa-undo"></i> 編集を再開する</button>
         `;
-    }).join('');
+        stepperHtml = '';
+    } else {
+        actionButtonsHtml = `
+            <button class="mp-action-btn btn-edit" onclick="window._mpOpenEditModal()"><i class="fas fa-edit"></i> 基本情報編集</button>
+        `;
+        stepperHtml = `<div class="mp-stepper">${stepLabels.map((s, idx) => {
+            const isDone    = m.step_progress?.[`step${s.num}_done`];
+            const isActive  = activeStep === s.num;
+            const cls = isActive ? 'active' : (isDone ? 'done' : '');
+            const arrow = idx < stepLabels.length - 1 ? `<span class="mp-step-arrow">›</span>` : '';
+            return `
+                <div class="mp-step ${cls}" onclick="window._mpGoStep(${s.num})">
+                    <span class="mp-step-num">
+                        ${isDone && !isActive ? '<i class="fas fa-check" style="font-size:0.7rem;"></i>' : s.num}
+                    </span>
+                    <span class="mp-step-label"><i class="fas ${s.icon}" style="margin-right:0.3rem;"></i>${s.label}</span>
+                </div>
+                ${arrow}
+            `;
+        }).join('')}</div>`;
+    }
 
     getRoot().innerHTML = `
         <button class="mp-back-btn" onclick="window._mpBackToList()">
@@ -419,18 +478,16 @@ async function renderDetailView() {
                     <div class="mp-detail-subtitle">
                         <span><i class="fas fa-store" style="color:#f59e0b;"></i> ${m.store_name}</span>
                         <span><i class="fas fa-calendar" style="color:#64748b;"></i> 開催日: ${m.meeting_date ? formatDate(m.meeting_date) : '未設定'}</span>
-                        <span><i class="fas fa-clock" style="color:#64748b;"></i> ${m.meeting_duration_min || 30}分</span>
                         <span><i class="fas fa-users" style="color:#64748b;"></i> ${(m.attendees || []).join('、') || '未設定'}</span>
                     </div>
                 </div>
                 <div class="mp-detail-actions">
-                    ${m.status === '完了' ? `<button class="mp-action-btn btn-pdf" onclick="window._mpExportPdf()"><i class="fas fa-download"></i> 議事録PDF</button>` : ''}
-                    <button class="mp-action-btn btn-edit" onclick="window._mpOpenEditModal()"><i class="fas fa-edit"></i> 基本情報編集</button>
+                    ${actionButtonsHtml}
                 </div>
             </div>
         </div>
 
-        <div class="mp-stepper">${stepperHtml}</div>
+        ${stepperHtml}
 
         <div id="mp-step-content-area">
             <div class="mp-spinner-overlay"><div class="mp-spinner"></div><span>データ取得中...</span></div>
@@ -440,14 +497,78 @@ async function renderDetailView() {
     // グローバルコールバック
     window._mpBackToList = () => renderListView();
     window._mpGoStep = async (n) => {
+        if (activeMeeting.status === '完了') return;
         activeStep = n;
         await updateStepperUI();
         await renderStepContent(n);
     };
     window._mpOpenEditModal = () => openEditMeetingModal();
-    window._mpExportPdf = () => exportPdf();
+    window._mpReopenMeeting = async () => {
+        if(!confirm('編集を再開しますか？（ステータスが「作成中」に戻ります）')) return;
+        try {
+            await updateDoc(doc(db, 't_chef_meetings', activeMeeting.id), { status: '作成中' });
+            activeMeeting.status = '作成中';
+            await renderDetailView();
+        } catch (e) {
+            console.error(e);
+            alert('状態の更新に失敗しました。');
+        }
+    };
+    window._mpCaptureDashboard = async () => {
+        const btn = document.querySelector('[onclick*="_mpCaptureDashboard"]');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 処理中...'; }
+        try {
+            if (typeof html2canvas === 'undefined') {
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                    script.onload = resolve;
+                    script.onerror = () => reject(new Error('html2canvasの読み込みに失敗しました。'));
+                    document.head.appendChild(script);
+                });
+            }
+            const target = document.getElementById('mp-step-content-area');
+            if (!target) throw new Error('ダッシュボード要素が見つかりません。');
+            const canvas = await html2canvas(target, {
+                backgroundColor: '#ffffff', scale: 2, useCORS: true, logging: false, allowTaint: true
+            });
+            const ym = formatYearMonth(activeMeeting.year_month);
+            const fileName = `議事録_${ym}_${activeMeeting.store_name}.png`;
+            const dataUrl = canvas.toDataURL('image/png');
+            const blob = await (await fetch(dataUrl)).blob();
+            const file = new File([blob], fileName, { type: 'image/png' });
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({ title: fileName, files: [file] });
+            } else {
+                const link = document.createElement('a');
+                link.href = dataUrl;
+                link.download = fileName;
+                link.click();
+            }
+        } catch (e) {
+            console.error('Capture error:', e);
+            alert(`キャプチャに失敗しました: ${e.message}`);
+        } finally {
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-camera"></i> 会議議事録をキャプチャ'; }
+        }
+    };
 
-    await renderStepContent(activeStep);
+
+    if (m.status === '完了') {
+        const qPlans = query(collection(db, 't_chef_improvement_plans'), where('store_id', '==', m.store_id), where('decided_in_year_month', '==', m.year_month));
+        const plansSnap = await getDocs(qPlans);
+        const plans = [];
+        plansSnap.forEach(d => plans.push({ id: d.id, ...d.data() }));
+
+        const qHw = query(collection(db, 't_chef_homework'), where('store_id', '==', m.store_id), where('year_month', '==', m.year_month));
+        const hwSnap = await getDocs(qHw);
+        const homework = [];
+        hwSnap.forEach(d => homework.push({ id: d.id, ...d.data() }));
+
+        document.getElementById('mp-step-content-area').innerHTML = generateDashboardHtml(m, plans, homework);
+    } else {
+        await renderStepContent(activeStep);
+    }
 }
 
 // ステッパーのUIだけ更新
@@ -741,14 +862,29 @@ async function renderStep2(area) {
     const latestMonth = activeMeeting.year_month;
     const prevMonth   = getPrevMonth(latestMonth);
 
-    const [currentSnap, prevSnap] = await Promise.all([
+    const [currentSnap, prevSnap, itemSnap, ingSnap, menuSnap, perfSnap] = await Promise.all([
         getDocs(query(collection(db, 't_monthly_sales'),
             where('store_id', '==', currentStoreId),
             where('year_month', '==', latestMonth))),
         getDocs(query(collection(db, 't_monthly_sales'),
             where('store_id', '==', currentStoreId),
-            where('year_month', '==', prevMonth)))
+            where('year_month', '==', prevMonth))),
+        getDocs(collection(db, 'm_items')),
+        getDocs(collection(db, 'm_ingredients')),
+        getDocs(collection(db, 'm_menus')),
+        getDocs(query(collection(db, 't_performance'),
+            where('store_id', '==', currentStoreId),
+            where('year_month', '==', latestMonth)))
     ]);
+
+    const cache = {
+        items: itemSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+        ingredients: ingSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+        menus: menuSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+    };
+
+    let totalCustomers = 0;
+    perfSnap.forEach(d => totalCustomers += (d.data().customer_count || 0));
 
     // 観察中施策の対象商品セット
     const obsQ = query(collection(db, 't_chef_improvement_plans'),
@@ -761,64 +897,62 @@ async function renderStep2(area) {
     const prevMap = {};
     prevSnap.forEach(d => {
         const data = d.data();
-        if (!data.is_total && data.menu_name) prevMap[data.menu_name] = data;
+        // 合計データ (is_total: true) を対象とする
+        if (data.is_total && data.menu_name) prevMap[data.menu_name] = data;
     });
 
     step2Products = [];
     currentSnap.forEach(d => {
         const data = d.data();
-        if (data.is_total || !data.menu_name) return;
+        // 合計データ (is_total: true) を対象とする
+        if (!data.is_total || !data.menu_name) return;
         const prev = prevMap[data.menu_name];
         const momQty = prev && prev.quantity_sold > 0
             ? ((data.quantity_sold - prev.quantity_sold) / prev.quantity_sold * 100).toFixed(1)
             : null;
+            
+        const menu = cache.menus.find(m => m.dinii_id === data.dinii_id || m.menu_name === data.menu_name);
+        const itemId = menu ? menu.item_id : null;
+        const item = itemId ? cache.items.find(i => i.id === itemId) : null;
+        const majorCategory = item ? (item.major_category || 'その他') : 'その他';
+        const category = item ? (item.category || '未分類') : '未分類';
+        
+        const costPerUnit = itemId ? getEffectivePrice(itemId, cache) : 0;
+        const qty = data.quantity_sold ?? 0;
+        const sales = data.total_sales ?? 0;
+        const totalCost = costPerUnit * qty;
+        
+        let costRate = null;
+        let grossProfit = null;
+        if (sales > 0) {
+            costRate = (totalCost / sales) * 100;
+            grossProfit = sales - totalCost;
+        }
+
+        const prob = totalCustomers > 0 ? (qty / totalCustomers) * 100 : 0;
+
         step2Products.push({
             id: d.id,
             name: data.menu_name,
-            quantity: data.quantity_sold ?? 0,
-            sales: data.total_sales ?? 0,
+            quantity: qty,
+            sales: sales,
             unit_price: data.unit_price ?? 0,
-            abc_rank: data.abc_rank || '—',
-            cost_rate: data.cost_rate ?? null,
-            gross_profit: data.gross_profit ?? null,
+            unit_cost: costPerUnit,
+            cost_rate: costRate,
+            gross_profit: grossProfit,
+            major_category: majorCategory,
+            category: category,
+            order_prob: prob,
             mom_qty: momQty,
             is_observing: obsProducts.has(data.menu_name),
+            dinii_id: data.dinii_id
         });
     });
     step2Products.sort((a, b) => b.quantity - a.quantity);
 
     const hasData = step2Products.length > 0;
-
-    const tableRowsHtml = hasData
-        ? step2Products.map(p => {
-            const isAdded = step2Candidates.has(p.name);
-            const momHtml = p.mom_qty !== null
-                ? `<span class="${parseFloat(p.mom_qty) >= 0 ? 'mp-mom-positive' : 'mp-mom-negative'}">${parseFloat(p.mom_qty) >= 0 ? '+' : ''}${p.mom_qty}%</span>`
-                : `<span class="mp-mom-neutral">—</span>`;
-            const crHtml = p.cost_rate !== null
-                ? `<span class="${p.cost_rate > 35 ? 'mp-cost-rate-high' : 'mp-cost-rate-ok'}">${p.cost_rate.toFixed(1)}%</span>`
-                : '—';
-            const obsHtml = p.is_observing ? `<span class="mp-observing-badge"><i class="fas fa-eye"></i> 観察中</span>` : '';
-            return `
-            <tr>
-                <td><strong>${escHtml(p.name)}</strong>${obsHtml}</td>
-                <td>${p.quantity.toLocaleString()}</td>
-                <td>¥${p.sales.toLocaleString()}</td>
-                <td>${crHtml}</td>
-                <td>${p.gross_profit !== null ? '¥' + p.gross_profit.toLocaleString() : '—'}</td>
-                <td><span class="mp-abc-badge rank-${p.abc_rank}">${p.abc_rank}</span></td>
-                <td>${momHtml}</td>
-                <td>
-                    <button class="mp-add-candidate-btn ${isAdded ? 'added' : ''}"
-                        id="mp-cand-btn-${p.id}"
-                        onclick="window._mpToggleCandidate('${p.id}', '${escHtml(p.name).replace(/'/g,"\\'")}', this)"
-                        ${isAdded ? 'disabled' : ''}>
-                        ${isAdded ? '<i class="fas fa-check"></i> 追加済み' : '<i class="fas fa-plus"></i> 改善候補へ'}
-                    </button>
-                </td>
-            </tr>`;
-        }).join('')
-        : `<tr><td colspan="8"><div class="mp-empty-state"><i class="fas fa-database"></i><p>${formatYearMonth(latestMonth)}のDiniiデータが見つかりません。<br>CSVインポート画面からデータをインポートしてください。</p></div></td></tr>`;
+    const uniqueCategories = [...new Set(step2Products.map(p => p.category))].filter(c => c).sort();
+    const catOptionsHtml = uniqueCategories.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
 
     area.innerHTML = `
     <div class="mp-step-content">
@@ -834,11 +968,15 @@ async function renderStep2(area) {
             </div>
 
             <div class="mp-analysis-toolbar">
-                <input type="text" class="mp-search-box" id="mp-search-box" placeholder="商品名で検索..." oninput="window._mpFilterProducts()">
+                <input type="text" class="mp-search-box" id="mp-search-box" placeholder="商品名で検索..." oninput="window._mpRenderTable()">
+                <select id="mp-category-dropdown" style="padding: 0.4rem 1rem; border-radius: 8px; border: 1px solid var(--border); outline: none; font-size: 0.85rem;" onchange="window._mpSetCategoryFilter(this.value)">
+                    <option value="all">すべてのカテゴリー</option>
+                    ${catOptionsHtml}
+                </select>
                 <button class="mp-filter-chip active" data-filter="all" onclick="window._mpSetFilter('all', this)">全て</button>
-                <button class="mp-filter-chip" data-filter="A" onclick="window._mpSetFilter('A', this)">Aランク</button>
-                <button class="mp-filter-chip" data-filter="B" onclick="window._mpSetFilter('B', this)">Bランク</button>
-                <button class="mp-filter-chip" data-filter="C" onclick="window._mpSetFilter('C', this)">Cランク</button>
+                <button class="mp-filter-chip" data-filter="フード" onclick="window._mpSetFilter('フード', this)">フード</button>
+                <button class="mp-filter-chip" data-filter="ドリンク" onclick="window._mpSetFilter('ドリンク', this)">ドリンク</button>
+                <button class="mp-filter-chip" data-filter="お通し" onclick="window._mpSetFilter('お通し', this)">お通し</button>
                 <button class="mp-filter-chip" data-filter="high_cost" onclick="window._mpSetFilter('high_cost', this)">原価率高</button>
             </div>
 
@@ -847,16 +985,20 @@ async function renderStep2(area) {
                     <thead>
                         <tr>
                             <th>商品名</th>
-                            <th>販売数</th>
-                            <th>売上</th>
-                            <th>原価率</th>
-                            <th>粗利額</th>
-                            <th>ABC</th>
-                            <th>前月比</th>
+                            <th class="mp-sort-header" data-sort-key="quantity" data-label="販売数" onclick="window._mpSortProducts('quantity')" style="cursor:pointer; white-space:nowrap;">販売数</th>
+                            <th class="mp-sort-header" data-sort-key="unit_price" data-label="売値" onclick="window._mpSortProducts('unit_price')" style="cursor:pointer; white-space:nowrap;">売値</th>
+                            <th class="mp-sort-header" data-sort-key="unit_cost" data-label="原価" onclick="window._mpSortProducts('unit_cost')" style="cursor:pointer; white-space:nowrap;">原価</th>
+                            <th class="mp-sort-header" data-sort-key="sales" data-label="売上" onclick="window._mpSortProducts('sales')" style="cursor:pointer; white-space:nowrap;">売上</th>
+                            <th class="mp-sort-header" data-sort-key="cost_rate" data-label="原価率" onclick="window._mpSortProducts('cost_rate')" style="cursor:pointer; white-space:nowrap;">原価率</th>
+                            <th class="mp-sort-header" data-sort-key="gross_profit" data-label="粗利額" onclick="window._mpSortProducts('gross_profit')" style="cursor:pointer; white-space:nowrap;">粗利額</th>
+                            <th class="mp-sort-header" data-sort-key="order_prob" data-label="注文確率" onclick="window._mpSortProducts('order_prob')" style="cursor:pointer; white-space:nowrap;">注文確率</th>
+                            <th class="mp-sort-header" data-sort-key="mom_qty" data-label="前月比" onclick="window._mpSortProducts('mom_qty')" style="cursor:pointer; white-space:nowrap;">前月比</th>
                             <th>アクション</th>
                         </tr>
                     </thead>
-                    <tbody id="mp-products-tbody">${tableRowsHtml}</tbody>
+                    <tbody id="mp-products-tbody">
+                        ${!hasData ? `<tr><td colspan="9"><div class="mp-empty-state"><i class="fas fa-database"></i><p>${formatYearMonth(latestMonth)}のDiniiデータが見つかりません。<br>CSVインポート画面からデータをインポートしてください。</p></div></td></tr>` : ''}
+                    </tbody>
                 </table>
             </div>
 
@@ -882,46 +1024,135 @@ async function renderStep2(area) {
         </div>
     </div>`;
 
-    // コールバック
+    // 状態変数
     let currentFilter = 'all';
+    let currentCategoryFilter = 'all';
+    let currentSortKey = 'quantity';
+    let currentSortAsc = false;
+
     window._mpToggleCandidate = (productId, productName, btn) => {
-        step2Candidates.add(productName);
-        btn.className = 'mp-add-candidate-btn added';
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-check"></i> 追加済み';
+        if (step2Candidates.has(productName)) {
+            step2Candidates.delete(productName);
+            btn.className = 'mp-add-candidate-btn';
+            btn.innerHTML = '<i class="fas fa-plus"></i> 改善候補へ';
+        } else {
+            step2Candidates.add(productName);
+            btn.className = 'mp-add-candidate-btn added';
+            btn.innerHTML = '<i class="fas fa-check"></i> 追加済み';
+        }
     };
 
-    window._mpFilterProducts = () => {
-        const keyword = document.getElementById('mp-search-box').value.toLowerCase();
-        filterProductsTable(keyword, currentFilter);
+    window._mpRenderTable = () => {
+        const tbody = document.getElementById('mp-products-tbody');
+        if (!tbody) return;
+
+        // 1. ソート
+        step2Products.sort((a, b) => {
+            let valA = a[currentSortKey];
+            let valB = b[currentSortKey];
+            
+            if (valA === null) valA = -99999999;
+            if (valB === null) valB = -99999999;
+            
+            if (currentSortKey === 'mom_qty') {
+                valA = a.mom_qty !== null ? parseFloat(a.mom_qty) : -99999999;
+                valB = b.mom_qty !== null ? parseFloat(b.mom_qty) : -99999999;
+            }
+
+            if (valA < valB) return currentSortAsc ? -1 : 1;
+            if (valA > valB) return currentSortAsc ? 1 : -1;
+            return 0;
+        });
+
+        // 2. フィルタとHTML生成
+        const keyword = document.getElementById('mp-search-box')?.value.toLowerCase() || '';
+        const html = step2Products.map(p => {
+            const matchKw = !keyword || p.name.toLowerCase().includes(keyword);
+            let matchFilter = true;
+            if (currentFilter === 'フード') matchFilter = p.major_category === 'フード';
+            if (currentFilter === 'ドリンク') matchFilter = p.major_category === 'ドリンク';
+            if (currentFilter === 'お通し') matchFilter = p.major_category === 'お通し';
+            if (currentFilter === 'high_cost') matchFilter = p.cost_rate !== null && p.cost_rate > 35;
+            
+            let matchCat = true;
+            if (currentCategoryFilter !== 'all') matchCat = p.category === currentCategoryFilter;
+
+            if (!matchKw || !matchFilter || !matchCat) return '';
+
+            const isAdded = step2Candidates.has(p.name);
+            const momHtml = p.mom_qty !== null
+                ? `<span class="${parseFloat(p.mom_qty) >= 0 ? 'mp-mom-positive' : 'mp-mom-negative'}">${parseFloat(p.mom_qty) >= 0 ? '+' : ''}${p.mom_qty}%</span>`
+                : `<span class="mp-mom-neutral">—</span>`;
+            const crHtml = p.cost_rate !== null
+                ? `<span class="${p.cost_rate > 35 ? 'mp-cost-rate-high' : 'mp-cost-rate-ok'}">${p.cost_rate.toFixed(1)}%</span>`
+                : '—';
+            const grossHtml = p.gross_profit !== null ? '¥' + Math.round(p.gross_profit).toLocaleString() : '—';
+            const probHtml = p.order_prob ? p.order_prob.toFixed(1) + '%' : '0.0%';
+            const obsHtml = p.is_observing ? `<span class="mp-observing-badge"><i class="fas fa-eye"></i> 観察中</span>` : '';
+            return `
+            <tr>
+                <td><strong>${escHtml(p.name)}</strong>${obsHtml}</td>
+                <td>${p.quantity.toLocaleString()}</td>
+                <td>¥${Math.round(p.unit_price).toLocaleString()}</td>
+                <td>¥${Math.round(p.unit_cost).toLocaleString()}</td>
+                <td>¥${Math.round(p.sales).toLocaleString()}</td>
+                <td>${crHtml}</td>
+                <td>${grossHtml}</td>
+                <td>${probHtml}</td>
+                <td>${momHtml}</td>
+                <td>
+                    <button class="mp-add-candidate-btn ${isAdded ? 'added' : ''}"
+                        id="mp-cand-btn-${p.id}"
+                        onclick="window._mpToggleCandidate('${p.id}', '${escHtml(p.name).replace(/'/g,"\\'")}', this)">
+                        ${isAdded ? '<i class="fas fa-check"></i> 追加済み' : '<i class="fas fa-plus"></i> 改善候補へ'}
+                    </button>
+                </td>
+            </tr>`;
+        }).join('');
+
+        tbody.innerHTML = html || `<tr><td colspan="9"><div class="mp-empty-state"><p>該当する商品が見つかりません。</p></div></td></tr>`;
+        
+        // ヘッダのUIを更新
+        document.querySelectorAll('.mp-sort-header').forEach(th => {
+            const key = th.dataset.sortKey;
+            let icon = '';
+            if (key === currentSortKey) {
+                icon = currentSortAsc ? ' <i class="fas fa-sort-up"></i>' : ' <i class="fas fa-sort-down"></i>';
+            } else {
+                icon = ' <i class="fas fa-sort" style="color: #cbd5e1;"></i>';
+            }
+            th.innerHTML = th.dataset.label + icon;
+        });
+    };
+
+    window._mpSortProducts = (key) => {
+        if (currentSortKey === key) {
+            currentSortAsc = !currentSortAsc;
+        } else {
+            currentSortKey = key;
+            currentSortAsc = false;
+        }
+        window._mpRenderTable();
     };
 
     window._mpSetFilter = (filter, el) => {
         currentFilter = filter;
         document.querySelectorAll('.mp-filter-chip').forEach(c => c.classList.remove('active'));
         el.classList.add('active');
-        const keyword = document.getElementById('mp-search-box').value.toLowerCase();
-        filterProductsTable(keyword, filter);
+        window._mpRenderTable();
     };
 
-    window._mpSaveStep2 = async () => await saveStep2();
-}
+    window._mpSetCategoryFilter = (val) => {
+        currentCategoryFilter = val;
+        window._mpRenderTable();
+    };
 
-function filterProductsTable(keyword, filter) {
-    const tbody = document.getElementById('mp-products-tbody');
-    if (!tbody) return;
-    const rows = tbody.querySelectorAll('tr');
-    rows.forEach((row, i) => {
-        const p = step2Products[i];
-        if (!p) return;
-        const matchKw = !keyword || p.name.toLowerCase().includes(keyword);
-        let matchFilter = true;
-        if (filter === 'A') matchFilter = p.abc_rank === 'A';
-        if (filter === 'B') matchFilter = p.abc_rank === 'B';
-        if (filter === 'C') matchFilter = p.abc_rank === 'C';
-        if (filter === 'high_cost') matchFilter = p.cost_rate !== null && p.cost_rate > 35;
-        row.style.display = (matchKw && matchFilter) ? '' : 'none';
-    });
+    // 初期描画
+    if (hasData) {
+        window._mpRenderTable();
+    }
+
+    window._mpSaveStep2 = async () => await saveStep2();
 }
 
 async function saveStep2() {
@@ -1153,60 +1384,252 @@ async function saveStep3() {
 // -------------------------------------------------------
 // Step4 — 来月の商品決定
 // -------------------------------------------------------
+let step4AllPrototypes = [];
+let isPrototypeListOpen = false;
+let step4SearchKeyword = '';
+let mpMasterCache = null;
+
+function _mpCalculateProtoCost(proto) {
+    if (!mpMasterCache || !proto.recipe || !Array.isArray(proto.recipe)) return 0;
+    
+    // 再帰的に原価を計算（無限ループ防止の visiting Set）
+    function getRecursiveCost(itemId, visiting = new Set()) {
+        if (visiting.has(itemId)) return 0;
+        visiting.add(itemId);
+        const itm = mpMasterCache.items.find(i => i.id === itemId);
+        if (itm) return getEffectivePrice(itemId, mpMasterCache);
+        
+        const subProto = step4AllPrototypes.find(p => p.id === itemId);
+        if (subProto && Array.isArray(subProto.recipe)) {
+            let total = 0;
+            subProto.recipe.forEach(r => total += getRecursiveCost(r.ingredient_id, visiting) * (r.quantity || 0));
+            const yieldAmt = Number(subProto.yield_amount) || 1;
+            return yieldAmt > 0 ? (total / yieldAmt) : 0;
+        }
+        
+        return 0;
+    }
+
+    let total = 0;
+    proto.recipe.forEach(r => {
+        total += getRecursiveCost(r.ingredient_id) * (r.quantity || 0);
+    });
+    
+    const yieldAmt = Number(proto.yield_amount) || 1;
+    return yieldAmt > 0 ? (total / yieldAmt) : 0;
+}
+
 async function renderStep4(area) {
-    const q = query(collection(db, 't_prototype_recipes'),
-        where('store_id', '==', currentStoreId));
+    // マスタキャッシュの準備 (初回のみ)
+    if (!mpMasterCache) {
+        const [iSnap, ingSnap, mSnap] = await Promise.all([
+            getDocs(collection(db, 'm_items')),
+            getDocs(collection(db, 'm_ingredients')),
+            getDocs(collection(db, 'm_menus'))
+        ]);
+        mpMasterCache = {
+            items: iSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+            ingredients: ingSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+            menus: mSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+        };
+    }
+
+    // 全試作品を取得
+    const q = query(collection(db, 't_prototype_recipes'));
     const snap = await getDocs(q);
-    step4Prototypes = [];
-    snap.forEach(d => step4Prototypes.push({ id: d.id, ...d.data() }));
+    step4AllPrototypes = [];
+    snap.forEach(d => step4AllPrototypes.push({ id: d.id, ...d.data() }));
+    // 降順ソート
+    step4AllPrototypes.sort((a, b) => (b.updated_at?.seconds || 0) - (a.updated_at?.seconds || 0));
 
-    const isEmpty = step4Prototypes.length === 0;
+    // 現在の会議に紐づく試作品（すでに採用/保留などが判定されたもの）
+    // （今回は店舗や年月の紐付けが曖昧だったため、meeting_year_month が一致するものを抽出）
+    step4Prototypes = step4AllPrototypes.filter(p => 
+        p.meeting_year_month === activeMeeting.year_month
+    );
 
-    const cardsHtml = isEmpty
-        ? `<div class="mp-empty-state"><i class="fas fa-flask"></i>
-               <p>登録されている試作品がありません。<br>
-               <a href="#" onclick="window.navigateTo('prototype_menu');return false;" style="color:#f59e0b;font-weight:700;">メニュー試作ページ</a>から試作品を登録してください。</p>
-           </div>`
-        : `<div class="mp-prototype-grid">${step4Prototypes.map((p, i) => renderStep4Card(p, i)).join('')}</div>`;
+    window._mpUpdatePrototypeListTable = () => {
+        const tbody = document.getElementById('mp-step4-prototype-tbody');
+        if (!tbody) return;
 
-    area.innerHTML = `
-    <div class="mp-step-content">
-        <div class="mp-step-content-header">
-            <span class="mp-step-content-title"><span style="background:#f59e0b;color:white;border-radius:50%;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:800;">4</span> 来月の商品決定</span>
-            <button onclick="window.navigateTo('prototype_menu')" style="padding:0.4rem 0.9rem;border:1.5px solid #f59e0b;background:white;color:#d97706;border-radius:8px;font-size:0.82rem;font-weight:700;cursor:pointer;">
-                <i class="fas fa-plus"></i> 試作品を追加登録
-            </button>
-        </div>
-        <div class="mp-step-content-body">
-            <div class="mp-section-note">
-                <i class="fas fa-info-circle" style="color:#f59e0b;margin-right:0.3rem;"></i>
-                登録済みの試作品を確認し、翌月の採用可否を決定してください。「採用」を選ぶと詳細情報の入力欄が表示されます。
-            </div>
-            ${cardsHtml}
-        </div>
-        <div class="mp-step-nav">
-            <button class="mp-nav-btn prev" onclick="window._mpGoStep(3)">
-                <i class="fas fa-chevron-left"></i> Step3へ
-            </button>
-            <div style="display:flex;gap:0.6rem;">
-                <button class="mp-nav-btn save" onclick="window._mpSaveStep4()">
-                    <i class="fas fa-save"></i> 保存
+        const kw = step4SearchKeyword.trim().toLowerCase();
+        
+        if (!kw) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:1.5rem; color:#64748b;">検索キーワードを入力すると、試作品が表示されます。</td></tr>`;
+            return;
+        }
+
+        const filtered = step4AllPrototypes.filter(p => 
+            !step4Prototypes.find(sp => sp.id === p.id) && // 既に追加済みのものは除外
+            ((p.name || '').toLowerCase().includes(kw) || 
+             (p.furigana || '').toLowerCase().includes(kw) || 
+             (p.developer || p.created_by_name || '').toLowerCase().includes(kw))
+        );
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:1.5rem; color:#64748b;">該当する試作品がありません。</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = filtered.map(p => {
+            // ここで動的に原価を計算（スナップショットがあればそれを使用、ただし0や空文字の場合は再計算）
+            const savedCost = Number(p.total_cost);
+            const cost = savedCost > 0 ? savedCost : _mpCalculateProtoCost(p);
+            const calcRate = (cost > 0 && p.selling_price > 0) ? (cost / p.selling_price * 100) : null;
+            const costRateHtml = calcRate !== null ? `${calcRate.toFixed(1)}%` : '—';
+            const devName = escHtml(p.developer || p.created_by_name || p.assignee || '—');
+            return `
+            <tr>
+                <td style="padding:0.6rem; border-bottom:1px solid #e2e8f0;">${escHtml(p.name || '名称未設定')}</td>
+                <td style="padding:0.6rem; border-bottom:1px solid #e2e8f0;">${devName}</td>
+                <td style="padding:0.6rem; border-bottom:1px solid #e2e8f0;">${costRateHtml}</td>
+                <td style="padding:0.6rem; border-bottom:1px solid #e2e8f0;">
+                    <button onclick="window._mpPreviewProtoImage('${p.image_url || ''}')" style="background:none;border:none;color:#3b82f6;cursor:pointer;font-size:0.85rem;" ${!p.image_url ? 'disabled' : ''}>
+                        <i class="fas fa-image"></i> 画像
+                    </button>
+                </td>
+                <td style="padding:0.6rem; border-bottom:1px solid #e2e8f0; text-align:right;">
+                    <button onclick="window._mpAddPrototypeToMeeting('${p.id}')" style="padding:0.3rem 0.6rem;background:#f59e0b;color:white;border:none;border-radius:4px;cursor:pointer;font-size:0.8rem;">
+                        <i class="fas fa-plus"></i> 追加
+                    </button>
+                </td>
+            </tr>`;
+        }).join('');
+    };
+
+    window._mpUpdateStep4View = () => {
+        const isEmpty = step4Prototypes.length === 0;
+        const cardsHtml = isEmpty
+            ? `<div class="mp-empty-state"><i class="fas fa-flask"></i><p>採用候補に登録されている試作品がありません。<br>上の「試作品から選択」ボタンから追加してください。</p></div>`
+            : `<div style="display:flex; flex-direction:column; gap:1.5rem;">${step4Prototypes.map((p, i) => renderStep4Card(p, i)).join('')}</div>`;
+
+        let listHtml = '';
+        if (isPrototypeListOpen) {
+            listHtml = `
+            <div style="background:white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-top: 1rem; margin-bottom: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+                    <h4 style="margin:0; font-size:1rem; color:#1e293b;"><i class="fas fa-flask" style="color:#f59e0b;"></i> 試作品リストから選択</h4>
+                    <input type="text" placeholder="商品名や開発者で検索..." value="${escHtml(step4SearchKeyword)}" oninput="window._mpSearchPrototypeList(this.value)" style="padding:0.4rem 0.8rem; border:1px solid #cbd5e1; border-radius:6px; width:220px; font-size:0.85rem; outline:none;" id="mp-step4-search-input">
+                </div>
+                <div style="max-height:300px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:6px;">
+                    <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+                        <thead style="background:#f8fafc; position:sticky; top:0;">
+                            <tr>
+                                <th style="padding:0.6rem; text-align:left; border-bottom:1px solid #e2e8f0; color:#475569;">商品名</th>
+                                <th style="padding:0.6rem; text-align:left; border-bottom:1px solid #e2e8f0; color:#475569;">開発者</th>
+                                <th style="padding:0.6rem; text-align:left; border-bottom:1px solid #e2e8f0; color:#475569;">原価率</th>
+                                <th style="padding:0.6rem; text-align:left; border-bottom:1px solid #e2e8f0; color:#475569;">画像</th>
+                                <th style="padding:0.6rem; text-align:right; border-bottom:1px solid #e2e8f0; color:#475569;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mp-step4-prototype-tbody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>`;
+        }
+
+        area.innerHTML = `
+        <div class="mp-step-content">
+            <div class="mp-step-content-header">
+                <span class="mp-step-content-title"><span style="background:#f59e0b;color:white;border-radius:50%;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:800;">4</span> 来月の商品決定</span>
+                <button onclick="window._mpTogglePrototypeList()" style="padding:0.4rem 0.9rem;border:1.5px solid #f59e0b;background:${isPrototypeListOpen ? '#f59e0b' : 'white'};color:${isPrototypeListOpen ? 'white' : '#d97706'};border-radius:8px;font-size:0.82rem;font-weight:700;cursor:pointer;">
+                    <i class="fas ${isPrototypeListOpen ? 'fa-times' : 'fa-list'}"></i> ${isPrototypeListOpen ? 'リストを閉じる' : '試作品から選択'}
                 </button>
-                <button class="mp-nav-btn next" onclick="window._mpGoStep(5)">
-                    Step5へ <i class="fas fa-chevron-right"></i>
-                </button>
             </div>
-        </div>
-    </div>`;
+            <div class="mp-step-content-body">
+                ${listHtml}
+                <div class="mp-section-note">
+                    <i class="fas fa-info-circle" style="color:#f59e0b;margin-right:0.3rem;"></i>
+                    採用候補の試作品を確認し、翌月の採用可否を決定してください。「採用」を選ぶと詳細情報の入力欄が表示されます。
+                </div>
+                ${cardsHtml}
+            </div>
+            <div class="mp-step-nav">
+                <button class="mp-nav-btn prev" onclick="window._mpGoStep(3)">
+                    <i class="fas fa-chevron-left"></i> Step3へ
+                </button>
+                <div style="display:flex;gap:0.6rem;">
+                    <button class="mp-nav-btn save" onclick="window._mpSaveStep4()">
+                        <i class="fas fa-save"></i> 保存
+                    </button>
+                    <button class="mp-nav-btn next" onclick="window._mpGoStep(5)">
+                        Step5へ <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>`;
+
+        if (isPrototypeListOpen) {
+            window._mpUpdatePrototypeListTable();
+            // カーソルをインプットに戻す
+            const input = document.getElementById('mp-step4-search-input');
+            if (input) {
+                input.focus();
+                input.setSelectionRange(input.value.length, input.value.length);
+            }
+        }
+    };
+
+    window._mpUpdateStep4View();
+
+    window._mpTogglePrototypeList = () => {
+        isPrototypeListOpen = !isPrototypeListOpen;
+        window._mpUpdateStep4View();
+    };
+
+    window._mpSearchPrototypeList = (kw) => {
+        step4SearchKeyword = kw;
+        window._mpUpdatePrototypeListTable();
+    };
+
+    // 原価率動的計算
+    window._mpUpdateCostRate = (protoId, totalCost, inputVal) => {
+        const rateEl = document.getElementById(`mp-adopt-rate-${protoId}`);
+        if (!rateEl) return;
+        const price = parseFloat(inputVal);
+        if (price > 0 && totalCost > 0) {
+            const rate = (totalCost / price) * 100;
+            rateEl.innerText = rate.toFixed(1) + '%';
+        } else {
+            rateEl.innerText = '—';
+        }
+    };
+
+    window._mpAutoResizeTextarea = (el) => {
+        el.style.height = 'auto';
+        el.style.height = (el.scrollHeight) + 'px';
+    };
 
     window._mpSelectJudgement4 = (protoId, val, btn) => {
-        const group = btn.closest('.mp-judgement-group');
-        group?.querySelectorAll('.mp-judgement-btn').forEach(b => b.className = 'mp-judgement-btn');
-        btn.classList.add('selected', val);
-        step4Judgements[protoId] = val;
+        // Obsolete (Buttons removed)
+    };
 
-        const adoptForm = document.getElementById(`mp-adopt-form-${protoId}`);
-        if (adoptForm) adoptForm.style.display = val === 'adopt' ? 'block' : 'none';
+    window._mpAddPrototypeToMeeting = (id) => {
+        const p = step4AllPrototypes.find(x => x.id === id);
+        if (p && !step4Prototypes.find(x => x.id === id)) {
+            step4Prototypes.push(p);
+            step4Judgements[p.id] = 'adopt'; // デフォルトで採用にする
+        }
+        window._mpUpdateStep4View();
+    };
+
+    window._mpRemovePrototypeFromMeeting = (id) => {
+        step4Prototypes = step4Prototypes.filter(x => x.id !== id);
+        delete step4Judgements[id];
+        window._mpUpdateStep4View();
+    };
+
+    window._mpPreviewProtoImage = (url) => {
+        if (!url) return;
+        const div = document.createElement('div');
+        div.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.8);display:flex;justify-content:center;align-items:center;z-index:99999;cursor:pointer;';
+        div.innerHTML = `<div style="position:relative; max-width:90%; max-height:90%;">
+            <button onclick="this.parentElement.parentElement.remove()" style="position:absolute;top:-30px;right:-30px;background:none;border:none;color:white;font-size:1.5rem;cursor:pointer;"><i class="fas fa-times"></i></button>
+            <img src="${url}" style="max-width:100%;max-height:80vh;border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.5); object-fit:contain;">
+        </div>`;
+        div.onclick = (e) => { if(e.target === div) div.remove(); };
+        document.body.appendChild(div);
     };
 
     window._mpSaveStep4 = async () => await saveStep4();
@@ -1214,65 +1637,63 @@ async function renderStep4(area) {
 
 function renderStep4Card(proto, idx) {
     const name = proto.name || proto.item_name || `試作品 #${idx+1}`;
-    const costRate = proto.cost_rate ? `${proto.cost_rate.toFixed(1)}%` : '—';
-    const ingredientsHtml = (proto.ingredients || []).slice(0, 4).map(ing =>
-        `<span class="mp-tag">${escHtml(ing.name || '')}</span>`
-    ).join('');
-
-    const judgement = step4Judgements[proto.id] || proto.meeting_judgement || '';
-    const jClsMap = { adopt: 'adopt', retry: 'retry', reject: 'reject', hold: 'hold' };
-    const jLabels = [
-        { val: 'adopt',  label: '採用' },
-        { val: 'retry',  label: '修正して再試作' },
-        { val: 'reject', label: '不採用' },
-        { val: 'hold',   label: '判断保留' },
-    ];
-    const jBtns = jLabels.map(j => {
-        const isSel = judgement === j.val;
-        return `<button class="mp-judgement-btn ${isSel ? 'selected ' + j.val : ''}" onclick="window._mpSelectJudgement4('${proto.id}', '${j.val}', this)">${j.label}</button>`;
-    }).join('');
-
+    const devName = escHtml(proto.developer || proto.created_by_name || proto.assignee || '—');
+    
+    // スナップショットがあれば使用、ただし0や空文字の場合は再計算する
+    const savedCost = Number(proto.total_cost);
+    const totalCost = savedCost > 0 ? savedCost : _mpCalculateProtoCost(proto);
+    const sellingPrice = proto.selling_price || '';
+    
+    let costRateHtml = '—';
+    if (totalCost > 0 && sellingPrice > 0) {
+        costRateHtml = (totalCost / sellingPrice * 100).toFixed(1) + '%';
+    }
+    
+    // UIをスッキリさせるため、採用リスト追加時は自動的に adopt 状態とみなす。
     return `
-    <div class="mp-proto-card" id="mp-proto-card-${proto.id}">
-        <div class="mp-proto-card-header">
-            <div class="mp-proto-card-name">${escHtml(name)}</div>
-            <div class="mp-proto-card-meta">
-                <span><i class="fas fa-user"></i> ${escHtml(proto.created_by_name || proto.assignee || '—')}</span>
+    <div class="mp-proto-card" id="mp-proto-card-${proto.id}" style="display:flex; flex-direction:column; padding:1.2rem; position:relative;">
+        <!-- ヘッダー -->
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f1f5f9; padding-bottom:0.8rem; margin-bottom:1rem;">
+            <div style="display:flex; align-items:center; gap:1rem;">
+                <div style="font-weight:800; color:#1e293b; font-size:1.1rem;">${escHtml(name)}</div>
+                <div style="font-size:0.8rem; color:#64748b;"><i class="fas fa-user"></i> ${devName}</div>
             </div>
+            <button onclick="window._mpRemovePrototypeFromMeeting('${proto.id}')" style="background:none; border:none; color:#94a3b8; cursor:pointer;" title="採用候補から外す"><i class="fas fa-times"></i></button>
         </div>
-        <div class="mp-proto-card-body">
-            <div class="mp-proto-cost-row">
-                <div class="mp-proto-cost-item">
+        <!-- ボディ（横に３列） -->
+        <div style="display:grid; grid-template-columns: 1fr 1fr 2fr; gap:1.5rem;">
+            <!-- 左：予定日と原価 -->
+            <div style="display:flex; flex-direction:column; gap:1rem;">
+                <div class="mp-form-group" style="margin:0;">
+                    <label>提供予定日</label>
+                    <input type="date" id="mp-adopt-date-${proto.id}" value="${proto.serve_date || ''}">
+                </div>
+                <div class="mp-form-group" style="margin:0;">
                     <label>商品原価</label>
-                    <span>${proto.total_cost ? '¥' + proto.total_cost.toLocaleString() : '—'}</span>
-                </div>
-                <div class="mp-proto-cost-item">
-                    <label>想定売価</label>
-                    <span>${proto.selling_price ? '¥' + proto.selling_price.toLocaleString() : '—'}</span>
-                </div>
-                <div class="mp-proto-cost-item">
-                    <label>想定原価率</label>
-                    <span>${costRate}</span>
+                    <div style="padding:0.4rem 0; font-size:1.1rem; font-weight:700; color:#475569;">${totalCost ? '¥' + totalCost.toLocaleString() : '—'}</div>
                 </div>
             </div>
-            ${ingredientsHtml ? `<div style="margin-bottom:0.8rem;">${ingredientsHtml}</div>` : ''}
-            ${proto.comment ? `<p style="font-size:0.82rem;color:#64748b;margin-bottom:0.8rem;">${escHtml(proto.comment)}</p>` : ''}
-            <div class="mp-judgement-group">${jBtns}</div>
-
-            <div id="mp-adopt-form-${proto.id}" style="display:${judgement === 'adopt' ? 'block' : 'none'};margin-top:1rem;border-top:1px solid #f1f5f9;padding-top:1rem;">
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;">
-                    <div class="mp-form-group">
-                        <label>提供予定日</label>
-                        <input type="date" id="mp-adopt-date-${proto.id}" value="${proto.serve_date || ''}">
-                    </div>
-                    <div class="mp-form-group">
-                        <label>担当者</label>
-                        <input type="text" id="mp-adopt-assignee-${proto.id}" value="${escHtml(proto.assignee || '')}" placeholder="例: 料理長">
-                    </div>
-                    <div class="mp-form-group" style="grid-column:1/-1;">
-                        <label>商品の狙い・コンセプト</label>
-                        <input type="text" id="mp-adopt-concept-${proto.id}" value="${escHtml(proto.concept || '')}" placeholder="例: 夏の定番・高客単価">
-                    </div>
+            <!-- 中央：想定売価と原価率 -->
+            <div style="display:flex; flex-direction:column; gap:1rem;">
+                <div class="mp-form-group" style="margin:0;">
+                    <label>想定売価 (¥)</label>
+                    <input type="number" id="mp-adopt-price-${proto.id}" value="${sellingPrice}" 
+                        oninput="window._mpUpdateCostRate('${proto.id}', ${totalCost}, this.value)"
+                        placeholder="例: 690">
+                </div>
+                <div class="mp-form-group" style="margin:0;">
+                    <label>想定原価率</label>
+                    <div id="mp-adopt-rate-${proto.id}" style="padding:0.4rem 0; font-size:1.1rem; font-weight:700; color:#475569;">${costRateHtml}</div>
+                </div>
+            </div>
+            <!-- 右：コンセプト -->
+            <div style="display:flex; flex-direction:column; gap:0.5rem; height:100%;">
+                <div class="mp-form-group" style="margin:0; height:100%; display:flex; flex-direction:column;">
+                    <label>商品の狙い・コンセプト</label>
+                    <textarea id="mp-adopt-concept-${proto.id}" 
+                              placeholder="例: 夏の定番・高客単価" 
+                              style="flex-grow:1; resize:none; overflow:hidden; min-height:80px; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px; font-family:inherit; font-size:0.9rem;"
+                              oninput="window._mpAutoResizeTextarea(this)">${escHtml(proto.concept || '')}</textarea>
                 </div>
             </div>
         </div>
@@ -1282,19 +1703,24 @@ function renderStep4Card(proto, idx) {
 async function saveStep4() {
     try {
         for (const proto of step4Prototypes) {
-            const judgement = step4Judgements[proto.id] || '';
-            if (!judgement) continue;
-
+            // UIからボタンを消したため、リストにあるものは全て採用(adopt)として保存
+            const judgement = 'adopt';
+            
+            // 原価の再計算（スナップショットとして保存するため）
+            const cost = _mpCalculateProtoCost(proto);
+            
             const updateData = {
                 meeting_judgement: judgement,
                 meeting_year_month: activeMeeting.year_month,
                 updated_at: serverTimestamp(),
+                serve_date: document.getElementById(`mp-adopt-date-${proto.id}`)?.value || '',
+                concept: document.getElementById(`mp-adopt-concept-${proto.id}`)?.value || '',
+                total_cost: cost // ★スナップショット保存
             };
 
-            if (judgement === 'adopt') {
-                updateData.serve_date     = document.getElementById(`mp-adopt-date-${proto.id}`)?.value || '';
-                updateData.assignee       = document.getElementById(`mp-adopt-assignee-${proto.id}`)?.value || '';
-                updateData.concept        = document.getElementById(`mp-adopt-concept-${proto.id}`)?.value || '';
+            const priceInput = document.getElementById(`mp-adopt-price-${proto.id}`);
+            if (priceInput && priceInput.value) {
+                updateData.selling_price = parseFloat(priceInput.value);
             }
 
             await updateDoc(doc(db, 't_prototype_recipes', proto.id), updateData);
@@ -1536,97 +1962,159 @@ async function completeMeeting() {
 }
 
 // -------------------------------------------------------
-// ダッシュボード表示
 // -------------------------------------------------------
-function renderDashboardView() {
-    const area = document.getElementById('mp-step-content-area');
-    if (!area) return;
+// ダッシュボードHTML生成（画面表示用 & PDF出力用 共通）
+// -------------------------------------------------------
+function generateDashboardHtml(m, plans, homework) {
+    // 改善施策のグループ化
+    const policyGroups = {};
+    plans.forEach(p => {
+        const policy = p.action_policy || '未設定';
+        if (!policyGroups[policy]) policyGroups[policy] = [];
+        policyGroups[policy].push(p);
+    });
 
-    const m = activeMeeting;
+    let plansHtml = '';
+    if (plans.length === 0) {
+        plansHtml = '<p style="color:#94a3b8;font-size:0.85rem;">なし</p>';
+    } else {
+        const policyOrder = { '改善する': 1, '廃止する': 2, '継続検討する': 3, '今回は見送る': 4, '未設定': 5 };
+        const sortedPolicies = Object.keys(policyGroups).sort((a, b) => (policyOrder[a] || 99) - (policyOrder[b] || 99));
 
-    area.innerHTML = `
-    <div class="mp-step-content">
-        <div class="mp-step-content-header" style="background:linear-gradient(135deg,#fef9f0,#dcfce7);">
-            <span class="mp-step-content-title" style="color:#065f46;">
-                <i class="fas fa-check-double" style="color:#10b981;"></i>
-                料理長会議 ダッシュボード
-            </span>
-            <span style="font-size:0.82rem;color:#065f46;">会議確定済み</span>
+        for (const policy of sortedPolicies) {
+            const policyPlans = policyGroups[policy];
+            plansHtml += `
+                <div style="margin-bottom: 1.2rem;">
+                    <div style="font-weight:700; color:#0f172a; font-size:0.95rem; margin-bottom:0.5rem; padding-bottom:0.3rem; border-bottom:2px solid #e2e8f0;">
+                        ${escHtml(policy)}
+                    </div>
+                    ${policyPlans.map(p => {
+                        let detailsHtml = '';
+                        const rowStyle = 'margin-bottom:0.3rem; display:flex; gap:0.5rem;';
+                        const labelStyle = 'font-size:0.75rem; color:#64748b; width:100px; flex-shrink:0; line-height:1.4;';
+                        const valStyle = 'font-size:0.85rem; color:#1e293b; line-height:1.4; white-space:pre-wrap;';
+
+                        if (p.current_issue) detailsHtml += `<div style="${rowStyle}"><span style="${labelStyle}">現状の問題</span><span style="${valStyle}">${escHtml(p.current_issue)}</span></div>`;
+                        if (p.action_detail) detailsHtml += `<div style="${rowStyle}"><span style="${labelStyle}">具体的な実施内容</span><span style="${valStyle}">${escHtml(p.action_detail)}</span></div>`;
+                        if (p.improvement_goal) detailsHtml += `<div style="${rowStyle}"><span style="${labelStyle}">改善の狙い</span><span style="${valStyle}">${escHtml(p.improvement_goal)}</span></div>`;
+                        if (p.target_metrics && p.target_metrics.length > 0) detailsHtml += `<div style="${rowStyle}"><span style="${labelStyle}">確認する指標</span><span style="${valStyle}">${escHtml(p.target_metrics.join('、'))}</span></div>`;
+                        if (p.baseline_value) detailsHtml += `<div style="${rowStyle}"><span style="${labelStyle}">改善前の基準値</span><span style="${valStyle}">${escHtml(p.baseline_value)}</span></div>`;
+                        if (p.planned_date) detailsHtml += `<div style="${rowStyle}"><span style="${labelStyle}">実施予定日</span><span style="${valStyle}">${escHtml(p.planned_date)}</span></div>`;
+                        if (p.assignee) detailsHtml += `<div style="${rowStyle}"><span style="${labelStyle}">担当者</span><span style="${valStyle}">${escHtml(p.assignee)}</span></div>`;
+                        if (p.notes) detailsHtml += `<div style="${rowStyle}"><span style="${labelStyle}">備考</span><span style="${valStyle}">${escHtml(p.notes)}</span></div>`;
+
+                        return `
+                        <div style="border-bottom:1px dashed #e2e8f0; padding:0.6rem 0; margin-left:0.5rem;">
+                            <div style="font-weight:bold; font-size:0.95rem; margin-bottom:${detailsHtml ? '0.4rem' : '0'}; color:#1e293b;">
+                                ${escHtml(p.product_name || '')}
+                            </div>
+                            ${detailsHtml ? `<div style="padding-left:0.5rem;">${detailsHtml}</div>` : ''}
+                        </div>`;
+                    }).join('')}
+                </div>
+            `;
+        }
+    }
+
+    // 宿題のグループ化
+    const hwGroups = {};
+    homework.forEach(hw => {
+        const assignee = hw.assignee || '担当者未定';
+        if (!hwGroups[assignee]) hwGroups[assignee] = [];
+        hwGroups[assignee].push(hw);
+    });
+
+    let homeworkHtml = '';
+    if (homework.length === 0) {
+        homeworkHtml = '<p style="color:#94a3b8;font-size:0.85rem;">なし</p>';
+    } else {
+        for (const [assignee, hws] of Object.entries(hwGroups)) {
+            homeworkHtml += `
+                <div style="margin-bottom: 1.2rem;">
+                    <div style="font-weight:700; color:#b45309; font-size:0.95rem; margin-bottom:0.5rem; padding-bottom:0.3rem; border-bottom:2px solid #fde68a;">
+                        ${escHtml(assignee)}
+                    </div>
+                    ${hws.map(hw => `
+                        <div style="border-bottom:1px dashed #e2e8f0; padding:0.5rem 0; margin-left:0.5rem; display:flex; justify-content:space-between; align-items:flex-start; gap:1rem;">
+                            <div style="font-size:0.9rem; font-weight:500; color:#1e293b;">${escHtml(hw.content || '')}</div>
+                            <div style="font-size:0.8rem; color:#64748b; flex-shrink:0;">期限: ${hw.deadline || '—'}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+    }
+
+    return `
+    <div class="mp-step-content mp-pdf-target" style="background:#fff; min-height:100%; border:none; padding:1.5rem;">
+        <div class="mp-step-content-header" style="background:linear-gradient(135deg,#fef9f0,#dcfce7); border-radius:8px; padding:1rem; margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:flex-start;">
+            <div class="mp-step-content-title" style="display:flex; flex-direction:column; gap:0.2rem;">
+                <div style="display:flex; align-items:center; gap:0.5rem; font-size:1.2rem; font-weight:800; color:#065f46;">
+                    <i class="fas fa-check-double" style="color:#10b981;"></i>
+                    料理長会議 ダッシュボード
+                </div>
+                <div style="font-size:0.85rem; color:#065f46; font-weight:normal; display:flex; gap:1.2rem; margin-top:0.3rem; margin-left:1.8rem;">
+                    <span><i class="fas fa-calendar-alt"></i> ${m.meeting_date ? formatDate(m.meeting_date) : '開催日未定'}</span>
+                    <span><i class="fas fa-store"></i> ${escHtml(m.store_name || '—')}</span>
+                    <span><i class="fas fa-users"></i> ${(m.attendees || []).join('、') || '—'}</span>
+                </div>
+            </div>
+            <span style="font-size:0.85rem;color:#065f46;font-weight:bold;">対象年月: ${formatYearMonth(m.year_month)}</span>
         </div>
         <div class="mp-step-content-body">
-            <div class="mp-dashboard-grid">
+            <div class="mp-dashboard-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
 
-                <div class="mp-dashboard-panel">
-                    <div class="mp-dashboard-panel-header">
-                        <i class="fas fa-info-circle" style="color:#3b82f6;"></i> 会議基本情報
-                    </div>
-                    <div class="mp-dashboard-panel-body">
-                        <table style="width:100%;font-size:0.85rem;border-collapse:collapse;">
-                            <tr><td style="color:#64748b;padding:0.3rem 0;width:40%;">対象年月</td><td><strong>${formatYearMonth(m.year_month)}</strong></td></tr>
-                            <tr><td style="color:#64748b;padding:0.3rem 0;">開催日</td><td>${m.meeting_date ? formatDate(m.meeting_date) : '—'}</td></tr>
-                            <tr><td style="color:#64748b;padding:0.3rem 0;">出席者</td><td>${(m.attendees || []).join('、') || '—'}</td></tr>
-                            <tr><td style="color:#64748b;padding:0.3rem 0;">会議時間</td><td>${m.meeting_duration_min || 30}分</td></tr>
-                            <tr><td style="color:#64748b;padding:0.3rem 0;">店舗</td><td>${escHtml(m.store_name)}</td></tr>
-                        </table>
-                    </div>
-                </div>
-
-                <div class="mp-dashboard-panel">
-                    <div class="mp-dashboard-panel-header">
+                <div class="mp-dashboard-panel" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:1rem;">
+                    <div class="mp-dashboard-panel-header" style="font-weight:700; color:#1e293b; margin-bottom:1rem; border-bottom:2px solid #e2e8f0; padding-bottom:0.5rem;">
                         <i class="fas fa-lightbulb" style="color:#f59e0b;"></i> 主な決定事項
                     </div>
                     <div class="mp-dashboard-panel-body">
-                        <p style="white-space:pre-wrap;">${escHtml(m.main_decisions || '（記録なし）')}</p>
+                        <p style="white-space:pre-wrap; font-size:0.9rem; line-height:1.5; color:#1e293b;">${escHtml(m.main_decisions || '（記録なし）')}</p>
                     </div>
                 </div>
 
-                <div class="mp-dashboard-panel">
-                    <div class="mp-dashboard-panel-header">
-                        <i class="fas fa-search" style="color:#6366f1;"></i> 改善施策（${step3Plans.length}件）
-                    </div>
-                    <div class="mp-dashboard-panel-body">
-                        ${step3Plans.length === 0 ? '<p style="color:#94a3b8;">なし</p>' :
-                          step3Plans.map(p => `
-                            <div style="border-bottom:1px solid #f1f5f9;padding:0.5rem 0;">
-                                <strong>${escHtml(p.product_name || '')}</strong>
-                                <span class="mp-tag">${escHtml(p.action_policy || '')}</span>
-                                <div style="font-size:0.8rem;color:#64748b;margin-top:0.2rem;">${escHtml(p.action_detail || '')}</div>
-                            </div>`).join('')}
-                    </div>
-                </div>
-
-                <div class="mp-dashboard-panel">
-                    <div class="mp-dashboard-panel-header">
-                        <i class="fas fa-tasks" style="color:#10b981;"></i> 宿題一覧（${step5Homework.length}件）
-                    </div>
-                    <div class="mp-dashboard-panel-body">
-                        ${step5Homework.length === 0 ? '<p style="color:#94a3b8;">なし</p>' :
-                          step5Homework.map(hw => `
-                            <div style="border-bottom:1px solid #f1f5f9;padding:0.5rem 0;display:flex;gap:0.5rem;align-items:flex-start;">
-                                <span class="mp-tag" style="background:${hw.status === '完了' ? '#dcfce7' : '#fef3c7'};color:${hw.status === '完了' ? '#065f46' : '#92400e'};">${hw.status}</span>
-                                <div>
-                                    <div style="font-size:0.88rem;font-weight:600;">${escHtml(hw.content || '')}</div>
-                                    <div style="font-size:0.78rem;color:#64748b;">${escHtml(hw.assignee || '')} ／ 期限: ${hw.deadline || '—'}</div>
-                                </div>
-                            </div>`).join('')}
-                    </div>
-                </div>
-
-                <div class="mp-dashboard-panel" style="grid-column:1/-1;">
-                    <div class="mp-dashboard-panel-header">
+                <div class="mp-dashboard-panel" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:1rem;">
+                    <div class="mp-dashboard-panel-header" style="font-weight:700; color:#1e293b; margin-bottom:1rem; border-bottom:2px solid #e2e8f0; padding-bottom:0.5rem;">
                         <i class="fas fa-sticky-note" style="color:#8b5cf6;"></i> メモ・申し送り
                     </div>
                     <div class="mp-dashboard-panel-body">
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;font-size:0.88rem;">
-                            <div><strong style="color:#64748b;display:block;margin-bottom:0.3rem;">補足・メモ</strong><p style="white-space:pre-wrap;">${escHtml(m.supplementary_notes || '—')}</p></div>
-                            <div><strong style="color:#64748b;display:block;margin-bottom:0.3rem;">次回への申し送り</strong><p style="white-space:pre-wrap;">${escHtml(m.next_meeting_notes || '—')}</p></div>
+                        <div style="display:flex; flex-direction:column; gap:1rem; font-size:0.9rem;">
+                            <div><strong style="color:#475569;display:block;margin-bottom:0.3rem;font-size:0.8rem;">補足・メモ</strong><p style="white-space:pre-wrap;line-height:1.5;color:#1e293b;">${escHtml(m.supplementary_notes || '—')}</p></div>
+                            <div><strong style="color:#475569;display:block;margin-bottom:0.3rem;font-size:0.8rem;">次回への申し送り</strong><p style="white-space:pre-wrap;line-height:1.5;color:#1e293b;">${escHtml(m.next_meeting_notes || '—')}</p></div>
                         </div>
+                    </div>
+                </div>
+
+                <div class="mp-dashboard-panel" style="grid-column:1/-1; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:1rem;">
+                    <div class="mp-dashboard-panel-header" style="font-weight:700; color:#1e293b; margin-bottom:1rem; border-bottom:2px solid #e2e8f0; padding-bottom:0.5rem;">
+                        <i class="fas fa-search" style="color:#6366f1;"></i> 改善施策（${plans.length}件）
+                    </div>
+                    <div class="mp-dashboard-panel-body">
+                        ${plansHtml}
+                    </div>
+                </div>
+
+                <div class="mp-dashboard-panel" style="grid-column:1/-1; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:1rem;">
+                    <div class="mp-dashboard-panel-header" style="font-weight:700; color:#1e293b; margin-bottom:1rem; border-bottom:2px solid #e2e8f0; padding-bottom:0.5rem;">
+                        <i class="fas fa-tasks" style="color:#10b981;"></i> 宿題一覧（${homework.length}件）
+                    </div>
+                    <div class="mp-dashboard-panel-body">
+                        ${homeworkHtml}
                     </div>
                 </div>
 
             </div>
         </div>
     </div>`;
+}
+
+// -------------------------------------------------------
+// ダッシュボード表示
+// -------------------------------------------------------
+function renderDashboardView() {
+    const area = document.getElementById('mp-step-content-area');
+    if (!area) return;
+    area.innerHTML = generateDashboardHtml(activeMeeting, step3Plans, step5Homework);
 }
 
 // -------------------------------------------------------
@@ -1645,10 +2133,6 @@ function openEditMeetingModal() {
                 <div class="mp-form-group">
                     <label>開催日</label>
                     <input type="date" id="mp-edit-date" value="${m.meeting_date || ''}">
-                </div>
-                <div class="mp-form-group">
-                    <label>会議時間（分）</label>
-                    <input type="number" id="mp-edit-duration" value="${m.meeting_duration_min || 30}">
                 </div>
                 <div class="mp-form-group">
                     <label>出席者（カンマ区切り）</label>
@@ -1670,19 +2154,16 @@ function openEditMeetingModal() {
 
     window._mpSaveEdit = async () => {
         const date      = document.getElementById('mp-edit-date').value;
-        const duration  = parseInt(document.getElementById('mp-edit-duration').value) || 30;
         const attendeesRaw = document.getElementById('mp-edit-attendees').value;
         const attendees = attendeesRaw.split(/[,、，]/).map(s => s.trim()).filter(Boolean);
 
         await updateDoc(doc(db, 't_chef_meetings', activeMeetingId), {
             meeting_date: date,
-            meeting_duration_min: duration,
             attendees: attendees,
             updated_at: serverTimestamp(),
         });
 
         activeMeeting.meeting_date = date;
-        activeMeeting.meeting_duration_min = duration;
         activeMeeting.attendees = attendees;
 
         document.getElementById('mp-edit-modal')?.remove();
@@ -1694,11 +2175,25 @@ function openEditMeetingModal() {
 // PDF出力
 // -------------------------------------------------------
 function exportPdf() {
-    const dashboardEl = document.querySelector('.mp-step-content');
-    if (!dashboardEl || typeof html2pdf === 'undefined') {
+    if (typeof html2pdf === 'undefined') {
         alert('PDFライブラリが読み込まれていません。');
         return;
     }
+    
+    // 裏側に専用のコンテナを作る
+    const tempContainer = document.createElement('div');
+    // html2canvasの真っ白バグを回避するため、完全に画面外に出さず、z-indexで背面に隠す
+    tempContainer.style.position = 'absolute';
+    tempContainer.style.top = '0';
+    tempContainer.style.left = '0';
+    tempContainer.style.width = '1000px';
+    tempContainer.style.zIndex = '-9999';
+    tempContainer.style.pointerEvents = 'none';
+    
+    // 現在の最新のステートを使ってダッシュボード形式のHTMLを生成
+    tempContainer.innerHTML = generateDashboardHtml(activeMeeting, step3Plans, step5Homework);
+    document.body.appendChild(tempContainer);
+
     const opt = {
         margin: 10,
         filename: `料理長会議_${activeMeeting.year_month}_${activeMeeting.store_name}.pdf`,
@@ -1706,8 +2201,80 @@ function exportPdf() {
         html2canvas: { scale: 2 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
-    html2pdf().set(opt).from(dashboardEl).save();
+    
+    // DOMが描画されるのを少し待ってからPDF化する
+    setTimeout(() => {
+        html2pdf().set(opt).from(tempContainer).save().then(() => {
+            document.body.removeChild(tempContainer);
+        });
+    }, 200);
 }
+
+// -------------------------------------------------------
+// 一覧画面からのPDF出力（直接出力）
+// -------------------------------------------------------
+window._mpExportPdfFromList = async (meetingId) => {
+    if (typeof html2pdf === 'undefined') {
+        alert('PDFライブラリが読み込まれていません。');
+        return;
+    }
+
+    const btn = document.getElementById(`mp-pdf-btn-${meetingId}`);
+    try {
+        if(btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        }
+
+        const mDoc = await getDoc(doc(db, 't_chef_meetings', meetingId));
+        if (!mDoc.exists()) return;
+        const meetingData = { id: meetingId, ...mDoc.data() };
+        
+        const qPlans = query(collection(db, 't_chef_improvement_plans'), where('store_id', '==', meetingData.store_id), where('decided_in_year_month', '==', meetingData.year_month));
+        const plansSnap = await getDocs(qPlans);
+        const plans = [];
+        plansSnap.forEach(d => plans.push({ id: d.id, ...d.data() }));
+
+        const qHw = query(collection(db, 't_chef_homework'), where('store_id', '==', meetingData.store_id), where('year_month', '==', meetingData.year_month));
+        const hwSnap = await getDocs(qHw);
+        const homework = [];
+        hwSnap.forEach(d => homework.push({ id: d.id, ...d.data() }));
+
+        const tempContainer = document.createElement('div');
+        tempContainer.style.position = 'absolute';
+        tempContainer.style.top = '0';
+        tempContainer.style.left = '0';
+        tempContainer.style.width = '1000px';
+        tempContainer.style.zIndex = '-9999';
+        tempContainer.style.pointerEvents = 'none';
+        
+        tempContainer.innerHTML = generateDashboardHtml(meetingData, plans, homework);
+        document.body.appendChild(tempContainer);
+
+        const opt = {
+            margin: 10,
+            filename: `料理長会議_${meetingData.year_month}_${meetingData.store_name}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        // DOM描画待ち
+        await new Promise(r => setTimeout(r, 200));
+
+        await html2pdf().set(opt).from(tempContainer).save();
+        document.body.removeChild(tempContainer);
+
+    } catch (e) {
+        console.error(e);
+        alert('PDFの出力中にエラーが発生しました。');
+    } finally {
+        if(btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-file-pdf" style="color:#ef4444;"></i>';
+        }
+    }
+};
 
 // -------------------------------------------------------
 // ユーティリティ
@@ -1772,6 +2339,12 @@ function escHtml(str) {
 async function renderHomeworkManagementView() {
     const contentArea = document.getElementById('mp-top-tab-content');
     if (!contentArea) return;
+
+    if (!currentStoreId) {
+        contentArea.innerHTML = `<div class="mp-empty-state"><i class="fas fa-store"></i><p>店舗を選択してください。</p></div>`;
+        return;
+    }
+
     contentArea.innerHTML = `<div class="mp-spinner-overlay"><div class="mp-spinner"></div><span>宿題データを取得中...</span></div>`;
 
     // 全宿題を取得
@@ -1981,6 +2554,11 @@ async function renderHistoryBody(subTab) {
 
 // ---- 商品改善履歴 ----
 async function renderImprovementHistory(body) {
+    if (!currentStoreId) {
+        body.innerHTML = `<div class="mp-empty-state"><i class="fas fa-store"></i><p>店舗を選択してください。</p></div>`;
+        return;
+    }
+
     const q = query(
         collection(db, 't_chef_improvement_plans'),
         where('store_id', '==', currentStoreId),
@@ -2090,6 +2668,11 @@ async function renderImprovementHistory(body) {
 
 // ---- 廃止商品履歴 ----
 async function renderDiscontinuedHistory(body) {
+    if (!currentStoreId) {
+        body.innerHTML = `<div class="mp-empty-state"><i class="fas fa-store"></i><p>店舗を選択してください。</p></div>`;
+        return;
+    }
+
     const q = query(
         collection(db, 't_chef_improvement_plans'),
         where('store_id', '==', currentStoreId),
@@ -2139,6 +2722,11 @@ async function renderDiscontinuedHistory(body) {
 
 // ---- 試作品履歴 ----
 async function renderPrototypeHistory(body) {
+    if (!currentStoreId) {
+        body.innerHTML = `<div class="mp-empty-state"><i class="fas fa-store"></i><p>店舗を選択してください。</p></div>`;
+        return;
+    }
+
     // meeting_judgement が設定されているものを取得
     const q = query(
         collection(db, 't_prototype_recipes'),
@@ -2177,7 +2765,7 @@ async function renderPrototypeHistory(body) {
         <div class="mp-hw-stat-card" style="background:#f1f5f9;"><div class="mp-hw-stat-num" style="color:#475569;">${holdCount}</div><div class="mp-hw-stat-label">保留</div></div>
     </div>
 
-    <div class="mp-prototype-grid">
+    <div style="display:flex; flex-direction:column; gap:1.5rem;">
         ${protos.map(p => {
             const j = jMap[p.meeting_judgement] || { label: p.meeting_judgement, cls: '', icon: '?' };
             const name = p.name || p.item_name || '試作品';

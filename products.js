@@ -385,12 +385,14 @@ function renderRecipeEditorPC(container, type) {
                         </select>
                     </div>
                     <div class="input-group compact-input" style="margin-bottom:0;">
-                         <label>メニュー区分 <span style="color:var(--danger)">*</span></label>
+                         <label>大分類 (ドリンク/フード) <span style="color:var(--danger)">*</span></label>
                          <select id="item-major-category" class="recipe-pro-input" required>
                             <option value="">選択...</option>
                             <option value="ドリンク" ${isEdit && editingItemData.major_category === 'ドリンク' ? 'selected' : ''}>ドリンク</option>
                             <option value="フード" ${isEdit && editingItemData.major_category === 'フード' ? 'selected' : ''}>フード</option>
                             <option value="お通し" ${isEdit && editingItemData.major_category === 'お通し' ? 'selected' : ''}>お通し</option>
+                            <option value="その他" ${isEdit && editingItemData.major_category === 'その他' ? 'selected' : ''}>その他</option>
+                            <option value="備品" ${isEdit && editingItemData.major_category === '備品' ? 'selected' : ''}>備品</option>
                          </select>
                     </div>
                     <div class="input-group compact-input" style="margin-bottom:0;">
@@ -415,6 +417,17 @@ function renderRecipeEditorPC(container, type) {
                     <div class="input-group compact-input" style="margin-bottom:0;">
                         <label>管理単位 <span style="color:var(--danger)">*</span></label>
                         <input type="text" id="item-unit" value="${isEdit ? (editingItemData.unit || '') : ''}" required placeholder="g / ml / 枚" class="recipe-pro-input">
+                    </div>
+                    <div class="input-group compact-input" style="margin-bottom:0;">
+                         <label>大分類 (ドリンク/フード) <span style="color:var(--danger)">*</span></label>
+                         <select id="item-major-category" class="recipe-pro-input" required>
+                            <option value="">選択...</option>
+                            <option value="ドリンク" ${isEdit && editingItemData.major_category === 'ドリンク' ? 'selected' : ''}>ドリンク</option>
+                            <option value="フード" ${isEdit && editingItemData.major_category === 'フード' ? 'selected' : ''}>フード</option>
+                            <option value="お通し" ${isEdit && editingItemData.major_category === 'お通し' ? 'selected' : ''}>お通し</option>
+                            <option value="その他" ${isEdit && editingItemData.major_category === 'その他' ? 'selected' : ''}>その他</option>
+                            <option value="備品" ${isEdit && editingItemData.major_category === '備品' ? 'selected' : ''}>備品</option>
+                         </select>
                     </div>
                     <div class="input-group compact-input" style="margin-bottom:0;">
                         <label>レシピ開発者</label>
@@ -580,8 +593,8 @@ function renderStandardFormPC(container) {
                                         ${cachedStores.filter(s => s.store_type !== 'CK').map(s => `<option value="${s.store_id || s.id}" ${isEdit && editingItemData.store_id === (s.store_id || s.id) ? 'selected' : ''}>${s.store_name}</option>`).join('')}
                                     </select>
                                 </div>
-                                <div class="input-group compact-input" style="margin-bottom: 0.5rem; ${currentTab === 'menus' ? '' : 'display:none;'}">
-                                    <label style="font-weight: 700; color: #475569; font-size: 0.8rem;">大分類 <span style="color: var(--danger);">*</span></label>
+                                <div class="input-group compact-input" style="margin-bottom: 0.5rem;">
+                                    <label style="font-weight: 700; color: #475569; font-size: 0.8rem;">大分類 (ドリンク/フード) <span style="color: var(--danger);">*</span></label>
                                     <select id="item-major-category" style="font-size: 0.95rem; padding: 0.5rem; background: #fff; width: 100%; border: 1px solid var(--border); border-radius: 8px; font-weight: 600;">
                                         <option value="">大分類を選択...</option>
                                         <option value="ドリンク" ${isEdit && editingItemData.major_category === 'ドリンク' ? 'selected' : ''}>ドリンク</option>
@@ -1176,9 +1189,21 @@ function renderBatchCategoryViewPC(container) {
         const body = document.getElementById('batch-category-body');
         if (!body) return;
 
+        const showIngredients = document.getElementById('batch-show-ingredients')?.checked ?? true;
+        const showHomemade = document.getElementById('batch-show-homemade')?.checked ?? true;
+        const showMenus = document.getElementById('batch-show-menus')?.checked ?? true;
+
         let items = cachedItems.filter(item => {
             const menu = cachedMenus.find(m => m.item_id === item.id);
-            return menu && !menu.is_sub_recipe;
+            const isMenu = menu && !menu.is_sub_recipe;
+            const isHomemade = menu && menu.is_sub_recipe;
+            const isIngredient = !menu;
+            
+            if (isMenu && !showMenus) return false;
+            if (isHomemade && !showHomemade) return false;
+            if (isIngredient && !showIngredients) return false;
+            
+            return true;
         });
 
         if (unassignedOnly) {
@@ -1198,13 +1223,22 @@ function renderBatchCategoryViewPC(container) {
 
         document.getElementById('batch-count').textContent = `対象商品: ${items.length} 件`;
 
-        body.innerHTML = items.map(item => `
+        body.innerHTML = items.map(item => {
+            const menu = cachedMenus.find(m => m.item_id === item.id);
+            const isMenu = menu && !menu.is_sub_recipe;
+            const isHomemade = menu && menu.is_sub_recipe;
+            let badgeHtml = '';
+            if (isMenu) badgeHtml = '<span style="font-size: 0.65rem; background: #fef08a; color: #854d0e; padding: 2px 6px; border-radius: 4px; font-weight: 800; margin-left: 0.5rem;">[メニュー]</span>';
+            else if (isHomemade) badgeHtml = '<span style="font-size: 0.65rem; background: #e9d5ff; color: #6b21a8; padding: 2px 6px; border-radius: 4px; font-weight: 800; margin-left: 0.5rem;">[自家製]</span>';
+            else badgeHtml = '<span style="font-size: 0.65rem; background: #dcfce3; color: #166534; padding: 2px 6px; border-radius: 4px; font-weight: 800; margin-left: 0.5rem;">[原材料]</span>';
+
+            return `
             <tr data-id="${item.id}" class="batch-row" style="border-bottom: 1px solid var(--border); transition: background 0.3s;">
                 <td style="padding: 1rem; width: 40px;">
                     <input type="checkbox" class="batch-select" data-id="${item.id}" style="width: 18px; height: 18px;">
                 </td>
                 <td style="padding: 1rem;">
-                    <div style="font-weight: 800; font-size: 1rem; color: #1e293b;">${item.name}</div>
+                    <div style="font-weight: 800; font-size: 1rem; color: #1e293b; display: flex; align-items: center;">${item.name}${badgeHtml}</div>
                     <div style="font-size: 0.75rem; color: #94a3b8;">${item.category || 'カテゴリー未設定'}</div>
                 </td>
                 <td style="padding: 1rem; text-align: center;">
@@ -1217,10 +1251,11 @@ function renderBatchCategoryViewPC(container) {
                         <button class="batch-btn food" onclick="window.updateItemMajorCategory('${item.id}', 'フード')">フード</button>
                         <button class="batch-btn drink" onclick="window.updateItemMajorCategory('${item.id}', 'ドリンク')">ドリンク</button>
                         <button class="batch-btn otoshi" onclick="window.updateItemMajorCategory('${item.id}', 'お通し')">お通し</button>
+                        <button class="batch-btn supplies" onclick="window.updateItemMajorCategory('${item.id}', '備品')">備品</button>
                     </div>
                 </td>
             </tr>
-        `).join('');
+        `}).join('');
     }
 
     container.innerHTML = `
@@ -1241,6 +1276,8 @@ function renderBatchCategoryViewPC(container) {
             .batch-btn.drink:hover { background: #2563eb; color: white; border-color: #2563eb; }
             .batch-btn.otoshi { background: #fdf4ff; color: #a21caf; border: 1.2px solid #f5d0fe; }
             .batch-btn.otoshi:hover { background: #c026d3; color: white; border-color: #c026d3; }
+            .batch-btn.supplies { background: #f1f5f9; color: #475569; border: 1.2px solid #e2e8f0; }
+            .batch-btn.supplies:hover { background: #64748b; color: white; border-color: #64748b; }
             
             .batch-row.just-updated { background: #f0fdf4 !important; }
         </style>
@@ -1251,7 +1288,7 @@ function renderBatchCategoryViewPC(container) {
                     <i class="fas fa-layer-group" style="color: #6366f1;"></i>
                     仕分けセンター（メニュー区分一括設定）
                 </h2>
-                <p style="font-size: 0.85rem; color: var(--text-secondary);">全商品の「フード/ドリンク/お通し」区分を高速に設定します</p>
+                <p style="font-size: 0.85rem; color: var(--text-secondary);">全商品の「フード/ドリンク/お通し/備品」区分を高速に設定します</p>
             </div>
             <button class="btn" id="btn-batch-back" style="background: white; border: 1.5px solid #e2e8f0; color: #64748b; font-weight: 700; border-radius: 10px;">
                 <i class="fas fa-arrow-left"></i> 一覧に戻る
@@ -1267,6 +1304,16 @@ function renderBatchCategoryViewPC(container) {
                     </div>
                     <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 700; color: #475569; font-size: 0.9rem;">
                         <input type="checkbox" id="batch-unassigned-only" checked style="width: 18px; height: 18px;"> 未設定のみ表示
+                    </label>
+                    <div style="height: 24px; width: 1px; background: #cbd5e1; margin: 0 0.5rem;"></div>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 700; color: #475569; font-size: 0.9rem;">
+                        <input type="checkbox" id="batch-show-ingredients" checked style="width: 18px; height: 18px;"> 原材料
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 700; color: #475569; font-size: 0.9rem;">
+                        <input type="checkbox" id="batch-show-homemade" checked style="width: 18px; height: 18px;"> 自家製
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 700; color: #475569; font-size: 0.9rem;">
+                        <input type="checkbox" id="batch-show-menus" checked style="width: 18px; height: 18px;"> メニュー
                     </label>
                 </div>
                 <div id="batch-count" style="font-weight: 800; color: #64748b;">対象商品: ...</div>
@@ -1297,6 +1344,7 @@ function renderBatchCategoryViewPC(container) {
                     <button class="batch-btn food" onclick="window.bulkUpdateMajorCategory('フード')">フード</button>
                     <button class="batch-btn drink" onclick="window.bulkUpdateMajorCategory('ドリンク')">ドリンク</button>
                     <button class="batch-btn otoshi" onclick="window.bulkUpdateMajorCategory('お通し')">お通し</button>
+                    <button class="batch-btn supplies" onclick="window.bulkUpdateMajorCategory('備品')">備品</button>
                 </div>
             </div>
         </div>
@@ -1378,6 +1426,11 @@ function renderBatchCategoryViewPC(container) {
                 refreshBatchList();
             };
         }
+        
+        ['batch-show-ingredients', 'batch-show-homemade', 'batch-show-menus'].forEach(id => {
+            const cb = document.getElementById(id);
+            if (cb) cb.onchange = refreshBatchList;
+        });
 
         const searchInput = document.getElementById('batch-search');
         if (searchInput) {

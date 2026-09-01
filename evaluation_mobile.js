@@ -483,17 +483,10 @@ async function loadInitialDataMobile() {
         
         const isAdmin = role === 'Admin' || role === '管理者';
         
-        if (isAdmin) {
-            mobileSubordinateUsers = allUsers.filter(u => {
-                if (u.id === currentUser.id) return true; // 管理者はテストのため自身も表示可能
-                if (u.Status === 'retired' || u.Status === '退職済') return false;
-                return true;
-            });
-        } else if (myJobTitle) {
+        if (isAdmin || myJobTitle) {
             mobileSubordinateUsers = allUsers.filter(u => {
                 if (u.id === currentUser.id) return false;
                 if (u.Status === 'retired' || u.Status === '退職済') return false;
-                if ((u.StoreID || u.StoreId) !== myStore) return false;
                 
                 if (!u.GradeCode || !gradeMap[u.GradeCode]) return false;
                 const uJobTitle = gradeMap[u.GradeCode].job_title;
@@ -502,14 +495,21 @@ async function loadInitialDataMobile() {
                 const uRoute = routeMap[uJobTitle];
                 if (!uRoute) return false;
                 
-                const isEvaluator = uRoute.primary_evaluator === myJobTitle || uRoute.secondary_evaluator === myJobTitle;
+                const isEvaluator = myJobTitle && (uRoute.primary_evaluator === myJobTitle || uRoute.secondary_evaluator === myJobTitle);
+                const isAdminEvaluator = isAdmin && (uRoute.primary_evaluator === '社長' || uRoute.secondary_evaluator === '社長');
                 
-                if (myJobTitle === '店長' || myJobTitle === '統括店長') {
-                    if (uJobTitle === '店長' || uJobTitle === '統括店長') return false;
-                    return true;
+                if (isEvaluator || isAdminEvaluator) {
+                    if (isAdmin) return true;
+                    if ((u.StoreID || u.StoreId) === myStore) return true;
                 }
                 
-                return isEvaluator;
+                if (!isAdmin && (u.StoreID || u.StoreId) === myStore) {
+                    if (myJobTitle === '店長' || myJobTitle === '統括店長') {
+                        if (uJobTitle !== '店長' && uJobTitle !== '統括店長' && uJobTitle !== '社長') return true;
+                    }
+                }
+                
+                return false;
             });
         }
 
@@ -522,16 +522,41 @@ async function loadInitialDataMobile() {
         mobileActiveEvaluations = [];
         mobileMyEvaluation = null;
         if (mobilePeriodSettings && mobilePeriodSettings.status !== 'closed' && mobilePeriodSettings.active_period) {
-            let eSnap;
+            let docs = [];
             const isAdmin = role === 'Admin' || role === '管理者';
+
             if (isAdmin) {
-                eSnap = await getDocs(query(collection(db, "t_evaluations"), where("period", "==", mobilePeriodSettings.active_period)));
+                // UI: 自分の評価タブを消してデフォルトを部下に
+                const segCtrl = document.getElementById('eval-mob-segmented-control');
+                if (segCtrl) {
+                    segCtrl.innerHTML = '<div class="eval-mob-segment active" data-tab="subordinates">部下の評価</div>';
+                }
+                mobileActiveTab = 'subordinates';
+
+                // Fetch target evaluations (Admin)
+                const targetUserIds = mobileSubordinateUsers.map(u => u.id);
+                targetUserIds.push(currentUser.id);
+
+                const chunkPromises = [];
+                for (let i = 0; i < targetUserIds.length; i += 10) {
+                    const chunk = targetUserIds.slice(i, i + 10);
+                    chunkPromises.push(getDocs(query(collection(db, "t_evaluations"), where("period", "==", mobilePeriodSettings.active_period), where("user_id", "in", chunk))));
+                }
+                const chunkSnaps = await Promise.all(chunkPromises);
+                chunkSnaps.forEach(snap => {
+                    snap.forEach(d => {
+                        if (!docs.some(existing => existing.id === d.id)) docs.push(d);
+                    });
+                });
             } else if (mobileSubordinateUsers.length > 0) {
-                eSnap = await getDocs(query(collection(db, "t_evaluations"), where("period", "==", mobilePeriodSettings.active_period), where("store_id", "==", myStore)));
+                const snapEvals = await getDocs(query(collection(db, "t_evaluations"), where("period", "==", mobilePeriodSettings.active_period), where("store_id", "==", myStore)));
+                snapEvals.forEach(d => docs.push(d));
             } else {
-                eSnap = await getDocs(query(collection(db, "t_evaluations"), where("period", "==", mobilePeriodSettings.active_period), where("user_id", "==", currentUser.id)));
+                const snapEvals = await getDocs(query(collection(db, "t_evaluations"), where("period", "==", mobilePeriodSettings.active_period), where("user_id", "==", currentUser.id)));
+                snapEvals.forEach(d => docs.push(d));
             }
-            eSnap.forEach(d => {
+            
+            docs.forEach(d => {
                 const eData = { id: d.id, ...d.data() };
                 mobileActiveEvaluations.push(eData);
                 if (eData.user_id === currentUser.id) {
@@ -671,22 +696,22 @@ window.loadMobileHistory = async function() {
                 const grade = h.new_grade || '-';
                 const evaluator = h.evaluator_name || '管理者(記録なし)';
                 
-                html += \`
-                    <div class="eval-mob-list-card action-mock-btn" data-type="history-view" data-id="\${h.id}" style="display: flex; flex-direction: column; padding: 1.2rem; align-items: stretch; gap: 0.8rem; background: white; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 0.8rem; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                html += `
+                    <div class="eval-mob-list-card action-mock-btn" data-type="history-view" data-id="${h.id}" style="display: flex; flex-direction: column; padding: 1.2rem; align-items: stretch; gap: 0.8rem; background: white; border: 1px solid var(--border); border-radius: 12px; margin-bottom: 0.8rem; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem;">
-                            <div style="font-weight: 800; color: #1e293b; font-size: 1.05rem;"><i class="fas fa-clock" style="color:#94a3b8; margin-right:4px;"></i> \${h.period}期 \${isLegacy}</div>
-                            <div style="font-family: monospace; font-size: 1.2rem; font-weight: 900; color: #059669;">\${grade}</div>
+                            <div style="font-weight: 800; color: #1e293b; font-size: 1.05rem;"><i class="fas fa-clock" style="color:#94a3b8; margin-right:4px;"></i> ${h.period}期 ${isLegacy}</div>
+                            <div style="font-family: monospace; font-size: 1.2rem; font-weight: 900; color: #059669;">${grade}</div>
                         </div>
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <div style="font-size: 0.85rem; color: #64748b; font-weight: 600;">
-                                最終評価者: <span style="color:#1e293b;">\${evaluator}</span>
+                                最終評価者: <span style="color:#1e293b;">${evaluator}</span>
                             </div>
                             <div style="font-size: 0.9rem; font-weight: 700; color: #be123c;">
-                                <span style="font-size:0.75rem; color:#94a3b8; font-weight:600;">確定点数 </span>\${score}点
+                                <span style="font-size:0.75rem; color:#94a3b8; font-weight:600;">確定点数 </span>${score}点
                             </div>
                         </div>
                     </div>
-                \`;
+                `;
             });
             container.innerHTML = html;
         }
@@ -875,6 +900,9 @@ function closeMobileInputView() {
     contentArea.style.display = 'block';
     headerArea.style.display = 'block';
     mobileEditingEval = null; window.mobileEditingEval = null;
+    
+    // 裏側のリストUI（提出済などの状態）を即時反映させる
+    renderMobileView();
 }
 
 window.openMobileHistoryView = function(evalDataOrId) {
@@ -1617,7 +1645,6 @@ function bindMobileInputEvents(mode) {
                 showAlert('エラー', '提出処理に失敗しました。');
                 if(document.getElementById('btn-mob-submit')) document.getElementById('btn-mob-submit').disabled = false;
             }
-        }
     });
 }
 

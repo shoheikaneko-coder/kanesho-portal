@@ -24,14 +24,14 @@ export const gradesPageHtml = `
                 <button class="btn" id="btn-grades-back" style="background: white; border: 1px solid var(--border); color: var(--text-secondary); font-weight: 700; padding: 0.6rem 1.1rem; border-radius: 8px; font-size: 0.85rem;">
                     <i class="fas fa-arrow-left"></i> 人事総務へ戻る
                 </button>
-                <button class="btn" id="btn-toggle-edit-mode" style="background: white; border: 1px solid var(--border); color: var(--text-secondary); font-weight: 700; padding: 0.6rem 1.1rem; border-radius: 8px; font-size: 0.85rem; transition: all 0.2s;">
-                    <i class="fas fa-cog"></i> 等級の整理・削除
+                <button class="btn" id="btn-grades-cancel" style="display: none; background: white; border: 1px solid var(--border); color: var(--text-secondary); font-weight: 700; padding: 0.6rem 1.1rem; border-radius: 8px; font-size: 0.85rem; transition: all 0.2s;">
+                    <i class="fas fa-times"></i> キャンセル
                 </button>
                 <button class="btn btn-primary" id="btn-add-grade" style="padding: 0.6rem 1.3rem; font-weight: 800; border-radius: 8px; background: #f59e0b; border-color: #f59e0b; font-size: 0.85rem;">
                     <i class="fas fa-plus"></i> 新しい等級を追加
                 </button>
-                <button class="btn btn-success" id="btn-save-grades" style="padding: 0.6rem 1.6rem; font-weight: 900; border-radius: 8px; background: #10b981; border-color: #10b981; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2); font-size: 0.85rem;">
-                    <i class="fas fa-save"></i> 変更をすべて保存
+                <button class="btn btn-success" id="btn-save-grades" style="padding: 0.6rem 1.6rem; font-weight: 900; border-radius: 8px; background: #3b82f6; border-color: #3b82f6; color: white; box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.2); font-size: 0.85rem;">
+                    <i class="fas fa-pencil-alt"></i> 編集モードにする
                 </button>
             </div>
         </div>
@@ -310,11 +310,30 @@ export async function initGradesPage() {
         };
     }
 
-    // 保存ボタンの紐付け
+    // 保存(兼 編集モードトグル)ボタンの紐付け
     const btnSave = document.getElementById('btn-save-grades');
     if (btnSave) {
         btnSave.onclick = () => {
-            saveAllGrades();
+            if (!isEditMode) {
+                // 編集モードに入る
+                isEditMode = true;
+                syncEditModeUI();
+                renderGradesTable();
+            } else {
+                // 変更を保存する
+                saveAllGrades();
+            }
+        };
+    }
+
+    // キャンセルボタンの紐付け
+    const btnCancel = document.getElementById('btn-grades-cancel');
+    if (btnCancel) {
+        btnCancel.onclick = async () => {
+            if (confirm("変更を破棄して閲覧モードに戻りますか？")) {
+                isEditMode = false;
+                await loadGradesData(); // DBから再読み込みして変更を破棄
+            }
         };
     }
 
@@ -327,34 +346,44 @@ export async function initGradesPage() {
 
 // 整理モードのUI表示同期
 function syncEditModeUI() {
-    const btn = document.getElementById('btn-toggle-edit-mode');
+    const btnSave = document.getElementById('btn-save-grades');
+    const btnCancel = document.getElementById('btn-grades-cancel');
+    const btnAdd = document.getElementById('btn-add-grade');
     const panel = document.getElementById('grades-table-panel');
     const msg = document.getElementById('grades-guide-message');
-    if (!btn || !panel) return;
+    if (!btnSave || !panel) return;
 
     if (isEditMode) {
-        btn.innerHTML = '<i class="fas fa-check"></i> 整理モードを終了';
-        btn.style.background = '#f59e0b';
-        btn.style.borderColor = '#f59e0b';
-        btn.style.color = '#ffffff';
-        btn.style.boxShadow = '0 4px 6px -1px rgba(245, 158, 11, 0.2)';
+        // 編集モード時：ボタンを「保存」にする
+        btnSave.innerHTML = '<i class="fas fa-save"></i> 変更をすべて保存';
+        btnSave.style.background = '#10b981';
+        btnSave.style.borderColor = '#10b981';
+        btnSave.style.boxShadow = '0 4px 6px -1px rgba(16, 185, 129, 0.2)';
+        
+        if (btnCancel) btnCancel.style.display = 'inline-block';
+        if (btnAdd) btnAdd.style.display = 'inline-block';
+
         panel.classList.add('edit-mode-active');
         if (msg) {
-            msg.textContent = '【整理モード実行中】 等級の並び替え (▲/▼) と不要な等級の削除が可能です。';
-            msg.style.background = '#ffedd5';
-            msg.style.color = '#c2410c';
-        }
-    } else {
-        btn.innerHTML = '<i class="fas fa-cog"></i> 等級の整理・削除';
-        btn.style.background = 'white';
-        btn.style.borderColor = 'var(--border)';
-        btn.style.color = 'var(--text-secondary)';
-        btn.style.boxShadow = 'none';
-        panel.classList.remove('edit-mode-active');
-        if (msg) {
-            msg.textContent = defaultGuideText;
+            msg.textContent = '【編集モード】各セルを入力して編集できます。変更後は必ず「変更をすべて保存」を押してください。';
             msg.style.background = '#fef3c7';
             msg.style.color = '#b45309';
+        }
+    } else {
+        // 閲覧モード時：ボタンを「編集モードにする」にする
+        btnSave.innerHTML = '<i class="fas fa-pencil-alt"></i> 編集モードにする';
+        btnSave.style.background = '#3b82f6';
+        btnSave.style.borderColor = '#3b82f6';
+        btnSave.style.boxShadow = '0 4px 6px -1px rgba(59, 130, 246, 0.2)';
+        
+        if (btnCancel) btnCancel.style.display = 'none';
+        if (btnAdd) btnAdd.style.display = 'none'; // 閲覧モードでは追加ボタンも非表示にするかはお好みだが、スッキリさせるため非表示
+
+        panel.classList.remove('edit-mode-active');
+        if (msg) {
+            msg.textContent = '【閲覧モード】編集する場合は右上の「編集モードにする」を押してください。';
+            msg.style.background = '#f1f5f9';
+            msg.style.color = '#475569';
         }
     }
 }
@@ -455,55 +484,56 @@ function renderGradesTable() {
         // 描画前にメモリ上の計算値を確実に同期（$0 バグを解消）
         recalculateReadOnlys(index, false);
 
+        
+        const renderText = (val, isNum = false) => `<span style="display:block; padding: 0.4rem; text-align: ${isNum ? 'right' : 'left'}; font-family: ${isNum ? 'monospace' : 'inherit'}; font-weight: 600; color: #1e293b;">${val}</span>`;
+        
         tr.innerHTML = `
             <!-- 等級コード -->
             <td class="sticky-col">
-                <input type="text" class="input-grade-code" value="${grade.grade_code || ''}" onchange="window.handleGradeChange(${index}, 'grade_code', this.value)">
+                ${isEditMode ? `<input type="text" class="input-grade-code" value="${grade.grade_code || ''}" onchange="window.handleGradeChange(${index}, 'grade_code', this.value)">` : renderText(grade.grade_code || '')}
             </td>
             <!-- 操作 (削除) [整理モード時のみ出現] -->
             <td class="col-edit-action" style="text-align: center;">
-                <button class="btn" onclick="window.deleteGradeRow(${index})" style="background: transparent; color: var(--danger); padding: 0.2rem; border: none; cursor: pointer;" title="この行を削除">
-                    <i class="fas fa-trash-alt" style="font-size: 0.9rem;"></i>
-                </button>
+                ${isEditMode ? `<button class="btn" onclick="window.deleteGradeRow(${index})" style="background: transparent; color: var(--danger); padding: 0.2rem; border: none; cursor: pointer;" title="この行を削除"><i class="fas fa-trash-alt" style="font-size: 0.9rem;"></i></button>` : ''}
             </td>
             <!-- 並び順 (上下) [整理モード時のみ出現] -->
             <td class="col-edit-action" style="text-align: center;">
-                <div style="display: flex; gap: 0.1rem; justify-content: center;">
+                ${isEditMode ? `<div style="display: flex; gap: 0.1rem; justify-content: center;">
                     <button class="grades-btn-sort" onclick="window.moveGradeRow(${index}, -1)" ${isFirst ? 'disabled' : ''} title="上へ移動">▲</button>
                     <button class="grades-btn-sort" onclick="window.moveGradeRow(${index}, 1)" ${isLast ? 'disabled' : ''} title="下へ移動">▼</button>
-                </div>
+                </div>` : ''}
             </td>
             <!-- スキルレベル -->
             <td>
-                <input type="text" class="input-skill-level" value="${grade.skill_level || ''}" onchange="window.handleGradeChange(${index}, 'skill_level', this.value)">
+                ${isEditMode ? `<input type="text" class="input-skill-level" value="${grade.skill_level || ''}" onchange="window.handleGradeChange(${index}, 'skill_level', this.value)">` : renderText(grade.skill_level || '')}
             </td>
             <!-- 役職 -->
             <td>
-                <input type="text" class="input-job-title" value="${grade.job_title || ''}" onchange="window.handleGradeChange(${index}, 'job_title', this.value)">
+                ${isEditMode ? `<input type="text" class="input-job-title" value="${grade.job_title || ''}" onchange="window.handleGradeChange(${index}, 'job_title', this.value)">` : renderText(grade.job_title || '')}
             </td>
             <!-- 基本給 -->
             <td>
-                <input type="text" class="input-basic-salary" value="${(grade.basic_salary || 0).toLocaleString()}" onfocus="this.value = this.value.replace(/,/g, ''); this.select();" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="const val = Number(this.value) || 0; this.value = val.toLocaleString(); window.handleGradeChange(${index}, 'basic_salary', val);" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
+                ${isEditMode ? `<input type="text" class="input-basic-salary" value="${(grade.basic_salary || 0).toLocaleString()}" onfocus="this.value = this.value.replace(/,/g, ''); this.select();" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="const val = Number(this.value) || 0; this.value = val.toLocaleString(); window.handleGradeChange(${index}, 'basic_salary', val);" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">` : renderText((grade.basic_salary || 0).toLocaleString(), true)}
             </td>
             <!-- 役職手当 -->
             <td>
-                <input type="text" class="input-role-allowance" value="${(grade.role_allowance || 0).toLocaleString()}" onfocus="this.value = this.value.replace(/,/g, ''); this.select();" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="const val = Number(this.value) || 0; this.value = val.toLocaleString(); window.handleGradeChange(${index}, 'role_allowance', val);" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
+                ${isEditMode ? `<input type="text" class="input-role-allowance" value="${(grade.role_allowance || 0).toLocaleString()}" onfocus="this.value = this.value.replace(/,/g, ''); this.select();" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="const val = Number(this.value) || 0; this.value = val.toLocaleString(); window.handleGradeChange(${index}, 'role_allowance', val);" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">` : renderText((grade.role_allowance || 0).toLocaleString(), true)}
             </td>
             <!-- 総労働時間 -->
             <td>
-                <input type="number" class="input-total-hours" value="${grade.total_hours || 215}" min="0" onchange="window.handleGradeChange(${index}, 'total_hours', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
+                ${isEditMode ? `<input type="number" class="input-total-hours" value="${grade.total_hours || 215}" min="0" onchange="window.handleGradeChange(${index}, 'total_hours', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">` : renderText(grade.total_hours || 215, true)}
             </td>
             <!-- 基本時間 -->
             <td>
-                <input type="number" class="input-basic-hours" value="${grade.basic_hours || 173}" min="1" onchange="window.handleGradeChange(${index}, 'basic_hours', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
+                ${isEditMode ? `<input type="number" class="input-basic-hours" value="${grade.basic_hours || 173}" min="1" onchange="window.handleGradeChange(${index}, 'basic_hours', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">` : renderText(grade.basic_hours || 173, true)}
             </td>
             <!-- 時給(基準) -->
             <td>
-                <input type="text" class="input-hourly-wage" value="${(grade.hourly_wage || 0).toLocaleString()}" onfocus="this.value = this.value.replace(/,/g, ''); this.select();" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="const val = Number(this.value) || 0; this.value = val.toLocaleString(); window.handleGradeChange(${index}, 'hourly_wage', val);" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums; background: #eff6ff;">
+                ${isEditMode ? `<input type="text" class="input-hourly-wage" value="${(grade.hourly_wage || 0).toLocaleString()}" onfocus="this.value = this.value.replace(/,/g, ''); this.select();" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="const val = Number(this.value) || 0; this.value = val.toLocaleString(); window.handleGradeChange(${index}, 'hourly_wage', val);" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums; background: #eff6ff;">` : renderText((grade.hourly_wage || 0).toLocaleString(), true)}
             </td>
             <!-- 時給(残業込) -->
             <td>
-                <input type="text" class="input-hourly-wage-overtime" value="${(grade.hourly_wage_overtime || 0).toLocaleString()}" onfocus="this.value = this.value.replace(/,/g, ''); this.select();" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="const val = Number(this.value) || 0; this.value = val.toLocaleString(); window.handleGradeChange(${index}, 'hourly_wage_overtime', val);" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums; background: #eff6ff;">
+                ${isEditMode ? `<input type="text" class="input-hourly-wage-overtime" value="${(grade.hourly_wage_overtime || 0).toLocaleString()}" onfocus="this.value = this.value.replace(/,/g, ''); this.select();" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="const val = Number(this.value) || 0; this.value = val.toLocaleString(); window.handleGradeChange(${index}, 'hourly_wage_overtime', val);" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums; background: #eff6ff;">` : renderText((grade.hourly_wage_overtime || 0).toLocaleString(), true)}
             </td>
             <!-- 時間外労働 [ReadOnly] -->
             <td>
@@ -523,7 +553,7 @@ function renderGradesTable() {
             </td>
             <!-- 社保合計 -->
             <td>
-                <input type="text" class="input-social-insurance" value="${(grade.social_insurance || 0).toLocaleString()}" onfocus="this.value = this.value.replace(/,/g, ''); this.select();" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="const val = Number(this.value) || 0; this.value = val.toLocaleString(); window.handleGradeChange(${index}, 'social_insurance', val);" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
+                ${isEditMode ? `<input type="text" class="input-social-insurance" value="${(grade.social_insurance || 0).toLocaleString()}" onfocus="this.value = this.value.replace(/,/g, ''); this.select();" oninput="this.value = this.value.replace(/[^0-9]/g, '');" onblur="const val = Number(this.value) || 0; this.value = val.toLocaleString(); window.handleGradeChange(${index}, 'social_insurance', val);" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">` : renderText((grade.social_insurance || 0).toLocaleString(), true)}
             </td>
             <!-- 想定人件費(社保込) [ReadOnly] -->
             <td>
@@ -531,7 +561,7 @@ function renderGradesTable() {
             </td>
             <!-- 賞与割合 -->
             <td>
-                <input type="number" class="input-bonus-ratio" value="${grade.bonus_ratio || 0}" min="0" step="0.05" onchange="window.handleGradeChange(${index}, 'bonus_ratio', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
+                ${isEditMode ? `<input type="number" class="input-bonus-ratio" value="${grade.bonus_ratio || 0}" min="0" step="0.05" onchange="window.handleGradeChange(${index}, 'bonus_ratio', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">` : renderText(grade.bonus_ratio || 0, true)}
             </td>
             <!-- 賞与基準額 [ReadOnly] -->
             <td>
@@ -539,15 +569,15 @@ function renderGradesTable() {
             </td>
             <!-- 賞与回数 -->
             <td>
-                <input type="number" class="input-bonus-count" value="${grade.bonus_count || 0}" min="0" step="1" onchange="window.handleGradeChange(${index}, 'bonus_count', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">
+                ${isEditMode ? `<input type="number" class="input-bonus-count" value="${grade.bonus_count || 0}" min="0" step="1" onchange="window.handleGradeChange(${index}, 'bonus_count', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums;">` : renderText(grade.bonus_count || 0, true)}
             </td>
             <!-- 査定最低点 -->
             <td>
-                <input type="number" class="input-evaluation-min-score" value="${grade.evaluation_min_score || 0}" min="0" onchange="window.handleGradeChange(${index}, 'evaluation_min_score', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums; width: 100%; box-sizing: border-box;">
+                ${isEditMode ? `<input type="number" class="input-evaluation-min-score" value="${grade.evaluation_min_score || 0}" min="0" onchange="window.handleGradeChange(${index}, 'evaluation_min_score', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums; width: 100%; box-sizing: border-box;">` : renderText(grade.evaluation_min_score || 0, true)}
             </td>
             <!-- 査定最高点 -->
             <td>
-                <input type="number" class="input-evaluation-max-score" value="${grade.evaluation_max_score || 0}" min="0" onchange="window.handleGradeChange(${index}, 'evaluation_max_score', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums; width: 100%; box-sizing: border-box;">
+                ${isEditMode ? `<input type="number" class="input-evaluation-max-score" value="${grade.evaluation_max_score || 0}" min="0" onchange="window.handleGradeChange(${index}, 'evaluation_max_score', this.value)" style="text-align: right; font-family: monospace; font-variant-numeric: tabular-nums; width: 100%; box-sizing: border-box;">` : renderText(grade.evaluation_max_score || 0, true)}
             </td>
         `;
         tbody.appendChild(tr);
@@ -778,6 +808,9 @@ async function saveAllGrades() {
         await batch.commit();
 
         showAlert('保存成功', '等級マスタ (給与テーブル) の変更を保存しました！');
+
+        // 保存完了したら閲覧モードに戻る
+        isEditMode = false;
 
         // 再リロードして最新ハッシュを更新
         await loadGradesData();

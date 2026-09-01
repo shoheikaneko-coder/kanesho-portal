@@ -1411,11 +1411,15 @@ async function calculateDailyTargets(storeId, targetYmd) {
         totalPoints.sales += Math.max(...indices);
     }
 
-    const monthlyTarget = goalData.sales_target || 0;
-    const unitValue = totalPoints.sales > 0 ? (monthlyTarget / totalPoints.sales) : 0;
+    const monthlyTargetSales = goalData.sales_target || 0;
+    const monthlyTargetCust = goalData.customers_target || 0;
+    const unitValueSales = totalPoints.sales > 0 ? (monthlyTargetSales / totalPoints.sales) : 0;
+    const unitValueCust = totalPoints.sales > 0 ? (monthlyTargetCust / totalPoints.sales) : 0;
     
-    const fullMonthRounded = {};
-    let monthCheckSum = 0;
+    const fullMonthRoundedSales = {};
+    const fullMonthRoundedCust = {};
+    let monthCheckSumSales = 0;
+    let monthCheckSumCust = 0;
     const workDays = [];
 
     for (let d = 1; d <= daysInMonth; d++) {
@@ -1424,7 +1428,8 @@ async function calculateDailyTargets(storeId, targetYmd) {
         const cal = calendarData[loopYmd] || { type: 'work' };
         
         if (cal.type === 'off') {
-            fullMonthRounded[loopYmd] = 0;
+            fullMonthRoundedSales[loopYmd] = 0;
+            fullMonthRoundedCust[loopYmd] = 0;
             continue;
         }
 
@@ -1445,35 +1450,26 @@ async function calculateDailyTargets(storeId, targetYmd) {
         if (isDayBeforeH) indices.push(weights.day_before_holiday || 1.0);
 
         const dayPoint = Math.max(...indices);
-        const val = Math.round(unitValue * dayPoint);
-        fullMonthRounded[loopYmd] = val;
-        monthCheckSum += val;
+        const valSales = Math.round(unitValueSales * dayPoint);
+        const valCust = Math.round(unitValueCust * dayPoint);
+        fullMonthRoundedSales[loopYmd] = valSales;
+        fullMonthRoundedCust[loopYmd] = valCust;
+        monthCheckSumSales += valSales;
+        monthCheckSumCust += valCust;
     }
 
-    // 1円単位のズレ調整
-    const diff = monthlyTarget - monthCheckSum;
-    if (diff !== 0 && workDays.length > 0) {
+    // 1円単位・1名単位のズレ調整
+    const diffSales = monthlyTargetSales - monthCheckSumSales;
+    const diffCust = monthlyTargetCust - monthCheckSumCust;
+    if (workDays.length > 0) {
         const lastWorkDay = workDays[workDays.length - 1];
-        fullMonthRounded[lastWorkDay] += diff;
+        if (diffSales !== 0) fullMonthRoundedSales[lastWorkDay] += diffSales;
+        if (diffCust !== 0) fullMonthRoundedCust[lastWorkDay] += diffCust;
     }
 
-    // 他の指標（客数目標など）の算出
-    // 予算目標 (m_annual_budgets) から客単価目標を算出
-    let targetAvgSpend = 4500;
-    try {
-        let fy = year;
-        if (month < 7) fy--; 
-        const budgetSnap = await getDoc(doc(db, "m_annual_budgets", `${fy}_${storeId}`));
-        if (budgetSnap.exists()) {
-            const b = budgetSnap.data();
-            if (b.total_sales_target && b.total_cust_target) {
-                targetAvgSpend = Math.round(b.total_sales_target / b.total_cust_target);
-            }
-        }
-    } catch (e) {}
-
-    const salesTarget = fullMonthRounded[targetYmd] || 0;
-    const customerTarget = targetAvgSpend > 0 ? Math.round(salesTarget / targetAvgSpend) : 0;
+    const salesTarget = fullMonthRoundedSales[targetYmd] || 0;
+    const customerTarget = fullMonthRoundedCust[targetYmd] || 0;
+    const targetAvgSpend = customerTarget > 0 ? Math.round(salesTarget / customerTarget) : 0;
 
     return {
         sales: salesTarget,
