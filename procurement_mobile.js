@@ -1,5 +1,5 @@
 import { db } from './firebase.js';
-import { collection, getDocs, addDoc, updateDoc, doc, getDoc, query, where, orderBy, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, getDocs, addDoc, updateDoc, doc, getDoc, query, where, orderBy, onSnapshot, writeBatch, increment } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getEffectivePrice } from './cost_engine.js';
 import { showAlert, showConfirm } from './ui_utils.js';
 
@@ -468,15 +468,33 @@ async function refreshProcurementData() {
 
         
         let isFirstLoad = true;
-        procurementUnsubscribe = onSnapshot(q, (snap) => {
+        procurementUnsubscribe = onSnapshot(q, { includeMetadataChanges: true }, (snap) => {
             console.log("Procurement snapshot received. Size:", snap.size);
-            procurementData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            const newData = [];
+            snap.forEach(d => {
+                newData.push({ id: d.id, ...d.data() });
+            });
+            procurementData = newData;
             
+            let wasFirstLoad = isFirstLoad;
             if (isFirstLoad) {
                 isFirstLoad = false;
                 resolve();
             }
-            render();
+
+            if (!snap.metadata.hasPendingWrites) {
+                let needsRender = wasFirstLoad;
+                snap.docChanges().forEach(change => {
+                    if (change.type === 'added' || change.type === 'removed') {
+                        needsRender = true;
+                    } else if (change.type === 'modified') {
+                        // skip full render on modify
+                    }
+                });
+                if (needsRender) {
+                    render();
+                }
+            }
         }, (err) => {
             console.error("Procurement listener error:", err);
             resolve(); // エラーでも次へ進む
@@ -1043,12 +1061,21 @@ async function executeMobileConsumeAction(ci, qty) {
     const currentStock = Number(sourceItem.個数 || 0);
     const parentName = parentSi.display_name || cachedItems.find(i => i.id === parentSi.ProductID)?.name || '不明';
     if (!confirm(`「${consumeName}」 ${qty}${consumeUnit} 消費\n（${parentName}仕込み連動）\n在庫: ${currentStock} → ${currentStock - qty}`)) return;
-    await showLoading(true);
+
+    // PINPOINT DOM UPDATE FIRST
+    const uniqueKey = `${parentSi.id}_${action.consume_item_id}`;
+    const btn = document.querySelector(`.btn-consume-action[data-unique-key="${uniqueKey}"]`);
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    }
+
     try {
+        const batch = writeBatch(db);
         const now = new Date().toISOString();
         const newQty = currentStock - qty;
 
-        // 1. Update status in parent action (仕込み品のショート処理を今日完了済みにする)
+        // 1. Update status in parent action
         const parentDoc = await getDoc(doc(db, "m_store_items", parentSi.id));
         const parentData = parentDoc.data();
         if (parentData && parentData.shortage_actions) {
@@ -1058,26 +1085,38 @@ async function executeMobileConsumeAction(ci, qty) {
                 }
                 return a;
             });
-            await updateDoc(doc(db, "m_store_items", parentSi.id), { shortage_actions: updatedActions });
+            batch.update(doc(db, "m_store_items", parentSi.id), { shortage_actions: updatedActions });
         }
 
-        // 2. Update source item stock
-        await updateDoc(doc(db, 'm_store_items', sourceItem.id), { 個数: newQty, updated_at: now });
+        // 2. Update source item stock with increment
+        batch.update(doc(db, 'm_store_items', sourceItem.id), { 個数: increment(-qty), updated_at: now });
 
         // 3. Add History
-        await addDoc(collection(db, 't_inventory_history'), {
+        const histRef = doc(collection(db, 't_inventory_history'));
+        batch.set(histRef, {
             store_id: sourceItem.StoreID, item_id: sourceItem.ProductID, store_item_id: sourceItem.id,
             change_qty: -qty, qty_after: newQty, reason_type: 'consume_out',
             source_route: 'procurement_mobile', note: `消費（${parentName}連動）: ${qty}${consumeUnit}`,
             executed_by: currentUser?.Name || 'unknown', executed_at: now
         });
+        
+        await batch.commit();
+
         sourceItem.個数 = newQty;
-        showAlert('完了', `「${consumeName}」${qty}${consumeUnit} 消費完了`);
-        render();
+        
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-check"></i> 完了';
+            btn.style.background = '#10b981';
+            btn.style.color = 'white';
+            btn.style.borderColor = '#10b981';
+        }
+
     } catch (err) {
         showAlert('エラー', '消費処理に失敗: ' + err.message);
-    } finally {
-        await showLoading(false);
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '消費完了';
+        }
     }
 }
 
@@ -1283,8 +1322,16 @@ async function executeMobileLinkedPurchaseAction(lpi, qty) {
 
     if (!confirm(`「${purchaseName}」 ${qty}${purchaseUnit} 購入完了\n（${parentName}連動）\n※在庫は増えません`)) return;
 
-    await showLoading(true);
+    // PINPOINT DOM UPDATE FIRST
+    const uniqueKey = `${parentSi.id}_${action.purchase_item_id}`;
+    const btn = document.querySelector(`.btn-linked-purchase-action[data-unique-key="${uniqueKey}"]`);
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    }
+
     try {
+        const batch = writeBatch(db);
         const now = new Date().toISOString();
         // 親アクションのステータス更新
         const parentDoc = await getDoc(doc(db, "m_store_items", parentSi.id));
@@ -1296,21 +1343,32 @@ async function executeMobileLinkedPurchaseAction(lpi, qty) {
                 }
                 return a;
             });
-            await updateDoc(doc(db, "m_store_items", parentSi.id), { shortage_actions: updatedActions });
+            batch.update(doc(db, "m_store_items", parentSi.id), { shortage_actions: updatedActions });
         }
         // 履歴の追加
-        await addDoc(collection(db, "t_inventory_history"), {
+        const histRef = doc(collection(db, "t_inventory_history"));
+        batch.set(histRef, {
             store_id: parentSi.StoreID, item_id: action.purchase_item_id, change_qty: qty, qty_after: -1,
             reason_type: 'procurement', source_route: 'procurement_mobile',
             note: `仕込連動仕入れ: ${parentName} 連動（在庫加算なし）`,
             executed_by: currentUser?.Name || 'unknown', executed_at: now
         });
-        showAlert("完了", `「${purchaseName}」購入を記録しました`);
-        render();
+        
+        await batch.commit();
+
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-check"></i> 完了';
+            btn.style.background = '#10b981';
+            btn.style.color = 'white';
+            btn.style.borderColor = '#10b981';
+        }
+
     } catch (err) {
         showAlert("エラー", "処理に失敗: " + err.message);
-    } finally {
-        await showLoading(false);
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '購入完了';
+        }
     }
 }
 
@@ -1453,7 +1511,6 @@ async function executeVendorBatchAction() {
     }
 
     const filteredData = procurementData.filter(si => {
-        // 仕入れカテゴリで、定数以下の品目を対象にする
         const par = Number(si.定数 || 0);
         const qty = Number(si.個数 || 0);
         const isPurchase = par > 0 && qty < par && (si.shortage_action_type || 'purchase') === 'purchase';
@@ -1486,7 +1543,6 @@ async function executeVendorBatchAction() {
         const baseNote = noteMap[selectedCategory] || '業者一括更新';
 
         for (const si of filteredData) {
-            // アコーディオンが開いている場合は入力値を取得、閉じていれば必要数を採用
             const input = document.querySelector(`.proc-qty-input[data-si-id="${si.id}"]`);
             let qty = 0;
             if (input) {
@@ -1503,13 +1559,11 @@ async function executeVendorBatchAction() {
             const store = allGroupStores.find(s => s.id === si.StoreID);
             const bizDate = getBusinessDate(store);
 
-            // 1. Update Inventory
             batch.update(doc(db, "m_store_items", si.id), {
-                個数: newQty,
+                個数: increment(qty),
                 updated_at: now
             });
 
-            // 2. Add History
             const histRef = doc(collection(db, "t_inventory_history"));
             batch.set(histRef, {
                 store_id: si.StoreID,
@@ -1525,7 +1579,6 @@ async function executeVendorBatchAction() {
                 business_date: bizDate
             });
 
-            // Local update
             si.個数 = newQty;
         }
 
@@ -1544,7 +1597,6 @@ async function executeTransfer(destStoreItemId, qty) {
     const destSi = procurementData.find(d => d.id === destStoreItemId);
     if (!destSi) return;
 
-    // 移動元店舗IDを直接取得
     const sourceStoreId = destSi.default_source_store_id;
     if (!sourceStoreId) {
         showAlert("エラー", "移動元店舗が設定されていません");
@@ -1552,16 +1604,13 @@ async function executeTransfer(destStoreItemId, qty) {
     }
 
     const sourceSi = procurementData.find(d => 
-        (d.StoreID === sourceStoreId || d.StoreID === sourceStoreId) && 
+        d.StoreID === sourceStoreId && 
         d.ProductID === destSi.ProductID
     );
-
     
-    // 単位換算の計算
     const destConv = Number(destSi.unit_conversion_amount || 1);
     const sourceConv = Number(sourceSi.unit_conversion_amount || 1);
     
-    // 移動先での入力数(qty)を基本単位(physicalQty)に変換し、それを移動元の単位に再変換する
     const physicalQty = qty * destConv;
     const sourceDeductionQty = physicalQty / sourceConv;
 
@@ -1579,7 +1628,12 @@ async function executeTransfer(destStoreItemId, qty) {
     const confirmTransfer = confirm(`移動元: ${sourceName} (${sourceDeductionQty.toFixed(2)}${sourceSi.display_unit || ''} 減少)\n移動先: ${destName} (${qty}${destSi.display_unit || ''} 増加)\n\nを実行しますか？`);
     if (!confirmTransfer) return;
 
-    await showLoading(true);
+    const btn = document.querySelector(`.btn-proc-confirm[data-si-id="${destSi.id}"]`);
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    }
+
     try {
         const batch = writeBatch(db);
         const now = new Date().toISOString();
@@ -1590,13 +1644,9 @@ async function executeTransfer(destStoreItemId, qty) {
         const destOldQty = Number(destSi.個数 || 0);
         const destNewQty = destOldQty + qty;
 
-        // 1. Update Destination
-        batch.update(doc(db, "m_store_items", destSi.id), { 個数: destNewQty, updated_at: now });
-        
-        // 2. Update Source
-        batch.update(doc(db, "m_store_items", sourceSi.id), { 個数: sourceNewQty, updated_at: now });
+        batch.update(doc(db, "m_store_items", destSi.id), { 個数: increment(qty), updated_at: now });
+        batch.update(doc(db, "m_store_items", sourceSi.id), { 個数: increment(-sourceDeductionQty), updated_at: now });
 
-        // 3. Add History (Dest - Transfer In)
         const histDestRef = doc(collection(db, "t_inventory_history"));
         batch.set(histDestRef, {
             store_id: destSi.StoreID,
@@ -1612,7 +1662,6 @@ async function executeTransfer(destStoreItemId, qty) {
             business_date: bizDate
         });
 
-        // 4. Add History (Source - Transfer Out)
         const histSourceRef = doc(collection(db, "t_inventory_history"));
         batch.set(histSourceRef, {
             store_id: sourceSi.StoreID,
@@ -1630,18 +1679,26 @@ async function executeTransfer(destStoreItemId, qty) {
 
         await batch.commit();
 
-        // Update local data
         destSi.個数 = destNewQty;
         sourceSi.個数 = sourceNewQty;
 
-        showAlert("完了", "店舗間移動を完了しました");
-        render();
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-check"></i> 移動完了';
+            btn.style.background = '#10b981';
+            btn.style.color = 'white';
+            btn.style.borderColor = '#10b981';
+        }
     } catch (err) {
         console.error("Transfer failed:", err);
         showAlert("エラー", "移動処理に失敗しました: " + err.message);
-    } finally {
-        await showLoading(false);
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '完了';
+        }
     }
+
+
+
 }
 
 function renderVendorList(search = '') {

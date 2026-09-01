@@ -1,5 +1,5 @@
 import { db } from './firebase.js';
-import { collection, getDocs, addDoc, updateDoc, doc, getDoc, query, where, orderBy, onSnapshot, writeBatch, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, getDocs, addDoc, updateDoc, doc, getDoc, query, where, orderBy, onSnapshot, writeBatch, deleteDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getEffectivePrice } from './cost_engine.js';
 import { showAlert, showConfirm } from './ui_utils.js';
 
@@ -274,14 +274,32 @@ async function refreshProcurementData() {
             );
             
             let isFirstLoad = true;
-            procurementUnsubscribe = onSnapshot(q, (snap) => {
-                procurementData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            procurementUnsubscribe = onSnapshot(q, { includeMetadataChanges: true }, (snap) => {
+                const newData = [];
+                snap.forEach(d => {
+                    newData.push({ id: d.id, ...d.data() });
+                });
+                procurementData = newData;
                 console.log(`[Debug] Procurement Data loaded: ${procurementData.length} items for uniqueIds:`, uniqueIds);
+
+                let wasFirstLoad = isFirstLoad;
                 if (isFirstLoad) {
                     isFirstLoad = false;
                     resolve();
-                } else {
-                    render();
+                }
+
+                if (!snap.metadata.hasPendingWrites) {
+                    let needsRender = wasFirstLoad;
+                    snap.docChanges().forEach(change => {
+                        if (change.type === 'added' || change.type === 'removed') {
+                            needsRender = true;
+                        } else if (change.type === 'modified') {
+                            // modified時はアクションボタンの処理でピンポイント更新するためフルレンダリングをスキップ
+                        }
+                    });
+                    if (needsRender) {
+                        render();
+                    }
                 }
             }, (err) => {
                 console.error("Procurement listener error:", err);
@@ -340,13 +358,31 @@ async function refreshPrepRequests() {
             );
             
             let isFirstLoad = true;
-            prepUnsubscribe = onSnapshot(q, (snap) => {
-                prepRequests = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            prepUnsubscribe = onSnapshot(q, { includeMetadataChanges: true }, (snap) => {
+                const newData = [];
+                snap.forEach(d => {
+                    newData.push({ id: d.id, ...d.data() });
+                });
+                prepRequests = newData;
+
+                let wasFirstLoad = isFirstLoad;
                 if (isFirstLoad) {
                     isFirstLoad = false;
                     resolve();
-                } else {
-                    render();
+                }
+
+                if (!snap.metadata.hasPendingWrites) {
+                    let needsRender = wasFirstLoad;
+                    snap.docChanges().forEach(change => {
+                        if (change.type === 'added' || change.type === 'removed') {
+                            needsRender = true;
+                        } else if (change.type === 'modified') {
+                            // skip full render on modify
+                        }
+                    });
+                    if (needsRender) {
+                        render();
+                    }
                 }
             }, (err) => {
                 console.error("Prep requests listener error:", err);
@@ -1042,8 +1078,16 @@ async function executeLinkedPurchaseAction(lpi, qty) {
 
     if (!confirm(`「${purchaseName}」を ${qty}${purchaseUnit} 購入完了にしますか？\n（${parentName} の仕込連動）\n\n※この品目は直接消費されるため、在庫数は増えません。`)) return;
 
-    await showLoading(true);
+    // PINPOINT DOM UPDATE FIRST
+    const uniqueKey = `${parentSi.id}_${action.purchase_item_id}`;
+    const btn = document.querySelector(`.btn-linked-purchase-action[data-unique-key="${uniqueKey}"]`);
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    }
+
     try {
+        const batch = writeBatch(db);
         const now = new Date().toISOString();
         const bizDate = getBusinessDate(allGroupStores.find(s => s.id === parentSi.StoreID));
 
@@ -1057,15 +1101,16 @@ async function executeLinkedPurchaseAction(lpi, qty) {
                 }
                 return a;
             });
-            await updateDoc(doc(db, "m_store_items", parentSi.id), { shortage_actions: updatedActions });
+            batch.update(doc(db, "m_store_items", parentSi.id), { shortage_actions: updatedActions });
         }
 
-        // 2. Add History (Increments are NOT done, but we record the purchase)
-        await addDoc(collection(db, "t_inventory_history"), {
+        // 2. Add History
+        const histRef = doc(collection(db, "t_inventory_history"));
+        batch.set(histRef, {
             store_id: parentSi.StoreID,
             item_id: action.purchase_item_id,
             change_qty: qty,
-            qty_after: -1, // Special flag or current stock (but not updated)
+            qty_after: -1, // Special flag
             reason_type: 'procurement',
             source_route: 'procurement_page',
             note: `仕込連動仕入れ: ${parentName} の不足分（直接消費のため在庫加算なし）`,
@@ -1073,14 +1118,23 @@ async function executeLinkedPurchaseAction(lpi, qty) {
             executed_at: now,
             business_date: bizDate
         });
+        
+        await batch.commit();
 
-        showAlert("完了", `「${purchaseName}」の購入を記録しました。`);
-        render();
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-check"></i> 完了';
+            btn.style.background = '#10b981';
+            btn.style.color = 'white';
+            btn.style.borderColor = '#10b981';
+        }
+
     } catch (err) {
         console.error("Linked purchase action failed:", err);
         showAlert("エラー", "処理に失敗しました: " + err.message);
-    } finally {
-        await showLoading(false);
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '購入完了';
+        }
     }
 }
 
@@ -1532,7 +1586,6 @@ async function showPrepBreakdownModal(productId, type) {
 async function executeBatchPrepAction(productId, type, updates) {
     await showLoading(true);
     try {
-        const { writeBatch } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
         const batch = writeBatch(db);
         const now = new Date().toISOString();
         
@@ -1554,7 +1607,7 @@ async function executeBatchPrepAction(productId, type, updates) {
             const newQty = oldQty + u.qty;
 
             // 1. Update Inventory
-            batch.update(doc(db, "m_store_items", si.id), { 個数: newQty, updated_at: now });
+            batch.update(doc(db, "m_store_items", si.id), { 個数: increment(u.qty), updated_at: now });
 
             // 2. Add History
             const histRef = doc(collection(db, "t_inventory_history"));
@@ -1563,7 +1616,7 @@ async function executeBatchPrepAction(productId, type, updates) {
                 item_id: si.ProductID,
                 store_item_id: si.id,
                 change_qty: u.qty,
-                qty_after: newQty,
+                qty_after: newQty, //予測値
                 reason_type: 'preparation',
                 source_route: 'procurement_page',
                 note: type === 'manual' ? 'CK一括(手動依頼分)' : 'CK一括(自動判定分)',
@@ -1576,10 +1629,14 @@ async function executeBatchPrepAction(productId, type, updates) {
             if (requestId) {
                 batch.update(doc(db, "t_prep_requests", requestId), { status: 'COMPLETED', completed_at: now });
             }
+            
+            // local update
+            si.個数 = newQty;
         }
 
         await batch.commit();
         showAlert("完了", "一括反映が完了しました");
+        render(); // Batch action finishes modal, render is safe here.
     } catch (err) {
         console.error("Batch prep failed:", err);
         showAlert("エラー", "更新に失敗しました: " + err.message);
@@ -1630,7 +1687,19 @@ async function addPrepRequest(productId) {
 }
 
 async function executePrepAction(id, type, qty) {
-    await showLoading(true);
+    // PINPOINT DOM UPDATE FIRST
+    let btn = null;
+    if (type === 'manual') {
+        btn = document.querySelector(`.btn-confirm-prep[data-id="${id}"]`);
+    } else {
+        btn = document.querySelector(`.btn-confirm-auto-prep[data-id="${id}"]`);
+    }
+    
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    }
+
     try {
         const now = new Date().toISOString();
         const bizDate = getBusinessDate(currentStore);
@@ -1659,8 +1728,8 @@ async function executePrepAction(id, type, qty) {
 
         const batch = writeBatch(db);
 
-        // 1. Update Inventory
-        batch.update(doc(db, "m_store_items", si.id), { 個数: newQty, updated_at: now });
+        // 1. Update Inventory using increment
+        batch.update(doc(db, "m_store_items", si.id), { 個数: increment(qty), updated_at: now });
 
         // 2. Add History
         const histRef = doc(collection(db, "t_inventory_history"));
@@ -1669,7 +1738,7 @@ async function executePrepAction(id, type, qty) {
             item_id: si.ProductID,
             store_item_id: si.id,
             change_qty: qty,
-            qty_after: newQty,
+            qty_after: newQty, //予測値
             reason_type: 'preparation',
             source_route: 'procurement_page',
             note: type === 'manual' ? '手動追加仕込み' : '不足分仕込み',
@@ -1684,12 +1753,23 @@ async function executePrepAction(id, type, qty) {
         }
 
         await batch.commit();
-        showAlert("完了", "仕込みを在庫に反映しました");
+
+        si.個数 = newQty;
+        
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-check"></i> 完了';
+            btn.style.background = '#10b981';
+            btn.style.color = 'white';
+            btn.style.borderColor = '#10b981';
+        }
+        
     } catch (err) {
         console.error("Prep execution failed:", err);
         showAlert("エラー", "更新に失敗しました: " + err.message);
-    } finally {
-        await showLoading(false);
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '完了';
+        }
     }
 }
 
@@ -1875,9 +1955,14 @@ async function executeTransfer(destStoreItemId, qty) {
     const confirmTransfer = confirm(`移動元: ${sourceStoreId} (${sourceDeductionQty.toFixed(2)}${sourceSi.display_unit || ''} 減少)\n移動先: ${destSi.StoreID} (${qty}${destSi.display_unit || ''} 増加)\n\nを実行しますか？`);
     if (!confirmTransfer) return;
 
-    await showLoading(true);
+    // PINPOINT DOM UPDATE FIRST (Optimistic UI)
+    const btn = document.querySelector(`.btn-proc-confirm[data-si-id="${destSi.id}"]`);
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    }
+
     try {
-        const { writeBatch } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js");
         const batch = writeBatch(db);
         const now = new Date().toISOString();
         const bizDate = getBusinessDate(allGroupStores.find(s => s.id === destSi.StoreID));
@@ -1888,10 +1973,10 @@ async function executeTransfer(destStoreItemId, qty) {
         const destNewQty = destOldQty + qty;
 
         // 1. Update Destination
-        batch.update(doc(db, "m_store_items", destSi.id), { 個数: destNewQty, updated_at: now });
+        batch.update(doc(db, "m_store_items", destSi.id), { 個数: increment(qty), updated_at: now });
         
         // 2. Update Source
-        batch.update(doc(db, "m_store_items", sourceSi.id), { 個数: sourceNewQty, updated_at: now });
+        batch.update(doc(db, "m_store_items", sourceSi.id), { 個数: increment(-sourceDeductionQty), updated_at: now });
 
         // 3. Add History (Dest - Transfer In)
         const histDestRef = doc(collection(db, "t_inventory_history"));
@@ -1930,14 +2015,21 @@ async function executeTransfer(destStoreItemId, qty) {
         // Update local data
         destSi.個数 = destNewQty;
         sourceSi.個数 = sourceNewQty;
+        
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-check"></i> 移動完了';
+            btn.style.background = '#10b981';
+            btn.style.color = 'white';
+            btn.style.borderColor = '#10b981';
+        }
 
-        showAlert("完了", "店舗間移動を完了しました");
-        render();
     } catch (err) {
         console.error("Transfer failed:", err);
         showAlert("エラー", "移動処理に失敗しました: " + err.message);
-    } finally {
-        await showLoading(false);
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '完了';
+        }
     }
 }
 
@@ -1959,13 +2051,21 @@ async function executeConsumeAction(ci, qty) {
     const parentName = parentSi.display_name || cachedItems.find(i => i.id === parentSi.ProductID)?.name || '不明';
     if (!confirm(`「${consumeName}」を ${qty}${consumeUnit} 消費します。\n（${parentName} の仕込み連動）\n\n消費元在庫: ${currentStock} → ${currentStock - qty}${consumeUnit}`)) return;
 
-    await showLoading(true);
+    // PINPOINT DOM UPDATE FIRST
+    const uniqueKey = `${parentSi.id}_${action.consume_item_id}`;
+    const btn = document.querySelector(`.btn-consume-action[data-unique-key="${uniqueKey}"]`);
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    }
+
     try {
+        const batch = writeBatch(db);
         const now = new Date().toISOString();
         const newQty = currentStock - qty;
         const bizDate = getBusinessDate(allGroupStores.find(s => s.id === sourceItem.StoreID));
 
-        // 1. Update status in parent action (仕込み品のショート処理を今日完了済みにする)
+        // 1. Update status in parent action
         const parentDoc = await getDoc(doc(db, "m_store_items", parentSi.id));
         const parentData = parentDoc.data();
         if (parentData && parentData.shortage_actions) {
@@ -1975,17 +2075,18 @@ async function executeConsumeAction(ci, qty) {
                 }
                 return a;
             });
-            await updateDoc(doc(db, "m_store_items", parentSi.id), { shortage_actions: updatedActions });
+            batch.update(doc(db, "m_store_items", parentSi.id), { shortage_actions: updatedActions });
         }
 
-        // 2. Update source item stock
-        await updateDoc(doc(db, 'm_store_items', sourceItem.id), {
-            個数: newQty,
+        // 2. Update source item stock with increment
+        batch.update(doc(db, 'm_store_items', sourceItem.id), {
+            個数: increment(-qty),
             updated_at: now
         });
 
         // 3. Add History
-        await addDoc(collection(db, 't_inventory_history'), {
+        const histRef = doc(collection(db, 't_inventory_history'));
+        batch.set(histRef, {
             store_id: sourceItem.StoreID,
             item_id: sourceItem.ProductID,
             store_item_id: sourceItem.id,
@@ -1999,14 +2100,24 @@ async function executeConsumeAction(ci, qty) {
             business_date: bizDate
         });
 
+        await batch.commit();
+
         sourceItem.個数 = newQty;
-        showAlert('完了', `「${consumeName}」${qty}${consumeUnit} を消費しました`);
-        render();
+        
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-check"></i> 完了';
+            btn.style.background = '#10b981';
+            btn.style.color = 'white';
+            btn.style.borderColor = '#10b981';
+        }
+
     } catch (err) {
         console.error('Consume action failed:', err);
         showAlert('エラー', '消費処理に失敗しました: ' + err.message);
-    } finally {
-        await showLoading(false);
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '消費完了';
+        }
     }
 }
 

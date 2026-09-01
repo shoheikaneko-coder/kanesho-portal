@@ -486,6 +486,8 @@ function getBusinessDate(resetTime = "05:00") {
 
 function render() {
     if (!masterDataLoaded) return;
+    const appEl = document.getElementById('inventory-app');
+    if (appEl && appEl.closest('[data-tab-content]')?.style.display === 'none') return;
     const main = document.getElementById('inv-main-content');
     const sidebarTimings = document.getElementById('inv-timing-list');
     const storeSelect = document.getElementById('inv-store-select');
@@ -837,12 +839,24 @@ function renderInventoryTable(container, items, isGlobalSearch) {
             e.preventDefault();
             e.stopPropagation();
             const loc = banner.dataset.loc;
-            if (collapsedSections.has(loc)) {
-                collapsedSections.delete(loc);
-            } else {
-                collapsedSections.add(loc);
+            const isNowCollapsed = !collapsedSections.has(loc);
+            
+            if (isNowCollapsed) { 
+                collapsedSections.add(loc); 
+            } else { 
+                collapsedSections.delete(loc); 
             }
-            render(); // 全体再描画
+
+            // data-loc属性でその棚の行だけを対象にclassをトグル
+            document.querySelectorAll(`tr.inventory-row[data-loc="${CSS.escape(loc)}"]`).forEach(row => {
+                row.classList.toggle('hidden', isNowCollapsed);
+            });
+            
+            // アイコンの向きも更新
+            const icon = banner.querySelector('i.fa-chevron-right, i.fa-chevron-down');
+            if (icon) {
+                icon.className = `fas ${isNowCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'}`;
+            }
         };
     });
 
@@ -1175,6 +1189,46 @@ async function handleManualReset() {
     }
 }
 
+function updateItemRowAndCounters(item) {
+    const isConfirmed = isConfirmedToday(item.updated_at, selectedStore.resetTime, item.is_confirmed);
+    const parStock = item.定数 || 0;
+    const isShort = (parStock > 0) && (Number(item.個数) < parStock);
+
+    // 1. テーブル行のクラスを更新
+    const row = document.querySelector(`tr.inventory-row[data-id="${item.id}"]`);
+    if (row) {
+        row.classList.toggle('confirmed', isConfirmed);
+        row.classList.toggle('shortage', isShort && !isConfirmed);
+        // 完了ボタンのactiveクラスも更新
+        const confirmBtn = row.querySelector('.confirm-btn');
+        if (confirmBtn) confirmBtn.classList.toggle('active', isConfirmed);
+    }
+
+    // 2. サイドバーのタイミング進捗を更新
+    const tCode = item.確認タイミング || '';
+    const timingEl = document.querySelector(`.timing-item[data-code="${tCode}"]`);
+    if (timingEl) {
+        const itemsInTiming = inventoryData.filter(d => (d.確認タイミング || '') === tCode);
+        const confirmedCount = itemsInTiming.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed)).length;
+        const progressEl = timingEl.querySelector('span:last-child');
+        if (progressEl) progressEl.textContent = `${confirmedCount}/${itemsInTiming.length}`;
+        const isAllDone = itemsInTiming.length > 0 && confirmedCount === itemsInTiming.length;
+        const icon = timingEl.querySelector('i');
+        if (icon) {
+            icon.className = `fas ${isAllDone ? 'fa-check-circle' : 'fa-clock'}`;
+            icon.style.color = isAllDone ? 'var(--primary)' : '';
+        }
+    }
+
+    // 3. 上部ステータス（inv-stats）を更新
+    if (selectedTiming) {
+        const itemsInTiming = inventoryData.filter(d => (d.確認タイミング || '') === (selectedTiming.id || ''));
+        const confirmedCount = itemsInTiming.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed)).length;
+        const statsEl = document.getElementById('inv-stats');
+        if (statsEl) statsEl.textContent = `完了: ${confirmedCount} / ${itemsInTiming.length}`;
+    }
+}
+
 async function saveItemQty(item) {
     if (item.個数 === undefined || item.個数 === null) return;
 
@@ -1182,18 +1236,19 @@ async function saveItemQty(item) {
     overlay.style.setProperty('display', 'flex', 'important');
 
     try {
-        const docRef = doc(db, "m_store_items", item.id);
         const now = new Date().toISOString();
         const finalQty = Number(item.個数);
         const businessDate = getBusinessDate(selectedStore.resetTime);
+        const batch = writeBatch(db);
 
-        await updateDoc(docRef, {
+        // 1. メイン更新
+        batch.update(doc(db, "m_store_items", item.id), {
             個数: finalQty,
             updated_at: now
         });
 
-        // 旧ログはそのまま維持
-        await addDoc(collection(db, "t_inventory_logs"), {
+        // 2. 旧ログ
+        batch.set(doc(collection(db, "t_inventory_logs")), {
             InvID: item.id,
             CountValue: finalQty,
             StoreID: selectedStore.code,
@@ -1203,8 +1258,8 @@ async function saveItemQty(item) {
             StaffEmail: currentUser?.Email || 'unknown'
         });
 
-        // 新履歴コレクションに追加記録
-        await addDoc(collection(db, "t_inventory_history"), {
+        // 3. 新履歴
+        batch.set(doc(collection(db, "t_inventory_history")), {
             store_id: selectedStore.code,
             item_id: item.ProductID,
             store_item_id: item.id,
@@ -1218,9 +1273,11 @@ async function saveItemQty(item) {
             business_date: businessDate
         });
 
+        await batch.commit();
+
         item.updated_at = now;
         item.個数 = finalQty;
-        render(); // 再描画してプログレスを更新
+        updateItemRowAndCounters(item); // 再描画をピンポイント更新に変更
     } catch (err) {
         console.error("Save failed:", err);
         showAlert('エラー', '保存に失敗しました: ' + err.message);
@@ -1293,16 +1350,18 @@ async function toggleItemConfirmation(id) {
     if (overlay) overlay.style.display = 'flex';
 
     try {
-        const docRef = doc(db, "m_store_items", id);
-        await updateDoc(docRef, {
+        const batch = writeBatch(db);
+
+        // 1. メイン更新
+        batch.update(doc(db, "m_store_items", id), {
             is_confirmed: newConfirmed,
             updated_at: now,
             confirmed_at: newConfirmed ? now : null,
             confirmed_by: newConfirmed ? (currentUser?.Name || 'unknown') : null
         });
 
-        // 履歴ログ
-        await addDoc(collection(db, "t_inventory_history"), {
+        // 2. 履歴ログ
+        batch.set(doc(collection(db, "t_inventory_history")), {
             store_id: selectedStore.code,
             item_id: item.ProductID,
             store_item_id: item.id,
@@ -1313,12 +1372,13 @@ async function toggleItemConfirmation(id) {
             business_date: getBusinessDate(selectedStore.resetTime)
         });
 
-        // [最適化] 楽観的ローカル更新。再フェッチ不要。
-        // 他ユーザーの変更は onSnapshot のデルタ配信で自動反映される。
+        await batch.commit();
+
+        // 楽観的ローカル更新
         item.is_confirmed = newConfirmed;
         item.updated_at = now;
         item.confirmed_at = newConfirmed ? now : null;
-        render();
+        updateItemRowAndCounters(item); // 再描画をピンポイント更新に変更
     } catch (err) {
         console.error("Toggle confirmation failed:", err);
         alert("確定状態の変更に失敗しました");
@@ -1371,15 +1431,14 @@ async function handleSectionConfirm(locationName) {
 
         await batch.commit();
 
-        // [最適化] 楽観的ローカル更新。バッチ後に再フェッチ不要。
+        // 楽観的ローカル更新。バッチ後に再フェッチ不要。
         itemsInSection.forEach(item => {
             item.is_confirmed = true;
             item.updated_at = now;
             item.confirmed_at = now;
             item.confirmed_by = currentUser?.Name || 'unknown';
+            updateItemRowAndCounters(item);
         });
-
-        render();
     } catch (err) {
         console.error("Section confirm failed:", err);
         alert("一括完了に失敗しました");
@@ -2020,8 +2079,8 @@ async function loadStoreInventory(internalCode) {
         
         let isFirstLoad = true;
 
-        inventoryUnsubscribe = onSnapshot(q, async (snap) => {
-            console.log("[Inventory PC] Snapshot received. Changed docs:", snap.docChanges().length, "/ Total:", snap.size);
+        inventoryUnsubscribe = onSnapshot(q, { includeMetadataChanges: true }, async (snap) => {
+            console.log("[Inventory PC] Snapshot received. Changed docs:", snap.docChanges().length, "/ Total:", snap.size, "hasPendingWrites:", snap.metadata.hasPendingWrites);
             
             const newData = [];
             snap.forEach(d => {
@@ -2030,13 +2089,35 @@ async function loadStoreInventory(internalCode) {
             
             inventoryData = newData;
 
+            let wasFirstLoad = isFirstLoad;
             // [最適化] resolve()を先に呼んでUIをブロックしない。
             if (isFirstLoad) {
                 isFirstLoad = false;
                 resolve();
             }
 
-            render();
+            // 自分自身の書き込みによる発火（ローカルキャッシュへの反映）はスキップ
+            // hasPendingWrites === true の間は、自分の書き込み中に相当する
+            if (!snap.metadata.hasPendingWrites) {
+                let needsRender = wasFirstLoad;
+                
+                snap.docChanges().forEach(change => {
+                    if (change.type === 'added' || change.type === 'removed') {
+                        needsRender = true;
+                    } else if (change.type === 'modified') {
+                        if (!needsRender) {
+                            const updatedItem = inventoryData.find(i => i.id === change.doc.id);
+                            if (updatedItem) {
+                                updateItemRowAndCounters(updatedItem);
+                            }
+                        }
+                    }
+                });
+
+                if (needsRender) {
+                    render(); // 他ユーザーの変更や、追加削除時のみ再描画
+                }
+            }
             
         }, (err) => {
             console.error("[Inventory PC] Error in real-time listener:", err);

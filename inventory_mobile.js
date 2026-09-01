@@ -1,6 +1,5 @@
 import { db } from './firebase.js';
 import { collection, getDocs, onSnapshot, addDoc, updateDoc, doc, getDoc, query, where, orderBy, setDoc, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-import { calculateAllTheoreticalStocks } from './stock_logic.js';
 import { showAlert } from './ui_utils.js';
 
 export const inventoryMobilePageHtml = `
@@ -393,8 +392,6 @@ async function loadInitialData() {
             productMap[i.id] = i.name || i.Name || i.id;
         });
 
-        cachedMenusForInv = cachedMenus;
-
         // キャッシュ完了フラグをセット
         masterDataLoaded = true;
         console.log("[Inventory Mobile] Master data loaded and cached.");
@@ -402,20 +399,6 @@ async function loadInitialData() {
     } catch (err) {
         console.error("Error loading initial inventory data:", err);
     }
-}
-
-let cachedMenusForInv = [];
-
-// 理論在庫のキャッシュ (StoreID_ProductID -> value)
-let theoreticalStockCache = {};
-
-async function loadTheoreticalStocks(storeCode) {
-    const masterCache = {
-        items: Object.keys(productMap).map(id => ({ id: id, name: productMap[id] })),
-        menus: cachedMenusForInv,
-        ingredients: [] // stock_logic now uses menus to find recipes, ingredients list is less critical but good to have for consistency if needed
-    };
-    theoreticalStockCache = await calculateAllTheoreticalStocks(storeCode, masterCache);
 }
 
 // Helper: Check if the entry is from the current "business day"
@@ -447,6 +430,8 @@ function getBusinessDate(resetTime = "05:00") {
 }
 
 function render() {
+    const appEl = document.getElementById('inventory-app-mobile') || document.getElementById('inventory-app');
+    if (appEl && appEl.closest('[data-tab-content]')?.style.display === 'none') return;
     const main = document.getElementById('inv-main-content');
     if (!main) return;
 
@@ -808,13 +793,13 @@ function renderInventoryRows(container, items, isGlobalSearch) {
     let html = '';
     Object.keys(groupedItems).forEach(loc => {
         const locItems = groupedItems[loc];
-        const confirmedCount = locItems.filter(i => isConfirmedToday(i.confirmed_at, selectedStore.resetTime, i.is_confirmed)).length;
+        const confirmedCount = locItems.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed)).length;
         const totalCount = locItems.length;
         const isCollapsed = collapsedLocations.has(loc);
-        const hasShortage = locItems.some(i => !isConfirmedToday(i.confirmed_at, selectedStore.resetTime, i.is_confirmed) && (i.定数 > 0) && (Number(i.個数 || 0) < i.定数));
+        const hasShortage = locItems.some(i => !isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed) && (i.定数 > 0) && (Number(i.個数 || 0) < i.定数));
 
         html += `
-            <div class="location-accordion ${isCollapsed ? 'is-collapsed' : ''}">
+            <div class="location-accordion ${isCollapsed ? 'is-collapsed' : ''}" data-loc="${loc}">
                 <div class="location-header-sm" onclick="window.toggleLocationAccordion('${loc}')" style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 0.8rem 1rem; background: #f8fafc; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
                     <div style="display: flex; align-items: center; gap: 0.6rem;">
                         <i class="fas fa-chevron-down accordion-icon" style="font-size: 0.7rem; color: #94a3b8; transition: transform 0.2s; ${isCollapsed ? 'transform: rotate(-90deg);' : ''}"></i>
@@ -827,7 +812,7 @@ function renderInventoryRows(container, items, isGlobalSearch) {
                 </div>
                 <div class="location-content" style="${isCollapsed ? 'display: none;' : ''}">
                     ${locItems.map(item => {
-                        const isConfirmed = isConfirmedToday(item.confirmed_at, selectedStore.resetTime, item.is_confirmed);
+                        const isConfirmed = isConfirmedToday(item.updated_at, selectedStore.resetTime, item.is_confirmed);
                         const currentQty = item.個数 !== undefined ? item.個数 : '';
                         const parStock = item.定数 || 0;
                         const isShort = (parStock > 0) && (Number(currentQty) < parStock);
@@ -1010,13 +995,49 @@ async function handleManualReset() {
     }
 }
 window.toggleLocationAccordion = (loc) => {
-    if (collapsedLocations.has(loc)) {
-        collapsedLocations.delete(loc);
-    } else {
+    const isNowCollapsed = !collapsedLocations.has(loc);
+    if (isNowCollapsed) {
         collapsedLocations.add(loc);
+    } else {
+        collapsedLocations.delete(loc);
     }
-    render();
+    
+    // アコーディオンのDOMを直接操作
+    const accordions = document.querySelectorAll(`.location-accordion[data-loc="${CSS.escape(loc)}"]`);
+    accordions.forEach(accordion => {
+        accordion.classList.toggle('is-collapsed', isNowCollapsed);
+        const content = accordion.querySelector('.location-content');
+        if (content) content.style.display = isNowCollapsed ? 'none' : '';
+        const icon = accordion.querySelector('.accordion-icon');
+        if (icon) icon.style.transform = isNowCollapsed ? 'rotate(-90deg)' : '';
+    });
 };
+
+function updateItemRowAndCounters(item) {
+    const isConfirmed = isConfirmedToday(item.updated_at, selectedStore.resetTime, item.is_confirmed);
+    const parStock = item.定数 || 0;
+    const isShort = (parStock > 0) && (Number(item.個数) < parStock);
+
+    // 1. テーブル行のクラスを更新
+    const row = document.querySelector(`div.inv-row[data-id="${item.id}"]`);
+    if (row) {
+        row.classList.toggle('confirmed', isConfirmed);
+        row.classList.toggle('shortage', isShort && !isConfirmed);
+        // 完了ボタンのactiveクラスも更新
+        const confirmBtn = document.querySelector(`.btn-confirm-sm[data-id="${item.id}"]`);
+        if (confirmBtn) confirmBtn.classList.toggle('active', isConfirmed);
+    }
+
+    // 2. プログレスバーの更新
+    const itemsInCurrentTiming = inventoryData.filter(d => (d.確認タイミング || '') === (selectedTiming ? selectedTiming.id : ''));
+    if (itemsInCurrentTiming.length > 0) {
+        const confirmedCount = itemsInCurrentTiming.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed)).length;
+        const percent = Math.round((confirmedCount / itemsInCurrentTiming.length) * 100);
+        if (window.updateOpsHubProgress) {
+            window.updateOpsHubProgress(percent);
+        }
+    }
+}
 
 async function saveItemQty(item) {
     if (item.個数 === undefined || item.個数 === null) return;
@@ -1025,18 +1046,19 @@ async function saveItemQty(item) {
     overlay.style.setProperty('display', 'flex', 'important');
 
     try {
-        const docRef = doc(db, "m_store_items", item.id);
         const now = new Date().toISOString();
         const finalQty = Number(item.個数);
         const businessDate = getBusinessDate(selectedStore.resetTime);
+        const batch = writeBatch(db);
 
-        await updateDoc(docRef, {
+        // 1. メイン更新
+        batch.update(doc(db, "m_store_items", item.id), {
             個数: finalQty,
             updated_at: now
         });
 
-        // 旧ログはそのまま維持
-        await addDoc(collection(db, "t_inventory_logs"), {
+        // 2. 旧ログ
+        batch.set(doc(collection(db, "t_inventory_logs")), {
             InvID: item.id,
             CountValue: finalQty,
             StoreID: selectedStore.code,
@@ -1046,8 +1068,8 @@ async function saveItemQty(item) {
             StaffEmail: currentUser?.Email || 'unknown'
         });
 
-        // 新履歴コレクションに追加記録
-        await addDoc(collection(db, "t_inventory_history"), {
+        // 3. 新履歴
+        batch.set(doc(collection(db, "t_inventory_history")), {
             store_id: selectedStore.code,
             item_id: item.ProductID,
             store_item_id: item.id,
@@ -1061,9 +1083,11 @@ async function saveItemQty(item) {
             business_date: businessDate
         });
 
+        await batch.commit();
+
         item.updated_at = now;
         item.個数 = finalQty;
-        render(); // 再描画してプログレスを更新
+        updateItemRowAndCounters(item); // 再描画をピンポイント更新に変更
     } catch (err) {
         console.error("Save failed:", err);
         showAlert('エラー', '保存に失敗しました: ' + err.message);
@@ -1104,7 +1128,7 @@ async function toggleItemConfirmation(id) {
     const item = inventoryData.find(i => i.id === id);
     if (!item) return;
 
-    const isConfirmed = isConfirmedToday(item.confirmed_at, selectedStore.resetTime, item.is_confirmed);
+    const isConfirmed = isConfirmedToday(item.updated_at, selectedStore.resetTime, item.is_confirmed);
     const newConfirmed = !isConfirmed;
     const now = new Date().toISOString();
 
@@ -1112,16 +1136,18 @@ async function toggleItemConfirmation(id) {
     if (overlay) overlay.style.display = 'flex';
 
     try {
-        const docRef = doc(db, "m_store_items", id);
-        await updateDoc(docRef, {
+        const batch = writeBatch(db);
+
+        // 1. メイン更新
+        batch.update(doc(db, "m_store_items", id), {
             is_confirmed: newConfirmed,
             updated_at: now,
             confirmed_at: newConfirmed ? now : null,
             confirmed_by: newConfirmed ? (currentUser?.Name || 'unknown') : null
         });
 
-        // 履歴ログ
-        await addDoc(collection(db, "t_inventory_history"), {
+        // 2. 履歴ログ
+        batch.set(doc(collection(db, "t_inventory_history")), {
             store_id: selectedStore.code,
             item_id: item.ProductID,
             store_item_id: item.id,
@@ -1132,13 +1158,12 @@ async function toggleItemConfirmation(id) {
             business_date: getBusinessDate(selectedStore.resetTime)
         });
 
-        // [最適化] 楽観的ローカル更新 - Firestoreへの書き込み後に再フェッチは不要。
-        // 自分の操作はローカル状態を即時更新し、他ユーザーの変更は
-        // onSnapshot のデルタ配信で自動的に反映される。
+        await batch.commit();
+
         item.is_confirmed = newConfirmed;
         item.updated_at = now;
         item.confirmed_at = newConfirmed ? now : null;
-        render();
+        updateItemRowAndCounters(item); // 再描画をピンポイント更新に変更
         
         // 完了チェックとアニメーション
         if (newConfirmed) {
@@ -1217,16 +1242,16 @@ async function handleSectionConfirm(locationName) {
 
         await batch.commit();
 
-        // [最適化] 楽観的ローカル更新。バッチ書き込み後、
+        // 楽観的ローカル更新。バッチ書き込み後、
         // ローカル状態を即時更新して再フェッチを回避する。
         itemsInSection.forEach(item => {
             item.is_confirmed = true;
             item.updated_at = now;
             item.confirmed_at = now;
             item.confirmed_by = currentUser?.Name || 'unknown';
+            updateItemRowAndCounters(item); // 再描画をピンポイント更新に変更
         });
 
-        render();
         checkCompletionAndCelebrate(selectedTiming.id);
     } catch (err) {
         console.error("Section confirm failed:", err);
@@ -1873,8 +1898,8 @@ async function loadStoreInventory(internalCode) {
         
         let isFirstLoad = true;
 
-        inventoryUnsubscribe = onSnapshot(q, async (snap) => {
-            console.log("[Inventory Mobile] Snapshot received. Changed docs:", snap.docChanges().length, "/ Total:", snap.size);
+        inventoryUnsubscribe = onSnapshot(q, { includeMetadataChanges: true }, async (snap) => {
+            console.log("[Inventory Mobile] Snapshot received. Changed docs:", snap.docChanges().length, "/ Total:", snap.size, "hasPendingWrites:", snap.metadata.hasPendingWrites);
             
             const newData = [];
             snap.forEach(d => {
@@ -1884,21 +1909,33 @@ async function loadStoreInventory(internalCode) {
             // グローバル変数を更新
             inventoryData = newData;
 
-            // 初回のみ理論在庫を計算（重い処理のため）
-            // [最適化] resolve()を先に呼んでUIをブロックしない。
-            // 理論在庫はバックグラウンドで計算する。
+            let wasFirstLoad = isFirstLoad;
             if (isFirstLoad) {
                 isFirstLoad = false;
                 resolve();
-                // 理論在庫計算はUIを返した後にバックグラウンドで実行
-                loadTheoreticalStocks(internalCode).catch(stockErr => {
-                    console.error("Theoretical stock calculation failed:", stockErr);
-                });
             }
 
-            // 描画（リアルタイムで最新状態にする）
-            render();
-            
+            // 自分自身の書き込みによる発火（ローカルキャッシュへの反映）はスキップ
+            if (!snap.metadata.hasPendingWrites) {
+                let needsRender = wasFirstLoad;
+                
+                snap.docChanges().forEach(change => {
+                    if (change.type === 'added' || change.type === 'removed') {
+                        needsRender = true;
+                    } else if (change.type === 'modified') {
+                        if (!needsRender) {
+                            const updatedItem = inventoryData.find(i => i.id === change.doc.id);
+                            if (updatedItem) {
+                                updateItemRowAndCounters(updatedItem);
+                            }
+                        }
+                    }
+                });
+
+                if (needsRender) {
+                    render();
+                }
+            }
         }, (err) => {
             console.error("[Inventory Mobile] Error in real-time listener:", err);
             currentListenedStore = null; // エラー時はリセット

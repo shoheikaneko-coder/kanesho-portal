@@ -172,6 +172,9 @@ function setupTabListeners() {
     };
 }
 
+const tabContainers = {};
+const tabInitialized = {};
+
 async function switchTab(tabId) {
     currentTab = tabId;
     const content = document.getElementById('ops-hub-content');
@@ -195,46 +198,81 @@ async function switchTab(tabId) {
         progressContainer.style.display = (isMobile && tabId === 'inventory') ? 'block' : 'none';
     }
 
-    if (tabId === 'inventory') {
-        if (isMobile) {
-            content.innerHTML = inventoryMobilePageHtml;
-            await initInventoryMobilePage(currentUser);
-        } else {
-            content.innerHTML = inventoryPageHtml;
-            await initInventoryPage(currentUser);
-        }
-    } 
-    else if (tabId === 'buy_move' || tabId === 'make') {
-        // モバイル専用の統合カテゴリー
-        const defaultSubTab = tabId === 'buy_move' ? 'purchase' : 'store_prep';
-        content.innerHTML = procurementMobilePageHtml;
-        await initProcurementMobilePage(currentUser, defaultSubTab);
-        
-        // procurement_mobile 内で表示を絞り込むための処理を後で呼び出す
-        if (window.filterProcurementCategories) {
-            window.filterProcurementCategories(tabId);
-        }
+    // 既存のコンテナを非表示
+    Object.values(tabContainers).forEach(el => {
+        el.style.display = 'none';
+    });
+
+    let cacheKey = tabId;
+    const procurementTabs = ['transfer', 'purchase', 'store_prep', 'ck_prep'];
+    
+    if (procurementTabs.includes(tabId)) {
+        cacheKey = isMobile ? 'procurement_mobile' : 'procurement_pc';
+    } else if (tabId === 'buy_move' || tabId === 'make') {
+        cacheKey = 'procurement_mobile';
+    } else if (tabId === 'settings' && isMobile) {
+        // モバイルの設定画面は在庫タブのHTMLを流用するため、同じコンテナを使う
+        cacheKey = 'inventory';
     }
-    else if (tabId === 'settings') {
-        // 設定画面（inventory_mobile 内の master 設定を流用するか、別途用意）
-        if (isMobile) {
-            content.innerHTML = inventoryMobilePageHtml;
-            await initInventoryMobilePage(currentUser);
-            if (window.showMasterSettings) window.showMasterSettings();
+
+    if (!tabContainers[cacheKey]) {
+        const el = document.createElement('div');
+        el.style.cssText = 'height: 100%; position: relative;';
+        el.dataset.tabContent = cacheKey;
+        content.appendChild(el);
+        tabContainers[cacheKey] = el;
+
+        if (cacheKey === 'inventory') {
+            if (isMobile) {
+                el.innerHTML = inventoryMobilePageHtml;
+                await initInventoryMobilePage(currentUser);
+                if (tabId === 'settings' && window.showMasterSettings) {
+                    window.showMasterSettings();
+                }
+            } else {
+                el.innerHTML = inventoryPageHtml;
+                await initInventoryPage(currentUser);
+            }
+        } 
+        else if (cacheKey === 'procurement_mobile') {
+            const defaultSubTab = tabId === 'buy_move' ? 'purchase' : 'store_prep';
+            // buy_move や make はモバイル専用カテゴリ、purchase等はPCから来る場合がある
+            const initialCategory = (tabId === 'buy_move' || tabId === 'make') ? defaultSubTab : tabId;
+            el.innerHTML = procurementMobilePageHtml;
+            await initProcurementMobilePage(currentUser, initialCategory);
+            
+            if (window.filterProcurementCategories) {
+                window.filterProcurementCategories(tabId);
+            }
         }
-    }
-    else if (tabId === 'stocktake') {
-        content.innerHTML = stocktakePageHtml;
-        await initStocktakePage(currentUser);
-    }
-    else {
-        // PC版の個別タブ（transfer, purchase, store_prep, ck_prep）
-        if (isMobile) {
-            content.innerHTML = procurementMobilePageHtml;
-            await initProcurementMobilePage(currentUser, tabId);
-        } else {
-            content.innerHTML = procurementPageHtml;
+        else if (cacheKey === 'procurement_pc') {
+            el.innerHTML = procurementPageHtml;
             await initProcurementPage(currentUser, tabId);
         }
+        else if (tabId === 'stocktake') {
+            el.innerHTML = stocktakePageHtml;
+            await initStocktakePage(currentUser);
+        }
+        
+        tabInitialized[cacheKey] = true;
+    } else {
+        // 既にDOMが存在する場合、カテゴリー切り替えなどの初期化関数を再度呼ぶ
+        if (tabId === 'buy_move' || tabId === 'make') {
+            const defaultSubTab = tabId === 'buy_move' ? 'purchase' : 'store_prep';
+            await initProcurementMobilePage(currentUser, defaultSubTab);
+            if (window.filterProcurementCategories) {
+                window.filterProcurementCategories(tabId);
+            }
+        } else if (procurementTabs.includes(tabId)) {
+            if (isMobile) {
+                await initProcurementMobilePage(currentUser, tabId);
+            } else {
+                await initProcurementPage(currentUser, tabId);
+            }
+        } else if (tabId === 'settings' && isMobile && window.showMasterSettings) {
+            window.showMasterSettings();
+        }
     }
+
+    tabContainers[cacheKey].style.display = 'block';
 }
