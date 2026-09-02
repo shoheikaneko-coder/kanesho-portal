@@ -747,13 +747,13 @@ function renderInventoryTable(container, items, isGlobalSearch) {
             <tr class="location-banner ${isCompleted ? 'completed' : ''}" data-loc="${loc}">
                 <td colspan="6">
                     <div class="banner-content">
-                        <div class="title">
+                        <div class="title loc-title-area">
                             <i class="fas ${isCollapsed ? 'fa-chevron-right' : 'fa-chevron-down'}" style="width: 1rem; font-size: 0.8rem; color: var(--text-secondary);"></i>
                             <i class="fas fa-map-marker-alt" style="color: var(--primary);"></i>
                             ${loc}
                             ${isCompleted ? '<i class="fas fa-check-circle" style="color:var(--primary); font-size: 0.9rem;"></i>' : ''}
                         </div>
-                        <div class="progress">${confirmedCount} / ${totalCount}</div>
+                        <div class="progress loc-progress-text">${confirmedCount} / ${totalCount}</div>
                         <button class="section-confirm-btn" data-loc="${loc}" style="display: ${isGlobalSearch ? 'none' : 'flex'}">
                             <i class="fas fa-check-double"></i> この棚を完了
                         </button>
@@ -1226,6 +1226,32 @@ function updateItemRowAndCounters(item) {
         const confirmedCount = itemsInTiming.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed)).length;
         const statsEl = document.getElementById('inv-stats');
         if (statsEl) statsEl.textContent = `完了: ${confirmedCount} / ${itemsInTiming.length}`;
+    }
+
+    // 4. 棚・ロケーションヘッダーの進捗を更新
+    const loc = item.location_label || item.保管場所 || '未設定';
+    const locBanner = document.querySelector(`tr.location-banner[data-loc="${CSS.escape(loc)}"]`);
+    if (locBanner) {
+        let filteredData = selectedTiming ? inventoryData.filter(d => (d.確認タイミング || '') === (selectedTiming.id || '')) : inventoryData;
+        const locItems = filteredData.filter(d => (d.location_label || d.保管場所 || '未設定') === loc);
+        const totalLocCount = locItems.length;
+        const confirmedLocCount = locItems.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed)).length;
+        
+        const progressEl = locBanner.querySelector('.loc-progress-text');
+        if (progressEl) progressEl.textContent = `${confirmedLocCount} / ${totalLocCount}`;
+        
+        const isCompleted = totalLocCount > 0 && confirmedLocCount === totalLocCount;
+        locBanner.classList.toggle('completed', isCompleted);
+        
+        const titleDiv = locBanner.querySelector('.loc-title-area');
+        if (titleDiv) {
+            let icon = titleDiv.querySelector('.fa-check-circle');
+            if (isCompleted && !icon) {
+                titleDiv.insertAdjacentHTML('beforeend', ' <i class="fas fa-check-circle" style="color:var(--primary); font-size: 0.9rem;"></i>');
+            } else if (!isCompleted && icon) {
+                icon.remove();
+            }
+        }
     }
 }
 

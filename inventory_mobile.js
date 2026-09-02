@@ -801,12 +801,12 @@ function renderInventoryRows(container, items, isGlobalSearch) {
         html += `
             <div class="location-accordion ${isCollapsed ? 'is-collapsed' : ''}" data-loc="${loc}">
                 <div class="location-header-sm" onclick="window.toggleLocationAccordion('${loc}')" style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 0.8rem 1rem; background: #f8fafc; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9;">
-                    <div style="display: flex; align-items: center; gap: 0.6rem;">
+                    <div class="loc-title-area" style="display: flex; align-items: center; gap: 0.6rem;">
                         <i class="fas fa-chevron-down accordion-icon" style="font-size: 0.7rem; color: #94a3b8; transition: transform 0.2s; ${isCollapsed ? 'transform: rotate(-90deg);' : ''}"></i>
                         <span style="font-size: 0.75rem; font-weight: 900; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">${loc}</span>
                         ${hasShortage ? '<i class="fas fa-exclamation-circle" style="color: #ef4444; font-size: 0.7rem;"></i>' : ''}
                     </div>
-                    <div style="font-size: 0.7rem; font-weight: 800; color: #94a3b8; background: white; padding: 0.2rem 0.6rem; border-radius: 10px; border: 1px solid #f1f5f9;">
+                    <div class="loc-progress-text" style="font-size: 0.7rem; font-weight: 800; color: #94a3b8; background: white; padding: 0.2rem 0.6rem; border-radius: 10px; border: 1px solid #f1f5f9;">
                         ${confirmedCount} / ${totalCount}
                     </div>
                 </div>
@@ -1035,6 +1035,30 @@ function updateItemRowAndCounters(item) {
         const percent = Math.round((confirmedCount / itemsInCurrentTiming.length) * 100);
         if (window.updateOpsHubProgress) {
             window.updateOpsHubProgress(percent);
+        }
+    }
+
+    // 3. 棚・ロケーションアコーディオンの更新
+    const loc = item.location_label || item.保管場所 || '未設定';
+    const accordion = document.querySelector(`.location-accordion[data-loc="${CSS.escape(loc)}"]`);
+    if (accordion) {
+        let filteredData = selectedTiming ? inventoryData.filter(d => (d.確認タイミング || '') === (selectedTiming.id || '')) : inventoryData;
+        const locItems = filteredData.filter(d => (d.location_label || d.保管場所 || '未設定') === loc);
+        const totalLocCount = locItems.length;
+        const confirmedLocCount = locItems.filter(i => isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed)).length;
+        const hasShortage = locItems.some(i => !isConfirmedToday(i.updated_at, selectedStore.resetTime, i.is_confirmed) && (i.定数 > 0) && (Number(i.個数 || 0) < i.定数));
+
+        const progressEl = accordion.querySelector('.loc-progress-text');
+        if (progressEl) progressEl.textContent = `${confirmedLocCount} / ${totalLocCount}`;
+        
+        const titleDiv = accordion.querySelector('.loc-title-area');
+        if (titleDiv) {
+            let warnIcon = titleDiv.querySelector('.fa-exclamation-circle');
+            if (hasShortage && !warnIcon) {
+                titleDiv.insertAdjacentHTML('beforeend', ' <i class="fas fa-exclamation-circle" style="color: #ef4444; font-size: 0.7rem;"></i>');
+            } else if (!hasShortage && warnIcon) {
+                warnIcon.remove();
+            }
         }
     }
 }
