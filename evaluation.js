@@ -1328,7 +1328,15 @@ async function loadInitialSettingsAndData() {
 
     if (isAdmin) {
         allStaffUsersForAdmin = allUsers.filter(u => {
-            return u.Status !== 'retired' && u.Status !== '退職済' && u.Role !== 'Tablet' && u.Role !== '店舗タブレット';
+            if (u.Status === 'retired' || u.Status === '退職済') return false;
+            if (u.Role === 'Tablet' || u.Role === '店舗タブレット') return false;
+            // 既存の評価対象者判定ロジックを再利用
+            if (!u.GradeCode || !gradeMap[u.GradeCode]) return false;
+            const uJobTitle = gradeMap[u.GradeCode].job_title;
+            if (!uJobTitle) return false;
+            if (!routeMap[uJobTitle]) return false;
+            if (uJobTitle === '社長') return false;
+            return true;
         });
 
         const tabSelf = document.getElementById('tab-self');
@@ -2251,6 +2259,7 @@ async function renderAdminTab(container) {
         <div id="admin-list-container" style="display:none;">
             <!-- ここにリストが描画される -->
         </div>
+        <div id="admin-detail-container" style="display:none;"></div>
     `;
 
     if (localPeriodSettings) {
@@ -2323,12 +2332,21 @@ async function renderAdminTab(container) {
             btnLoadList.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 読み込み中...';
             try {
                 // 全件取得して activeEvaluations に合流 (不足分を補う)
+                if (!localPeriodSettings || !localPeriodSettings.active_period) {
+                    showAlert("エラー", "評価期が設定されていません。管理者にお問い合わせください。");
+                    btnLoadList.disabled = false;
+                    btnLoadList.innerHTML = '<i class="fas fa-download"></i> ステータスを読み込む';
+                    return;
+                }
                 const period = localPeriodSettings.active_period;
                 const fullSnap = await getDocs(query(collection(db, "t_evaluations"), where("period", "==", period)));
                 
                 fullSnap.forEach(d => {
                     const data = d.data();
-                    if (!activeEvaluations.some(e => e.id === d.id)) {
+                    const existingIdx = activeEvaluations.findIndex(e => e.id === d.id);
+                    if (existingIdx !== -1) {
+                        activeEvaluations[existingIdx] = { id: d.id, ...data };
+                    } else {
                         activeEvaluations.push({ id: d.id, ...data });
                     }
                 });
@@ -2347,6 +2365,29 @@ async function renderAdminTab(container) {
             }
         });
     }
+
+    // --- 管理者用の詳細閲覧・戻るアクション ---
+    window.viewEvalDetail = (userId) => {
+        const evalData = activeEvaluations.find(e => e.user_id === userId);
+        if (evalData) {
+            document.getElementById('admin-list-container').style.display = 'none';
+            document.getElementById('admin-list-placeholder').style.display = 'none';
+            const detailContainer = document.getElementById('admin-detail-container');
+            detailContainer.style.display = 'block';
+            renderEvalDetailInline(detailContainer, evalData, 'admin');
+        }
+    };
+
+    window.backToAdminList = () => {
+        document.getElementById('admin-detail-container').style.display = 'none';
+        document.getElementById('admin-detail-container').innerHTML = '';
+        document.getElementById('admin-list-container').style.display = 'block';
+    };
+}
+
+function getStatusBadge(status, evalData = null) {
+    const label = getStatusJpName(status, evalData);
+    return `<span class="eval-status-badge status-${status}">${label}</span>`;
 }
 
 function renderAdminListTable(container, isOpen) {
@@ -2365,7 +2406,7 @@ function renderAdminListTable(container, isOpen) {
                 <table style="width: 100%; border-collapse: collapse; font-size: 0.95rem; min-width: 800px;">
                     <thead style="background: var(--primary); color: white;">
                         <tr>
-                            <th style="padding: 1rem; text-align: left; font-weight: 700;">お名前</th>
+                            <th style="padding: 1rem; text-align: left; font-weight: 700;">氏名</th>
                             <th style="padding: 1rem; text-align: left; font-weight: 700;">部署・店舗</th>
                             <th style="padding: 1rem; text-align: center; font-weight: 700;">現在のステータス</th>
                             <th style="padding: 1rem; text-align: center; font-weight: 700;">自己評価点</th>
@@ -2392,14 +2433,14 @@ function renderAdminListTable(container, isOpen) {
         let managerScore = '-';
         
         if (evalData) {
-            statusBadge = getStatusBadge(evalData.status);
+            statusBadge = getStatusBadge(evalData.status, evalData);
             selfScore = evalData.is_self_submitted ? `<span style="font-weight:700; color:var(--primary);"><i class="fas fa-user" style="font-size:0.8rem; margin-right:4px;"></i>${evalData.self_total_score||0}</span>` : '-';
             managerScore = evalData.is_manager_submitted ? `<span style="font-weight:700; color:#059669;"><i class="fas fa-user-tie" style="font-size:0.8rem; margin-right:4px;"></i>${evalData.manager_total_score||0}</span>` : '-';
         }
 
         listHTML += `
             <tr style="background: ${bg}; border-bottom: 1px solid #e2e8f0; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='${bg}'">
-                <td style="padding: 1rem; font-weight: 700; color: #1e293b;">${u.DisplayName || u.id}</td>
+                <td style="padding: 1rem; font-weight: 700; color: #1e293b;">${u.Name || u.DisplayName || u.id}</td>
                 <td style="padding: 1rem; color: #475569; font-size: 0.9rem;">${storeName}</td>
                 <td style="padding: 1rem; text-align: center;">${statusBadge}</td>
                 <td style="padding: 1rem; text-align: center;">${selfScore}</td>
@@ -2408,7 +2449,7 @@ function renderAdminListTable(container, isOpen) {
                     <button class="btn btn-secondary" onclick="window.viewEvalDetail('${u.id}')" ${!evalData ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : 'style="padding: 0.4rem 0.8rem; font-size: 0.85rem;"'}>
                         <i class="fas fa-eye"></i> 閲覧
                     </button>
-                    <button class="btn btn-secondary" onclick="window.viewHistory('${u.id}')" style="padding: 0.4rem 0.6rem; font-size: 0.85rem;" title="過去の履歴">
+                    <button class="btn btn-secondary history-btn" data-userid="${u.id}" data-username="${u.Name}" style="padding: 0.4rem 0.6rem; font-size: 0.85rem; background:white; color:#475569; border:1px solid #cbd5e1;" title="過去の履歴を見る">
                         <i class="fas fa-history"></i>
                     </button>
                 </td>
@@ -3482,7 +3523,7 @@ function renderModalBody(container, mode) {
         if (mode === 'self') container = document.getElementById('self-eval-inline-container');
         else if (mode === 'interview') container = document.getElementById('interview-detail-container');
         else if (mode === 'president') container = document.getElementById('president-detail-container');
-        else if (mode === 'admin') container = document.getElementById('admin-detail-inner');
+        else if (mode === 'admin') container = document.getElementById('admin-detail-container');
         else container = document.getElementById('subordinate-detail-container');
         
         if (container) {
@@ -3615,8 +3656,9 @@ function renderModalFooter(container, mode) {
         `;
     }
     else {
+        const backFunc = mode === 'admin' ? 'window.backToAdminList()' : (mode === 'interview' ? 'window.backToInterviewList()' : 'window.backToSubordinateList()');
         container.innerHTML = `
-            <button class="btn" onclick="window.closeEvaluationModal()" style="background:#f1f5f9; color:#475569; border:none; padding:0.5rem 1rem; border-radius:6px; font-weight:700;"><i class="fas fa-times"></i> 閉じる</button>
+            <button class="btn" onclick="${backFunc}" style="background:#f1f5f9; color:#475569; border:none; padding:0.5rem 1rem; border-radius:6px; font-weight:700;"><i class="fas fa-times"></i> 閉じる</button>
         `;
     }
 
@@ -6110,3 +6152,4 @@ window.openQuizReviewModal = (quizDataStr) => {
     
     modal.style.display = 'flex';
 };
+// test line
