@@ -482,20 +482,6 @@ export function setupEventListeners() {
     rebind('punch-modal-cancel', closePunchModal);
 
 
-    // 詳細モーダルの閉じるボタン
-    const closeDetailBtn = document.getElementById('close-check-modal');
-    if (closeDetailBtn) {
-        closeDetailBtn.onclick = null; // インラインを削除
-        const newCloseBtn = closeDetailBtn.cloneNode(true);
-        closeDetailBtn.parentNode.replaceChild(newCloseBtn, closeDetailBtn);
-        newCloseBtn.addEventListener('click', () => {
-            const modal = document.getElementById('check-detail-modal');
-            if (modal) {
-                modal.classList.remove('show');
-                setTimeout(() => { modal.style.display = 'none'; }, 300);
-            }
-        });
-    }
 
     // 打刻修正（Admin）
     rebind('btn-load-correction', loadCorrectionList);

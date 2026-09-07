@@ -58,7 +58,6 @@ const defaultMenuItems = [
     { id: 'home', name: 'ホーム', icon: 'fa-home' },
     { id: 'dashboard', name: 'ダッシュボード', icon: 'fa-chart-line' },
     { id: 'attendance', name: '勤怠入力', icon: 'fa-clock' },
-    { id: 'attendance_check', name: '勤怠状況確認', icon: 'fa-clipboard-check' },
     { id: 'ops_hub_main', name: '在庫・調達', icon: 'fa-boxes-stacked' },
     { id: 'sales', name: '営業実績報告', icon: 'fa-calculator' },
     { id: 'recipe_viewer', name: 'レシピ閲覧', icon: 'fa-book-open' },

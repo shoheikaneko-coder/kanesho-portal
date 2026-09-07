@@ -22,7 +22,7 @@ import { productsMobilePageHtml, initProductsMobilePage } from './products_mobil
 import { suppliersPageHtml, initSuppliersPage } from './suppliers.js?v=36';
 import { storeItemsPageHtml, initStoreItemsPage } from './store_items.js?v=31';
 import { recipesViewerPageHtml, initRecipesViewerPage } from './recipes.js?v=20260711_03';
-import { attendanceCheckPageHtml, initAttendanceCheckPage } from './attendance_check.js?v=7';
+
 import { csvExportPageHtml, initCsvExportPage } from './csv_export.js?v=7';
 import { salesCorrectionPageHtml, initSalesCorrectionPage } from './sales_correction.js?v=7';
 import { rolePermissionsPageHtml, initRolePermissionsPage } from './role_permissions.js?v=20260710_02';
@@ -42,7 +42,7 @@ import { shiftAdminMobilePageHtml, initShiftAdminMobilePage } from './shift_mobi
 import { loansPageHtml, initLoansPage } from './loans.js?v=116';
 import { hubPageHtml, initHubPage } from './hubs.js?v=20260710_05';
 import { inviteNaviPageHtml, initInviteNaviPage } from './invite_navi.js';
-import { attendanceManagementPageHtml, initAttendanceManagementPage } from './attendance_management.js?v=20260724_01';
+import { attendanceManagementPageHtml, initAttendanceManagementPage } from './attendance_management.js?v=20260907_04';
 import { bottleKeepPageHtml, initBottleKeepPage } from './bottle_keep.js?v=20260711_03';
 import { prototypeMenuPageHtml, initPrototypeMenuPage } from './prototype_menu.js?v=141';
 import { competitorListPageHtml, initCompetitorListPage } from './competitor_list.js';
@@ -548,11 +548,7 @@ async function showPage(target) {
                 pageContent.innerHTML = menuPdcaPageHtml;
                 initMenuPdcaPage();
                 break;
-            case 'attendance_check':
-                updateHeaderTitle('勤怠状況確認');
-                pageContent.innerHTML = attendanceCheckPageHtml;
-                initAttendanceCheckPage();
-                break;
+
             case 'attendance':
                 updateHeaderTitle('勤怠入力');
                 pageContent.innerHTML = attendancePageHtml;
@@ -837,6 +833,10 @@ async function showPage(target) {
                 updateHeaderTitle('申請詳細確認');
                 pageContent.innerHTML = applicationDetailPageHtml;
                 initApplicationDetailPage();
+                break;
+            default:
+                // 未定義ページは無視（現在のコンテンツを維持）
+                console.warn(`[navigateTo] Unknown page target: ${target}`);
                 break;
         }
 

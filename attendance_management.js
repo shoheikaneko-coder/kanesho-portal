@@ -1,9 +1,130 @@
 import { db } from './firebase.js';
 import { 
     collection, getDocs, query, where, orderBy, doc, getDoc, 
-    setDoc, addDoc, deleteDoc, writeBatch, serverTimestamp, onSnapshot 
+    setDoc, updateDoc, addDoc, deleteDoc, writeBatch, serverTimestamp, onSnapshot 
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { showAlert, showConfirm } from './ui_utils.js';
+
+
+
+const attendanceManagementStyles = `
+<style>
+    #attendance-mgmt-container .menu-card {
+        padding: 2rem 1.5rem;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid var(--border);
+        text-align: center;
+        cursor: pointer;
+    }
+    #attendance-mgmt-container .menu-card:hover { transform: translateY(-5px); border-color: var(--primary); }
+    #attendance-mgmt-container .menu-card i { font-size: 2.5rem; margin-bottom: 1rem; color: var(--primary); }
+    
+    .attn-row-input {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-size: 0.9rem;
+    }
+    
+    #attn-daily-body tr:hover, #attn-monthly-body tr:hover { background: #fdf2f2; }
+    #attn-daily-body td, #attn-monthly-body td { padding: 0.8rem 1rem; border-bottom: 1px solid #f1f5f9; }
+    
+    /* 統合ダッシュボード用のカスタムスタイル */
+    .attn-int-tab {
+        padding: 0.8rem 1.5rem;
+        font-weight: 700;
+        border: none;
+        background: none;
+        border-bottom: 3px solid transparent;
+        cursor: pointer;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .attn-int-tab.active {
+        color: var(--primary) !important;
+        border-bottom-color: var(--primary) !important;
+    }
+    .attn-int-tab:hover {
+        color: var(--primary);
+    }
+    .badge-attn-int {
+        background: var(--danger);
+        color: white;
+        border-radius: 10px;
+        padding: 1px 6px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        margin-left: 0.3rem;
+        display: none;
+    }
+    .attn-int-table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+        font-size: 0.88rem;
+    }
+    .attn-int-table th {
+        background: #f8fafc;
+        border-bottom: 2px solid var(--border);
+        color: var(--text-secondary);
+        padding: 0.8rem 1rem;
+        font-weight: 700;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .attn-int-table td {
+        padding: 0.9rem 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        color: var(--text-primary);
+        font-weight: 500;
+        vertical-align: middle;
+    }
+    .attn-int-table tbody tr:nth-child(even) {
+        background-color: #f8fafc25;
+    }
+    .attn-int-table tbody tr:hover {
+        background-color: #fdf2f235 !important;
+    }
+
+    /* CSV出力設定モーダル用スタイル */
+    .attn-int-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(15, 23, 42, 0.4);
+        backdrop-filter: blur(8px);
+        z-index: 10000;
+        opacity: 0;
+        transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .attn-int-modal.show {
+        display: block;
+        opacity: 1;
+    }
+    .attn-int-modal-content {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.95);
+        background: white;
+        padding: 2.2rem 2rem;
+        border-radius: 16px;
+        width: 480px;
+        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.15);
+        border: 1px solid var(--border);
+        transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .attn-int-modal.show .attn-int-modal-content {
+        transform: translate(-50%, -50%) scale(1);
+    }
+</style>
+`;
 
 // ─── HTML テンプレート ────────────────────────────────────────
 export const attendanceManagementPageHtml = `
@@ -253,9 +374,14 @@ export const attendanceManagementPageHtml = `
                         <option value="">全店舗</option>
                     </select>
                 </div>
-                <div class="input-group" style="margin-bottom: 0; min-width: 180px;">
-                    <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">対象月</label>
-                    <input type="month" id="attn-int-month-select" style="padding: 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; background: white;">
+                <div class="input-group" style="margin-bottom: 0; min-width: 140px;">
+                    <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">集計開始日</label>
+                    <input type="date" id="attn-int-period-start" style="padding: 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; background: white;">
+                </div>
+                <div id="attn-int-period-tilde" style="display: flex; align-items: flex-end; padding-bottom: 0.65rem; color: var(--text-secondary); font-weight: bold;">〜</div>
+                <div class="input-group" style="margin-bottom: 0; min-width: 140px;">
+                    <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">集計終了日</label>
+                    <input type="date" id="attn-int-period-end" style="padding: 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; background: white;">
                 </div>
                 <div class="input-group" style="margin-bottom: 0; min-width: 180px;" id="attn-int-date-filter-group">
                     <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">表示日 (日別用)</label>
@@ -268,19 +394,22 @@ export const attendanceManagementPageHtml = `
         </div>
 
         <!-- タブナビゲーション -->
-        <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid var(--border); padding-bottom: 0px;">
-            <button class="attn-int-tab active" data-tab="daily">
-                <i class="fas fa-calendar-day"></i> 日別データ
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid var(--border); padding-bottom: 0px; overflow-x: auto; white-space: nowrap;">
+            <button class="attn-int-tab active" data-tab="monthly">
+                <i class="fas fa-calendar-alt"></i> 期間集計
             </button>
-            <button class="attn-int-tab" data-tab="monthly">
-                <i class="fas fa-calendar-alt"></i> 月別集計
+            <button class="attn-int-tab" data-tab="daily">
+                <i class="fas fa-calendar-day"></i> 日別集計
+            </button>
+            <button class="attn-int-tab" data-tab="errors">
+                <i class="fas fa-exclamation-triangle"></i> エラーチェック
             </button>
             <button class="attn-int-tab" data-tab="approvals" style="position: relative;">
                 <i class="fas fa-check-double"></i> 修正申請の承認
                 <span id="badge-attn-int-approvals" class="badge-attn-int">0</span>
             </button>
-            <button class="attn-int-tab" data-tab="errors">
-                <i class="fas fa-exclamation-triangle"></i> エラーチェック
+            <button class="attn-int-tab" data-tab="paid_leave">
+                <i class="fas fa-umbrella-beach"></i> 年間休日管理
             </button>
         </div>
 
@@ -416,6 +545,64 @@ export const attendanceManagementPageHtml = `
                     </div>
                 </div>
             </div>
+            
+            <!-- 6-5. 年間休日管理コンテンツ -->
+            <div id="attn-int-pane-paid_leave" class="attn-int-pane animate-fade-in" style="display: none;">
+                <div style="margin-bottom: 1.2rem; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem;">
+                    <div>
+                        <span style="font-weight: 800; font-size: 1.2rem; color: var(--text-primary);"><i class="fas fa-umbrella-beach" style="color: var(--primary);"></i> 年間休日管理</span>
+                        <p style="margin: 0.2rem 0 0; font-size: 0.85rem; color: var(--text-secondary);">年度（7月1日〜翌年6月30日）単位での取得済休日・未来の休日見込を管理します。</p>
+                        <div id="attn-int-paid-warning" style="display: none; margin-top: 0.5rem; color: #e53e3e; font-size: 0.8rem; font-weight: 700;"><i class="fas fa-exclamation-circle"></i> 会社カレンダー未設定の月があるため、未来見込が正確でない可能性があります。</div>
+                    </div>
+                    <div style="display: flex; gap: 1rem; align-items: flex-end; background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid var(--border);">
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label style="font-size: 0.8rem; font-weight: 700;">対象年度</label>
+                            <select id="attn-int-paid-year" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;">
+                                <!-- JSで動的生成 -->
+                            </select>
+                        </div>
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label style="font-size: 0.8rem; font-weight: 700;">雇用形態</label>
+                            <select id="attn-int-paid-emp-type" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;">
+                                <option value="">全件</option>
+                                <option value="Executive">役員</option>
+                                <option value="Full-time" selected>正社員</option>
+                                <option value="Part-time">アルバイト</option>
+                            </select>
+                        </div>
+                        <div style="margin-left: 1rem; padding-left: 1rem; border-left: 1px solid var(--border); display: flex; align-items: center; gap: 0.8rem;">
+                            <div>
+                                <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary);">基準年間休暇日数</div>
+                                <div style="font-weight: 800; font-size: 1.1rem; color: var(--primary);"><span id="attn-int-paid-base-display">120</span> <span style="font-size:0.8rem; color: var(--text-secondary);">日</span></div>
+                            </div>
+                            <button class="btn" id="btn-attn-int-paid-open-base-modal"  style="padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.8rem; background: white; border: 1px solid var(--border);"><i class="fas fa-cog"></i> 設定</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel" style="padding: 0; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.02);">
+                    <div style="overflow-x: auto;">
+                        <table class="attn-int-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 180px;">氏名</th>
+                                    <th>適用休日基準</th>
+                                    <th>固定休日設定</th>
+                                    <th>取得済休日</th>
+                                    <th>今後の固定休</th>
+                                    <th>今後の会社休</th>
+                                    <th>重複</th>
+                                    <th>年間休日見込</th>
+                                    <th style="width: 150px;">要取得休日数(不足)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attn-int-paid-body">
+                                <tr><td colspan="9" style="padding: 3rem; text-align: center; color: var(--text-secondary);"><i class="fas fa-search"></i> 共通フィルターを指定して「検索・表示」を押してください</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -513,124 +700,92 @@ export const attendanceManagementPageHtml = `
             </div>
         </div>
     </div>
+
+    <!-- 10. 【年間休日】会社基準設定モーダル -->
+    <div id="attn-int-base-holiday-modal" class="attn-int-modal">
+        <div class="attn-int-modal-content" style="background: white; border: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.8rem;">
+                <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-cog" style="color: var(--primary);"></i>
+                    基準年間休暇日数の設定
+                </h3>
+                <button onclick="document.getElementById('attn-int-base-holiday-modal').classList.remove('show')" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-secondary);"><i class="fas fa-times"></i></button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 1.2rem;">
+                <div class="input-group" style="margin-bottom: 0;">
+                    <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">対象年度</label>
+                    <div style="font-weight: 800; font-size: 1.1rem; color: var(--text-primary);" id="attn-int-base-holiday-modal-year"></div>
+                </div>
+                
+                <div class="input-group" style="margin-bottom: 0;">
+                    <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">基準年間休暇日数</label>
+                    <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0 0 0.5rem 0;">※この設定は会社全体（全店舗）に適用されます。各社員の個人別設定がない場合のデフォルト値となります。</p>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="number" id="attn-int-base-holiday-modal-input" style="padding: 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; background: white; width: 120px;" placeholder="例: 120">
+                        <span style="font-weight: 700; color: var(--text-secondary);">日</span>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 0.8rem; justify-content: flex-end; margin-top: 0.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                    <button onclick="document.getElementById('attn-int-base-holiday-modal').classList.remove('show')" class="btn" style="background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; font-weight: 700; padding: 0.6rem 1.2rem; border-radius: 8px;">
+                        キャンセル
+                    </button>
+                    <button id="btn-attn-int-base-holiday-modal-save"  class="btn btn-primary" style="font-weight: 700; padding: 0.6rem 1.5rem; border-radius: 8px; display: flex; align-items: center; gap: 0.4rem;">
+                        <i class="fas fa-save"></i> 保存
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 9. 【年間休日】個人設定編集モーダル -->
+    <div id="attn-int-paid-modal" class="attn-int-modal">
+        <div class="attn-int-modal-content" style="background: white; border: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.8rem;">
+                <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-user-cog" style="color: var(--primary);"></i>
+                    <span id="attn-int-paid-modal-name"></span>の設定
+                </h3>
+                <button onclick="document.getElementById('attn-int-paid-modal').classList.remove('show')" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-secondary);"><i class="fas fa-times"></i></button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 1.2rem;">
+                <input type="hidden" id="attn-int-paid-modal-uid">
+                <input type="hidden" id="attn-int-paid-modal-year">
+                
+                <div>
+                    <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem; display:block;">固定休日（曜日）</label>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <label style="display: flex; align-items: center; gap: 0.2rem;"><input type="checkbox" name="paid-fixed-dow" value="1">月</label>
+                        <label style="display: flex; align-items: center; gap: 0.2rem;"><input type="checkbox" name="paid-fixed-dow" value="2">火</label>
+                        <label style="display: flex; align-items: center; gap: 0.2rem;"><input type="checkbox" name="paid-fixed-dow" value="3">水</label>
+                        <label style="display: flex; align-items: center; gap: 0.2rem;"><input type="checkbox" name="paid-fixed-dow" value="4">木</label>
+                        <label style="display: flex; align-items: center; gap: 0.2rem;"><input type="checkbox" name="paid-fixed-dow" value="5">金</label>
+                        <label style="display: flex; align-items: center; gap: 0.2rem;"><input type="checkbox" name="paid-fixed-dow" value="6">土</label>
+                        <label style="display: flex; align-items: center; gap: 0.2rem;"><input type="checkbox" name="paid-fixed-dow" value="0">日</label>
+                    </div>
+                </div>
+
+                <div class="input-group" style="margin-bottom: 0;">
+                    <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">個人別 休日基準日数（<span id="attn-int-paid-modal-year-label"></span>年度）</label>
+                    <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0 0 0.5rem 0;">※年度途中入社などで会社基準から変更したい場合のみ数値を入力してください。未入力の場合は会社基準が適用されます。</p>
+                    <input type="number" id="attn-int-paid-modal-custom-base" style="padding: 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; background: white;" placeholder="例: 60">
+                </div>
+                
+                <div style="display: flex; gap: 0.8rem; justify-content: flex-end; margin-top: 0.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                    <button onclick="document.getElementById('attn-int-paid-modal').classList.remove('show')" class="btn" style="background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; font-weight: 700; padding: 0.6rem 1.2rem; border-radius: 8px;">
+                        キャンセル
+                    </button>
+                    <button id="btn-attn-int-paid-modal-save"  class="btn btn-primary" style="font-weight: 700; padding: 0.6rem 1.5rem; border-radius: 8px; display: flex; align-items: center; gap: 0.4rem;">
+                        <i class="fas fa-save"></i> 保存
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
-<style>
-    #attendance-mgmt-container .menu-card {
-        padding: 2rem 1.5rem;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        border: 1px solid var(--border);
-        text-align: center;
-        cursor: pointer;
-    }
-    #attendance-mgmt-container .menu-card:hover { transform: translateY(-5px); border-color: var(--primary); }
-    #attendance-mgmt-container .menu-card i { font-size: 2.5rem; margin-bottom: 1rem; color: var(--primary); }
-    
-    .attn-row-input {
-        width: 100%;
-        padding: 0.5rem;
-        border: 1px solid var(--border);
-        border-radius: 6px;
-        font-size: 0.9rem;
-    }
-    
-    #attn-daily-body tr:hover, #attn-monthly-body tr:hover { background: #fdf2f2; }
-    #attn-daily-body td, #attn-monthly-body td { padding: 0.8rem 1rem; border-bottom: 1px solid #f1f5f9; }
-    
-    /* 統合ダッシュボード用のカスタムスタイル */
-    .attn-int-tab {
-        padding: 0.8rem 1.5rem;
-        font-weight: 700;
-        border: none;
-        background: none;
-        border-bottom: 3px solid transparent;
-        cursor: pointer;
-        color: var(--text-secondary);
-        font-size: 0.9rem;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .attn-int-tab.active {
-        color: var(--primary) !important;
-        border-bottom-color: var(--primary) !important;
-    }
-    .attn-int-tab:hover {
-        color: var(--primary);
-    }
-    .badge-attn-int {
-        background: var(--danger);
-        color: white;
-        border-radius: 10px;
-        padding: 1px 6px;
-        font-size: 0.7rem;
-        font-weight: 700;
-        margin-left: 0.3rem;
-        display: none;
-    }
-    .attn-int-table {
-        width: 100%;
-        border-collapse: collapse;
-        text-align: left;
-        font-size: 0.88rem;
-    }
-    .attn-int-table th {
-        background: #f8fafc;
-        border-bottom: 2px solid var(--border);
-        color: var(--text-secondary);
-        padding: 0.8rem 1rem;
-        font-weight: 700;
-        font-size: 0.8rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    .attn-int-table td {
-        padding: 0.9rem 1rem;
-        border-bottom: 1px solid #f1f5f9;
-        color: var(--text-primary);
-        font-weight: 500;
-        vertical-align: middle;
-    }
-    .attn-int-table tbody tr:nth-child(even) {
-        background-color: #f8fafc25;
-    }
-    .attn-int-table tbody tr:hover {
-        background-color: #fdf2f235 !important;
-    }
 
-    /* CSV出力設定モーダル用スタイル */
-    .attn-int-modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: rgba(15, 23, 42, 0.4);
-        backdrop-filter: blur(8px);
-        z-index: 10000;
-        opacity: 0;
-        transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .attn-int-modal.show {
-        display: block;
-        opacity: 1;
-    }
-    .attn-int-modal-content {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) scale(0.95);
-        background: white;
-        padding: 2.2rem 2rem;
-        border-radius: 16px;
-        width: 480px;
-        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.15);
-        border: 1px solid var(--border);
-        transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-    .attn-int-modal.show .attn-int-modal-content {
-        transform: translate(-50%, -50%) scale(1);
-    }
-</style>
+${attendanceManagementStyles}
 `;
 
 // ─── 状態 ────────────────────────────────────────────────────
@@ -641,11 +796,16 @@ let currentEditPunches = []; // 編集中の打刻リスト
 let canDirectEdit = false;
 let canRequestCorrection = false;
 let unsubscribeApprovals = null;
-let activeIntTab = 'daily'; // 新UI用アクティブタブ
+let activeIntTab = 'monthly'; // 新UI用アクティブタブ
 let lastLoadedIntData = null; // 新UI用の統合計算済みデータキャッシュ
 
 // ─── 初期化 ──────────────────────────────────────────────────
-export async function initAttendanceManagementPage() {
+export async function initAttendanceManagementPage(options = {}) {
+    window.__isStoreManagerPaidLeaveMode = options.mode === 'store_manager';
+    if (window.__isStoreManagerPaidLeaveMode) {
+        activeIntTab = 'paid_leave';
+    }
+    
     window.switchAttnView = switchView;
     window.openStaffEdit = openStaffEdit;
     window.backToAttnHub = backToAttnHub;
@@ -678,20 +838,34 @@ export async function initAttendanceManagementPage() {
     if (document.getElementById('attn-daily-date')) document.getElementById('attn-daily-date').value = todayYmd;
 
     // 新UI用デフォルト日付セット
-    if (document.getElementById('attn-int-month-select')) document.getElementById('attn-int-month-select').value = thisMonth;
+    if (document.getElementById('attn-int-period-start')) {
+        document.getElementById('attn-int-period-start').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    }
+    if (document.getElementById('attn-int-period-end')) {
+        const endDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        document.getElementById('attn-int-period-end').value = `${endDay.getFullYear()}-${String(endDay.getMonth() + 1).padStart(2, '0')}-${String(endDay.getDate()).padStart(2, '0')}`;
+    }
     if (document.getElementById('attn-int-date-select')) document.getElementById('attn-int-date-select').value = todayYmd;
 
     // イベント
-    document.getElementById('btn-attn-monthly-refresh').onclick = () => loadMonthlyData();
-    document.getElementById('btn-attn-daily-refresh').onclick = () => loadDailyData();
-    document.getElementById('btn-add-punch-row').onclick = () => addPunchRow();
-    document.getElementById('btn-attn-save').onclick = () => saveAttendanceEdits();
+    if (document.getElementById('btn-attn-monthly-refresh')) document.getElementById('btn-attn-monthly-refresh').onclick = () => loadMonthlyData();
+    if (document.getElementById('btn-attn-daily-refresh')) document.getElementById('btn-attn-daily-refresh').onclick = () => loadDailyData();
+    if (document.getElementById('btn-add-punch-row')) document.getElementById('btn-add-punch-row').onclick = () => addPunchRow();
+    if (document.getElementById('btn-attn-save')) document.getElementById('btn-attn-save').onclick = () => saveAttendanceEdits();
 
     const btnError = document.getElementById('btn-attn-error-check');
     if (btnError) btnError.onclick = () => showAlert('情報', 'エラーチェック機能は現在準備中です。');
 
     // 新UI用イベント
-    if (document.getElementById('btn-attn-int-search')) document.getElementById('btn-attn-int-search').onclick = () => loadIntegratedData();
+    if (document.getElementById('btn-attn-int-search')) {
+        document.getElementById('btn-attn-int-search').onclick = () => {
+            if (activeIntTab === 'paid_leave' || window.__isStoreManagerPaidLeaveMode) {
+                if (typeof loadIntPaidLeaveData === 'function') loadIntPaidLeaveData();
+            } else {
+                loadIntegratedData();
+            }
+        };
+    }
     if (document.getElementById('btn-attn-int-day-prev')) document.getElementById('btn-attn-int-day-prev').onclick = () => shiftIntDay(-1);
     if (document.getElementById('btn-attn-int-day-next')) document.getElementById('btn-attn-int-day-next').onclick = () => shiftIntDay(1);
     if (document.getElementById('btn-attn-int-csv-download')) document.getElementById('btn-attn-int-csv-download').onclick = () => handleIntTkcExport();
@@ -719,6 +893,16 @@ export async function initAttendanceManagementPage() {
     const cardApprovals = document.getElementById('card-attn-approvals');
     if (cardApprovals) {
         cardApprovals.style.display = canDirectEdit ? 'block' : 'none';
+    }
+
+    if (options.mode === 'store_manager') {
+        if (typeof initPaidLeaveEvents === 'function') {
+            initPaidLeaveEvents();
+        }
+        if (typeof initPaidLeaveYearSelect === 'function') {
+            initPaidLeaveYearSelect();
+        }
+        return;
     }
 
     // 画面遷移ロジックの改善（新ダッシュボードへ直接遷移）
@@ -753,6 +937,11 @@ export async function initAttendanceManagementPage() {
             // 店長の場合は旧承認画面
             switchView('approvals');
         }
+    }
+    
+    // イベント初期化を追加
+    if (typeof initPaidLeaveEvents === 'function') {
+        initPaidLeaveEvents();
     }
 }
 
@@ -803,7 +992,7 @@ async function loadStoreList() {
                               sel.id === 'attn-int-store-filter' || 
                               sel.id === 'attn-int-csv-store' || 
                               sel.id === 'attn-int-mf-csv-store';
-            sel.innerHTML = isMonthly ? '<option value="">全店舗</option>' : '';
+            sel.innerHTML = isMonthly ? '<option value="" disabled selected>店舗未選択</option><option value="all">全店舗</option>' : '';
             
             cachedStores.forEach(s => {
                 const sid = s.store_id || s.StoreID || s.id;
@@ -1780,7 +1969,7 @@ function switchToIntegratedDashboard(keepTab = false) {
     }
     // タブ状態の初期化
     if (!keepTab) {
-        activeIntTab = 'daily';
+        activeIntTab = 'monthly';
     }
     document.querySelectorAll('.attn-int-tab').forEach(b => {
         b.classList.toggle('active', b.dataset.tab === activeIntTab);
@@ -1792,8 +1981,19 @@ function switchToIntegratedDashboard(keepTab = false) {
     const oldMonth = document.getElementById('attn-month-select')?.value;
     const oldDate = document.getElementById('attn-daily-date')?.value;
     
-    if (oldMonth && document.getElementById('attn-int-month-select')) {
-        document.getElementById('attn-int-month-select').value = oldMonth;
+    if (oldMonth) {
+        const [yStr, mStr] = oldMonth.split('-');
+        if (yStr && mStr) {
+            const mYear = parseInt(yStr);
+            const mMonth = parseInt(mStr);
+            if (document.getElementById('attn-int-period-start')) {
+                document.getElementById('attn-int-period-start').value = `${mYear}-${String(mMonth).padStart(2, '0')}-01`;
+            }
+            if (document.getElementById('attn-int-period-end')) {
+                const endDay = new Date(mYear, mMonth, 0);
+                document.getElementById('attn-int-period-end').value = `${endDay.getFullYear()}-${String(endDay.getMonth() + 1).padStart(2, '0')}-${String(endDay.getDate()).padStart(2, '0')}`;
+            }
+        }
     }
     if (oldDate && document.getElementById('attn-int-date-select')) {
         document.getElementById('attn-int-date-select').value = oldDate;
@@ -1821,8 +2021,26 @@ function switchIntTabPane() {
         targetPane.style.display = 'block';
     }
     
+    // UIコントロールの切り替え
+    const topControls = document.querySelectorAll('#attn-int-period-start, #attn-int-period-end, #attn-int-date-select');
+    topControls.forEach(el => {
+        if (el && el.closest('.input-group')) {
+            el.closest('.input-group').style.display = activeIntTab === 'paid_leave' ? 'none' : 'block';
+        }
+    });
+    const tildeEl = document.getElementById('attn-int-period-tilde');
+    if (tildeEl) tildeEl.style.display = activeIntTab === 'paid_leave' ? 'none' : 'flex';
+
     // すでにロード済みのデータがあれば描画のみ行う
-    if (lastLoadedIntData) {
+    if (activeIntTab === 'paid_leave') {
+        if (typeof lastLoadedPaidLeaveData !== 'undefined' && lastLoadedPaidLeaveData) {
+            renderIntPaidLeave();
+        } else {
+            // 自動ロードを廃止し、メッセージを表示
+            const tbody = document.getElementById('attn-int-paid-body');
+            if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="padding: 3rem; text-align: center; color: var(--text-secondary);"><i class="fas fa-search"></i> 店舗を選択し、「検索・表示」を押してください</td></tr>';
+        }
+    } else if (lastLoadedIntData) {
         renderIntActiveTab();
     }
 }
@@ -1840,17 +2058,26 @@ function shiftIntDay(offset) {
 
 // 統合データの一括ロード・計算（実績ある計算ロジックを100%踏襲）
 async function loadIntegratedData() {
-    const storeId = document.getElementById('attn-int-store-filter')?.value || '';
-    const month = document.getElementById('attn-int-month-select')?.value;
+    const rawStoreId = document.getElementById('attn-int-store-filter')?.value || '';
+    if (!rawStoreId) {
+        showAlert('情報', '対象店舗を選択してください。');
+        return;
+    }
+    const storeId = rawStoreId === 'all' ? '' : rawStoreId;
+    const periodStart = document.getElementById('attn-int-period-start')?.value;
+    const periodEnd = document.getElementById('attn-int-period-end')?.value;
     const date = document.getElementById('attn-int-date-select')?.value;
     
-    if (!month) {
-        return showAlert('通知', '対象月を選択してください。');
+    if (!periodStart || !periodEnd) {
+        return showAlert('通知', '集計開始日と集計終了日を選択してください。');
+    }
+    if (periodStart > periodEnd) {
+        return showAlert('通知', '集計終了日は集計開始日以降の日付を指定してください。');
     }
     
     // 日付ラベルや月ラベルの更新
     const monthLabel = document.getElementById('attn-int-month-label');
-    if (monthLabel) monthLabel.textContent = `${month.replace('-', '年')}月度 集計`;
+    if (monthLabel) monthLabel.textContent = `${periodStart.replace(/-/g, '/')} 〜 ${periodEnd.replace(/-/g, '/')} 集計`;
     
     const dayLabel = document.getElementById('attn-int-day-label');
     if (dayLabel && date) {
@@ -1903,23 +2130,14 @@ async function loadIntegratedData() {
             };
         });
 
-        // 2. 打刻データのロード（前月末日 + 対象月の全件 + 翌月1日まで（夜勤対応））
-        const startDate = `${month}-01`;
-        const [yearStr, monthStr] = month.split('-');
-        let year = parseInt(yearStr);
-        let m = parseInt(monthStr);
+        // 2. 打刻データのロード（集計開始日の前日〜終了日の翌日まで（夜勤対応））
+        const startObj = new Date(periodStart);
+        startObj.setDate(startObj.getDate() - 1);
+        const prevMonthLastDay = `${startObj.getFullYear()}-${String(startObj.getMonth() + 1).padStart(2, '0')}-${String(startObj.getDate()).padStart(2, '0')}`;
 
-        // タイムゾーンによる1日のズレを防ぎつつ、前月の末日（YYYY-MM-DD）を算出
-        const prevMonthLastDate = new Date(year, m - 1, 0); // 0を指定すると前月の末日
-        const prevMonthLastDay = `${prevMonthLastDate.getFullYear()}-${String(prevMonthLastDate.getMonth() + 1).padStart(2, '0')}-${String(prevMonthLastDate.getDate()).padStart(2, '0')}`;
-
-        // 翌月1日を算出
-        m++;
-        if (m > 12) {
-            m = 1;
-            year++;
-        }
-        const nextMonthFirstDay = `${year}-${String(m).padStart(2, '0')}-01`;
+        const endObj = new Date(periodEnd);
+        endObj.setDate(endObj.getDate() + 1);
+        const nextMonthFirstDay = `${endObj.getFullYear()}-${String(endObj.getMonth() + 1).padStart(2, '0')}-${String(endObj.getDate()).padStart(2, '0')}`;
 
         // 前月末日から翌月1日まで広範囲にロードすることで、月またぎ夜勤のペアリングを完璧に成立させる
         const q = query(collection(db, 't_attendance'), 
@@ -2005,8 +2223,8 @@ async function loadIntegratedData() {
                     if (lastIn) {
                         const errDate = getBusinessDateStr(lastIn.record.timestamp, staffMap[sid].store_id) || lastIn.record.date || lastIn.record.timestamp.substring(0,10);
                         if (!isCurrentOrOngoing(errDate, staffMap[sid].store_id)) {
-                            // ★当月内のエラーのみ今月のリストに登録
-                            if (errDate >= startDate && errDate < nextMonthFirstDay) {
+                            // ★集計期間内のエラーのみリストに登録
+                            if (errDate >= periodStart && errDate <= periodEnd) {
                                 staffMonthlyStats[sid].errors.push({
                                     date: errDate,
                                     type: 'double_check_in',
@@ -2018,8 +2236,8 @@ async function loadIntegratedData() {
                     lastIn = { timestamp: ts, record: r };
                     breakSessions = [];
                     
-                    // ★当月の出勤のみ、今月の出勤日数にカウントする
-                    if (r.date >= startDate && r.date < nextMonthFirstDay) {
+                    // ★集計期間内の出勤のみ、日数にカウントする
+                    if (r.date >= periodStart && r.date <= periodEnd) {
                         staffMonthlyStats[sid].days.add(r.date);
                     }
                 } 
@@ -2042,9 +2260,9 @@ async function loadIntegratedData() {
                             const lateBreaks = breakSessions.reduce((sum, s) => sum + calculateOverlapLateNightHours(s.start, s.end), 0);
                             lateLabor = Math.max(0, rawLate - lateBreaks);
                             
-                            // ★セッション開始日（出勤日）が当月内の場合のみ、今月の労働時間に加算する
+                            // ★セッション開始日（出勤日）が集計期間内の場合のみ労働時間に加算する
                             const sessionDate = lastIn.record.date || lastIn.record.timestamp.substring(0, 10);
-                            if (sessionDate >= startDate && sessionDate < nextMonthFirstDay) {
+                            if (sessionDate >= periodStart && sessionDate <= periodEnd) {
                                 staffMonthlyStats[sid].totalHours += netLabor;
                                 staffMonthlyStats[sid].lateHours += lateLabor;
                             }
@@ -2064,8 +2282,8 @@ async function loadIntegratedData() {
                     } else {
                         const errDate = getBusinessDateStr(r.timestamp, staffMap[sid].store_id) || r.date || r.timestamp.substring(0,10);
                         if (!isCurrentOrOngoing(errDate, staffMap[sid].store_id)) {
-                            // ★当月内のエラーのみ今月のリストに登録
-                            if (errDate >= startDate && errDate < nextMonthFirstDay) {
+                            // ★集計期間内のエラーのみリストに登録
+                            if (errDate >= periodStart && errDate <= periodEnd) {
                                 staffMonthlyStats[sid].errors.push({
                                     date: errDate,
                                     type: 'no_check_in',
@@ -2080,8 +2298,8 @@ async function loadIntegratedData() {
             if (lastIn) {
                 const errDate = getBusinessDateStr(lastIn.record.timestamp, staffMap[sid].store_id) || lastIn.record.date || lastIn.record.timestamp.substring(0,10);
                 if (!isCurrentOrOngoing(errDate, staffMap[sid].store_id)) {
-                    // ★当月内のエラーのみ今月のリストに登録
-                    if (errDate >= startDate && errDate < nextMonthFirstDay) {
+                    // ★集計期間内のエラーのみリストに登録
+                    if (errDate >= periodStart && errDate <= periodEnd) {
                         staffMonthlyStats[sid].errors.push({
                             date: errDate,
                             type: 'no_check_out',
@@ -2100,7 +2318,8 @@ async function loadIntegratedData() {
         try {
             const absSnap = await getDocs(query(
                 collection(db, 't_absences'),
-                where('year_month', '==', month)
+                where('date', '>=', periodStart),
+                where('date', '<=', periodEnd)
             ));
             absSnap.forEach(d => {
                 const sid = String(d.data().staff_id);
@@ -2117,7 +2336,8 @@ async function loadIntegratedData() {
             staffSessions: staffSessions,
             pendingRequests: pendingRequests,
             absenceCountMap: absenceCountMap,
-            month: month,
+            periodStart: periodStart,
+            periodEnd: periodEnd,
             date: date,
             storeId: storeId
         };
@@ -2416,10 +2636,10 @@ function openIntCsvModal() {
     const modalStore = document.getElementById('attn-int-csv-store');
     if (modalStore) modalStore.value = activeStore;
     
-    // 現在選択されている対象月を取得して、前月21日〜当月20日をプリセット
-    const monthVal = document.getElementById('attn-int-month-select')?.value;
-    if (monthVal) {
-        const [yearStr, monthStr] = monthVal.split('-');
+    // 共通フィルターの集計終了日をベースに、前月21日〜当月20日をプリセット
+    const periodEnd = document.getElementById('attn-int-period-end')?.value;
+    if (periodEnd) {
+        const [yearStr, monthStr] = periodEnd.split('-');
         const year = parseInt(yearStr);
         const month = parseInt(monthStr);
         
@@ -2780,10 +3000,10 @@ function openIntMfCsvModal() {
     const modalStore = document.getElementById('attn-int-mf-csv-store');
     if (modalStore) modalStore.value = activeStore;
     
-    // 現在選択されている対象月を取得して、前月21日〜当月20日をプリセット
-    const monthVal = document.getElementById('attn-int-month-select')?.value;
-    if (monthVal) {
-        const [yearStr, monthStr] = monthVal.split('-');
+    // 共通フィルターの集計終了日をベースに、前月21日〜当月20日をプリセット
+    const periodEnd = document.getElementById('attn-int-period-end')?.value;
+    if (periodEnd) {
+        const [yearStr, monthStr] = periodEnd.split('-');
         const year = parseInt(yearStr);
         const month = parseInt(monthStr);
         
@@ -3157,3 +3377,631 @@ async function handleIntMfExport() {
 
 
 
+
+// =========================================================================
+// ─── 【新機能】 年間休日管理 ────────────────────────────────────
+// =========================================================================
+
+let lastLoadedPaidLeaveData = null;
+
+// 年度プルダウンの初期化
+function initPaidLeaveYearSelect() {
+    const sel = document.getElementById('attn-int-paid-year');
+    if (!sel || sel.options.length > 0) return; // 既に生成済みならスキップ
+    const now = new Date();
+    // 7月始まりの年度
+    let currentYear = now.getFullYear();
+    if (now.getMonth() + 1 < 7) {
+        currentYear -= 1;
+    }
+    
+    // 過去2年〜未来1年を生成
+    for (let y = currentYear - 2; y <= currentYear + 1; y++) {
+        const opt = document.createElement('option');
+        opt.value = y;
+        opt.textContent = `${y}年度 (${y}/07/01〜${y+1}/06/30)`;
+        if (y === currentYear) opt.selected = true;
+        sel.appendChild(opt);
+    }
+    
+    sel.addEventListener('change', loadIntPaidLeaveData);
+}
+
+// 会社基準休日数モーダルの開閉と保存
+function openIntPaidBaseModal() {
+    const yearStr = document.getElementById('attn-int-paid-year').value;
+    const currentBase = document.getElementById('attn-int-paid-base-display').textContent;
+    document.getElementById('attn-int-base-holiday-modal-year').textContent = yearStr + '年度';
+    document.getElementById('attn-int-base-holiday-modal-input').value = currentBase;
+    document.getElementById('attn-int-base-holiday-modal').classList.add('show');
+}
+
+async function saveIntPaidBaseModal() {
+    const year = document.getElementById('attn-int-paid-year').value;
+    const baseInput = document.getElementById('attn-int-base-holiday-modal-input').value;
+    if (!year || !baseInput) return;
+    
+    if (!confirm(`${year}年度の基準年間休暇日数を ${baseInput} 日に変更します。よろしいですか？`)) {
+        return;
+    }
+    
+    const btn = document.getElementById('btn-attn-int-base-holiday-modal-save');
+    const origText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    btn.disabled = true;
+    
+    try {
+        await setDoc(doc(db, "m_holiday_settings", `setting_${year}`), {
+            year: parseInt(year),
+            base_holidays: parseInt(baseInput),
+            updated_at: new Date()
+        });
+        document.getElementById('attn-int-base-holiday-modal').classList.remove('show');
+        showAlert('成功', `${year}年度の会社基準休日数を保存しました。`);
+        loadIntPaidLeaveData();
+    } catch(e) {
+        console.error(e);
+        showAlert('エラー', '設定の保存に失敗しました。');
+    } finally {
+        btn.innerHTML = origText;
+        btn.disabled = false;
+    }
+}
+
+
+export async function calculatePaidLeaveMetrics(year, storeId, empTypeFilter, isStoreManagerMode) {
+    const yearStr = String(year);
+    
+    // 1. 会社設定の取得
+    const setSnap = await getDoc(doc(db, "m_holiday_settings", `setting_${year}`));
+    let baseHolidays = 120; // デフォルト
+    if (setSnap.exists() && setSnap.data().base_holidays) {
+        baseHolidays = setSnap.data().base_holidays;
+    }
+    
+    // 2. スタッフ一覧の取得
+    let usersQuery;
+    if (isStoreManagerMode && storeId) {
+        usersQuery = query(collection(db, 'm_users'), where('StoreID', '==', storeId));
+    } else {
+        usersQuery = collection(db, 'm_users');
+    }
+    const usersSnap = await getDocs(usersQuery);
+    const staffMap = {};
+    
+    usersSnap.forEach(d => {
+        const data = d.data();
+        if (data.Status === 'retired' || data.Status === '退職済') return;
+        if (data.Role === 'Tablet' || data.Role === '店舗タブレット') return;
+        if (storeId && storeId !== 'all' && data.StoreID !== storeId) return;
+        if (empTypeFilter && data.EmploymentType !== empTypeFilter) return;
+        
+        const matchedStore = cachedStores.find(s => (s.store_id || s.id) === data.StoreID);
+        const storeName = matchedStore ? matchedStore.store_name : (data.Store || "未所属");
+        
+        staffMap[d.id] = {
+            id: d.id,
+            code: data.EmployeeCode || d.id,
+            name: data.Name || data.DisplayName || '氏名未設定',
+            store_id: data.StoreID,
+            store_name: storeName,
+            hire_date: data.HireDate || null,
+            fixed_holidays: data.FixedHolidays || [],
+            custom_bases: data.CustomBaseHolidays || {}
+        };
+    });
+    
+    const staffIds = Object.keys(staffMap);
+    if (staffIds.length === 0) {
+        return { year, results: [], baseHolidays, missingCalendar: false };
+    }
+    
+    // 3. カレンダーの取得 (12ヶ月分)
+    const companyOffSet = new Set();
+    let missingCalendar = false;
+    
+    for (let m = 0; m < 12; m++) {
+        let mYear = year;
+        let mMonth = 7 + m;
+        if (mMonth > 12) {
+            mYear++;
+            mMonth -= 12;
+        }
+        const ym = `${mYear}-${String(mMonth).padStart(2, '0')}`;
+        const calSnap = await getDoc(doc(db, "m_calendars", `${ym}_common`));
+        if (!calSnap.exists()) {
+            missingCalendar = true;
+        } else {
+            const days = calSnap.data().days || [];
+            days.forEach(dayInfo => {
+                if (dayInfo.type === 'off') {
+                    companyOffSet.add(`${ym}-${String(dayInfo.day).padStart(2, '0')}`);
+                }
+            });
+        }
+    }
+    
+    // 4. 勤怠(t_attendance)の取得
+    let pastStart, pastEnd, futureStart, futureEnd;
+    const fyStart = new Date(`${year}-07-01T00:00:00`);
+    const fyEnd = new Date(`${year+1}-06-30T00:00:00`);
+    const todayStr = new Date().toLocaleDateString('ja-JP').split('/').map(p => p.padStart(2,'0')).join('-');
+    const today = new Date(`${todayStr}T00:00:00`);
+    
+    if (today > fyEnd) {
+        pastStart = fyStart;
+        pastEnd = fyEnd;
+    } else if (today < fyStart) {
+        futureStart = fyStart;
+        futureEnd = fyEnd;
+    } else {
+        pastStart = fyStart;
+        pastEnd = new Date(today.getTime() - 86400000);
+        futureStart = today;
+        futureEnd = fyEnd;
+    }
+    
+    let attendanceSetByStaff = {};
+    if (pastStart && pastEnd) {
+        const idResolver = {};
+        Object.values(staffMap).forEach(s => {
+            if (s.id) idResolver[s.id] = s.id;
+            if (s.code) idResolver[s.code] = s.id;
+        });
+        
+        const psStr = `${pastStart.getFullYear()}-${String(pastStart.getMonth()+1).padStart(2,'0')}-${String(pastStart.getDate()).padStart(2,'0')}`;
+        const peStr = `${pastEnd.getFullYear()}-${String(pastEnd.getMonth()+1).padStart(2,'0')}-${String(pastEnd.getDate()).padStart(2,'0')}`;
+        const psStrSlash = psStr.replace(/-/g, '/');
+        const peStrSlash = peStr.replace(/-/g, '/');
+        
+        const qHyphen = query(collection(db, 't_attendance'), 
+            where('date', '>=', psStr),
+            where('date', '<=', peStr)
+        );
+        const qSlash = query(collection(db, 't_attendance'), 
+            where('date', '>=', psStrSlash),
+            where('date', '<=', peStrSlash)
+        );
+        
+        const [snapH, snapS] = await Promise.all([getDocs(qHyphen), getDocs(qSlash)]);
+        
+        const uniqueDocs = new Map();
+        snapH.forEach(d => uniqueDocs.set(d.id, d.data()));
+        snapS.forEach(d => uniqueDocs.set(d.id, d.data()));
+        
+        let unresolvedCount = 0;
+        
+        uniqueDocs.forEach((data, docId) => {
+            if (data.type === 'check_in' || data.type === '出勤') {
+                const rawSid = String(data.staff_id || data.staff_code || data.EmployeeCode || data.UserId || "").trim();
+                const sid = idResolver[rawSid];
+                if (!sid) {
+                    unresolvedCount++;
+                    return;
+                }
+                
+                if (!attendanceSetByStaff[sid]) {
+                    attendanceSetByStaff[sid] = new Set();
+                }
+                attendanceSetByStaff[sid].add(data.date.replace(/\//g, '-'));
+            }
+        });
+    }
+    
+    // 5. 各スタッフの計算
+    const results = [];
+    
+    for (let uid of staffIds) {
+        const st = staffMap[uid];
+        
+        const applyBase = st.custom_bases[yearStr] !== undefined ? st.custom_bases[yearStr] : baseHolidays;
+        const hDate = st.hire_date ? new Date(`${st.hire_date}T00:00:00`) : new Date('2000-01-01T00:00:00');
+        
+        let achievedHolidays = 0;
+        let elapsedDays = 0;
+        let workDays = 0;
+        if (pastStart && pastEnd) {
+            let actualPastStart = pastStart > hDate ? pastStart : hDate;
+            if (actualPastStart <= pastEnd) {
+                elapsedDays = Math.round((pastEnd - actualPastStart) / 86400000) + 1;
+                
+                const attSet = attendanceSetByStaff[uid] || new Set();
+                attSet.forEach(dStr => {
+                    const dObj = new Date(`${dStr}T00:00:00`);
+                    if (dObj >= actualPastStart && dObj <= pastEnd) {
+                        workDays++;
+                    }
+                });
+                
+                achievedHolidays = Math.max(0, elapsedDays - workDays);
+            }
+        }
+        
+        let futureFixedCount = 0;
+        let futureCompanyCount = 0;
+        let overlapCount = 0;
+        
+        if (futureStart && futureEnd) {
+            let actualFutureStart = futureStart > hDate ? futureStart : hDate;
+            if (actualFutureStart <= futureEnd) {
+                let d = new Date(actualFutureStart);
+                while (d <= futureEnd) {
+                    const dStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                    const isFixed = st.fixed_holidays.includes(d.getDay());
+                    const isCompany = companyOffSet.has(dStr);
+                    
+                    if (isFixed) futureFixedCount++;
+                    if (isCompany) futureCompanyCount++;
+                    if (isFixed && isCompany) overlapCount++;
+                    
+                    d.setDate(d.getDate() + 1);
+                }
+            }
+        }
+        
+        const estimated = achievedHolidays + futureFixedCount + futureCompanyCount - overlapCount;
+        const required = Math.max(0, applyBase - estimated);
+        
+        results.push({
+            ...st,
+            applyBase,
+            isCustomBase: st.custom_bases[yearStr] !== undefined,
+            achievedHolidays,
+            futureFixedCount,
+            futureCompanyCount,
+            overlapCount,
+            estimated,
+            required
+        });
+    }
+    
+    return { year, results, baseHolidays, missingCalendar };
+}
+
+export async function saveStaffPaidLeaveSettings(uid, yearStr, customBaseVal, newFixed, isStoreManagerMode, currentUserStoreId) {
+    const userRef = doc(db, 'm_users', uid);
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) throw new Error('User not found');
+    
+    const userData = userSnap.data();
+    
+    if (isStoreManagerMode) {
+        if (userData.StoreID !== currentUserStoreId) {
+            throw new Error('他店舗のスタッフ情報を更新する権限がありません。');
+        }
+        await updateDoc(userRef, {
+            FixedHolidays: newFixed
+        });
+    } else {
+        const customBases = userData.CustomBaseHolidays || {};
+        
+        if (customBaseVal === '' || customBaseVal === null || customBaseVal === undefined) {
+            delete customBases[yearStr];
+        } else {
+            customBases[yearStr] = parseInt(customBaseVal);
+        }
+        
+        await updateDoc(userRef, {
+            FixedHolidays: newFixed,
+            CustomBaseHolidays: customBases
+        });
+    }
+}
+
+
+// 年間休日のメインデータ取得処理
+async function loadIntPaidLeaveData() {
+    initPaidLeaveYearSelect();
+    
+    const yearStr = document.getElementById('attn-int-paid-year').value;
+    if (!yearStr) return;
+    const year = parseInt(yearStr);
+    
+    let storeId = '';
+    if (window.__isStoreManagerPaidLeaveMode) {
+        storeId = window.appState?.currentUser?.StoreID;
+        if (!storeId) {
+            showAlert('エラー', '所属店舗情報を取得できないため、一覧を表示できません。');
+            return;
+        }
+    } else {
+        const rawStoreId = document.getElementById('attn-int-store-filter')?.value || '';
+        if (!rawStoreId) {
+            showAlert('情報', '対象店舗を選択してください。');
+            return;
+        }
+        storeId = rawStoreId === 'all' ? '' : rawStoreId;
+    }
+    
+    // UI表示の初期化
+    const tbody = document.getElementById('attn-int-paid-body');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="padding: 3rem; text-align: center; color: var(--text-secondary);"><i class="fas fa-spinner fa-spin"></i> 計算中...</td></tr>';
+    
+    try {
+        const empTypeFilter = document.getElementById('attn-int-paid-emp-type')?.value || '';
+        
+        const data = await calculatePaidLeaveMetrics(year, storeId, empTypeFilter, window.__isStoreManagerPaidLeaveMode);
+        
+        document.getElementById('attn-int-paid-base-display').textContent = data.baseHolidays;
+        const wNode = document.getElementById('attn-int-paid-warning');
+        if (wNode) {
+            wNode.style.display = data.missingCalendar ? 'block' : 'none';
+        }
+        
+        lastLoadedPaidLeaveData = data;
+        renderIntPaidLeave();
+        
+    } catch (err) {
+        console.error(err);
+        showAlert('エラー', '年間休日データの取得に失敗しました。');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="padding: 3rem; text-align: center; color: var(--danger);">データ読み込みエラー</td></tr>';
+    }
+}
+
+function renderIntPaidLeave() {
+    const data = lastLoadedPaidLeaveData;
+    const body = document.getElementById('attn-int-paid-body');
+    if (!body || !data) return;
+    
+    if (data.results.length === 0) {
+        body.innerHTML = '<tr><td colspan="9" style="padding: 3rem; text-align: center; color: var(--text-secondary);">データがありません</td></tr>';
+        return;
+    }
+    
+    // 休日の曜日表示用
+    const dowNames = ['日','月','火','水','木','金','土'];
+    
+    let html = '';
+    data.results.sort((a,b) => a.code.localeCompare(b.code)).forEach(st => {
+        const fixedStr = st.fixed_holidays.map(d => dowNames[d]).join('・') || 'なし';
+        
+        let reqHtml = `${st.required}日`;
+        if (st.required > 0) {
+            reqHtml = `<span style="color:red; font-weight:bold;">${st.required}日</span>`;
+        }
+        
+        const applyBaseHtml = st.isCustomBase 
+            ? `<span style="color:var(--primary); font-weight:bold;">${st.applyBase}日 (個人)</span>`
+            : `${st.applyBase}日`;
+            
+        html += `
+            <tr>
+                <td style="font-weight: 700;">${st.name} <div style="font-size:0.75rem; font-weight:normal; color:var(--text-secondary); margin-top:2px;">${st.store_name}</div></td>
+                <td>${applyBaseHtml}</td>
+                <td>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span>${fixedStr}</span>
+                        <button class="btn btn-sm btn-edit-paid" style="background:#f1f5f9; padding:0.2rem 0.5rem; font-size:0.75rem;" data-uid="${st.id}" data-name="${st.name}" data-code="${st.code}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </div>
+                </td>
+                <td>${st.achievedHolidays}日</td>
+                <td>${st.futureFixedCount}日</td>
+                <td>${st.futureCompanyCount}日</td>
+                <td>${st.overlapCount}日</td>
+                <td style="font-weight:700;">${st.estimated}日</td>
+                <td>${reqHtml}</td>
+            </tr>
+        `;
+    });
+    
+    body.innerHTML = html;
+}
+
+// 個人設定モーダルのオープン
+function openIntPaidModal(uid, name, code) {
+    const data = lastLoadedPaidLeaveData;
+    if (!data) return;
+    
+    const yearStr = document.getElementById('attn-int-paid-year').value;
+    const st = data.results.find(r => r.id === uid);
+    if (!st) return;
+    
+    document.getElementById('attn-int-paid-modal-name').textContent = name;
+    document.getElementById('attn-int-paid-modal-uid').value = uid;
+    document.getElementById('attn-int-paid-modal-year').value = yearStr;
+    document.getElementById('attn-int-paid-modal-year-label').textContent = yearStr;
+    
+    // 固定休日のチェックボックス
+    document.querySelectorAll('input[name="paid-fixed-dow"]').forEach(cb => {
+        cb.checked = st.fixed_holidays.includes(parseInt(cb.value));
+    });
+    
+    // 個人別基準日数
+    const cbInput = document.getElementById('attn-int-paid-modal-custom-base');
+    if (st.isCustomBase) {
+        cbInput.value = st.applyBase;
+    } else {
+        cbInput.value = ''; // placeholderが見えるように
+    }
+    
+    document.getElementById('attn-int-paid-modal').classList.add('show');
+}
+
+// 個人設定の保存
+async function saveIntPaidModal() {
+    const uid = document.getElementById('attn-int-paid-modal-uid').value;
+    const yearStr = document.getElementById('attn-int-paid-modal-year').value;
+    if (!uid || !yearStr) return;
+    
+    const btn = document.getElementById('btn-attn-int-paid-modal-save');
+    const origText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    btn.disabled = true;
+    
+    try {
+        const newFixed = [];
+        document.querySelectorAll('input[name="paid-fixed-dow"]:checked').forEach(cb => {
+            newFixed.push(parseInt(cb.value));
+        });
+        
+        const cbVal = document.getElementById('attn-int-paid-modal-custom-base').value;
+        
+        const currentStoreId = window.appState?.currentUser?.StoreID;
+        if (window.__isStoreManagerPaidLeaveMode && !currentStoreId) {
+            showAlert('エラー', '所属店舗情報を取得できないため、設定を保存できません。');
+            return;
+        }
+        
+        await saveStaffPaidLeaveSettings(
+            uid, 
+            yearStr, 
+            cbVal, 
+            newFixed, 
+            window.__isStoreManagerPaidLeaveMode, 
+            currentStoreId
+        );
+        
+        document.getElementById('attn-int-paid-modal').classList.remove('show');
+        showAlert('成功', '個人設定を保存しました。');
+        
+        // 再計算
+        loadIntPaidLeaveData();
+        
+    } catch(e) {
+        console.error(e);
+        showAlert('エラー', '設定の保存に失敗しました: ' + e.message);
+    } finally {
+        btn.innerHTML = origText;
+        btn.disabled = false;
+    }
+}
+
+function initPaidLeaveEvents() {
+    // 会社基準休日数モーダルのイベント
+    document.getElementById('btn-attn-int-paid-open-base-modal')?.addEventListener('click', openIntPaidBaseModal);
+    document.getElementById('btn-attn-int-base-holiday-modal-save')?.addEventListener('click', saveIntPaidBaseModal);
+    
+    // 個人設定モーダルの保存イベント
+    document.getElementById('btn-attn-int-paid-modal-save')?.addEventListener('click', saveIntPaidModal);
+    
+    // 一覧上の個人設定編集ボタンのイベントデリゲーション
+    document.getElementById('attn-int-paid-body')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('.btn-edit-paid');
+        if (btn) {
+            const uid = btn.getAttribute('data-uid');
+            const name = btn.getAttribute('data-name');
+            const code = btn.getAttribute('data-code');
+            openIntPaidModal(uid, name, code);
+        }
+    });
+}
+
+export const storeManagerPaidLeavePageHtml = `
+<div id="attendance-mgmt-container" class="animate-fade-in" style="padding: 1rem;">
+    <div id="attn-integrated-dashboard-view" class="view-section" style="display: block;">
+        <div class="dashboard-header" style="margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between;">
+            <h2 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;"><i class="fas fa-umbrella-beach"></i> 年間休日管理</h2>
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <input type="hidden" id="attn-int-store" value="">
+                <button id="btn-attn-int-search" class="btn btn-primary" style="padding: 0.5rem 1.2rem; border-radius: 8px;">
+                    <i class="fas fa-search"></i> 検索・表示
+                </button>
+            </div>
+        </div>
+        
+        <div id="attn-int-pane-paid_leave" class="attn-int-pane active animate-fade-in" style="display: block;">
+            <div style="margin-bottom: 1.2rem; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem;">
+                <div>
+                    <p style="margin: 0.2rem 0 0; font-size: 0.85rem; color: var(--text-secondary);">年度（7月1日〜翌年6月30日）単位での取得済休日・未来の休日見込を管理します。</p>
+                    <div id="attn-int-paid-warning" style="display: none; margin-top: 0.5rem; color: #e53e3e; font-size: 0.8rem; font-weight: 700;"><i class="fas fa-exclamation-circle"></i> 会社カレンダー未設定の月があるため、未来見込が正確でない可能性があります。</div>
+                </div>
+                <div style="display: flex; gap: 1rem; align-items: flex-end; background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid var(--border);">
+                    <div class="input-group" style="margin-bottom: 0;">
+                        <label style="font-size: 0.8rem; font-weight: 700;">対象年度</label>
+                        <select id="attn-int-paid-year" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;">
+                            <!-- JSで動的生成 -->
+                        </select>
+                    </div>
+                    <div class="input-group" style="margin-bottom: 0;">
+                        <label style="font-size: 0.8rem; font-weight: 700;">雇用形態</label>
+                        <select id="attn-int-paid-emp-type" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;">
+                            <option value="">全件</option>
+                            <option value="Executive">役員</option>
+                            <option value="Full-time" selected>正社員</option>
+                            <option value="Part-time">アルバイト</option>
+                        </select>
+                    </div>
+                    <div style="margin-left: 1rem; padding-left: 1rem; border-left: 1px solid var(--border); display: flex; align-items: center; gap: 0.8rem;">
+                        <div>
+                            <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary);">基準年間休暇日数</div>
+                            <div style="font-weight: 800; font-size: 1.1rem; color: var(--primary);"><span id="attn-int-paid-base-display">120</span> <span style="font-size:0.8rem; color: var(--text-secondary);">日</span></div>
+                        </div>
+                        <button class="btn" id="btn-attn-int-paid-open-base-modal"  style="display: none;"><i class="fas fa-cog"></i> 設定</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-panel" style="padding: 0; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.02);">
+                <div style="overflow-x: auto;">
+                    <table class="attn-int-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 180px;">氏名</th>
+                                <th>適用休日基準</th>
+                                <th>固定休日設定</th>
+                                <th>取得済休日</th>
+                                <th>今後の固定休</th>
+                                <th>今後の会社休</th>
+                                <th>重複</th>
+                                <th>年間休日見込</th>
+                                <th style="width: 150px;">要取得休日数(不足)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attn-int-paid-body">
+                            <tr><td colspan="9" style="padding: 3rem; text-align: center; color: var(--text-secondary);"><i class="fas fa-search"></i> 共通フィルターを指定して「検索・表示」を押してください</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="attn-int-paid-modal" class="attn-int-modal">
+        <div class="attn-int-modal-content" style="background: white; border: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.8rem;">
+                <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-user-cog" style="color: var(--primary);"></i>
+                    <span id="attn-int-paid-modal-name"></span>の設定
+                </h3>
+                <button onclick="document.getElementById('attn-int-paid-modal').classList.remove('show')" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-secondary);"><i class="fas fa-times"></i></button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 1.2rem;">
+                <input type="hidden" id="attn-int-paid-modal-uid">
+                <input type="hidden" id="attn-int-paid-modal-year">
+                
+                <div>
+                    <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem; display:block;">固定休日（曜日）</label>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <label style="display: flex; align-items: center; gap: 0.2rem;"><input type="checkbox" name="paid-fixed-dow" value="1">月</label>
+                        <label style="display: flex; align-items: center; gap: 0.2rem;"><input type="checkbox" name="paid-fixed-dow" value="2">火</label>
+                        <label style="display: flex; align-items: center; gap: 0.2rem;"><input type="checkbox" name="paid-fixed-dow" value="3">水</label>
+                        <label style="display: flex; align-items: center; gap: 0.2rem;"><input type="checkbox" name="paid-fixed-dow" value="4">木</label>
+                        <label style="display: flex; align-items: center; gap: 0.2rem;"><input type="checkbox" name="paid-fixed-dow" value="5">金</label>
+                        <label style="display: flex; align-items: center; gap: 0.2rem;"><input type="checkbox" name="paid-fixed-dow" value="6">土</label>
+                        <label style="display: flex; align-items: center; gap: 0.2rem;"><input type="checkbox" name="paid-fixed-dow" value="0">日</label>
+                    </div>
+                </div>
+
+                <div class="input-group" style="margin-bottom: 0;">
+                    <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">個人別 休日基準日数（<span id="attn-int-paid-modal-year-label"></span>年度）</label>
+                    <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0 0 0.5rem 0;">※店長権限では閲覧のみ可能です。</p>
+                    <input type="number" id="attn-int-paid-modal-custom-base" disabled style="padding: 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; background: #f1f5f9; color: #94a3b8;" placeholder="未設定">
+                </div>
+                
+                <div style="display: flex; gap: 0.8rem; justify-content: flex-end; margin-top: 0.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                    <button onclick="document.getElementById('attn-int-paid-modal').classList.remove('show')" class="btn" style="background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; font-weight: 700; padding: 0.6rem 1.2rem; border-radius: 8px;">
+                        キャンセル
+                    </button>
+                    <button id="btn-attn-int-paid-modal-save" class="btn btn-primary" style="font-weight: 700; padding: 0.6rem 1.5rem; border-radius: 8px; display: flex; align-items: center; gap: 0.4rem;">
+                        <i class="fas fa-save"></i> 保存
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+${attendanceManagementStyles}
+`;

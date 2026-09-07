@@ -57,10 +57,9 @@ export const MENU_DEFINITION = [
                 items: [
                     { id: 'attendance_management', name: '勤怠管理', icon: 'fa-user-clock', color: '#6366f1', desc: '全従業員の勤怠実績確認・修正・承認' },
                     { id: 'attendance_direct_edit', name: '[機能] 勤怠の直接編集(管理者用)', icon: 'fa-check-double', color: '#6366f1', desc: '勤怠データの直接書き換え権限' },
-                    { id: 'attendance_check', name: '勤怠状況確認', icon: 'fa-clipboard-check', color: '#6366f1', desc: '従業員ごとの勤怠打刻ログの照会' },
                     { id: 'shift_submission', name: 'シフト提出・確認', icon: 'fa-calendar-alt', color: '#6366f1', desc: '従業員からのシフト希望の提出・確認', showInSidebar: true },
                     { id: 'attendance_approval', name: '勤怠修正承認', icon: 'fa-check-double', color: '#10b981', isComingSoon: true, desc: '勤怠修正の承認機能' },
-                    { id: 'paid_leave_mgmt', name: '有給管理', icon: 'fa-umbrella-beach', color: '#0ea5e9', isComingSoon: true, desc: '有給休暇の付与・消化管理' },
+                    { id: 'paid_leave_mgmt', name: '年間休日管理', icon: 'fa-umbrella-beach', color: '#0ea5e9', desc: '有給休暇の付与・消化管理' },
                     { id: 'health_checkup', name: '健康診断受診', icon: 'fa-notes-medical', color: '#ef4444', isComingSoon: true, desc: '健康診断の受診履歴・案内管理' }
                 ]
             },

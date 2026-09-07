@@ -160,7 +160,7 @@ function renderListView(container) {
                     <thead>
                         <tr id="users-table-header" style="background: #10b981; color: white; font-size: 0.85rem; text-transform: uppercase;">
                             <th data-sort="EmployeeCode" style="padding: 0.8rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2); cursor: pointer; user-select: none;">従業員コード <i class="fas fa-sort"></i></th>
-                            <th data-sort="Name" style="padding: 0.8rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2); cursor: pointer; user-select: none;">お名前 <i class="fas fa-sort"></i></th>
+                            <th data-sort="Name" style="padding: 0.8rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2); cursor: pointer; user-select: none;">氏名 <i class="fas fa-sort"></i></th>
                             <th data-sort="Store" style="padding: 0.8rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2); cursor: pointer; user-select: none;">所属店舗 <i class="fas fa-sort"></i></th>
                             <th data-sort="EmploymentType" style="padding: 0.8rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2); cursor: pointer; user-select: none;">雇用形態 <i class="fas fa-sort"></i></th>
                             <th data-sort="GradeCode" style="padding: 0.8rem; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2); cursor: pointer; user-select: none;">等級 <i class="fas fa-sort"></i></th>
@@ -276,7 +276,7 @@ async function renderFormView(container) {
                                         <p id="user-code-warning" style="font-size: 0.75rem; color: #b45309; margin-top: 0.3rem;">※従業員コードは一度登録すると変更できません。</p>
                                     </div>
                                     <div class="input-group" style="margin: 0;">
-                                        <label style="font-weight: 700; color: #475569;">お名前 <span style="color: #ef4444;">*</span></label>
+                                        <label style="font-weight: 700; color: #475569;">氏名 <span style="color: #ef4444;">*</span></label>
                                         <input type="text" id="user-name" required placeholder="例: 山田 太郎" style="font-size: 1.1rem;">
                                     </div>
                                 </div>
@@ -300,7 +300,7 @@ async function renderFormView(container) {
                                         <input type="date" id="user-hire-date" style="font-size: 1.1rem; background: white;">
                                     </div>
                                 </div>
-                                <p style="font-size: 0.75rem; color: #b45309; margin-top: 0.3rem;">※シフト表示名は、シフト表に短く表示したい場合のみ入力。未設定時は「お名前」が表示されます。</p>
+                                <p style="font-size: 0.75rem; color: #b45309; margin-top: 0.3rem;">※シフト表示名は、シフト表に短く表示したい場合のみ入力。未設定時は「氏名」が表示されます。</p>
                             </div>
                         </div>
 
@@ -339,7 +339,7 @@ async function renderFormView(container) {
                                     <input type="text" id="user-job-title" placeholder="副店長等" style="background: #f0fdf4; border: 1px solid #bbf7d0;">
                                 </div>
                                 <div class="input-group" style="margin: 0;">
-                                    <label style="font-weight: 700; color: #475569;">雇用契約種別 <span style="color: #ef4444;">*</span></label>
+                                    <label style="font-weight: 700; color: #475569;">雇用形態 <span style="color: #ef4444;">*</span></label>
                                     <select id="user-employment-type" required style="background: white; font-weight: 600;">
                                         <option value="" disabled selected>選択してください</option>
                                         <option value="Executive">役員</option>
