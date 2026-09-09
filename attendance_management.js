@@ -3425,6 +3425,10 @@ function initPaidLeaveYearSelect() {
 
 // 会社基準休日数モーダルの開閉と保存
 function openIntPaidBaseModal() {
+    if (window.__isStoreManagerPaidLeaveMode) {
+        showAlert('エラー', '権限がありません。');
+        return;
+    }
     const yearStr = document.getElementById('attn-int-paid-year').value;
     const currentBase = document.getElementById('attn-int-paid-base-display').textContent;
     document.getElementById('attn-int-base-holiday-modal-year').textContent = yearStr + '年度';
@@ -3433,6 +3437,10 @@ function openIntPaidBaseModal() {
 }
 
 async function saveIntPaidBaseModal() {
+    if (window.__isStoreManagerPaidLeaveMode) {
+        showAlert('エラー', '権限がありません。');
+        return;
+    }
     const year = document.getElementById('attn-int-paid-year').value;
     const baseInput = document.getElementById('attn-int-base-holiday-modal-input').value;
     if (!year || !baseInput) return;
@@ -4207,7 +4215,7 @@ export const storeManagerAttendanceDashboardHtml = `
                                 <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary);">基準年間休暇日数</div>
                                 <div style="font-weight: 800; font-size: 1.1rem; color: var(--primary);"><span id="attn-int-paid-base-display">120</span> <span style="font-size:0.8rem; color: var(--text-secondary);">日</span></div>
                             </div>
-                            <button class="btn" id="btn-attn-int-paid-open-base-modal"  style="padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.8rem; background: white; border: 1px solid var(--border);"><i class="fas fa-cog"></i> 設定</button>
+                            <button class="btn" id="btn-attn-int-paid-open-base-modal"  style="display: none;"><i class="fas fa-cog"></i> 設定</button>
                         </div>
                     </div>
                 </div>
@@ -4418,7 +4426,7 @@ export const storeManagerAttendanceDashboardHtml = `
 ${attendanceManagementStyles}
 `;
 
-import { storeManagerPaidLeaveMobilePageHtml, initStoreManagerPaidLeaveMobilePage } from './paid_leave_mgmt_mobile.js?v=20260909_05';
+import { storeManagerPaidLeaveMobilePageHtml, initStoreManagerPaidLeaveMobilePage } from './paid_leave_mgmt_mobile.js?v=20260909_06';
 
 export async function initManagerAttendanceDashboard() {
     window.__isStoreManagerAttendanceMode = true;

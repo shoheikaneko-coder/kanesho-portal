@@ -48,7 +48,7 @@ import { bottleKeepPageHtml, initBottleKeepPage } from './bottle_keep.js?v=20260
 import { prototypeMenuPageHtml, initPrototypeMenuPage } from './prototype_menu.js?v=141';
 import { competitorListPageHtml, initCompetitorListPage } from './competitor_list.js';
 import { managerMeetingPageHtml, initManagerMeetingPage } from './manager_meeting.js?v=20260428_01';
-import { menuPdcaPageHtml, initMenuPdcaPage } from './menu_pdca.js?v=20260909_05';
+import { menuPdcaPageHtml, initMenuPdcaPage } from './menu_pdca.js?v=20260909_06';
 import { PullToRefresh } from './ptr_logic.js';
 import { manualHubPageHtml, initManualHubPage, manualViewerPageHtml, initManualViewerPage } from './manual.js';
 import { gradesPageHtml, initGradesPage } from './grades.js';
