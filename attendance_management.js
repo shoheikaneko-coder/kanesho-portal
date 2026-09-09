@@ -4418,7 +4418,7 @@ export const storeManagerAttendanceDashboardHtml = `
 ${attendanceManagementStyles}
 `;
 
-import { storeManagerPaidLeaveMobilePageHtml, initStoreManagerPaidLeaveMobilePage } from './paid_leave_mgmt_mobile.js?v=20260909_04';
+import { storeManagerPaidLeaveMobilePageHtml, initStoreManagerPaidLeaveMobilePage } from './paid_leave_mgmt_mobile.js?v=20260909_05';
 
 export async function initManagerAttendanceDashboard() {
     window.__isStoreManagerAttendanceMode = true;
