@@ -460,7 +460,7 @@ export const attendanceManagementPageHtml = `
             <!-- 6-2. 月別集計コンテンツ -->
             <div id="attn-int-pane-monthly" class="attn-int-pane animate-fade-in" style="display: none;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem;">
-                    <span id="attn-int-month-label" style="font-weight: 800; font-size: 1.2rem; color: var(--text-primary);">2026年05月度 集計</span>
+                    <span id="attn-int-month-label" style="font-weight: 800; font-size: 1.2rem; color: var(--text-primary);">期間集計</span>
                     <div style="display: flex; gap: 0.5rem; align-items: center;">
                         <button onclick="window.openIntMfCsvModal()" class="btn btn-warning" style="padding: 0.55rem 1.2rem; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; background: #f59e0b; border: none; color: white; box-shadow: 0 4px 10px rgba(245, 158, 11, 0.2); border-radius: 8px;">
                             <i class="fas fa-cloud-upload-alt"></i> MF形式CSV出力
@@ -801,6 +801,7 @@ let lastLoadedIntData = null; // 新UI用の統合計算済みデータキャッ
 
 // ─── 初期化 ──────────────────────────────────────────────────
 export async function initAttendanceManagementPage(options = {}) {
+    window.__isStoreManagerAttendanceMode = false;
     window.__isStoreManagerPaidLeaveMode = options.mode === 'store_manager';
     if (window.__isStoreManagerPaidLeaveMode) {
         activeIntTab = 'paid_leave';
@@ -2058,12 +2059,21 @@ function shiftIntDay(offset) {
 
 // 統合データの一括ロード・計算（実績ある計算ロジックを100%踏襲）
 async function loadIntegratedData() {
-    const rawStoreId = document.getElementById('attn-int-store-filter')?.value || '';
-    if (!rawStoreId) {
-        showAlert('情報', '対象店舗を選択してください。');
-        return;
+    let storeId = '';
+    if (window.__isStoreManagerAttendanceMode) {
+        storeId = window.appState?.currentUser?.StoreID || '';
+        if (!storeId) {
+            showAlert('エラー', '所属店舗情報を取得できないため、データを表示できません。');
+            return;
+        }
+    } else {
+        const rawStoreId = document.getElementById('attn-int-store-filter')?.value || '';
+        if (!rawStoreId) {
+            showAlert('情報', '対象店舗を選択してください。');
+            return;
+        }
+        storeId = rawStoreId === 'all' ? '' : rawStoreId;
     }
-    const storeId = rawStoreId === 'all' ? '' : rawStoreId;
     const periodStart = document.getElementById('attn-int-period-start')?.value;
     const periodEnd = document.getElementById('attn-int-period-end')?.value;
     const date = document.getElementById('attn-int-date-select')?.value;
@@ -2416,11 +2426,11 @@ function renderIntDaily() {
             <td style="font-weight: 600; font-size: 0.85rem; color: #475569;">${checkOutStr}</td>
             <td style="text-align: right; font-weight: 700; color: var(--text-primary);">${laborStr}</td>
             <td style="text-align: right; font-weight: 700; color: var(--primary);">${lateStr}</td>
-            <td style="text-align: center;">
+            ${window.__isStoreManagerAttendanceMode ? '' : `<td style="text-align: center;">
                 <button class="btn" style="padding: 0.35rem 0.8rem; font-size: 0.8rem; background: rgba(99, 102, 241, 0.08); color: #6366f1; border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 6px; font-weight: 700; transition: all 0.2s;" onclick="window.__fromIntegratedDashboard = true; window.openStaffEdit('${s.code}', '${s.name}', '${date}')">
                     <i class="fas ${btnIcon}"></i> ${btnLabel}
                 </button>
-            </td>
+            </td>`}
         `;
         body.appendChild(tr);
     });
@@ -2434,7 +2444,12 @@ function renderIntMonthly() {
 
     const storeId = data.storeId;
     const activeStaff = Object.values(data.staffMap).filter(s => {
-        return !storeId || String(s.store_id) === String(storeId);
+        const matches = !storeId || String(s.store_id) === String(storeId);
+        if (window.__isStoreManagerAttendanceMode) {
+            const currentStoreId = window.appState?.currentUser?.StoreID;
+            return matches && String(s.store_id) === String(currentStoreId);
+        }
+        return matches;
     });
 
     body.innerHTML = '';
@@ -2486,7 +2501,8 @@ function renderIntMonthly() {
 window.switchToDailyFromIntMonthly = (storeName, dateYmd) => {
     const store = cachedStores.find(st => (st.store_name || st.Store) === storeName);
     if (store) {
-        document.getElementById('attn-int-store-filter').value = store.store_id || store.id;
+        const sf = document.getElementById('attn-int-store-filter');
+        if(sf) sf.value = store.store_id || store.id;
     }
     document.getElementById('attn-int-date-select').value = dateYmd;
     
@@ -4005,3 +4021,501 @@ export const storeManagerPaidLeavePageHtml = `
 
 ${attendanceManagementStyles}
 `;
+
+
+export const storeManagerAttendanceDashboardHtml = `
+<div id="attendance-mgmt-container" class="animate-fade-in">
+<!-- 6. 【新UI】 King of TIME風 PC特化型 統合ダッシュボード画面 -->
+    <div id="attn-integrated-dashboard-view" class="view-section" style="display: none;">
+        <!-- ヘッダー -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; background: rgba(255, 255, 255, 0.4); padding: 1.2rem; border-radius: 12px; border: 1px solid var(--border); backdrop-filter: blur(10px);">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <h2 style="margin: 0; font-size: 1.3rem; display: flex; align-items: center; gap: 0.6rem; color: var(--text-primary); font-weight: 800;">
+                    <i class="fas fa-desktop" style="color: var(--primary);"></i>
+                    店長向け勤怠管理
+                    
+                </h2>
+            </div>
+            <!-- 旧メニューは廃止されるため、元の「人事総務」メインメニューに戻るように変更 -->
+            <button onclick="window.navigateTo('hr_hub')" class="btn" style="padding: 0.55rem 1.2rem; font-size: 0.85rem; font-weight: 700; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; border-radius: 8px;">
+                <i class="fas fa-arrow-left"></i> 人事総務Hubに戻る
+            </button>
+        </div>
+
+        <!-- 共通フィルターエリア -->
+        <div class="glass-panel" style="padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid var(--border);">
+            <div style="display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: flex-end;">
+                
+                <div class="input-group" style="margin-bottom: 0; min-width: 140px;">
+                    <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">集計開始日</label>
+                    <input type="date" id="attn-int-period-start" style="padding: 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; background: white;">
+                </div>
+                <div id="attn-int-period-tilde" style="display: flex; align-items: flex-end; padding-bottom: 0.65rem; color: var(--text-secondary); font-weight: bold;">〜</div>
+                <div class="input-group" style="margin-bottom: 0; min-width: 140px;">
+                    <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">集計終了日</label>
+                    <input type="date" id="attn-int-period-end" style="padding: 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; background: white;">
+                </div>
+                <div class="input-group" style="margin-bottom: 0; min-width: 180px;" id="attn-int-date-filter-group">
+                    <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">表示日 (日別用)</label>
+                    <input type="date" id="attn-int-date-select" style="padding: 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; background: white;">
+                </div>
+                <button id="btn-attn-int-search" class="btn btn-primary" style="padding: 0.68rem 2.2rem; font-weight: 700; border-radius: 8px; display: flex; align-items: center; gap: 0.6rem; background: linear-gradient(135deg, var(--primary), var(--primary-dark, #e04f53)); border: none; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);">
+                    <i class="fas fa-search"></i> 検索・表示
+                </button>
+            </div>
+        </div>
+
+        <!-- タブナビゲーション -->
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid var(--border); padding-bottom: 0px; overflow-x: auto; white-space: nowrap;">
+            <button class="attn-int-tab active" data-tab="monthly">
+                <i class="fas fa-calendar-alt"></i> 期間集計
+            </button>
+            <button class="attn-int-tab" data-tab="daily">
+                <i class="fas fa-calendar-day"></i> 日別集計
+            </button>
+            
+            <button class="attn-int-tab" data-tab="paid_leave">
+                <i class="fas fa-umbrella-beach"></i> 年間休日管理
+            </button>
+        </div>
+
+        <!-- 各種タブコンテンツエリア -->
+        <div id="attn-int-tab-content">
+            <!-- 6-1. 日別データコンテンツ -->
+            <div id="attn-int-pane-daily" class="attn-int-pane animate-fade-in">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem;">
+                    <div style="display: flex; align-items: center; gap: 0.8rem;">
+                        <button id="btn-attn-int-day-prev" class="btn" style="padding: 0.45rem 1rem; background: white; border: 1px solid var(--border); border-radius: 6px; font-weight: 700; color: var(--text-secondary);"><i class="fas fa-chevron-left"></i> 前日</button>
+                        <span id="attn-int-day-label" style="font-weight: 800; font-size: 1.2rem; color: var(--text-primary);">2026/05/23</span>
+                        <button id="btn-attn-int-day-next" class="btn" style="padding: 0.45rem 1rem; background: white; border: 1px solid var(--border); border-radius: 6px; font-weight: 700; color: var(--text-secondary);">翌日 <i class="fas fa-chevron-right"></i></button>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        </div>
+                </div>
+
+                <div class="glass-panel" style="padding: 0; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.02);">
+                    <div style="overflow-x: auto;">
+                        <table class="attn-int-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 120px;">コード</th>
+                                    <th style="width: 180px;">従業員名</th>
+                                    <th style="width: 200px;">所属店舗</th>
+                                    <th style="width: 130px;">出勤時刻</th>
+                                    <th style="width: 130px;">退勤時刻</th>
+                                    <th style="width: 150px; text-align: right;">実労働時間</th>
+                                    <th style="width: 150px; text-align: right;">深夜労働h</th>
+                                    <th style="text-align: center;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attn-int-daily-body">
+                                <tr><td colspan="8" style="padding: 3rem; text-align: center; color: var(--text-secondary);"><i class="fas fa-search"></i> 共通フィルターを指定して「検索・表示」を押してください</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6-2. 月別集計コンテンツ -->
+            <div id="attn-int-pane-monthly" class="attn-int-pane animate-fade-in" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem;">
+                    <span id="attn-int-month-label" style="font-weight: 800; font-size: 1.2rem; color: var(--text-primary);">期間集計</span>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <button onclick="window.openIntMfCsvModal()" class="btn btn-warning" style="padding: 0.55rem 1.2rem; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; background: #f59e0b; border: none; color: white; box-shadow: 0 4px 10px rgba(245, 158, 11, 0.2); border-radius: 8px;">
+                            <i class="fas fa-cloud-upload-alt"></i> MF形式CSV出力
+                        </button>
+                        <button onclick="window.openIntCsvModal()" class="btn btn-primary" style="padding: 0.55rem 1.2rem; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; background: #10b981; border: none; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2); border-radius: 8px;">
+                            <i class="fas fa-file-csv"></i> TKC形式CSV出力
+                        </button>
+                    </div>
+                </div>
+
+                <div class="glass-panel" style="padding: 0; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.02);">
+                    <div style="overflow-x: auto;">
+                        <table class="attn-int-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 120px;">コード</th>
+                                    <th style="width: 200px;">従業員名</th>
+                                    <th style="width: 220px;">所属店舗</th>
+                                    <th style="width: 150px; text-align: right;">出勤日数</th>
+                                    <th style="width: 180px; text-align: right;">総実労働時間</th>
+                                    <th style="width: 180px; text-align: right;">総深夜時間</th>
+                                    <th style="width: 120px; text-align: right; color: var(--danger);">欠勤数</th>
+                                    <th style="text-align: center;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attn-int-monthly-body">
+                                <tr><td colspan="7" style="padding: 3rem; text-align: center; color: var(--text-secondary);"><i class="fas fa-search"></i> 共通フィルターを指定して「検索・表示」を押してください</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6-3. 修正承認待ちコンテンツ -->
+            <div id="attn-int-pane-approvals" class="attn-int-pane animate-fade-in" style="display: none;">
+                <div style="margin-bottom: 1.2rem;">
+                    <span style="font-weight: 800; font-size: 1.2rem; color: var(--text-primary);"><i class="fas fa-check-double" style="color: var(--secondary);"></i> 修正申請の承認待ちリスト</span>
+                </div>
+
+                <div class="glass-panel" style="padding: 0; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.02);">
+                    <div style="overflow-x: auto;">
+                        <table class="attn-int-table" style="border-spacing: 0;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 150px; padding: 1rem 0.8rem;">操作</th>
+                                    <th style="width: 130px;">対象日</th>
+                                    <th style="width: 180px;">従業員情報</th>
+                                    <th>申請内容（打刻）</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attn-int-approvals-body">
+                                <tr><td colspan="4" style="padding: 3rem; text-align: center; color: var(--text-secondary);">現在、承認待ちの申請はありません。</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6-5. 年間休日管理コンテンツ -->
+            <div id="attn-int-pane-paid_leave" class="attn-int-pane animate-fade-in" style="display: none;">
+                <div style="margin-bottom: 1.2rem; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem;">
+                    <div>
+                        <span style="font-weight: 800; font-size: 1.2rem; color: var(--text-primary);"><i class="fas fa-umbrella-beach" style="color: var(--primary);"></i> 年間休日管理</span>
+                        <p style="margin: 0.2rem 0 0; font-size: 0.85rem; color: var(--text-secondary);">年度（7月1日〜翌年6月30日）単位での取得済休日・未来の休日見込を管理します。</p>
+                        <div id="attn-int-paid-warning" style="display: none; margin-top: 0.5rem; color: #e53e3e; font-size: 0.8rem; font-weight: 700;"><i class="fas fa-exclamation-circle"></i> 会社カレンダー未設定の月があるため、未来見込が正確でない可能性があります。</div>
+                    </div>
+                    <div style="display: flex; gap: 1rem; align-items: flex-end; background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid var(--border);">
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label style="font-size: 0.8rem; font-weight: 700;">対象年度</label>
+                            <select id="attn-int-paid-year" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;">
+                                <!-- JSで動的生成 -->
+                            </select>
+                        </div>
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label style="font-size: 0.8rem; font-weight: 700;">雇用形態</label>
+                            <select id="attn-int-paid-emp-type" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;">
+                                <option value="">全件</option>
+                                <option value="Executive">役員</option>
+                                <option value="Full-time" selected>正社員</option>
+                                <option value="Part-time">アルバイト</option>
+                            </select>
+                        </div>
+                        <div style="margin-left: 1rem; padding-left: 1rem; border-left: 1px solid var(--border); display: flex; align-items: center; gap: 0.8rem;">
+                            <div>
+                                <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary);">基準年間休暇日数</div>
+                                <div style="font-weight: 800; font-size: 1.1rem; color: var(--primary);"><span id="attn-int-paid-base-display">120</span> <span style="font-size:0.8rem; color: var(--text-secondary);">日</span></div>
+                            </div>
+                            <button class="btn" id="btn-attn-int-paid-open-base-modal"  style="padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.8rem; background: white; border: 1px solid var(--border);"><i class="fas fa-cog"></i> 設定</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel" style="padding: 0; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.02);">
+                    <div style="overflow-x: auto;">
+                        <table class="attn-int-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 180px;">氏名</th>
+                                    <th>適用休日基準</th>
+                                    <th>固定休日設定</th>
+                                    <th>取得済休日</th>
+                                    <th>今後の固定休</th>
+                                    <th>今後の会社休</th>
+                                    <th>重複</th>
+                                    <th>年間休日見込</th>
+                                    <th style="width: 150px;">要取得休日数(不足)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attn-int-paid-body">
+                                <tr><td colspan="9" style="padding: 3rem; text-align: center; color: var(--text-secondary);"><i class="fas fa-search"></i> 共通フィルターを指定して「検索・表示」を押してください</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 7. 【CSVエクスポート設定】専用モーダルポップアップ -->
+    <div id="attn-int-csv-modal" class="attn-int-modal">
+        <div class="attn-int-modal-content" style="background: white; border: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.8rem;">
+                <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-file-csv" style="color: #10b981;"></i>
+                    TKC形式CSV出力設定
+                </h3>
+                <button onclick="window.closeIntCsvModal()" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-secondary);"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 1.2rem;">
+                <div class="input-group" style="margin-bottom: 0;">
+                    <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">出力対象店舗</label>
+                    <select id="attn-int-csv-store" class="store-selector" style="width: 100%; padding: 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; background: white;">
+                        <option value="">全店舗</option>
+                    </select>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="input-group" style="margin-bottom: 0;">
+                        <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">開始日 <span style="color: var(--danger); font-weight:bold;">*必須</span></label>
+                        <input type="date" id="attn-int-csv-start" style="padding: 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; background: white;">
+                    </div>
+                    <div class="input-group" style="margin-bottom: 0;">
+                        <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">終了日 <span style="color: var(--danger); font-weight:bold;">*必須</span></label>
+                        <input type="date" id="attn-int-csv-end" style="padding: 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; background: white;">
+                    </div>
+                </div>
+                
+                <div style="font-size: 0.78rem; color: #64748b; line-height: 1.5; background: #f8fafc; padding: 0.8rem; border-radius: 8px; border: 1px solid var(--border);">
+                    <i class="fas fa-info-circle" style="color:#3b82f6;"></i> <b>給与計算時のご注意:</b><br>
+                    給与算定期間が <b>21日〜翌月20日</b> に指定されていることをご確認のうえ出力してください。<br>期間未指定の場合はCSV出力できません。
+                </div>
+                
+                <div style="display: flex; gap: 0.8rem; justify-content: flex-end; margin-top: 0.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                    <button onclick="window.closeIntCsvModal()" class="btn" style="background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; font-weight: 700; padding: 0.6rem 1.2rem; border-radius: 8px;">
+                        キャンセル
+                    </button>
+                    <button id="btn-attn-int-csv-download" class="btn btn-primary" style="background: #10b981; border: none; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); font-weight: 700; padding: 0.6rem 1.5rem; border-radius: 8px; display: flex; align-items: center; gap: 0.4rem;">
+                        <i class="fas fa-download"></i> CSVダウンロード
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 8. 【MF用CSVエクスポート設定】専用モーダルポップアップ -->
+    <div id="attn-int-mf-csv-modal" class="attn-int-modal">
+        <div class="attn-int-modal-content" style="background: white; border: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.8rem;">
+                <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: #b45309; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-cloud-upload-alt" style="color: #f59e0b;"></i>
+                    MF標準形式CSV出力設定
+                </h3>
+                <button onclick="window.closeIntMfCsvModal()" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-secondary);"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 1.2rem;">
+                <div class="input-group" style="margin-bottom: 0;">
+                    <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">出力対象店舗</label>
+                    <select id="attn-int-mf-csv-store" class="store-selector" style="width: 100%; padding: 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; background: white;">
+                        <option value="">全店舗</option>
+                    </select>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="input-group" style="margin-bottom: 0;">
+                        <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">開始日 <span style="color: var(--danger); font-weight:bold;">*必須</span></label>
+                        <input type="date" id="attn-int-mf-csv-start" style="padding: 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; background: white;">
+                    </div>
+                    <div class="input-group" style="margin-bottom: 0;">
+                        <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">終了日 <span style="color: var(--danger); font-weight:bold;">*必須</span></label>
+                        <input type="date" id="attn-int-mf-csv-end" style="padding: 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; background: white;">
+                    </div>
+                </div>
+                
+                <div style="font-size: 0.78rem; color: #64748b; line-height: 1.5; background: #fffbeb; padding: 0.8rem; border-radius: 8px; border: 1px solid #fde68a;">
+                    <i class="fas fa-info-circle" style="color:#f59e0b;"></i> <b>給与計算時のご注意:</b><br>
+                    マネーフォワード クラウド給与のインポート用（Version 3）として、コロン区切りの勤怠データを出力します。<br>
+                    ※事前に従業員マスタで「給与用の姓・名」が正しく登録されている必要があります。
+                </div>
+                
+                <div style="display: flex; gap: 0.8rem; justify-content: flex-end; margin-top: 0.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                    <button onclick="window.closeIntMfCsvModal()" class="btn" style="background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; font-weight: 700; padding: 0.6rem 1.2rem; border-radius: 8px;">
+                        キャンセル
+                    </button>
+                    <button id="btn-attn-int-mf-csv-download" class="btn btn-primary" style="background: #f59e0b; border: none; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2); font-weight: 700; padding: 0.6rem 1.5rem; border-radius: 8px; display: flex; align-items: center; gap: 0.4rem; color: white;">
+                        <i class="fas fa-download"></i> CSVダウンロード
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 10. 【年間休日】会社基準設定モーダル -->
+    <div id="attn-int-base-holiday-modal" class="attn-int-modal">
+        <div class="attn-int-modal-content" style="background: white; border: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.8rem;">
+                <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-cog" style="color: var(--primary);"></i>
+                    基準年間休暇日数の設定
+                </h3>
+                <button onclick="document.getElementById('attn-int-base-holiday-modal').classList.remove('show')" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-secondary);"><i class="fas fa-times"></i></button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 1.2rem;">
+                <div class="input-group" style="margin-bottom: 0;">
+                    <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">対象年度</label>
+                    <div style="font-weight: 800; font-size: 1.1rem; color: var(--text-primary);" id="attn-int-base-holiday-modal-year"></div>
+                </div>
+                
+                <div class="input-group" style="margin-bottom: 0;">
+                    <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">基準年間休暇日数</label>
+                    <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0 0 0.5rem 0;">※この設定は会社全体（全店舗）に適用されます。各社員の個人別設定がない場合のデフォルト値となります。</p>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="number" id="attn-int-base-holiday-modal-input" style="padding: 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; background: white; width: 120px;" placeholder="例: 120">
+                        <span style="font-weight: 700; color: var(--text-secondary);">日</span>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 0.8rem; justify-content: flex-end; margin-top: 0.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                    <button onclick="document.getElementById('attn-int-base-holiday-modal').classList.remove('show')" class="btn" style="background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; font-weight: 700; padding: 0.6rem 1.2rem; border-radius: 8px;">
+                        キャンセル
+                    </button>
+                    <button id="btn-attn-int-base-holiday-modal-save"  class="btn btn-primary" style="font-weight: 700; padding: 0.6rem 1.5rem; border-radius: 8px; display: flex; align-items: center; gap: 0.4rem;">
+                        <i class="fas fa-save"></i> 保存
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 9. 【年間休日】個人設定編集モーダル -->
+    <div id="attn-int-paid-modal" class="attn-int-modal">
+        <div class="attn-int-modal-content" style="background: white; border: 1px solid var(--border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.8rem;">
+                <h3 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-user-cog" style="color: var(--primary);"></i>
+                    <span id="attn-int-paid-modal-name"></span>の設定
+                </h3>
+                <button onclick="document.getElementById('attn-int-paid-modal').classList.remove('show')" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-secondary);"><i class="fas fa-times"></i></button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 1.2rem;">
+                <input type="hidden" id="attn-int-paid-modal-uid">
+                <input type="hidden" id="attn-int-paid-modal-year">
+                
+                <div>
+                    <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem; display:block;">固定休日（曜日）</label>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <label style="display: flex; align-items: center; gap: 0.2rem;"><input type="checkbox" name="paid-fixed-dow" value="1">月</label>
+                        <label style="display: flex; align-items: center; gap: 0.2rem;"><input type="checkbox" name="paid-fixed-dow" value="2">火</label>
+                        <label style="display: flex; align-items: center; gap: 0.2rem;"><input type="checkbox" name="paid-fixed-dow" value="3">水</label>
+                        <label style="display: flex; align-items: center; gap: 0.2rem;"><input type="checkbox" name="paid-fixed-dow" value="4">木</label>
+                        <label style="display: flex; align-items: center; gap: 0.2rem;"><input type="checkbox" name="paid-fixed-dow" value="5">金</label>
+                        <label style="display: flex; align-items: center; gap: 0.2rem;"><input type="checkbox" name="paid-fixed-dow" value="6">土</label>
+                        <label style="display: flex; align-items: center; gap: 0.2rem;"><input type="checkbox" name="paid-fixed-dow" value="0">日</label>
+                    </div>
+                </div>
+
+                <div class="input-group" style="margin-bottom: 0;">
+                    <label style="font-weight: 800; color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.8rem;">個人別 休日基準日数（<span id="attn-int-paid-modal-year-label"></span>年度）</label>
+                    <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0 0 0.5rem 0;">※年度途中入社などで会社基準から変更したい場合のみ数値を入力してください。未入力の場合は会社基準が適用されます。</p>
+                    <input type="number" id="attn-int-paid-modal-custom-base" style="padding: 0.65rem; border: 1px solid var(--border); border-radius: 8px; font-weight: 600; background: white;" placeholder="例: 60">
+                </div>
+                
+                <div style="display: flex; gap: 0.8rem; justify-content: flex-end; margin-top: 0.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                    <button onclick="document.getElementById('attn-int-paid-modal').classList.remove('show')" class="btn" style="background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; font-weight: 700; padding: 0.6rem 1.2rem; border-radius: 8px;">
+                        キャンセル
+                    </button>
+                    <button id="btn-attn-int-paid-modal-save"  class="btn btn-primary" style="font-weight: 700; padding: 0.6rem 1.5rem; border-radius: 8px; display: flex; align-items: center; gap: 0.4rem;">
+                        <i class="fas fa-save"></i> 保存
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+${attendanceManagementStyles}
+`;
+
+import { storeManagerPaidLeaveMobilePageHtml, initStoreManagerPaidLeaveMobilePage } from './paid_leave_mgmt_mobile.js?v=20260909_04';
+
+export async function initManagerAttendanceDashboard() {
+    window.__isStoreManagerAttendanceMode = true;
+    window.__isStoreManagerPaidLeaveMode = true;
+    
+    const today = new Date();
+    document.getElementById('attn-int-date-select').value = today.toLocaleDateString('sv-SE');
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    document.getElementById('attn-int-period-start').value = firstDay.toLocaleDateString('sv-SE');
+    document.getElementById('attn-int-period-end').value = lastDay.toLocaleDateString('sv-SE');
+
+    // Default to monthly tab internally
+    activeIntTab = 'monthly';
+
+    document.querySelectorAll('.attn-int-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tabName = btn.dataset.tab;
+            activeIntTab = tabName;
+            
+            document.querySelectorAll('.attn-int-tab').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            document.querySelectorAll('.attn-int-pane').forEach(p => p.style.display = 'none');
+            const targetPane = document.getElementById('attn-int-pane-' + tabName);
+            if (targetPane) targetPane.style.display = 'block';
+
+            if (tabName === 'paid_leave') {
+                const container = document.getElementById('attn-int-pane-paid_leave');
+                if (window.innerWidth < 768) {
+                    if (container.innerHTML.trim() === '') {
+                        container.innerHTML = storeManagerPaidLeaveMobilePageHtml;
+                        initStoreManagerPaidLeaveMobilePage();
+                    }
+                } else {
+                    if (!window.__paidLeaveInitDone) {
+                        import('./attendance_management.js').then(module => {
+                            const tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = module.storeManagerPaidLeavePageHtml;
+                            const tbl = tempDiv.querySelector('.glass-panel');
+                            if(tbl) {
+                                container.innerHTML = "";
+                                container.appendChild(tbl);
+                                const yearSelect = document.getElementById('attn-int-paid-year');
+                                if (yearSelect) {
+                                    const now = new Date();
+                                    let currentYear = now.getFullYear();
+                                    if (now.getMonth() + 1 < 7) currentYear -= 1;
+                                    for (let y = currentYear - 2; y <= currentYear + 1; y++) {
+                                        const opt = document.createElement('option');
+                                        opt.value = y;
+                                        opt.textContent = `${y}年度 (${y}/07/01〜${y+1}/06/30)`;
+                                        if (y === currentYear) opt.selected = true;
+                                        yearSelect.appendChild(opt);
+                                    }
+                                }
+                                const btnSearch = document.getElementById('btn-attn-int-paid-search');
+                                if (btnSearch && typeof loadIntPaidLeaveData === 'function') {
+                                    btnSearch.addEventListener('click', loadIntPaidLeaveData);
+                                    yearSelect.addEventListener('change', loadIntPaidLeaveData);
+                                    loadIntPaidLeaveData();
+                                }
+                                window.__paidLeaveInitDone = true;
+                            }
+                        });
+                    }
+                }
+            }
+            
+            // Adjust top controls visibility based on tab
+            const dateFilterGroup = document.getElementById('attn-int-date-filter-group');
+            if(dateFilterGroup) {
+                dateFilterGroup.style.display = tabName === 'daily' ? 'block' : 'none';
+            }
+        });
+    });
+    
+    // Hide date filter initially
+    const dateFilterGroup = document.getElementById('attn-int-date-filter-group');
+    if(dateFilterGroup) dateFilterGroup.style.display = 'none';
+
+    const searchBtn = document.getElementById('btn-attn-int-search');
+    if(searchBtn) searchBtn.addEventListener('click', loadIntegratedData);
+    
+    window.shiftIntDay = (offset) => {
+        const ds = document.getElementById('attn-int-date-select');
+        if (!ds) return;
+        const d = new Date(ds.value);
+        if (isNaN(d.getTime())) return;
+        d.setDate(d.getDate() + offset);
+        ds.value = d.toLocaleDateString('sv-SE');
+        loadIntegratedData();
+    };
+    
+    // Set initial display to block to prevent it from being hidden
+    const view = document.getElementById('attn-integrated-dashboard-view');
+    if (view) view.style.display = 'block';
+    
+    loadIntegratedData();
+}

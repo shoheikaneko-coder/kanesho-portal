@@ -56,6 +56,7 @@ export const MENU_DEFINITION = [
                 icon: 'fa-user-clock',
                 items: [
                     { id: 'attendance_management', name: '勤怠管理', icon: 'fa-user-clock', color: '#6366f1', desc: '全従業員の勤怠実績確認・修正・承認' },
+                    { id: 'manager_attendance_dashboard', name: '店長向け勤怠管理', icon: 'fa-user-clock', color: '#6366f1', desc: '店長用: 自店舗の勤怠実績・年間休日管理' },
                     { id: 'attendance_direct_edit', name: '[機能] 勤怠の直接編集(管理者用)', icon: 'fa-check-double', color: '#6366f1', desc: '勤怠データの直接書き換え権限' },
                     { id: 'shift_submission', name: 'シフト提出・確認', icon: 'fa-calendar-alt', color: '#6366f1', desc: '従業員からのシフト希望の提出・確認', showInSidebar: true },
                     { id: 'attendance_approval', name: '勤怠修正承認', icon: 'fa-check-double', color: '#10b981', isComingSoon: true, desc: '勤怠修正の承認機能' },

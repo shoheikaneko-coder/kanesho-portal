@@ -1,0 +1,106 @@
+--- ops_hub_main.js
++++ ops_hub_main.js
+@@ -198,10 +198,21 @@
+         el.style.display = 'none';
+     });
+ 
+-    const cacheKey = tabId;
++    let cacheKey = tabId;
++    const procurementTabs = ['transfer', 'purchase', 'store_prep', 'ck_prep'];
++    
++    if (procurementTabs.includes(tabId)) {
++        cacheKey = isMobile ? 'procurement_mobile' : 'procurement_pc';
++    } else if (tabId === 'buy_move' || tabId === 'make') {
++        cacheKey = 'procurement_mobile';
++    } else if (tabId === 'settings' && isMobile) {
++        // モバイルの設定画面は在庫タブのHTMLを流用するため、同じコンテナを使う
++        cacheKey = 'inventory';
++    }
+ 
+     if (!tabContainers[cacheKey]) {
+         const el = document.createElement('div');
+         el.style.cssText = 'height: 100%; position: relative;';
+         el.dataset.tabContent = cacheKey;
+         content.appendChild(el);
+         tabContainers[cacheKey] = el;
+ 
+-        if (tabId === 'inventory') {
++        if (cacheKey === 'inventory') {
+             if (isMobile) {
+                 el.innerHTML = inventoryMobilePageHtml;
+                 await initInventoryMobilePage(currentUser);
++                if (tabId === 'settings' && window.showMasterSettings) {
++                    window.showMasterSettings();
++                }
+             } else {
+                 el.innerHTML = inventoryPageHtml;
+                 await initInventoryPage(currentUser);
+             }
+         } 
+-        else if (tabId === 'buy_move' || tabId === 'make') {
++        else if (cacheKey === 'procurement_mobile') {
+             const defaultSubTab = tabId === 'buy_move' ? 'purchase' : 'store_prep';
++            // buy_move や make はモバイル専用カテゴリ、purchase等はPCから来る場合がある
++            const initialCategory = (tabId === 'buy_move' || tabId === 'make') ? defaultSubTab : tabId;
+             el.innerHTML = procurementMobilePageHtml;
+-            await initProcurementMobilePage(currentUser, defaultSubTab);
++            await initProcurementMobilePage(currentUser, initialCategory);
+             
+             if (window.filterProcurementCategories) {
+                 window.filterProcurementCategories(tabId);
+             }
+         }
+-        else if (tabId === 'settings') {
+-            if (isMobile) {
+-                el.innerHTML = inventoryMobilePageHtml;
+-                await initInventoryMobilePage(currentUser);
+-                if (window.showMasterSettings) window.showMasterSettings();
+-            }
+-        }
+         else if (tabId === 'stocktake') {
+             el.innerHTML = stocktakePageHtml;
+             await initStocktakePage(currentUser);
+         }
+-        else {
+-            if (isMobile) {
+-                el.innerHTML = procurementMobilePageHtml;
+-                await initProcurementMobilePage(currentUser, tabId);
+-            } else {
+-                el.innerHTML = procurementPageHtml;
+-                await initProcurementPage(currentUser, tabId);
+-            }
++        else if (cacheKey === 'procurement_pc') {
++            el.innerHTML = procurementPageHtml;
++            await initProcurementPage(currentUser, tabId);
+         }
++        else if (cacheKey === 'settings_pc' || tabId === 'settings') {
++            // PC版のsettingsのHTMLがない場合は空または専用HTML
++            // el.innerHTML = ...
++        }
+         tabInitialized[cacheKey] = true;
+     } else {
+-        // キャッシュが存在する場合、特別な処理が必要なタブへの対応
++        // 既にDOMが存在する場合、カテゴリー切り替えなどの初期化関数を再度呼ぶ
+         if (tabId === 'buy_move' || tabId === 'make') {
++            const defaultSubTab = tabId === 'buy_move' ? 'purchase' : 'store_prep';
++            await initProcurementMobilePage(currentUser, defaultSubTab);
+             if (window.filterProcurementCategories) {
+                 window.filterProcurementCategories(tabId);
+             }
+-        } else if (tabId === 'settings') {
+-            if (isMobile && window.showMasterSettings) {
+-                window.showMasterSettings();
+-            }
++        } else if (procurementTabs.includes(tabId)) {
++            if (isMobile) {
++                await initProcurementMobilePage(currentUser, tabId);
++            } else {
++                await initProcurementPage(currentUser, tabId);
++            }
++        } else if (tabId === 'settings' && isMobile && window.showMasterSettings) {
++            window.showMasterSettings();
+         }
+     }
+ 
+     tabContainers[cacheKey].style.display = 'block';
+ }

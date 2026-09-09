@@ -438,6 +438,7 @@ async function renderDetailView() {
     
     if (m.status === '完了') {
         actionButtonsHtml = `
+            <button class="mp-action-btn" onclick="window._mpPreviewSummary()" style="background:#10b981; color:white; border:none;"><i class="fas fa-share-alt"></i> 共有サマリーを作成</button>
             <button class="mp-action-btn" onclick="window._mpCaptureDashboard()" style="background:#475569; color:white; border:none;"><i class="fas fa-camera"></i> 会議議事録をキャプチャ</button>
             <button class="mp-action-btn btn-edit" onclick="window._mpReopenMeeting()"><i class="fas fa-undo"></i> 編集を再開する</button>
         `;
@@ -931,6 +932,11 @@ async function renderStep2(area) {
 
         const prob = totalCustomers > 0 ? (qty / totalCustomers) * 100 : 0;
 
+        let unitProfit = null;
+        if (data.unit_price != null) {
+            unitProfit = data.unit_price - costPerUnit;
+        }
+
         step2Products.push({
             id: d.id,
             name: data.menu_name,
@@ -938,6 +944,7 @@ async function renderStep2(area) {
             sales: sales,
             unit_price: data.unit_price ?? 0,
             unit_cost: costPerUnit,
+            unit_profit: unitProfit,
             cost_rate: costRate,
             gross_profit: grossProfit,
             major_category: majorCategory,
@@ -978,6 +985,7 @@ async function renderStep2(area) {
                 <button class="mp-filter-chip" data-filter="ドリンク" onclick="window._mpSetFilter('ドリンク', this)">ドリンク</button>
                 <button class="mp-filter-chip" data-filter="お通し" onclick="window._mpSetFilter('お通し', this)">お通し</button>
                 <button class="mp-filter-chip" data-filter="high_cost" onclick="window._mpSetFilter('high_cost', this)">原価率高</button>
+                <button class="mp-filter-chip candidates-toggle" onclick="window._mpToggleCandidatesFilter(this)">改善候補</button>
             </div>
 
             <div class="mp-analysis-table-wrap">
@@ -988,24 +996,25 @@ async function renderStep2(area) {
                             <th class="mp-sort-header" data-sort-key="quantity" data-label="販売数" onclick="window._mpSortProducts('quantity')" style="cursor:pointer; white-space:nowrap;">販売数</th>
                             <th class="mp-sort-header" data-sort-key="unit_price" data-label="売値" onclick="window._mpSortProducts('unit_price')" style="cursor:pointer; white-space:nowrap;">売値</th>
                             <th class="mp-sort-header" data-sort-key="unit_cost" data-label="原価" onclick="window._mpSortProducts('unit_cost')" style="cursor:pointer; white-space:nowrap;">原価</th>
+                            <th class="mp-sort-header" data-sort-key="unit_profit" data-label="粗利" onclick="window._mpSortProducts('unit_profit')" style="cursor:pointer; white-space:nowrap;">粗利</th>
                             <th class="mp-sort-header" data-sort-key="sales" data-label="売上" onclick="window._mpSortProducts('sales')" style="cursor:pointer; white-space:nowrap;">売上</th>
                             <th class="mp-sort-header" data-sort-key="cost_rate" data-label="原価率" onclick="window._mpSortProducts('cost_rate')" style="cursor:pointer; white-space:nowrap;">原価率</th>
-                            <th class="mp-sort-header" data-sort-key="gross_profit" data-label="粗利額" onclick="window._mpSortProducts('gross_profit')" style="cursor:pointer; white-space:nowrap;">粗利額</th>
+                            <th class="mp-sort-header" data-sort-key="gross_profit" data-label="総粗利" onclick="window._mpSortProducts('gross_profit')" style="cursor:pointer; white-space:nowrap;">総粗利</th>
                             <th class="mp-sort-header" data-sort-key="order_prob" data-label="注文確率" onclick="window._mpSortProducts('order_prob')" style="cursor:pointer; white-space:nowrap;">注文確率</th>
                             <th class="mp-sort-header" data-sort-key="mom_qty" data-label="前月比" onclick="window._mpSortProducts('mom_qty')" style="cursor:pointer; white-space:nowrap;">前月比</th>
                             <th>アクション</th>
                         </tr>
                     </thead>
                     <tbody id="mp-products-tbody">
-                        ${!hasData ? `<tr><td colspan="9"><div class="mp-empty-state"><i class="fas fa-database"></i><p>${formatYearMonth(latestMonth)}のDiniiデータが見つかりません。<br>CSVインポート画面からデータをインポートしてください。</p></div></td></tr>` : ''}
+                        ${!hasData ? `<tr><td colspan="10"><div class="mp-empty-state"><i class="fas fa-database"></i><p>${formatYearMonth(latestMonth)}のDiniiデータが見つかりません。<br>CSVインポート画面からデータをインポートしてください。</p></div></td></tr>` : ''}
                     </tbody>
                 </table>
             </div>
 
             <div style="margin-top:1.2rem;">
                 <div class="mp-form-group">
-                    <label>Step2 会議メモ・全体所感</label>
-                    <textarea id="mp-step2-note" rows="3" placeholder="全体的な分析所感や気づきをメモしてください...">${escHtml(activeMeeting.step2_summary_note || '')}</textarea>
+                    <label>Step2 会議メモ</label>
+                    <textarea id="mp-step2-note" placeholder="全体的な分析所感や気づきをメモしてください..." oninput="window._mpAutoResizeNote()">${escHtml(activeMeeting.step2_summary_note || '')}</textarea>
                 </div>
             </div>
         </div>
@@ -1029,6 +1038,7 @@ async function renderStep2(area) {
     let currentCategoryFilter = 'all';
     let currentSortKey = 'quantity';
     let currentSortAsc = false;
+    let showOnlyCandidates = false;
 
     window._mpToggleCandidate = (productId, productName, btn) => {
         if (step2Candidates.has(productName)) {
@@ -1039,6 +1049,9 @@ async function renderStep2(area) {
             step2Candidates.add(productName);
             btn.className = 'mp-add-candidate-btn added';
             btn.innerHTML = '<i class="fas fa-check"></i> 追加済み';
+        }
+        if (showOnlyCandidates) {
+            window._mpRenderTable();
         }
     };
 
@@ -1051,8 +1064,9 @@ async function renderStep2(area) {
             let valA = a[currentSortKey];
             let valB = b[currentSortKey];
             
-            if (valA === null) valA = -99999999;
-            if (valB === null) valB = -99999999;
+            if (valA === null && valB === null) return 0;
+            if (valA === null) return 1;
+            if (valB === null) return -1;
             
             if (currentSortKey === 'mom_qty') {
                 valA = a.mom_qty !== null ? parseFloat(a.mom_qty) : -99999999;
@@ -1077,7 +1091,10 @@ async function renderStep2(area) {
             let matchCat = true;
             if (currentCategoryFilter !== 'all') matchCat = p.category === currentCategoryFilter;
 
-            if (!matchKw || !matchFilter || !matchCat) return '';
+            let matchCandidates = true;
+            if (showOnlyCandidates) matchCandidates = step2Candidates.has(p.name);
+
+            if (!matchKw || !matchFilter || !matchCat || !matchCandidates) return '';
 
             const isAdded = step2Candidates.has(p.name);
             const momHtml = p.mom_qty !== null
@@ -1086,6 +1103,7 @@ async function renderStep2(area) {
             const crHtml = p.cost_rate !== null
                 ? `<span class="${p.cost_rate > 35 ? 'mp-cost-rate-high' : 'mp-cost-rate-ok'}">${p.cost_rate.toFixed(1)}%</span>`
                 : '—';
+            const unitProfitHtml = p.unit_profit !== null ? '¥' + Math.round(p.unit_profit).toLocaleString() : '—';
             const grossHtml = p.gross_profit !== null ? '¥' + Math.round(p.gross_profit).toLocaleString() : '—';
             const probHtml = p.order_prob ? p.order_prob.toFixed(1) + '%' : '0.0%';
             const obsHtml = p.is_observing ? `<span class="mp-observing-badge"><i class="fas fa-eye"></i> 観察中</span>` : '';
@@ -1095,6 +1113,7 @@ async function renderStep2(area) {
                 <td>${p.quantity.toLocaleString()}</td>
                 <td>¥${Math.round(p.unit_price).toLocaleString()}</td>
                 <td>¥${Math.round(p.unit_cost).toLocaleString()}</td>
+                <td>${unitProfitHtml}</td>
                 <td>¥${Math.round(p.sales).toLocaleString()}</td>
                 <td>${crHtml}</td>
                 <td>${grossHtml}</td>
@@ -1135,9 +1154,16 @@ async function renderStep2(area) {
         window._mpRenderTable();
     };
 
+    window._mpToggleCandidatesFilter = (el) => {
+        showOnlyCandidates = !showOnlyCandidates;
+        if (showOnlyCandidates) el.classList.add('active');
+        else el.classList.remove('active');
+        window._mpRenderTable();
+    };
+
     window._mpSetFilter = (filter, el) => {
         currentFilter = filter;
-        document.querySelectorAll('.mp-filter-chip').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.mp-filter-chip[data-filter]').forEach(c => c.classList.remove('active'));
         el.classList.add('active');
         window._mpRenderTable();
     };
@@ -1151,6 +1177,17 @@ async function renderStep2(area) {
     if (hasData) {
         window._mpRenderTable();
     }
+
+    window._mpAutoResizeNote = () => {
+        const noteEl = document.getElementById('mp-step2-note');
+        if (noteEl) {
+            noteEl.style.height = 'auto';
+            noteEl.style.height = noteEl.scrollHeight + 'px';
+        }
+    };
+    
+    // DOMに追加済みのテキストエリアを初期状態から拡張
+    window._mpAutoResizeNote();
 
     window._mpSaveStep2 = async () => await saveStep2();
 }
@@ -1206,13 +1243,22 @@ async function renderStep3(area) {
     <div class="mp-step-content">
         <div class="mp-step-content-header">
             <span class="mp-step-content-title"><span style="background:#f59e0b;color:white;border-radius:50%;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:800;">3</span> 改善方針の決定</span>
-            <span style="font-size:0.82rem;color:#92400e;">${step3Plans.length}商品が改善候補</span>
+            <span id="mp-step3-progress" style="font-size:0.82rem;color:#92400e;"></span>
         </div>
         <div class="mp-step-content-body">
             <div class="mp-section-note">
                 <i class="fas fa-info-circle" style="color:#f59e0b;margin-right:0.3rem;"></i>
                 各商品について、今後の対応方針を決定してください。「改善する」を選んだ商品は、来月のStep1で経過を確認します。
             </div>
+            
+            ${!isEmpty ? `
+            <div class="mp-step3-filters">
+                <button data-filter="all" class="active" onclick="window._mpFilterStep3('all', this)">すべて</button>
+                <button data-filter="unconfirmed" onclick="window._mpFilterStep3('unconfirmed', this)">未確定</button>
+                <button data-filter="confirmed" onclick="window._mpFilterStep3('confirmed', this)">確定済</button>
+            </div>
+            ` : ''}
+
             <div id="mp-step3-cards">${cardsHtml}</div>
         </div>
         <div class="mp-step-nav">
@@ -1241,9 +1287,137 @@ async function renderStep3(area) {
                 btn.classList.add(clsMap[val] || '');
             }
         });
+        
+        // サマリー掲載ボタンの動的制御
+        const shareBtn = document.getElementById(`mp-share-btn-${planIdx}`);
+        if (shareBtn) {
+            if (val === '改善する') {
+                shareBtn.style.display = 'inline-flex';
+            } else {
+                shareBtn.style.display = 'none';
+                // 改善する以外が選ばれた場合はフラグをリセットし、UIもOFFに戻す
+                if (step3Plans[planIdx]) {
+                    step3Plans[planIdx].is_share_summary = false;
+                }
+                shareBtn.className = 'mp-share-toggle-btn off';
+                shareBtn.innerHTML = '<i class="far fa-circle"></i> 従業員向けサマリーに掲載';
+            }
+        }
+    };
+    
+    window._mpToggleShareSummaryUI = (idx) => {
+        if (!step3Plans[idx]) return;
+        
+        const isCurrentlyOn = !!step3Plans[idx].is_share_summary;
+        const nextState = !isCurrentlyOn;
+        step3Plans[idx].is_share_summary = nextState;
+        
+        const btn = document.getElementById(`mp-share-btn-${idx}`);
+        if (btn) {
+            btn.className = `mp-share-toggle-btn ${nextState ? 'on' : 'off'}`;
+            btn.innerHTML = nextState 
+                ? '<i class="fas fa-check-circle"></i> サマリー掲載ON' 
+                : '<i class="far fa-circle"></i> 従業員向けサマリーに掲載';
+        }
+    };
+
+    window._mpUpdateStep3Progress = () => {
+        const total = step3Plans.length;
+        const confirmed = step3Plans.filter(p => p.is_policy_confirmed).length;
+        const unconfirmed = total - confirmed;
+        const el = document.getElementById('mp-step3-progress');
+        if (el) {
+            el.innerHTML = `改善候補 ${total}件 ｜ 方針確定 ${confirmed}件 ｜ 未確定 ${unconfirmed}件`;
+        }
+    };
+
+    window._mpApplyStep3Filter = () => {
+        const activeFilterBtn = document.querySelector('.mp-step3-filters button.active');
+        const currentFilter = activeFilterBtn ? activeFilterBtn.dataset.filter : 'all';
+        const cards = document.querySelectorAll('.mp-plan-card');
+        cards.forEach(card => {
+            const isConfirmed = card.dataset.confirmed === 'true';
+            if (currentFilter === 'confirmed' && !isConfirmed) {
+                card.style.display = 'none';
+            } else if (currentFilter === 'unconfirmed' && isConfirmed) {
+                card.style.display = 'none';
+            } else {
+                card.style.display = 'block';
+            }
+        });
+    };
+
+    window._mpFilterStep3 = (filter, el) => {
+        document.querySelectorAll('.mp-step3-filters button').forEach(b => b.classList.remove('active'));
+        el.classList.add('active');
+        window._mpApplyStep3Filter();
+    };
+
+    window._mpToggleStep3Card = (idx) => {
+        const body = document.getElementById(`mp-card-body-${idx}`);
+        const icon = document.getElementById(`mp-card-icon-${idx}`);
+        if (!body || !icon) return;
+        
+        if (body.style.display === 'none') {
+            body.style.display = 'block';
+            icon.className = 'fas fa-chevron-up mp-card-toggle-icon';
+        } else {
+            body.style.display = 'none';
+            icon.className = 'fas fa-chevron-down mp-card-toggle-icon';
+        }
+    };
+
+    window._mpToggleConfirm = (idx, isConfirm) => {
+        const card = document.querySelector(`.mp-plan-card[data-plan-idx="${idx}"]`);
+        if (!card) return;
+        
+        if (isConfirm) {
+            const selectedPolicyBtn = card.querySelector(`#mp-policy-group-${idx} .mp-policy-btn.selected`);
+            const policy = selectedPolicyBtn?.dataset?.val || '';
+            if (!policy) {
+                alert('対応方針を選択してください。');
+                return;
+            }
+        }
+        
+        step3Plans[idx].is_policy_confirmed = isConfirm;
+        card.dataset.confirmed = isConfirm ? "true" : "false";
+        
+        const badge = card.querySelector('.mp-plan-badge');
+        if (badge) {
+            if (isConfirm) {
+                badge.className = 'mp-plan-badge confirmed';
+                badge.innerHTML = '<i class="fas fa-check"></i> 確定済';
+            } else {
+                badge.className = 'mp-plan-badge unconfirmed';
+                badge.innerHTML = '未確定';
+            }
+        }
+        
+        const header = card.querySelector('.mp-plan-card-header');
+        if (header) {
+            if (isConfirm) {
+                header.classList.add('confirmed');
+            } else {
+                header.classList.remove('confirmed');
+            }
+        }
+        
+        const actionContainer = card.querySelector('.mp-plan-action-container');
+        if (actionContainer) {
+            actionContainer.innerHTML = isConfirm 
+                ? `<button class="mp-btn-cancel-confirm" onclick="event.stopPropagation(); window._mpToggleConfirm(${idx}, false)">確定を解除する</button>` 
+                : `<button class="mp-btn-confirm" onclick="event.stopPropagation(); window._mpToggleConfirm(${idx}, true)">方針を確定する</button>`;
+        }
+        
+        window._mpUpdateStep3Progress();
+        window._mpApplyStep3Filter();
     };
 
     window._mpSaveStep3 = async () => await saveStep3();
+
+    // 初期化
+    window._mpUpdateStep3Progress();
 }
 
 function renderStep3Card(plan, idx) {
@@ -1267,52 +1441,74 @@ function renderStep3Card(plan, idx) {
         </label>
     `).join('');
 
+    const isConfirmed = !!plan.is_policy_confirmed;
+    const badgeHtml = isConfirmed 
+        ? `<span class="mp-plan-badge confirmed"><i class="fas fa-check"></i> 確定済</span>`
+        : `<span class="mp-plan-badge unconfirmed">未確定</span>`;
+
     return `
-    <div class="mp-plan-card" data-plan-idx="${idx}" data-plan-id="${plan.id || ''}">
-        <div class="mp-plan-card-header">
-            <span class="mp-plan-product-name">${escHtml(plan.product_name || '商品名未設定')}</span>
-            ${plan.snapshot_abc_rank ? `<div class="mp-plan-snapshot">
-                <span>ABC: <span class="mp-abc-badge rank-${plan.snapshot_abc_rank}">${plan.snapshot_abc_rank}</span></span>
-                ${plan.snapshot_cost_rate ? `<span>原価率: <span class="mp-cost-rate-high">${plan.snapshot_cost_rate}%</span></span>` : ''}
-                ${plan.snapshot_quantity_sold ? `<span>販売数: ${plan.snapshot_quantity_sold}食</span>` : ''}
-            </div>` : ''}
+    <div class="mp-plan-card" data-plan-idx="${idx}" data-plan-id="${plan.id || ''}" data-confirmed="${isConfirmed}">
+        <div class="mp-plan-card-header ${isConfirmed ? 'confirmed' : ''}" onclick="window._mpToggleStep3Card(${idx})">
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+                <span class="mp-plan-product-name">${escHtml(plan.product_name || '商品名未設定')}</span>
+                ${badgeHtml}
+            </div>
+            <div style="display:flex; align-items:center; gap:1rem;">
+                ${plan.snapshot_abc_rank ? `<div class="mp-plan-snapshot">
+                    <span>ABC: <span class="mp-abc-badge rank-${plan.snapshot_abc_rank}">${plan.snapshot_abc_rank}</span></span>
+                    ${plan.snapshot_cost_rate ? `<span>原価率: <span class="mp-cost-rate-high">${plan.snapshot_cost_rate}%</span></span>` : ''}
+                    ${plan.snapshot_quantity_sold ? `<span>販売数: ${plan.snapshot_quantity_sold}食</span>` : ''}
+                </div>` : ''}
+                <i class="fas fa-chevron-down mp-card-toggle-icon" id="mp-card-icon-${idx}" style="color:var(--text-light);"></i>
+            </div>
         </div>
-        <div class="mp-plan-form">
-            <div class="mp-form-group full-width">
-                <label>対応方針 <span style="color:#ef4444;">*</span></label>
-                <div class="mp-policy-group" id="mp-policy-group-${idx}">${policyBtns}</div>
+        <div class="mp-plan-card-body" id="mp-card-body-${idx}" style="display: none; padding-top: 1rem;">
+            <div class="mp-plan-form">
+                <div class="mp-form-group full-width">
+                    <label>対応方針 <span style="color:#ef4444;">*</span></label>
+                    <div class="mp-policy-group" id="mp-policy-group-${idx}">${policyBtns}</div>
+                </div>
+                <div class="mp-form-group full-width">
+                    <label>現状の問題</label>
+                    <textarea id="mp-plan-issue-${idx}" rows="2" placeholder="何が問題か（例: 原価率が58%と高い、販売数が低迷している）">${escHtml(plan.current_issue || '')}</textarea>
+                </div>
+                <div class="mp-form-group full-width">
+                    <label>具体的な実施内容</label>
+                    <textarea id="mp-plan-action-${idx}" rows="2" placeholder="具体的に何をするか（例: 仕入先を変更し、原材料コストを下げる）">${escHtml(plan.action_detail || '')}</textarea>
+                </div>
+                <div class="mp-form-group full-width">
+                    <label>改善の狙い</label>
+                    <input type="text" id="mp-plan-goal-${idx}" value="${escHtml(plan.improvement_goal || '')}" placeholder="例: 原価率を35%以下に下げる、販売数を前月比+20%にする">
+                </div>
+                <div class="mp-form-group full-width">
+                    <label>確認する指標</label>
+                    <div id="mp-plan-metrics-${idx}" style="display:flex;flex-wrap:wrap;gap:0.3rem;padding:0.5rem 0;">${metricsHtml}</div>
+                </div>
+                <div class="mp-form-group">
+                    <label>改善前の基準値</label>
+                    <input type="text" id="mp-plan-baseline-${idx}" value="${escHtml(plan.baseline_value || '')}" placeholder="例: 販売数 24食/月、原価率 58%">
+                </div>
+                <div class="mp-form-group">
+                    <label>実施予定日</label>
+                    <input type="date" id="mp-plan-date-${idx}" value="${plan.planned_date || ''}">
+                </div>
+                <div class="mp-form-group">
+                    <label>担当者</label>
+                    <input type="text" id="mp-plan-assignee-${idx}" value="${escHtml(plan.assignee || '')}" placeholder="例: 料理長">
+                </div>
+                <div class="mp-form-group">
+                    <label>備考</label>
+                    <input type="text" id="mp-plan-notes-${idx}" value="${escHtml(plan.notes || '')}" placeholder="その他メモ">
+                </div>
             </div>
-            <div class="mp-form-group full-width">
-                <label>現状の問題</label>
-                <textarea id="mp-plan-issue-${idx}" rows="2" placeholder="何が問題か（例: 原価率が58%と高い、販売数が低迷している）">${escHtml(plan.current_issue || '')}</textarea>
-            </div>
-            <div class="mp-form-group full-width">
-                <label>具体的な実施内容</label>
-                <textarea id="mp-plan-action-${idx}" rows="2" placeholder="具体的に何をするか（例: 仕入先を変更し、原材料コストを下げる）">${escHtml(plan.action_detail || '')}</textarea>
-            </div>
-            <div class="mp-form-group full-width">
-                <label>改善の狙い</label>
-                <input type="text" id="mp-plan-goal-${idx}" value="${escHtml(plan.improvement_goal || '')}" placeholder="例: 原価率を35%以下に下げる、販売数を前月比+20%にする">
-            </div>
-            <div class="mp-form-group full-width">
-                <label>確認する指標</label>
-                <div id="mp-plan-metrics-${idx}" style="display:flex;flex-wrap:wrap;gap:0.3rem;padding:0.5rem 0;">${metricsHtml}</div>
-            </div>
-            <div class="mp-form-group">
-                <label>改善前の基準値</label>
-                <input type="text" id="mp-plan-baseline-${idx}" value="${escHtml(plan.baseline_value || '')}" placeholder="例: 販売数 24食/月、原価率 58%">
-            </div>
-            <div class="mp-form-group">
-                <label>実施予定日</label>
-                <input type="date" id="mp-plan-date-${idx}" value="${plan.planned_date || ''}">
-            </div>
-            <div class="mp-form-group">
-                <label>担当者</label>
-                <input type="text" id="mp-plan-assignee-${idx}" value="${escHtml(plan.assignee || '')}" placeholder="例: 料理長">
-            </div>
-            <div class="mp-form-group">
-                <label>備考</label>
-                <input type="text" id="mp-plan-notes-${idx}" value="${escHtml(plan.notes || '')}" placeholder="その他メモ">
+            
+            <div class="mp-plan-action-container" style="display:flex; justify-content:flex-end; gap:1rem; align-items:center; margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1.5rem; flex-wrap:wrap;">
+                <button type="button" id="mp-share-btn-${idx}" class="mp-share-toggle-btn ${plan.is_share_summary ? 'on' : 'off'}" onclick="event.stopPropagation(); window._mpToggleShareSummaryUI(${idx})" style="display: ${plan.action_policy === '改善する' ? 'inline-flex' : 'none'};">
+                    ${plan.is_share_summary ? '<i class="fas fa-check-circle"></i> サマリー掲載ON' : '<i class="far fa-circle"></i> 従業員向けサマリーに掲載'}
+                </button>
+                ${isConfirmed 
+                    ? `<button type="button" class="mp-btn-cancel-confirm" onclick="event.stopPropagation(); window._mpToggleConfirm(${idx}, false)">確定を解除する</button>` 
+                    : `<button type="button" class="mp-btn-confirm" onclick="event.stopPropagation(); window._mpToggleConfirm(${idx}, true)">方針を確定する</button>`}
             </div>
         </div>
     </div>`;
@@ -1349,6 +1545,8 @@ async function saveStep3() {
                 notes:          document.getElementById(`mp-plan-notes-${planIdx}`)?.value || '',
                 observation_status: policy === '改善する' ? 'not_started' : 'not_applicable',
                 observation_month_count: 0,
+                is_policy_confirmed: !!step3Plans[planIdx]?.is_policy_confirmed,
+                is_share_summary: !!step3Plans[planIdx]?.is_share_summary,
                 updated_at: serverTimestamp(),
             };
 
@@ -2799,4 +2997,218 @@ async function renderPrototypeHistory(body) {
         }).join('')}
     </div>`;
 }
+
+// -------------------------------------------------------
+// 従業員向け共有サマリー (Shared Summary)
+// -------------------------------------------------------
+function generateSummaryHtml(m, plans, homework) {
+    // 改善 (Step3)
+    const improvedPlans = plans.filter(p => p.action_policy === '改善する' && p.is_share_summary);
+    // 廃止 (Step3)
+    const discontinuedPlans = plans.filter(p => p.action_policy === '廃止する');
+
+    // 来月の商品 (Step4) - m に保持している場合はそこから取得。今回は activeMeeting.step4_new_products や step4Prototypes等
+    const newProducts = window.step4Prototypes || [];
+
+    // 担当者・宿題 (Step5)
+    const hwGroups = {};
+    homework.forEach(hw => {
+        const assignee = hw.assignee || '担当者未定';
+        if (!hwGroups[assignee]) hwGroups[assignee] = [];
+        hwGroups[assignee].push(hw);
+    });
+
+    return `
+    <div style="background:#fff; padding:2.5rem; font-family:sans-serif; color:#1e293b;">
+        <!-- 会議概要 -->
+        <div style="text-align:center; margin-bottom:2rem;">
+            <div style="font-size:1.6rem; font-weight:900; color:#0f172a; margin-bottom:0.5rem;">料理長会議 共有サマリー</div>
+            <div style="font-size:1rem; color:#475569; display:flex; justify-content:center; gap:1.5rem;">
+                <span><i class="fas fa-store"></i> ${escHtml(m.store_name || '')}</span>
+                <span><i class="fas fa-calendar-alt"></i> ${formatYearMonth(m.year_month)}対象</span>
+                <span><i class="fas fa-clock"></i> 開催日: ${m.meeting_date ? formatDate(m.meeting_date) : '—'}</span>
+            </div>
+        </div>
+
+        <!-- 今月の重要決定 -->
+        ${m.main_decisions ? `
+        <div class="mp-summary-section">
+            <div class="mp-summary-section-title" style="color:#b45309; border-color:#fde68a;"><i class="fas fa-bullhorn"></i> 今月の重要決定</div>
+            <div style="background:#fffbeb; border-left:4px solid #f59e0b; padding:1rem 1.5rem; border-radius:4px; font-size:1.05rem; line-height:1.6; white-space:pre-wrap;">${escHtml(m.main_decisions)}</div>
+        </div>
+        ` : ''}
+
+        <!-- 改善・変更 -->
+        ${improvedPlans.length > 0 ? `
+        <div class="mp-summary-section">
+            <div class="mp-summary-section-title" style="color:#0f766e; border-color:#99f6e4;"><i class="fas fa-tools"></i> 改善・変更する商品</div>
+            <div class="mp-summary-grid-2">
+                ${improvedPlans.map(p => `
+                    <div class="mp-summary-card" style="border-left:4px solid #14b8a6;">
+                        <div class="mp-summary-item-title">${escHtml(p.product_name || '—')}</div>
+                        ${p.action_detail ? `<div class="mp-summary-item-row"><div class="mp-summary-item-label">実施内容</div><div class="mp-summary-item-value">${escHtml(p.action_detail)}</div></div>` : ''}
+                        ${p.planned_date ? `<div class="mp-summary-item-row"><div class="mp-summary-item-label">実施予定</div><div class="mp-summary-item-value">${escHtml(p.planned_date)}</div></div>` : ''}
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+        ` : ''}
+
+        <!-- 来月の商品 -->
+        ${newProducts.length > 0 ? `
+        <div class="mp-summary-section">
+            <div class="mp-summary-section-title" style="color:#6d28d9; border-color:#ddd6fe;"><i class="fas fa-star"></i> 来月の新商品・提供開始</div>
+            <div class="mp-summary-grid-2">
+                ${newProducts.map(p => `
+                    <div class="mp-summary-card" style="border-left:4px solid #8b5cf6;">
+                        <div class="mp-summary-item-title">${escHtml(p.name || p.item_name || '—')}</div>
+                        ${p.serve_date ? `<div class="mp-summary-item-row"><div class="mp-summary-item-label">提供予定</div><div class="mp-summary-item-value">${escHtml(p.serve_date)}</div></div>` : ''}
+                        ${p.selling_price ? `<div class="mp-summary-item-row"><div class="mp-summary-item-label">想定売価</div><div class="mp-summary-item-value">¥${Number(p.selling_price).toLocaleString()}</div></div>` : ''}
+                        ${p.concept ? `<div class="mp-summary-item-row"><div class="mp-summary-item-label">コンセプト</div><div class="mp-summary-item-value">${escHtml(p.concept)}</div></div>` : ''}
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+        ` : ''}
+
+        <!-- 販売終了・廃止 -->
+        ${discontinuedPlans.length > 0 ? `
+        <div class="mp-summary-section">
+            <div class="mp-summary-section-title" style="color:#b91c1c; border-color:#fecaca;"><i class="fas fa-ban"></i> 販売終了・廃止</div>
+            <div class="mp-summary-grid-3">
+                ${discontinuedPlans.map(p => `
+                    <div class="mp-summary-card" style="background:#fef2f2; border-color:#fecaca; padding:0.8rem;">
+                        <div class="mp-summary-item-title" style="color:#991b1b; margin-bottom:0.2rem;">${escHtml(p.product_name || '—')}</div>
+                        ${p.planned_date ? `<div style="font-size:0.8rem; color:#b91c1c;">廃止予定: ${escHtml(p.planned_date)}</div>` : ''}
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+        ` : ''}
+
+        <!-- 担当者・宿題 -->
+        ${Object.keys(hwGroups).length > 0 ? `
+        <div class="mp-summary-section">
+            <div class="mp-summary-section-title" style="color:#334155; border-color:#cbd5e1;"><i class="fas fa-tasks"></i> 担当者別タスク・宿題</div>
+            <div class="mp-summary-grid-2">
+                ${Object.entries(hwGroups).map(([assignee, hws]) => `
+                    <div class="mp-summary-card">
+                        <div class="mp-summary-item-title" style="border-bottom:1px solid #e2e8f0; padding-bottom:0.4rem; margin-bottom:0.8rem;"><i class="fas fa-user text-slate-400"></i> ${escHtml(assignee)}</div>
+                        <ul style="list-style:none; padding:0; margin:0; font-size:0.9rem;">
+                            ${hws.map(hw => `
+                                <li style="margin-bottom:0.5rem; display:flex; justify-content:space-between; gap:1rem;">
+                                    <span style="color:#1e293b; line-height:1.4;">${escHtml(hw.content)}</span>
+                                    <span style="color:#64748b; flex-shrink:0; font-size:0.8rem;">${escHtml(hw.deadline || '—')}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+        ` : ''}
+
+        <!-- メモ・申し送り -->
+        ${(m.supplementary_notes || m.next_meeting_notes) ? `
+        <div class="mp-summary-section">
+            <div class="mp-summary-section-title" style="color:#475569; border-color:#e2e8f0;"><i class="fas fa-sticky-note"></i> メモ・次回申し送り</div>
+            <div class="mp-summary-card">
+                ${m.supplementary_notes ? `<div style="margin-bottom:1rem;"><div class="mp-summary-item-label" style="width:auto; margin-bottom:0.3rem; font-weight:bold;">補足メモ</div><div class="mp-summary-item-value">${escHtml(m.supplementary_notes)}</div></div>` : ''}
+                ${m.next_meeting_notes ? `<div><div class="mp-summary-item-label" style="width:auto; margin-bottom:0.3rem; font-weight:bold;">次回申し送り</div><div class="mp-summary-item-value">${escHtml(m.next_meeting_notes)}</div></div>` : ''}
+            </div>
+        </div>
+        ` : ''}
+    </div>`;
+}
+
+window._mpPreviewSummary = async () => {
+    const m = activeMeeting;
+    if (!m) return;
+    
+    // データはすでに _mpCaptureDashboard 前に取得・画面セットされているはずなので、今回は簡易的に再取得するか既存変数を流用
+    // 今回は画面生成時に使った query と同じものでサマリーを生成する
+    const btn = document.querySelector('.mp-action-btn[onclick="window._mpPreviewSummary()"]');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中...'; }
+    
+    try {
+        const qPlans = query(collection(db, 't_chef_improvement_plans'), where('store_id', '==', m.store_id), where('decided_in_year_month', '==', m.year_month));
+        const plansSnap = await getDocs(qPlans);
+        const plans = [];
+        plansSnap.forEach(d => plans.push({ id: d.id, ...d.data() }));
+
+        const qHw = query(collection(db, 't_chef_homework'), where('store_id', '==', m.store_id), where('year_month', '==', m.year_month));
+        const hwSnap = await getDocs(qHw);
+        const homework = [];
+        hwSnap.forEach(d => homework.push({ id: d.id, ...d.data() }));
+
+        const html = generateSummaryHtml(m, plans, homework);
+
+        const overlay = document.createElement('div');
+        overlay.className = 'mp-summary-modal-overlay';
+        overlay.id = 'mp-summary-modal';
+        
+        overlay.innerHTML = `
+            <div class="mp-summary-modal-header">
+                <div style="font-weight:bold; font-size:1.1rem; color:#1e293b;">従業員向け共有サマリー プレビュー</div>
+                <div style="display:flex; gap:0.5rem;">
+                    <button class="mp-action-btn" onclick="window._mpCloseSummary()" style="background:#e2e8f0; color:#475569; border:none;">閉じる</button>
+                    <button class="mp-action-btn" id="mp-btn-capture-summary" onclick="window._mpCaptureSummary('${m.year_month}', '${m.store_name}')" style="background:#10b981; color:white; border:none;"><i class="fas fa-camera"></i> 画像で出力</button>
+                </div>
+            </div>
+            <div class="mp-summary-content-area mp-pdf-target" id="mp-summary-content-area">
+                ${html}
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+    } catch (e) {
+        console.error(e);
+        alert('サマリーの生成に失敗しました: ' + e.message);
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-share-alt"></i> 共有サマリーを作成'; }
+    }
+};
+
+window._mpCloseSummary = () => {
+    const el = document.getElementById('mp-summary-modal');
+    if (el) el.remove();
+};
+
+window._mpCaptureSummary = async (yearMonth, storeName) => {
+    const btn = document.getElementById('mp-btn-capture-summary');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 処理中...'; }
+    try {
+        if (typeof html2canvas === 'undefined') {
+            await new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                script.onload = resolve;
+                script.onerror = () => reject(new Error('html2canvasの読み込みに失敗しました。'));
+                document.head.appendChild(script);
+            });
+        }
+        const target = document.getElementById('mp-summary-content-area');
+        if (!target) throw new Error('サマリー要素が見つかりません。');
+        const canvas = await html2canvas(target, {
+            backgroundColor: '#ffffff', scale: 2, useCORS: true, logging: false, allowTaint: true
+        });
+        const ym = formatYearMonth(yearMonth);
+        const safeStoreName = (storeName || '店舗未定').replace(/[\\/:*?"<>|]/g, '_');
+        const fileName = `料理長会議_共有サマリー_${ym}_${safeStoreName}.png`;
+        const dataUrl = canvas.toDataURL('image/png');
+        
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } catch (e) {
+        console.error('Capture error:', e);
+        alert(`キャプチャに失敗しました: ${e.message}`);
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-camera"></i> 画像で出力'; }
+    }
+};
+
 

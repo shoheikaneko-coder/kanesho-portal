@@ -42,13 +42,13 @@ import { shiftAdminMobilePageHtml, initShiftAdminMobilePage } from './shift_mobi
 import { loansPageHtml, initLoansPage } from './loans.js?v=116';
 import { hubPageHtml, initHubPage } from './hubs.js?v=20260710_05';
 import { inviteNaviPageHtml, initInviteNaviPage } from './invite_navi.js';
-import { attendanceManagementPageHtml, storeManagerPaidLeavePageHtml, initAttendanceManagementPage } from './attendance_management.js?v=20260907_08';
-import { storeManagerPaidLeaveMobilePageHtml, initStoreManagerPaidLeaveMobilePage } from './paid_leave_mgmt_mobile.js?v=20260907_08';
+import { attendanceManagementPageHtml, storeManagerPaidLeavePageHtml, storeManagerAttendanceDashboardHtml, initAttendanceManagementPage, initManagerAttendanceDashboard } from './attendance_management.js?v=20260909_01';
+import { storeManagerPaidLeaveMobilePageHtml, initStoreManagerPaidLeaveMobilePage } from './paid_leave_mgmt_mobile.js?v=20260909_01';
 import { bottleKeepPageHtml, initBottleKeepPage } from './bottle_keep.js?v=20260711_03';
 import { prototypeMenuPageHtml, initPrototypeMenuPage } from './prototype_menu.js?v=141';
 import { competitorListPageHtml, initCompetitorListPage } from './competitor_list.js';
 import { managerMeetingPageHtml, initManagerMeetingPage } from './manager_meeting.js?v=20260428_01';
-import { menuPdcaPageHtml, initMenuPdcaPage } from './menu_pdca.js?v=20260829_01';
+import { menuPdcaPageHtml, initMenuPdcaPage } from './menu_pdca.js?v=20260909_04';
 import { PullToRefresh } from './ptr_logic.js';
 import { manualHubPageHtml, initManualHubPage, manualViewerPageHtml, initManualViewerPage } from './manual.js';
 import { gradesPageHtml, initGradesPage } from './grades.js';
@@ -752,6 +752,33 @@ async function showPage(target) {
                 pageTitle.textContent = '日本酒管理';
                 pageContent.innerHTML = dailySakesPageHtml;
                 initDailySakesPage();
+                break;
+            case 'manager_attendance_dashboard':
+                if (!state.permissions.includes('manager_attendance_dashboard')) {
+                    pageContent.innerHTML = '<div style="padding: 2rem; color: var(--danger); text-align: center;"><h2>権限がありません</h2></div>';
+                    return;
+                }
+                updateHeaderTitle('店長向け勤怠管理');
+                
+                // --- Mobile/PC分岐表示 ---
+                if (window.innerWidth < 768) {
+                    // 年間休日のスマホ表示と期間/日別のレスポンシブ統合UIを利用する
+                    // （初期フェーズではPC/スマホ共通のレスポンシブダッシュボードをマウントする）
+                    pageContent.innerHTML = storeManagerAttendanceDashboardHtml;
+                    initManagerAttendanceDashboard();
+                } else {
+                    pageContent.innerHTML = storeManagerAttendanceDashboardHtml;
+                    initManagerAttendanceDashboard();
+                }
+                break;
+            case 'manager_attendance_dashboard':
+                if (!state.permissions.includes('manager_attendance_dashboard')) {
+                    pageContent.innerHTML = '<div style="padding: 2rem; color: var(--danger); text-align: center;"><h2>権限がありません</h2></div>';
+                    return;
+                }
+                updateHeaderTitle('店長向け勤怠管理');
+                pageContent.innerHTML = storeManagerAttendanceDashboardHtml;
+                initManagerAttendanceDashboard();
                 break;
             case 'paid_leave_mgmt':
                 if (!state.permissions.includes('paid_leave_mgmt')) {
