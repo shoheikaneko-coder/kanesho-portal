@@ -4455,35 +4455,22 @@ export async function initManagerAttendanceDashboard() {
                     }
                 } else {
                     if (!window.__paidLeaveInitDone) {
-                        import('./attendance_management.js').then(module => {
-                            const tempDiv = document.createElement('div');
-                            tempDiv.innerHTML = module.storeManagerPaidLeavePageHtml;
-                            const tbl = tempDiv.querySelector('.glass-panel');
-                            if(tbl) {
-                                container.innerHTML = "";
-                                container.appendChild(tbl);
-                                const yearSelect = document.getElementById('attn-int-paid-year');
-                                if (yearSelect) {
-                                    const now = new Date();
-                                    let currentYear = now.getFullYear();
-                                    if (now.getMonth() + 1 < 7) currentYear -= 1;
-                                    for (let y = currentYear - 2; y <= currentYear + 1; y++) {
-                                        const opt = document.createElement('option');
-                                        opt.value = y;
-                                        opt.textContent = `${y}年度 (${y}/07/01〜${y+1}/06/30)`;
-                                        if (y === currentYear) opt.selected = true;
-                                        yearSelect.appendChild(opt);
-                                    }
-                                }
-                                const btnSearch = document.getElementById('btn-attn-int-paid-search');
-                                if (btnSearch && typeof loadIntPaidLeaveData === 'function') {
-                                    btnSearch.addEventListener('click', loadIntPaidLeaveData);
-                                    yearSelect.addEventListener('change', loadIntPaidLeaveData);
-                                    loadIntPaidLeaveData();
-                                }
-                                window.__paidLeaveInitDone = true;
-                            }
-                        });
+                        if (typeof initPaidLeaveYearSelect === 'function') {
+                            initPaidLeaveYearSelect();
+                        }
+                        if (typeof initPaidLeaveEvents === 'function') {
+                            initPaidLeaveEvents();
+                        }
+                        const empType = document.getElementById('attn-int-paid-emp-type');
+                        if (empType && typeof loadIntPaidLeaveData === 'function') {
+                            // If it's not already bound elsewhere
+                            empType.addEventListener('change', loadIntPaidLeaveData);
+                        }
+                        
+                        if (typeof loadIntPaidLeaveData === 'function') {
+                            loadIntPaidLeaveData();
+                        }
+                        window.__paidLeaveInitDone = true;
                     }
                 }
             }
@@ -4501,7 +4488,18 @@ export async function initManagerAttendanceDashboard() {
     if(dateFilterGroup) dateFilterGroup.style.display = 'none';
 
     const searchBtn = document.getElementById('btn-attn-int-search');
-    if(searchBtn) searchBtn.addEventListener('click', loadIntegratedData);
+    if(searchBtn) {
+        searchBtn.addEventListener('click', () => {
+            if (activeIntTab === 'paid_leave') {
+                if (typeof loadIntPaidLeaveData === 'function') loadIntPaidLeaveData();
+            } else {
+                loadIntegratedData();
+            }
+        });
+    }
+    
+    if (document.getElementById('btn-attn-int-day-prev')) document.getElementById('btn-attn-int-day-prev').onclick = () => shiftIntDay(-1);
+    if (document.getElementById('btn-attn-int-day-next')) document.getElementById('btn-attn-int-day-next').onclick = () => shiftIntDay(1);
     
     window.shiftIntDay = (offset) => {
         const ds = document.getElementById('attn-int-date-select');
