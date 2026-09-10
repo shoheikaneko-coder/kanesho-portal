@@ -88,6 +88,7 @@ export async function initManagerAttendanceDashboardMobile() {
     
     // Register global callback for renderIntActiveTab
     window.__renderMobileAttendanceData = function() {
+        console.log('[Mobile] __renderMobileAttendanceData called. lastLoadedIntData:', lastLoadedIntData);
         if (mobileActiveTab === 'monthly') renderMobileMonthly(lastLoadedIntData);
         else if (mobileActiveTab === 'daily') renderMobileDaily(lastLoadedIntData);
     };
@@ -126,7 +127,7 @@ export async function initManagerAttendanceDashboardMobile() {
 
             if (tabName === 'paid_leave') {
                 const container = document.getElementById('attn-mob-pane-paid_leave');
-                if (container.innerHTML.trim() === '') {
+                if (!container.querySelector('#attendance-mgmt-mobile-container')) {
                     container.innerHTML = storeManagerPaidLeaveMobilePageHtml;
                     if (typeof initStoreManagerPaidLeaveMobilePage === 'function') {
                         initStoreManagerPaidLeaveMobilePage();
@@ -181,16 +182,44 @@ function shiftMobileIntDay(offset) {
 function renderMobileMonthly(data) {
     const container = document.getElementById('attn-mob-monthly-body');
     if (!container) return;
-    if (!data || !data.results || data.results.length === 0) {
+    if (!data || !data.staffMap) {
         container.innerHTML = '<div style="padding: 3rem; text-align: center; color: var(--text-secondary);">データがありません</div>';
         return;
     }
 
+    const storeId = data.storeId;
+    const activeStaff = Object.values(data.staffMap).filter(s => {
+        const matches = !storeId || String(s.storeId || s.store_id) === String(storeId);
+        if (window.__isStoreManagerAttendanceMode) {
+            const currentStoreId = window.appState?.currentUser?.StoreID;
+            return matches && String(s.storeId || s.store_id) === String(currentStoreId);
+        }
+        return matches;
+    });
+
+    if (activeStaff.length === 0) {
+        container.innerHTML = '<div style="padding: 3rem; text-align: center; color: var(--text-secondary);">データがありません</div>';
+        return;
+    }
+
+    const absCountMap = data.absenceCountMap || {};
     let html = '';
     
-    // sort by kana if needed, but results are usually sorted by ID or Name already in loadIntegratedData.
-    // Let's just use the order from loadIntegratedData
-    data.results.forEach(s => {
+    activeStaff.sort((a,b) => String(a.code).localeCompare(String(b.code))).forEach(s => {
+        const stats = data.staffMonthlyStats[s.code];
+        
+        let daysCount = 0;
+        let hoursCount = 0;
+        let lateCount = 0;
+
+        if (stats) {
+            daysCount = stats.days.size;
+            hoursCount = stats.totalHours;
+            lateCount = stats.lateHours;
+        }
+
+        const absCount = absCountMap[String(s.code)] || 0;
+
         html += `
         <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 0.6rem;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -200,19 +229,19 @@ function renderMobileMonthly(data) {
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; background: #f8fafc; padding: 0.8rem; border-radius: 8px;">
                 <div>
                     <div style="font-size: 0.7rem; color: #64748b; font-weight: 700;">出勤日数</div>
-                    <div style="font-size: 1rem; font-weight: 800; color: #334155;">${s.totalDays} <span style="font-size: 0.75rem; font-weight: 600;">日</span></div>
+                    <div style="font-size: 1rem; font-weight: 800; color: #334155;">${daysCount} <span style="font-size: 0.75rem; font-weight: 600;">日</span></div>
                 </div>
                 <div>
                     <div style="font-size: 0.7rem; color: #64748b; font-weight: 700;">実働時間</div>
-                    <div style="font-size: 1rem; font-weight: 800; color: #334155;">${s.totalActualHours.toFixed(2)} <span style="font-size: 0.75rem; font-weight: 600;">h</span></div>
+                    <div style="font-size: 1rem; font-weight: 800; color: #334155;">${hoursCount.toFixed(2)} <span style="font-size: 0.75rem; font-weight: 600;">h</span></div>
                 </div>
                 <div>
                     <div style="font-size: 0.7rem; color: #64748b; font-weight: 700;">深夜時間</div>
-                    <div style="font-size: 1rem; font-weight: 800; color: #334155;">${s.totalLateHours.toFixed(2)} <span style="font-size: 0.75rem; font-weight: 600;">h</span></div>
+                    <div style="font-size: 1rem; font-weight: 800; color: #334155;">${lateCount.toFixed(2)} <span style="font-size: 0.75rem; font-weight: 600;">h</span></div>
                 </div>
                 <div>
                     <div style="font-size: 0.7rem; color: #64748b; font-weight: 700;">欠勤数</div>
-                    <div style="font-size: 1rem; font-weight: 800; color: #e53e3e;">${s.absenceCount} <span style="font-size: 0.75rem; font-weight: 600;">日</span></div>
+                    <div style="font-size: 1rem; font-weight: 800; color: #e53e3e;">${absCount} <span style="font-size: 0.75rem; font-weight: 600;">回</span></div>
                 </div>
             </div>
             
@@ -227,14 +256,9 @@ function renderMobileMonthly(data) {
 
     container.innerHTML = html;
     
-    // Bind '日別を見る'
     container.querySelectorAll('.btn-mobile-view-daily').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const uid = e.currentTarget.dataset.uid;
-            // Switch to daily tab
             document.querySelector('.attn-mob-tab[data-tab="daily"]').click();
-            // TODO: In a more advanced version, we might filter the daily view to this user,
-            // but the PC version just switches to Daily tab. We maintain existing behavior.
         });
     });
 }
@@ -242,26 +266,40 @@ function renderMobileMonthly(data) {
 function renderMobileDaily(data) {
     const container = document.getElementById('attn-mob-daily-body');
     if (!container) return;
-    if (!data || !data.results || data.results.length === 0) {
+    if (!data || !data.staffMap) {
         container.innerHTML = '<div style="padding: 3rem; text-align: center; color: var(--text-secondary);">データがありません</div>';
         return;
     }
 
+    const storeId = data.storeId;
     const dateStr = document.getElementById('attn-int-date-select').value;
+    
+    const activeStaff = Object.values(data.staffMap).filter(s => {
+        const matches = !storeId || String(s.storeId || s.store_id) === String(storeId);
+        if (window.__isStoreManagerAttendanceMode) {
+            const currentStoreId = window.appState?.currentUser?.StoreID;
+            return matches && String(s.storeId || s.store_id) === String(currentStoreId);
+        }
+        return matches;
+    });
+
     let html = '';
     let count = 0;
 
-    data.results.forEach(s => {
-        const dData = s.daily[dateStr];
-        if (!dData || !dData.record) return; // No record for this day
+    activeStaff.sort((a,b) => String(a.code).localeCompare(String(b.code))).forEach(s => {
+        const mySessions = data.staffSessions[s.code] || [];
+        const todaySession = mySessions.find(sess => sess.date === dateStr);
+        
+        if (!todaySession) return; // この日の記録がない場合はスキップ
+        
         count++;
         
-        let timeStr = '未出勤';
-        if (dData.record.Status === '出勤中') {
-            timeStr = `${dData.clockIn} → 出勤中`;
-        } else if (dData.clockIn || dData.clockOut) {
-            timeStr = `${dData.clockIn || '--:--'} → ${dData.clockOut || '--:--'}`;
-        }
+        const checkInStr = todaySession.checkIn.record.timestamp.substring(11, 16);
+        const checkOutStr = todaySession.checkOut.record.timestamp.substring(11, 16);
+        const laborStr = todaySession.netLabor.toFixed(2);
+        const lateStr = todaySession.lateLabor.toFixed(2);
+        
+        const timeStr = `${checkInStr} → ${checkOutStr}`;
         
         html += `
         <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 0.6rem;">
@@ -273,11 +311,11 @@ function renderMobileDaily(data) {
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; background: #f8fafc; padding: 0.6rem 0.8rem; border-radius: 8px;">
                 <div style="display: flex; justify-content: space-between;">
                     <span style="font-size: 0.75rem; color: #64748b; font-weight: 700;">実働</span>
-                    <span style="font-size: 0.85rem; font-weight: 800; color: #334155;">${dData.actualHours.toFixed(2)}h</span>
+                    <span style="font-size: 0.85rem; font-weight: 800; color: #334155;">${laborStr}h</span>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
                     <span style="font-size: 0.75rem; color: #64748b; font-weight: 700;">深夜</span>
-                    <span style="font-size: 0.85rem; font-weight: 800; color: #334155;">${dData.lateHours.toFixed(2)}h</span>
+                    <span style="font-size: 0.85rem; font-weight: 800; color: #334155;">${lateStr}h</span>
                 </div>
             </div>
         </div>
@@ -289,15 +327,4 @@ function renderMobileDaily(data) {
     }
 
     container.innerHTML = html;
-}
-
-function updateMobileDayLabel(d) {
-    const label = document.getElementById('attn-mob-day-label');
-    if (label && !isNaN(d.getTime())) {
-        const days = ['日', '月', '火', '水', '木', '金', '土'];
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const dd = String(d.getDate()).padStart(2, '0');
-        label.textContent = `${yyyy}/${mm}/${dd}(${days[d.getDay()]})`;
-    }
 }
