@@ -328,3 +328,14 @@ function renderMobileDaily(data) {
 
     container.innerHTML = html;
 }
+
+function updateMobileDayLabel(d) {
+    const label = document.getElementById('attn-mob-day-label');
+    if (label && !isNaN(d.getTime())) {
+        const days = ['日', '月', '火', '水', '木', '金', '土'];
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        label.textContent = `${yyyy}/${mm}/${dd}(${days[d.getDay()]})`;
+    }
+}
