@@ -801,7 +801,7 @@ let lastLoadedIntData = null; // 新UI用の統合計算済みデータキャッ
 
 // ─── 初期化 ──────────────────────────────────────────────────
 export async function initAttendanceManagementPage(options = {}) {
-    window.__isStoreManagerAttendanceMode = false;
+        window.__isStoreManagerAttendanceMode = false;
     window.__isStoreManagerPaidLeaveMode = options.mode === 'store_manager';
     if (window.__isStoreManagerPaidLeaveMode) {
         activeIntTab = 'paid_leave';
@@ -1068,8 +1068,8 @@ async function loadDailyData() {
         const q = query(collection(db, 't_attendance'), 
             where('date', '>=', date), 
             where('date', '<=', nextDay));
-        const punchSnap = await getDocs(q);
-        const allPunches = [];
+                const punchSnap = await getDocs(q);
+                const allPunches = [];
         punchSnap.forEach(d => allPunches.push({ id: d.id, ...d.data() }));
 
         // 業務日ベースでフィルタリング
@@ -1567,8 +1567,8 @@ async function loadMonthlyData() {
     body.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:3rem;">計中...</td></tr>';
 
     try {
-        const userSnap = await getDocs(collection(db, 'm_users'));
-        const idResolver = {};
+            const userSnap = await getDocs(collection(db, 'm_users'));
+            const idResolver = {};
         const staffMap = {};
         userSnap.forEach(d => {
             const data = d.data();
@@ -1604,8 +1604,8 @@ async function loadMonthlyData() {
         });
 
         const q = query(collection(db, 't_attendance'), where('year_month', '==', month));
-        const punchSnap = await getDocs(q);
-        const punches = [];
+                const punchSnap = await getDocs(q);
+                const punches = [];
         punchSnap.forEach(d => punches.push(d.data()));
 
         // 集計
@@ -2042,8 +2042,8 @@ function switchIntTabPane() {
             if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="padding: 3rem; text-align: center; color: var(--text-secondary);"><i class="fas fa-search"></i> 店舗を選択し、「検索・表示」を押してください</td></tr>';
         }
     } else if (lastLoadedIntData) {
-        renderIntActiveTab();
-    }
+                renderIntActiveTab();
+            }
 }
 
 function shiftIntDay(offset) {
@@ -2059,7 +2059,7 @@ function shiftIntDay(offset) {
 
 // 統合データの一括ロード・計算（実績ある計算ロジックを100%踏襲）
 async function loadIntegratedData() {
-    let storeId = '';
+            let storeId = '';
     if (window.__isStoreManagerAttendanceMode) {
         storeId = window.appState?.currentUser?.StoreID || '';
         if (!storeId) {
@@ -2110,8 +2110,8 @@ async function loadIntegratedData() {
 
     try {
         // 1. スタッフマスターのロード（実績ある堅牢なマッピング）
-        const userSnap = await getDocs(collection(db, 'm_users'));
-        const idResolver = {};
+            const userSnap = await getDocs(collection(db, 'm_users'));
+            const idResolver = {};
         const staffMap = {};
         userSnap.forEach(d => {
             const data = d.data();
@@ -2154,8 +2154,8 @@ async function loadIntegratedData() {
             where('date', '>=', prevMonthLastDay),
             where('date', '<=', nextMonthFirstDay)
         );
-        const punchSnap = await getDocs(q);
-        const punches = [];
+                const punchSnap = await getDocs(q);
+                const punches = [];
         punchSnap.forEach(d => punches.push({ docId: d.id, ...d.data() }));
 
         const staffSessions = {}; // { staff_id: [ sessions ] }
@@ -2340,7 +2340,7 @@ async function loadIntegratedData() {
         }
 
         // 4. キャッシュに格納
-        lastLoadedIntData = {
+                lastLoadedIntData = {
             staffMap: staffMap,
             staffMonthlyStats: staffMonthlyStats,
             staffSessions: staffSessions,
@@ -2360,8 +2360,8 @@ async function loadIntegratedData() {
         }
 
         // 描画実行
-        renderIntActiveTab();
-
+                renderIntActiveTab();
+        
     } catch (e) {
         console.error("loadIntegratedData error:", e);
         const errHtml = `<tr><td colspan="10" style="color:var(--danger); text-align:center; padding:3rem;"><i class="fas fa-exclamation-triangle"></i> 読み込み失敗: ${e.message}</td></tr>`;
@@ -2713,8 +2713,8 @@ async function handleIntTkcExport() {
 
     try {
         // 1. スタッフマスターのロード（実績ある堅牢なマッピング）
-        const userSnap = await getDocs(collection(db, 'm_users'));
-        const idResolver = {};
+            const userSnap = await getDocs(collection(db, 'm_users'));
+            const idResolver = {};
         const staffMap = {};
         userSnap.forEach(d => {
             const data = d.data();
@@ -2757,8 +2757,8 @@ async function handleIntTkcExport() {
             where('date', '>=', queryStartDate),
             where('date', '<=', nextDay)
         );
-        const punchSnap = await getDocs(q);
-        const punches = [];
+                const punchSnap = await getDocs(q);
+                const punches = [];
         punchSnap.forEach(d => punches.push({ docId: d.id, ...d.data() }));
         
         punches.sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
@@ -3072,8 +3072,8 @@ async function handleIntMfExport() {
 
     try {
         // 1. スタッフマスターのロード（LastName, FirstNameもあわせて取得）
-        const userSnap = await getDocs(collection(db, 'm_users'));
-        const idResolver = {};
+            const userSnap = await getDocs(collection(db, 'm_users'));
+            const idResolver = {};
         const staffMap = {};
         userSnap.forEach(d => {
             const data = d.data();
@@ -3113,8 +3113,8 @@ async function handleIntMfExport() {
             where('date', '>=', queryStartDate),
             where('date', '<=', nextDay)
         );
-        const punchSnap = await getDocs(q);
-        const punches = [];
+                const punchSnap = await getDocs(q);
+                const punches = [];
         punchSnap.forEach(d => punches.push({ docId: d.id, ...d.data() }));
         
         punches.sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
@@ -3715,7 +3715,7 @@ export async function saveStaffPaidLeaveSettings(uid, yearStr, customBaseVal, ne
 
 // 年間休日のメインデータ取得処理
 async function loadIntPaidLeaveData() {
-    initPaidLeaveYearSelect();
+        initPaidLeaveYearSelect();
     
     const yearStr = document.getElementById('attn-int-paid-year').value;
     if (!yearStr) return;
@@ -4441,6 +4441,14 @@ export async function initManagerAttendanceDashboard() {
 
     // Default to monthly tab internally
     activeIntTab = 'monthly';
+    
+    // UIと状態を初期同期
+    document.querySelectorAll('.attn-int-tab').forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === activeIntTab);
+    });
+    if (typeof switchIntTabPane === 'function') {
+        switchIntTabPane();
+    }
 
     document.querySelectorAll('.attn-int-tab').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -4450,16 +4458,34 @@ export async function initManagerAttendanceDashboard() {
             document.querySelectorAll('.attn-int-tab').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             
-            document.querySelectorAll('.attn-int-pane').forEach(p => p.style.display = 'none');
-            const targetPane = document.getElementById('attn-int-pane-' + tabName);
-            if (targetPane) targetPane.style.display = 'block';
+            // Adjust top controls visibility based on tab (like Admin does before switch)
+            const dateFilterGroup = document.getElementById('attn-int-date-filter-group');
+            if(dateFilterGroup) {
+                dateFilterGroup.style.display = tabName === 'daily' ? 'block' : 'none';
+            }
+            
+            // Use existing tab switch logic that handles pane display and renders if loaded
+            if (typeof switchIntTabPane === 'function') {
+                switchIntTabPane();
+            } else {
+                // Fallback just in case
+                document.querySelectorAll('.attn-int-pane').forEach(p => p.style.display = 'none');
+                const targetPane = document.getElementById('attn-int-pane-' + tabName);
+                if (targetPane) targetPane.style.display = 'block';
+                
+                if (lastLoadedIntData && tabName !== 'paid_leave') {
+                    if (typeof renderIntActiveTab === 'function') renderIntActiveTab();
+                }
+            }
 
             if (tabName === 'paid_leave') {
                 const container = document.getElementById('attn-int-pane-paid_leave');
                 if (window.innerWidth < 768) {
                     if (container.innerHTML.trim() === '') {
                         container.innerHTML = storeManagerPaidLeaveMobilePageHtml;
-                        initStoreManagerPaidLeaveMobilePage();
+                        if (typeof initStoreManagerPaidLeaveMobilePage === 'function') {
+                            initStoreManagerPaidLeaveMobilePage();
+                        }
                     }
                 } else {
                     if (!window.__paidLeaveInitDone) {
@@ -4471,7 +4497,6 @@ export async function initManagerAttendanceDashboard() {
                         }
                         const empType = document.getElementById('attn-int-paid-emp-type');
                         if (empType && typeof loadIntPaidLeaveData === 'function') {
-                            // If it's not already bound elsewhere
                             empType.addEventListener('change', loadIntPaidLeaveData);
                         }
                         
@@ -4481,12 +4506,6 @@ export async function initManagerAttendanceDashboard() {
                         window.__paidLeaveInitDone = true;
                     }
                 }
-            }
-            
-            // Adjust top controls visibility based on tab
-            const dateFilterGroup = document.getElementById('attn-int-date-filter-group');
-            if(dateFilterGroup) {
-                dateFilterGroup.style.display = tabName === 'daily' ? 'block' : 'none';
             }
         });
     });
