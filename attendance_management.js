@@ -797,7 +797,7 @@ let canDirectEdit = false;
 let canRequestCorrection = false;
 let unsubscribeApprovals = null;
 let activeIntTab = 'monthly'; // 新UI用アクティブタブ
-let lastLoadedIntData = null; // 新UI用の統合計算済みデータキャッシュ
+export let lastLoadedIntData = null; // 新UI用の統合計算済みデータキャッシュ
 
 // ─── 初期化 ──────────────────────────────────────────────────
 export async function initAttendanceManagementPage(options = {}) {
@@ -2058,7 +2058,7 @@ function shiftIntDay(offset) {
 }
 
 // 統合データの一括ロード・計算（実績ある計算ロジックを100%踏襲）
-async function loadIntegratedData() {
+export async function loadIntegratedData() {
             let storeId = '';
     if (window.__isStoreManagerAttendanceMode) {
         storeId = window.appState?.currentUser?.StoreID || '';
@@ -2372,6 +2372,14 @@ async function loadIntegratedData() {
 
 // アクティブタブに応じた描画の振り分け
 function renderIntActiveTab() {
+    // スマホ用DOMが存在する場合はモバイル用描画関数へ委譲する
+    if (document.getElementById('attn-mgr-dashboard-mobile')) {
+        if (typeof window.__renderMobileAttendanceData === 'function') {
+            window.__renderMobileAttendanceData();
+        }
+        return;
+    }
+
     if (activeIntTab === 'daily') renderIntDaily();
     else if (activeIntTab === 'monthly') renderIntMonthly();
     else if (activeIntTab === 'approvals') renderIntApprovals();
@@ -4429,6 +4437,7 @@ ${attendanceManagementStyles}
 import { storeManagerPaidLeaveMobilePageHtml, initStoreManagerPaidLeaveMobilePage } from './paid_leave_mgmt_mobile.js?v=20260909_06';
 
 export async function initManagerAttendanceDashboard() {
+    window.__renderMobileAttendanceData = null;
     window.__isStoreManagerAttendanceMode = true;
     window.__isStoreManagerPaidLeaveMode = true;
     

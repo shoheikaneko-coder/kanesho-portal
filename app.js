@@ -1,3 +1,4 @@
+import { storeManagerAttendanceDashboardMobileHtml, initManagerAttendanceDashboardMobile } from './attendance_management_mobile.js?v=20260910_01';
 import { auth, db, collection, getDocs, query, where, getDoc, doc, updateDoc, serverTimestamp, onSnapshot } from './firebase.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { MENU_DEFINITION, getPageParentMap, getAllPermissionIds } from './menu_definition.js?v=20260710_02';
@@ -762,10 +763,8 @@ async function showPage(target) {
                 
                 // --- Mobile/PC分岐表示 ---
                 if (window.innerWidth < 768) {
-                    // 年間休日のスマホ表示と期間/日別のレスポンシブ統合UIを利用する
-                    // （初期フェーズではPC/スマホ共通のレスポンシブダッシュボードをマウントする）
-                    pageContent.innerHTML = storeManagerAttendanceDashboardHtml;
-                    initManagerAttendanceDashboard();
+                    pageContent.innerHTML = storeManagerAttendanceDashboardMobileHtml;
+                    initManagerAttendanceDashboardMobile();
                 } else {
                     pageContent.innerHTML = storeManagerAttendanceDashboardHtml;
                     initManagerAttendanceDashboard();
