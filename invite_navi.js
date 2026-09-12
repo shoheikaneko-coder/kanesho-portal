@@ -411,14 +411,12 @@ async function updateEmployeeEmail(user, email) {
         const userRef = doc(db, "m_users", user.id);
         await updateDoc(userRef, {
             Email: email,
-            LoginPassword: email,
             UpdatedAt: new Date().toISOString()
         });
 
         const cachedIdx = cachedUsers.findIndex(u => u.id === user.id);
         if (cachedIdx !== -1) {
             cachedUsers[cachedIdx].Email = email;
-            cachedUsers[cachedIdx].LoginPassword = email;
         }
 
         showAlert('成功', `${user.Name} さんのメールアドレスを登録しました。`);

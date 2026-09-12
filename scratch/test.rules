@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function getUserRole() {
+      let authData = get(/databases/$(database)/documents/m_auth_users/$(request.auth.uid)).data;
+      return authData != null ? authData.role : null;
+    }
+    
+    function hasPermission(perm) {
+      let role = getUserRole();
+      if (role == null) return false;
+      let roleData = get(/databases/$(database)/documents/m_role_permissions/$(role)).data;
+      return roleData != null && perm in roleData.permissions;
+    }
+    
+    function isStatus(expectedStatus) {
+      let authData = get(/databases/$(database)/documents/m_auth_users/$(request.auth.uid)).data;
+      return authData != null && authData.status == expectedStatus;
+    }
+
+    match /m_auth_users/{authUid} {
+      allow read: if request.auth != null;
+      allow write: if false; // Admin SDK only
+    }
+
+    match /m_role_permissions/{roleId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Admin SDK only
+    }
+
+    match /t_salary_events/{eventId} {
+      // 給与の閲覧・作成・更新は、status == 'active' かつ payroll_manage 権限を持つユーザーのみ
+      allow read, create, update: if request.auth != null 
+                                 && isStatus('active') 
+                                 && hasPermission('payroll_manage');
+      // 物理削除は原則禁止（論理削除や無効化を利用する）
+      allow delete: if false;
+    }
+
+    match /t_salary_events_history/{historyId} {
+      // 監査履歴は追記と閲覧のみ許可（改ざん・削除防止）
+      allow read, create: if request.auth != null 
+                          && isStatus('active') 
+                          && hasPermission('payroll_manage');
+      allow update, delete: if false;
+    }
+
+    // 他の業務データ (例)
+    match /t_dummy_business_data/{docId} {
+      // status == 'active' でないとアクセスできない
+      allow read, write: if request.auth != null && isStatus('active');
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

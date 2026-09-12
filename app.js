@@ -1,6 +1,6 @@
 import { storeManagerAttendanceDashboardMobileHtml, initManagerAttendanceDashboardMobile } from './attendance_management_mobile.js?v=20260910_01';
 import { auth, db, collection, getDocs, query, where, getDoc, doc, updateDoc, serverTimestamp, onSnapshot } from './firebase.js';
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { onAuthStateChanged, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { MENU_DEFINITION, getPageParentMap, getAllPermissionIds } from './menu_definition.js?v=20260710_02';
 import { roleMasterService } from './role_master_service.js';
 
@@ -240,41 +240,20 @@ async function handleLogin(e) {
     const password = document.getElementById('password').value;
 
     try {
-        let user = null;
+        // Firebase Authを用いた新しいログインフロー
+        const { signInWithEmailAndPassword } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js");
         
-        // 効率的なクエリによる検索（大文字・小文字両方のフィールド名に対応）
-        const tryQuery = async (field, val) => {
-            const q = query(collection(db, "m_users"), where(field, "==", val));
-            return await getDocs(q);
-        };
-
-        // 検索順序: Email(入力値) -> email(入力値) -> Email(小文字) -> email(小文字)
-        let userSnap = await tryQuery("Email", email);
-        if (userSnap.empty) userSnap = await tryQuery("email", email);
-        if (userSnap.empty) userSnap = await tryQuery("Email", email.toLowerCase());
-        if (userSnap.empty) userSnap = await tryQuery("email", email.toLowerCase());
-
-        userSnap.forEach(d => {
-            const data = d.data();
-            const uLoginPass = String(data.LoginPassword || data.password || "");
-            if (uLoginPass === password) {
-                user = { id: d.id, ...data };
-            }
-        });
-
-        // 管理者フォールバック
-        if (!user && email.toLowerCase() === 'admin@kaneshow.jp' && password === 'password') {
-            user = { id: 'admin-fallback', Name: '管理者', Email: email, Role: 'Admin' };
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+            // 以降の画面遷移や権限取得は、全て onAuthStateChanged (Source of Truth) に委譲されます
+        } catch(authErr) {
+            console.error("Auth error:", authErr);
+            alert('ログイン失敗: IDまたはパスワードが正しくありません。\n' + (authErr.code || authErr.message));
         }
 
-        if (user) {
-            await loginSuccess(user);
-        } else {
-            alert('ログイン失敗: IDまたはパスワードが正しくありません。');
-        }
     } catch (err) {
         console.error("Login error:", err);
-        alert('通信エラーが発生しました。ネットワーク接続を確認してください。\n' + err.message);
+        alert('エラーが発生しました。\n' + err.message);
     } finally {
         if (btn) {
             btn.disabled = false;
@@ -905,23 +884,63 @@ document.addEventListener('DOMContentLoaded', () => {
         console.warn("DOMContentLoaded: #login-form not found.");
     }
 
-    // 2. 独自認証の仕組みのため、Firebase Auth の監視は行わず、
-    // セッションの維持は localStorage のみで行う。
+    // 2 & 3. Firebase Auth の onAuthStateChanged による状態管理 (Source of Truth)
+    onAuthStateChanged(auth, async (firebaseUser) => {
+        if (firebaseUser) {
+            console.log("Firebase Auth logged in:", firebaseUser.uid);
+            try {
+                // m_auth_users から権限情報等を取得
+                const authUserSnap = await getDoc(doc(db, "m_auth_users", firebaseUser.uid));
+                if (!authUserSnap.exists()) {
+                    console.error("Auth mapping not found for", firebaseUser.uid);
+                    await signOut(auth);
+                    return;
+                }
+                const authUserData = authUserSnap.data();
+                
+                if (authUserData.status !== 'active') {
+                    console.warn("Account is not active.");
+                    await signOut(auth);
+                    return;
+                }
 
-    // 3. ローカルストレージによる先行ログイン (初期表示の高速化)
-    const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
-        try {
-            const userData = JSON.parse(savedUser);
-            if (userData) {
-                console.log("Local storage auto-login starting...");
-                loginSuccess(userData);
+                // m_users から従来のユーザー情報を取得
+                const mUserSnap = await getDoc(doc(db, "m_users", authUserData.employeeId));
+                let finalUserObj = {
+                    id: authUserData.employeeId,
+                    uid: firebaseUser.uid,
+                    email: firebaseUser.email,
+                    Role: authUserData.role
+                };
+
+                if (mUserSnap.exists()) {
+                    finalUserObj = { ...finalUserObj, ...mUserSnap.data(), id: authUserData.employeeId, Role: authUserData.role };
+                }
+                
+                // localStorage のキャッシュも最新化
+                localStorage.setItem('currentUser', JSON.stringify(finalUserObj));
+                loginSuccess(finalUserObj);
+            } catch (e) {
+                console.error("Error during auto-login auth flow:", e);
+                await signOut(auth);
             }
-        } catch (e) { 
-            console.error("Local auto-login error:", e);
-            localStorage.removeItem('currentUser'); 
+        } else {
+            console.log("Firebase Auth logged out.");
+            // 権限・データの残留を防ぐため、ログアウト状態ならメモリとストレージを破棄
+            window.appState.currentUser = null;
+            window.appState.permissions = [];
+            window.appState.menuOrder = [];
+            localStorage.removeItem('currentUser');
+            sessionStorage.clear();
+            
+            // ログイン画面表示へ切り替え（既存のダッシュボードレイアウトを隠す）
+            const layout = document.getElementById('dashboard-layout');
+            if (layout && layout.style.display !== 'none') {
+                // 画面が表示されていた場合は完全リセットのためにリロードする
+                location.reload();
+            }
         }
-    }
+    });
 
     const btnCalendar = document.getElementById('btn-calendar-viewer');
     if (btnCalendar) btnCalendar.onclick = () => window.navigateTo('calendar_viewer');
@@ -932,16 +951,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnHeaderShift = document.getElementById('btn-header-shift');
     if (btnHeaderShift) {
         btnHeaderShift.onclick = () => {
-            const role = state.currentUser?.Role;
-            // 店舗タブレットでも「シフト表」へ遷移可能にする
             window.navigateTo('shift_viewer');
         };
     }
 
-    document.getElementById('logout-btn')?.addEventListener('click', (e) => {
+    document.getElementById('logout-btn')?.addEventListener('click', async (e) => {
         e.preventDefault();
-        localStorage.removeItem('currentUser');
-        location.reload();
+        
+        try {
+            // Firebase Auth を Source of Truth としたログアウト処理
+            await signOut(auth);
+            
+            // localStorage と sessionStorage のクリア
+            localStorage.removeItem('currentUser');
+            sessionStorage.clear();
+            
+            // 画面を再読み込みしてメモリと状態を完全にリセット
+            location.reload();
+        } catch (error) {
+            console.error("Logout error:", error);
+            alert("ログアウト処理中にエラーが発生しました。");
+        }
     });
 
     const sidebar = document.querySelector('.sidebar');
@@ -1013,30 +1043,25 @@ document.addEventListener('DOMContentLoaded', () => {
         overlay?.classList.remove('show');
     });
 
-    // 管理者連絡モーダル
-    const adminModal = document.getElementById('admin-contact-modal');
     document.getElementById('btn-contact-admin')?.addEventListener('click', async () => {
-        if (!adminModal) return;
-        adminModal.style.display = 'flex';
-        const container = document.getElementById('admin-list-container');
+        const emailInput = document.getElementById('email').value.trim();
+        if (!emailInput) {
+            alert("パスワードを再設定するメールアドレスを上の「メールアドレス」欄に入力してからクリックしてください。");
+            return;
+        }
+
+        if (!confirm(`${emailInput} 宛にパスワード再設定用のメールを送信しますか？`)) {
+            return;
+        }
+
         try {
-            const snap = await getDocs(collection(db, 'm_users'));
-            const admins = [];
-            snap.forEach(d => { if (d.data().Role === 'Admin') admins.push(d.data()); });
-            container.innerHTML = admins.map(a => `
-                <div style="padding:0.9rem 1rem; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; gap:0.8rem;">
-                    <div style="width:36px; height:36px; border-radius:50%; background:#fee2e2; color:#e53e3e; display:flex; align-items:center; justify-content:center; font-weight:700;">
-                        ${(a.Name || 'A').substring(0, 1).toUpperCase()}
-                    </div>
-                    <div>
-                        <div style="font-weight:600; font-size:0.9rem;">${a.Name || '管理者'}</div>
-                        <div style="font-size:0.78rem; color:#64748b;">${a.Store || ''}</div>
-                    </div>
-                </div>
-            `).join('');
-        } catch(e) { container.innerHTML = '読み込みエラー'; }
+            await sendPasswordResetEmail(auth, emailInput);
+            alert("パスワード再設定用のメールを送信しました。メール内のリンクから新しいパスワードを設定してください。");
+        } catch (error) {
+            console.error("Password reset error:", error);
+            alert("メールの送信に失敗しました。正しいメールアドレスか確認してください。\\n" + error.message);
+        }
     });
-    document.getElementById('close-admin-modal')?.addEventListener('click', () => adminModal.style.display = 'none');
 
     // FABスクロール透過制御 (モバイル操作性向上)
     const pageContentEl = document.getElementById('page-content');

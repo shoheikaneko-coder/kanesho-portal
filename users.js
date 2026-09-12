@@ -693,7 +693,7 @@ function setupFormLogic() {
             'LastName': document.getElementById('user-lastname').value,
             'FirstName': document.getElementById('user-firstname').value,
             'ClockInPassword': document.getElementById('user-password').value,
-            'LoginPassword': document.getElementById('user-login-password').value,
+            // 'LoginPassword': document.getElementById('user-login-password').value, // 移行に伴いFirestoreへの新規/更新保存を停止
             'Email': document.getElementById('user-email').value,
             'Role': document.getElementById('user-role').value,
             'Store': selectedOpt ? selectedOpt.text : '',

@@ -899,7 +899,7 @@ window.approveNewHireFromDetail = async (appId) => {
             FirstNameKana: data.details['フリガナ'] ? data.details['フリガナ'].split(' ')[1] : "",
             DisplayName: data.details['ニックネーム'] || "",
             Email: data.details['メールアドレス'] || "",
-            LoginPassword: data.details['ログインPW'] || "",
+            // LoginPassword: data.details['ログインPW'] || "", // 移行に伴いFirestoreへの新規/更新保存を停止
             ClockInPassword: data.details['打刻PW'] || "",
             Role: "PartTimer", 
             EmploymentType: "Part-time",

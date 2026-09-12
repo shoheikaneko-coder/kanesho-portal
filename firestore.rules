@@ -2,17 +2,57 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /{document=**} {
-      // 応急処置：期限なしで全公開。
-      // 次のステップで Firebase Auth を導入し、
-      // allow read, write: if request.auth != null; などの制限をかけることを推奨します。
       // 既存のコレクション（全公開の応急処置）
       allow read, write: if true;
     }
     
     match /workflows/{workflowId} {
-      // ワークフロー機能は認証済みユーザーのみ
-      // 実運用では resource.data.requester_id == request.auth.uid などの詳細な制限を追加
       allow read, write: if request.auth != null;
+    }
+
+    // ==========================================
+    // M0: 給与関連データのSecurity Rules (将来設計用)
+    // ==========================================
+    // 【重要課題の報告】
+    // 現状の app.js を調査した結果、ログイン処理は m_users に対する
+    // 平文パスワードの直接照合で行われており、Firebase Auth (signInWithEmailAndPassword等) 
+    // が使用されていませんでした。
+    // したがって、現在のシステムでは request.auth は常に null となり、
+    // request.auth.uid を用いたセキュリティ制御は機能しません。
+    //
+    // M2までにこれらを保護するためには、以下のいずれかの対応が必須です：
+    // 1. Firebase Auth を導入し、m_users.EmployeeCode と Firebase UID を一致（または紐付け）させる
+    // 2. ログイン時に Firebase Custom Token を発行するバックエンドを構築する
+    // 
+    // 今回はM0の先行適用として、将来 Firebase Auth が導入された際に
+    // 動作するルールを定義していますが、現状のフロントエンド動作を止めないよう
+    // 一時的に if true (または未認証アクセス許可) としています。
+    // 
+    // 【将来的な権限判定（Role）について】
+    // 権限も現状フロントエンドのみの制御であるため、セキュアにするには
+    // Firebase Auth の Custom Claims に Role を持たせるか、
+    // ルール内から m_users を get() して Role を確認する構造が必要です。
+    // 例: function isAdmin() { return get(/databases/$(database)/documents/m_users/$(request.auth.uid)).data.Role == 'Admin'; }
+
+    match /t_salary_events/{eventId} {
+      // 【将来の理想形】
+      // allow read: if request.auth != null && (
+      //   resource.data.employeeId == request.auth.uid || isAdmin()
+      // );
+      // allow create, update, delete: if request.auth != null && isAdmin();
+      
+      // M0現状: Firebase Auth未導入のためアクセスを許可
+      allow read, write: if true;
+    }
+
+    match /t_salary_events_history/{historyId} {
+      // 【将来の理想形】
+      // allow read: if request.auth != null && isAdmin();
+      // allow create: if request.auth != null && isAdmin();
+      // allow update, delete: if false; // 履歴の改ざん・削除を禁止
+      
+      // M0現状: Firebase Auth未導入のためアクセスを許可
+      allow read, write: if true;
     }
   }
 }
